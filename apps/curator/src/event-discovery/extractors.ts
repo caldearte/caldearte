@@ -235,7 +235,7 @@ export function extractArticleList(html: string, pageUrl: string, config: Articl
     const titleMatch = block.match(config.titleLinkRegex);
     if (!titleMatch) continue;
     const [, href, rawTitle] = titleMatch;
-    const title = collapseWhitespace(rawTitle ?? "");
+    const title = decodeHtmlEntities(collapseWhitespace(rawTitle ?? ""));
 
     const days = config.daysRegex ? collapseWhitespace(block.match(config.daysRegex)?.[1] ?? "") : "";
     const place = config.placeRegex ? collapseWhitespace(block.match(config.placeRegex)?.[1] ?? "") : "";

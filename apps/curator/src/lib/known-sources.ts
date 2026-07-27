@@ -212,6 +212,40 @@ export const KNOWN_SOURCES: KnownSource[] = [
     },
   },
   {
+    url: "https://www.museoregionalaysen.gob.cl/cartelera",
+    note: 'Museo Regional de Aysén (Coyhaique) — same SNPC/Drupal template as mnba.gob.cl, confirmed 2026-07-27 (identical block/title/days/place markup, verbatim-reusable regexes). /cartelera lists current exhibitions (2 at last check, both real exposiciones, spanning two on-site venues — "Bodega" and "Cocina de Peones" — hence fixedLocation.placeName stays the museum\'s own name, not the sub-venue). additionalPages: /cartelera/proximos (empty at last check, but a real separate view for upcoming-not-yet-open exhibitions — same pattern as this session\'s other paginated/multi-view sources).',
+    lastReviewedAt: "2026-07-27",
+    additionalPages: ["https://www.museoregionalaysen.gob.cl/cartelera/proximos"],
+    extractor: {
+      kind: "articleList",
+      blockRegex: /<article\s+class="node node--evento[^"]*">([\s\S]*?)<\/article>/g,
+      titleLinkRegex: /<h2 class="destacado__title"><a href="([^"]+)">([^<]*)<\/a><\/h2>/,
+      daysRegex: /field--name-field-fechas"[^>]*>([\s\S]*?)<\/div>/,
+      placeRegex: /field--name-institucion"><a[^>]*>([^<]*)<\/a>/,
+      // Same CMS/template as mnba.gob.cl — see its own dateRangeExtractor
+      // comment (machine-readable <time datetime="..."> pair, no month-name
+      // parsing needed).
+      dateRangeExtractor: {
+        pattern: /<time datetime="(?<startIso>\d{4}-\d{2}-\d{2})[^"]*"[^>]*>[\s\S]*?<time datetime="(?<endIso>\d{4}-\d{2}-\d{2})[^"]*"[^>]*>/,
+      },
+    },
+    fixedLocation: { location: "Coyhaique", placeName: "Museo Regional de Aysén" },
+    // Real markup, confirmed 2026-07-27 against a live detail page — same
+    // "text-long" container as mnba.gob.cl.
+    descriptionExtractor: {
+      pattern: /<div class="text-long">([\s\S]*?)<\/div>/,
+    },
+    // Real markup, confirmed 2026-07-27: unlike mnba.gob.cl/arteinformado.com
+    // (which state "Inauguración: <day> de <month>[, <hour>]" on one line),
+    // this source's day and hour sit in two SEPARATE <p> elements —
+    // "Inauguración: Jueves 19 de marzo" then "Hora: 18:30 h." — adjacent
+    // once tags collapse to whitespace, so one pattern spanning both still
+    // works without a per-source detail-page restructure.
+    openingTimeExtractor: {
+      pattern: /Inauguración:\s*\S+\s+(?<day>\d{1,2})\s+de\s+(?<month>[a-zé]{3})[a-zé]*\s+Hora:\s*(?<hour>\d{1,2}):(?<minute>\d{2})/i,
+    },
+  },
+  {
     url: "https://www.molinomachmar.cl/cartelera/",
     note: 'Centro de Arte Molino Machmar (CAMM), Frutillar — events/expositions listing page. Mix of exposiciones (visual art, in scope) and performances/charlas (out of scope), which Haiku filters correctly. Real production bug (found 2026-07-16): this page is long (9 mixed-category events, ~68k chars) and the exposiciones happen to sit past the whole-page-flatten\'s 4000-char cutoff (lib/sources.ts) — without a structured extractor, all 3 real exhibitions ("Ausencia y Presencia", "Paisaje en Erupción", "Una Paloma en el Molino") were silently truncated out and never reached Haiku. Per-event title+link live in the SAME <a> tag (its title attribute is "Leer: <event title>"), letting titleLinkRegex read both from one match instead of needing separate title/link patterns.',
     lastReviewedAt: "2026-07-16",
