@@ -36,6 +36,7 @@ import {
   loadExistingKeys,
   isSourceDue,
   recordBrightSourcesFetched,
+  toCandidateSummary,
 } from "../event-discovery/run.js";
 
 // The listing page itself is the identity tracked in
@@ -86,6 +87,7 @@ export async function run(deps: HeadlessRunDeps = {}): Promise<void> {
       byMediumType: {},
       sensitivityTagged: 0,
     },
+    eventGroups: [],
     cost: { anthropicUsd: 0, tavilyCredits: 0, tavilyUsd: 0, totalUsd: 0, monthToDateUsd: 0, monthlyBudgetUsd: 0 },
   };
 
@@ -116,6 +118,7 @@ export async function run(deps: HeadlessRunDeps = {}): Promise<void> {
 
     summary.candidates.total = candidates.length;
     summary.candidates.insertedCount = inserted;
+    summary.eventGroups.push({ label: MAVI_SOURCE_URL, candidates: candidates.map(toCandidateSummary) });
     for (const c of candidates) {
       if (c.status === "approved") summary.candidates.approvedByCuration += 1;
       if (c.status === "rejected") summary.candidates.rejectedByCuration += 1;

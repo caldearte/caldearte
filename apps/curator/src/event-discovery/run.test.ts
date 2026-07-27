@@ -681,6 +681,10 @@ test(
         assert.ok(capturedSummary);
         assert.ok(capturedSummary!.comunas.includes(TEST_UNIT));
         assert.ok(!capturedSummary!.comunas.includes("__test_excluded__"), "excluded units never enter the due batch");
+        assert.ok(
+          capturedSummary!.eventGroups.some((g) => g.label === TEST_UNIT),
+          "eventGroups has one entry per comuna searched, keyed by unit name",
+        );
       });
 
       await t.test("summary distinguishes insertedCount (actually written) from approvedByCuration (Haiku's raw call)", async () => {
@@ -759,6 +763,8 @@ test(
         assert.ok(capturedSummary);
         assert.equal(capturedSummary!.candidates.approvedByCuration, 2, "both candidates were approved by Haiku's call");
         assert.equal(capturedSummary!.candidates.insertedCount, 1, "only the current one actually got written to events");
+        const group = capturedSummary!.eventGroups.find((g) => g.label === TEST_UNIT);
+        assert.equal(group?.candidates.length, 2, "eventGroups shows both candidates, including the stale one insertCandidates filtered out");
       });
 
       await t.test("cost figures derive from usage/credits already in scope, not a new query", async () => {

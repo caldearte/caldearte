@@ -28,7 +28,7 @@ import { matchRegionId, type RegionLike } from "../lib/locations.js";
 import { normalizeLocation, isLikelySameTitle } from "../lib/event-filters.js";
 import { enrichCandidates, isSocialMediaUrl, type FetchLike as PageFetchLike } from "../lib/page-fetch.js";
 import { rehostImage, type RehostImageFn } from "../lib/image-rehost.js";
-import { sendRunSummaryEmail, type RunSummary } from "../lib/notify.js";
+import { sendRunSummaryEmail, type RunSummary, type CandidateSummary } from "../lib/notify.js";
 import {
   buildBlock,
   buildSystemPrompt,
@@ -512,6 +512,19 @@ export interface RunDeps {
   brightSourceUrlFilter?: string[];
 }
 
+export function toCandidateSummary(c: EventCandidate): CandidateSummary {
+  return {
+    title: c.title,
+    status: c.status,
+    location: c.location,
+    placeName: c.placeName,
+    runStartDate: c.runStartDate,
+    runEndDate: c.runEndDate,
+    curationReasoning: c.curationReasoning,
+    sourceUrl: c.sourceUrl,
+  };
+}
+
 export async function run(deps: RunDeps = {}): Promise<void> {
   const tavilyApiKey = process.env.TAVILY_API_KEY;
   if (!tavilyApiKey && !deps.searchUnitFn) {
@@ -573,6 +586,7 @@ export async function run(deps: RunDeps = {}): Promise<void> {
       byMediumType: {},
       sensitivityTagged: 0,
     },
+    eventGroups: [],
     cost: { anthropicUsd: 0, tavilyCredits: 0, tavilyUsd: 0, totalUsd: 0, monthToDateUsd: 0, monthlyBudgetUsd: 0 },
   };
 
@@ -620,6 +634,7 @@ export async function run(deps: RunDeps = {}): Promise<void> {
         summary.cost.anthropicUsd += estimateCostUsd(EVENT_DISCOVERY_MODEL, usage);
         await enrichCandidates(candidates, pageFetchFn, now, regions);
         allCandidates.push(...candidates);
+        summary.eventGroups.push({ label: unit.name, candidates: candidates.map(toCandidateSummary) });
         inserted = await insertCandidates(candidates, regions, seenKeys, now, rehostImageFn);
         summary.candidates.insertedCount += inserted;
       }
@@ -686,6 +701,7 @@ export async function run(deps: RunDeps = {}): Promise<void> {
         summary.cost.anthropicUsd += estimateCostUsd(EVENT_DISCOVERY_MODEL, usage);
         await enrichCandidates(candidates, pageFetchFn, now, regions);
         allCandidates.push(...candidates);
+        summary.eventGroups.push({ label: sourceUrl, candidates: candidates.map(toCandidateSummary) });
         const inserted = await insertCandidates(candidates, regions, seenKeys, now, rehostImageFn);
         summary.candidates.insertedCount += inserted;
         console.log(`[event-discovery] bright source ${sourceUrl}: ${inserted} new approved event(s)`);

@@ -1437,15 +1437,31 @@ anything genuinely ambiguous. Parked, not an active line item — see
 
 Not to be confused with the still-parked approve/reject flow above: after
 every run, `apps/curator/src/lib/notify.ts`'s `sendRunSummaryEmail` sends a
-plain-text report to the project owner — comunas consultadas (including any
-that failed and stay due for retry), fuentes brillantes fetched, candidate
-counts (approved/rejected by Haiku's curation call, vs. actually inserted —
-kept as separate numbers since a candidate can be approved by curation but
-still filtered out as stale or a cross-run duplicate before insert), a
+report to the project owner — comunas consultadas (including any that
+failed and stay due for retry), fuentes brillantes fetched, candidate counts
+(approved/rejected by Haiku's curation call, vs. actually inserted — kept as
+separate numbers since a candidate can be approved by curation but still
+filtered out as stale or a cross-run duplicate before insert), a
 `mediumType` breakdown, and an estimated cost for the run. Reuses the
 `caldearte.com` domain already verified for `/contacto`, and a separate
 `RESEND_API_KEY` GitHub Actions secret (not the same store as `apps/web`'s
 Vercel env var of the same name).
+
+**Per-event table (added 2026-07-24):** every `curate()`/
+`curateBrightSourceItems()` call's candidates — approved AND rejected — get
+mapped to a lean `CandidateSummary` (title, status, location/placeName,
+dates, `curationReasoning`, sourceUrl) and grouped into `RunSummary`/
+`HeadlessRunSummary`'s `eventGroups: EventGroup[]`, one group per comuna
+searched or bright source fetched. `buildHtmlBody`/`buildHeadlessHtmlBody`
+render this as one table per group (title links to `sourceUrl`,
+`curationReasoning` visible per row) — the point is auditing Haiku's actual
+per-event judgment (or a `[FILTRO DE CÓDIGO]`-prefixed code-level rejection,
+e.g. the sourceUrl invariant or a stale-year filter) straight from the
+email, without pulling GitHub Actions logs. The email is sent as both
+`html` and `text` (Resend requires at least one; both are set so a
+text-only client still gets the full per-event list, not just a pointer to
+the HTML version) — `buildBody`/`buildHeadlessBody`'s plain-text tail now
+also lists every candidate, grouped and prefixed `[OK]`/`[RECHAZADO]`.
 
 **Adds no measurable cost:** every figure comes from data the run already
 computes — the `usage` object each `curate()` call already returns (cost,

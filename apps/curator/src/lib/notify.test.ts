@@ -5,9 +5,11 @@ import {
   sendRunSummaryEmail,
   buildSubject,
   buildBody,
+  buildHtmlBody,
   sendHeadlessRunSummaryEmail,
   buildHeadlessSubject,
   buildHeadlessBody,
+  buildHeadlessHtmlBody,
   type RunSummary,
   type HeadlessRunSummary,
 } from "./notify.js";
@@ -42,6 +44,33 @@ const fixtureSummary: RunSummary = {
     byMediumType: { tradicional: 8, intervencion_no_tradicional: 2 },
     sensitivityTagged: 1,
   },
+  eventGroups: [
+    {
+      label: "Santiago",
+      candidates: [
+        {
+          title: "Expo real en el GAM",
+          status: "approved",
+          location: "Santiago",
+          placeName: "GAM",
+          runStartDate: "2026-08-01",
+          runEndDate: "2026-08-30",
+          curationReasoning: "Exposición de arte visual en espacio legítimo.",
+          sourceUrl: "https://x.cl/expo-real",
+        },
+        {
+          title: "Taller de cerámica",
+          status: "rejected",
+          location: "Santiago",
+          placeName: null,
+          runStartDate: null,
+          runEndDate: null,
+          curationReasoning: "Es un taller, no una exposición — fuera de alcance.",
+          sourceUrl: "https://x.cl/taller",
+        },
+      ],
+    },
+  ],
   cost: {
     anthropicUsd: 0.118,
     tavilyCredits: 12,
@@ -97,6 +126,33 @@ test("buildBody handles the no-failures, no-bright-sources-due edge case cleanly
   assert.match(body, /0 de 12 debidas/);
 });
 
+test("buildBody's text fallback lists both approved and rejected candidates, grouped by source", () => {
+  const body = buildBody(fixtureSummary);
+  assert.match(body, /-- Santiago \(2\) --/);
+  assert.match(body, /\[OK\] Expo real en el GAM/);
+  assert.match(body, /\[RECHAZADO\] Taller de cerámica/);
+  assert.match(body, /Es un taller, no una exposición — fuera de alcance\./);
+});
+
+test("buildHtmlBody renders a table with both approved and rejected candidates, source link, and reasoning", () => {
+  const html = buildHtmlBody(fixtureSummary);
+  assert.match(html, /Santiago \(2\)/);
+  assert.match(html, /✅ Aprobado/);
+  assert.match(html, /❌ Rechazado/);
+  assert.match(html, /<a href="https:\/\/x\.cl\/expo-real"[^>]*>Expo real en el GAM<\/a>/);
+  assert.match(html, /Taller de cerámica/);
+  assert.match(html, /Es un taller, no una exposición — fuera de alcance\./);
+  assert.match(html, /GAM/);
+});
+
+test("buildHtmlBody omits empty groups and degrades cleanly with zero eventGroups", () => {
+  const html = buildHtmlBody({ ...fixtureSummary, eventGroups: [{ label: "Empty Comuna", candidates: [] }] });
+  assert.doesNotMatch(html, /Empty Comuna/);
+
+  const emptyHtml = buildHtmlBody({ ...fixtureSummary, eventGroups: [] });
+  assert.doesNotMatch(emptyHtml, /<table/);
+});
+
 const fixtureHeadlessSummary: HeadlessRunSummary = {
   startedAt: new Date(2026, 6, 20, 7, 0, 0),
   sourcesFetched: ["https://mavi.uc.cl/exposiciones-actuales/"],
@@ -108,6 +164,23 @@ const fixtureHeadlessSummary: HeadlessRunSummary = {
     byMediumType: { tradicional: 3 },
     sensitivityTagged: 0,
   },
+  eventGroups: [
+    {
+      label: "https://mavi.uc.cl/exposiciones-actuales/",
+      candidates: [
+        {
+          title: "Muestra en el MAVI",
+          status: "approved",
+          location: "Santiago",
+          placeName: "Museo de Artes Visuales MAVI UC",
+          runStartDate: "2026-07-01",
+          runEndDate: "2026-09-01",
+          curationReasoning: "Exposición de arte visual en museo legítimo.",
+          sourceUrl: "https://mavi.uc.cl/exposiciones/muestra",
+        },
+      ],
+    },
+  ],
   cost: { anthropicUsd: 0.02, tavilyCredits: 0, tavilyUsd: 0, totalUsd: 0.02, monthToDateUsd: 4.34, monthlyBudgetUsd: 50 },
 };
 
@@ -146,4 +219,12 @@ test("buildHeadlessBody includes the sources fetched, event counts, and cost bre
 test("buildHeadlessBody handles no sources due cleanly", () => {
   const body = buildHeadlessBody({ ...fixtureHeadlessSummary, sourcesFetched: [] });
   assert.match(body, /FUENTES CONSULTADAS \(0\)\n\(ninguna debida esta corrida\)/);
+});
+
+test("buildHeadlessHtmlBody renders the MAVI event table with source link and venue", () => {
+  const html = buildHeadlessHtmlBody(fixtureHeadlessSummary);
+  assert.match(html, /mavi\.uc\.cl\/exposiciones-actuales\/ \(1\)/);
+  assert.match(html, /✅ Aprobado/);
+  assert.match(html, /Muestra en el MAVI/);
+  assert.match(html, /Museo de Artes Visuales MAVI UC/);
 });

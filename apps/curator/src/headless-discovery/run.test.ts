@@ -113,6 +113,10 @@ test(
         assert.deepEqual(sentSummary?.sourcesFetched, [MAVI_SOURCE_URL]);
         assert.equal(sentSummary?.candidates.total, 1);
         assert.equal(sentSummary?.candidates.insertedCount, 1);
+        assert.equal(sentSummary?.eventGroups.length, 1);
+        assert.equal(sentSummary?.eventGroups[0]?.label, MAVI_SOURCE_URL);
+        assert.equal(sentSummary?.eventGroups[0]?.candidates[0]?.title, activity.title);
+        assert.equal(sentSummary?.eventGroups[0]?.candidates[0]?.status, "approved");
 
         const { data: inserted } = await client
           .from("events")
