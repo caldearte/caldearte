@@ -410,6 +410,71 @@ test("fetchBrightSources against the real KNOWN_SOURCES config for museoregional
   assert.deepEqual(results[0].source.fixedLocation, { location: "Coyhaique", placeName: "Museo Regional de Aysén" });
 });
 
+test("fetchBrightSources against the real KNOWN_SOURCES config for museodeancud.gob.cl reads the embedded machine-readable date directly, same CMS/template as mnba.gob.cl and museoregionalaysen.gob.cl (regression check against production config, added 2026-07-27)", async () => {
+  const ancud = KNOWN_SOURCES.find((s) => s.url.includes("museodeancud.gob.cl"));
+  assert.ok(ancud?.extractor?.kind === "articleList");
+  const config = ancud.extractor as ArticleListConfig;
+
+  const html = `
+    <article  class="node node--evento node--1342 node--teaser">
+      <h2 class="destacado__title"><a href="/cartelera/exposicion-temporal-pinceladas-de-esperanza-los-colores-del-alma">Exposición temporal «Pinceladas de esperanza: los colores del alma»</a></h2>
+      <div class="field field--hidden field--type-daterange field--name-field-fechas"><time datetime="2026-07-14T12:00:00Z">14/Julio/2026</time>
+       hasta el <time datetime="2026-07-31T12:00:00Z">31/Julio/2026</time>
+      </div>
+      <div class="field field--name-institucion"><a href="/espacios/museo-regional-de-ancud-libertad-370">Museo Regional de Ancud, Libertad 370</a> - <a href="/inmuebles/museo-regional-de-ancud">Museo Regional de Ancud</a></div>
+    </article>
+  `;
+
+  const results = await withStubFetch(() => textResponse(html), () => fetchBrightSources([{ url: ancud.url, note: ancud.note, extractor: config, fixedLocation: ancud.fixedLocation }]));
+
+  assert.equal(results.length, 1);
+  assert.equal(results[0].kind, "items");
+  if (results[0].kind !== "items") throw new Error("unreachable");
+  assert.equal(results[0].items[0].title, "Exposición temporal «Pinceladas de esperanza: los colores del alma»");
+  assert.equal(results[0].items[0].structuredStartDate, "2026-07-14");
+  assert.equal(results[0].items[0].structuredEndDate, "2026-07-31");
+  assert.deepEqual(results[0].source.fixedLocation, { location: "Ancud", placeName: "Museo Regional de Ancud" });
+});
+
+test("fetchBrightSources against the real KNOWN_SOURCES config for mallecoescultura.cl reads the single-date event correctly, decodes the lazy-loaded image, and pairs description inline without a detail-page fetch (regression check against production config, added 2026-07-27)", async () => {
+  const malleco = KNOWN_SOURCES.find((s) => s.url.includes("mallecoescultura.cl"));
+  assert.ok(malleco?.extractor?.kind === "articleList");
+  const config = malleco.extractor as ArticleListConfig;
+
+  const html = `
+    <article  class="tribe-events-calendar-list__event tribe-common-g-row post-9189 tribe_events_cat-exposicion cat_exposicion" >
+      <img src="data:image/png;base64,tinyplaceholder==" data-src="https://mallecoescultura.cl/site/wp-content/uploads/2023/12/rsz_worner.jpg" alt="Exposición de Pinturas">
+      <h4 class="tribe-events-calendar-list__event-title tribe-common-h6" >
+        <a href="https://mallecoescultura.cl/evento/exposicion-de-pinturas-de-j-worner/" title="Exposición de Pinturas de J. Wörner" rel="bookmark" class="tribe-events-calendar-list__event-title-link" >
+          Exposición de Pinturas de J. Wörner	</a>
+      </h4>
+      <div class="tribe-events-calendar-list__event-datetime-wrapper tribe-common-b2" >
+        <time class="tribe-events-calendar-list__event-datetime" datetime="2023-12-18">
+          <span class="tribe-event-date-start">18 diciembre 2023 @ 19:30</span> - <span class="tribe-event-time">20:00</span></time>
+      </div>
+      <address class="tribe-events-calendar-list__event-venue tribe-common-b2">
+        <span class="tribe-events-calendar-list__event-venue-title tribe-common-b2--bold">Centro Cultural Victoria	</span>
+      </address>
+      <div class="tribe-events-calendar-list__event-description tribe-common-b2" >
+        <p>Un encuentro con el Arte en manos de J. Wörner.</p>
+      </div>
+    </article>
+  `;
+
+  const results = await withStubFetch(() => textResponse(html), () => fetchBrightSources([{ url: malleco.url, note: malleco.note, extractor: config, locationExtractor: malleco.locationExtractor }]));
+
+  assert.equal(results.length, 1);
+  assert.equal(results[0].kind, "items");
+  if (results[0].kind !== "items") throw new Error("unreachable");
+  const [item] = results[0].items;
+  assert.equal(item.title, "Exposición de Pinturas de J. Wörner");
+  assert.equal(item.imageUrl, "https://mallecoescultura.cl/site/wp-content/uploads/2023/12/rsz_worner.jpg", "real data-src wins over the base64 lazy-load placeholder");
+  assert.equal(item.description, "Un encuentro con el Arte en manos de J. Wörner.");
+  assert.equal(item.locationHint, "Centro Cultural Victoria");
+  assert.equal(item.structuredStartDate, "2023-12-18");
+  assert.equal(item.structuredEndDate, "2023-12-18", "single-date event: start and end are the same day");
+});
+
 test("mergeBrightSources dedups by domain with the hand-curated list winning", () => {
   const merged = mergeBrightSources([
     // Same domain as a KNOWN_SOURCES entry — must not appear twice.

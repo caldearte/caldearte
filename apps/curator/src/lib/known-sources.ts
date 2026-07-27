@@ -246,6 +246,30 @@ export const KNOWN_SOURCES: KnownSource[] = [
     },
   },
   {
+    url: "https://www.museodeancud.gob.cl/cartelera",
+    note: 'Museo Regional de Ancud (Chiloé) — same SNPC/Drupal template as mnba.gob.cl and museoregionalaysen.gob.cl, confirmed 2026-07-27 (identical block/title/days/place/date markup, verbatim-reusable regexes). /cartelera lists current exhibitions (1 at last check). additionalPages: /cartelera/proximos (empty at last check, same pagination pattern as the other SNPC sources). Unlike museoregionalaysen.gob.cl, this source\'s one sampled detail page never states an inauguración hour — no openingTimeExtractor added, since one hasn\'t been confirmed against real markup (see docs/region-discovery.md\'s escalation checklist: don\'t guess a pattern, verify it).',
+    lastReviewedAt: "2026-07-27",
+    additionalPages: ["https://www.museodeancud.gob.cl/cartelera/proximos"],
+    extractor: {
+      kind: "articleList",
+      blockRegex: /<article\s+class="node node--evento[^"]*">([\s\S]*?)<\/article>/g,
+      titleLinkRegex: /<h2 class="destacado__title"><a href="([^"]+)">([^<]*)<\/a><\/h2>/,
+      daysRegex: /field--name-field-fechas"[^>]*>([\s\S]*?)<\/div>/,
+      placeRegex: /field--name-institucion"><a[^>]*>([^<]*)<\/a>/,
+      // Same CMS/template as mnba.gob.cl/museoregionalaysen.gob.cl — see
+      // their own dateRangeExtractor comments.
+      dateRangeExtractor: {
+        pattern: /<time datetime="(?<startIso>\d{4}-\d{2}-\d{2})[^"]*"[^>]*>[\s\S]*?<time datetime="(?<endIso>\d{4}-\d{2}-\d{2})[^"]*"[^>]*>/,
+      },
+    },
+    fixedLocation: { location: "Ancud", placeName: "Museo Regional de Ancud" },
+    // Real markup, confirmed 2026-07-27 against a live detail page — same
+    // "text-long" container as the other SNPC sources.
+    descriptionExtractor: {
+      pattern: /<div class="text-long">([\s\S]*?)<\/div>/,
+    },
+  },
+  {
     url: "https://www.molinomachmar.cl/cartelera/",
     note: 'Centro de Arte Molino Machmar (CAMM), Frutillar — events/expositions listing page. Mix of exposiciones (visual art, in scope) and performances/charlas (out of scope), which Haiku filters correctly. Real production bug (found 2026-07-16): this page is long (9 mixed-category events, ~68k chars) and the exposiciones happen to sit past the whole-page-flatten\'s 4000-char cutoff (lib/sources.ts) — without a structured extractor, all 3 real exhibitions ("Ausencia y Presencia", "Paisaje en Erupción", "Una Paloma en el Molino") were silently truncated out and never reached Haiku. Per-event title+link live in the SAME <a> tag (its title attribute is "Leer: <event title>"), letting titleLinkRegex read both from one match instead of needing separate title/link patterns.',
     lastReviewedAt: "2026-07-16",
@@ -345,6 +369,53 @@ export const KNOWN_SOURCES: KnownSource[] = [
     // consistent with the other two).
     locationExtractor: {
       pattern: /"addressLocality":"([^"]+)"/,
+    },
+  },
+  {
+    url: "https://mallecoescultura.cl/eventos/categoria/exposicion/",
+    note: 'Malleco es Cultura — a regional cultural-tourism portal covering 8 comunas (Angol, Collipulli, Lonquimay, Los Sauces, Purén, Renaico, Traiguén, Victoria). Runs "The Events Calendar" (Modern Tribe/StellarWP) WordPress plugin, confirmed 2026-07-27 against real markup (verified via the plugin\'s own /eventos/lista/?eventDisplay=past archive, since the live upcoming list is empty at time of writing — see below). The site\'s OTHER "exhibición"/"exposición" URLs (/categoria/exhibicion/, /etiqueta/exposicion/) are a DIFFERENT, unrelated thing — a retrospective blog archive (past tense, "FUE INAUGURADA") with no per-item date field at all; deliberately NOT used here. This is the real forward-looking calendar instead, pre-filtered server-side to the "Exposición" event category — reduces (but doesn\'t eliminate) noise from other event types, since the site cross-tags some concerts/talks with "exposicion" too; Haiku still does the real scope judgment same as any other bright source.',
+    lastReviewedAt: "2026-07-27",
+    // Confirmed EMPTY at time of writing ("No hay eventos programados.") —
+    // added anyway per explicit instruction: a fetch that finds nothing
+    // costs one HTTP GET + zero Haiku tokens (no items to curate), and the
+    // moment a real exhibition gets scheduled here, it's already wired up
+    // with no further work. Same reasoning already applied to
+    // museoregionalaysen.gob.cl's low-traffic cadence (see
+    // docs/region-discovery.md's cadence-decision note there).
+    extractor: {
+      kind: "articleList",
+      blockRegex: /<article\s+class="tribe-events-calendar-list__event[^"]*"\s*>([\s\S]*?)<\/article>/g,
+      titleLinkRegex: /tribe-events-calendar-list__event-title[^"]*"\s*>\s*<a\s+href="([^"]+)"[\s\S]*?>\s*([^<]+?)\s*<\/a>/,
+      daysRegex: /tribe-events-calendar-list__event-datetime-wrapper[^"]*"\s*>([\s\S]*?)<\/div>/,
+      placeRegex: /tribe-events-calendar-list__event-venue-title[^"]*"\s*>\s*([^<]+?)\s*<\/span>/,
+      // Unlike most articleList sources, this LISTING page already carries
+      // real description prose per event (confirmed 2026-07-27, verified
+      // against the plugin's past-events archive) — same as
+      // molinomachmar.cl, no separate detail-page fetch needed for this
+      // field specifically (still needed for location, below).
+      descriptionRegex: /tribe-events-calendar-list__event-description[^"]*"\s*>\s*<p>([\s\S]*?)<\/p>/,
+      // Real markup, confirmed 2026-07-27: The Events Calendar always gives
+      // exactly ONE date per event (an inauguración/presentation, not a
+      // multi-week exhibition run) — no separate end date anywhere. The
+      // `dayIso` shorthand (extractDateRange, extractors.ts, added
+      // alongside this source) treats that single day as both
+      // runStartDate and runEndDate, satisfying enforceDateCompleteness
+      // honestly rather than leaving the candidate without a parseable
+      // date at all.
+      dateRangeExtractor: {
+        pattern: /tribe-events-calendar-list__event-datetime"\s*datetime="(?<dayIso>\d{4}-\d{2}-\d{2})"/,
+      },
+    },
+    // A real aggregator (8 comunas), not a fixedLocation — the listing
+    // gives a venue NAME (placeRegex, above) but the comuna itself only
+    // appears on the event's own detail page, in a clean, already-isolated
+    // field: `<span class="tribe-locality">Victoria</span>` (confirmed
+    // 2026-07-27) — even cleaner than the other aggregators' full street
+    // addresses, no extractComunaName stripping strictly required, though
+    // running it through that function anyway keeps this source
+    // consistent with the others (arteinformado.com, uchile.cl).
+    locationExtractor: {
+      pattern: /tribe-locality">([^<]+)<\/span>/,
     },
   },
 ];
