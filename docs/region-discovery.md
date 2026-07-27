@@ -1924,6 +1924,67 @@ With this, the only remaining Haiku-derived field for a bright source
 with a real extractor is `openingDatetime` — which no source has ever
 given structured, on any page, listing or detail.
 
+### New source: museoregionalaysen.gob.cl (2026-07-27) — and a real year-inference bug it exposed
+
+Added at the user's request: Museo Regional de Aysén (Coyhaique), a
+national-network regional museum. Same SNPC/Drupal CMS as mnba.gob.cl —
+identical block/title/days/place markup, its `articleList` config is a
+near-verbatim copy (block regex, title regex, embedded `<time datetime>`
+date range, `fixedLocation: { location: "Coyhaique", placeName: "Museo
+Regional de Aysén" }`). `/cartelera` (2 real exposiciones at last check,
+spanning two on-site venues — Sala Bodega, Cocina de Peones) +
+`additionalPages: ["/cartelera/proximos"]` (a real separate view for
+not-yet-open exhibitions, empty at last check but the same pagination
+pattern as this doc's other multi-page sources).
+
+**Cadence decision, made explicit rather than silently defaulting**: this
+source shares the same uniform 7-day `BRIGHT_SOURCE_INTERVAL_MS`
+(`event-discovery/run.ts`) as every other bright source, even though a
+small regional museum won't update often. Per-source cadence infra already
+exists (`bright_source_fetch_state`, keyed by URL) — only a per-source
+*override* of the interval doesn't. Deliberately not built now: a fetch
+that finds nothing new still costs one HTTP GET (negligible) plus one
+`curateBrightSourceItems` call sized to however many items are ON the
+page at fetch time (2 today), not to how much is genuinely new — there's
+no diff-against-last-run mechanism, so cost scales with listing size, not
+staleness. At ~7 known sources and the measured ~$5-9/mo real spend, one
+more small-listing source doesn't move the needle enough to justify
+adaptive-cadence infrastructure before there's data showing it matters —
+same posture as this project's other "measure before building infra"
+decisions. Revisit if the bright-source count grows enough that several
+near-static sources' redundant weekly Haiku calls become a measurable
+fraction of spend.
+
+**Two real, general bugs found and fixed while adding this source (not
+specific to it — both were latent for every existing source with the
+same shape):**
+
+1. **Title HTML entities never decoded.** `extractArticleList`'s title
+   came straight from `collapseWhitespace(rawTitle)`, with no
+   `decodeHtmlEntities` pass — unlike image URLs, which already got this
+   (mnba.gob.cl's own `&amp;` bug, found earlier). This source's listing
+   wraps quoted titles in literal `&quot;` (`Exposición temporal
+   &quot;Visiones de Aysén&quot;`), which would have shipped un-decoded
+   onto the calendar. Fixed in `extractArticleList` itself, so it applies
+   to every `articleList` source, not just this one.
+2. **Opening-time year-inference anchored to the wrong "now".** This
+   source's inauguración text never states a year ("Inauguración: Jueves
+   19 de marzo … Hora: 18:30 h."), same as uchile.cl/artes.uchile.cl.
+   `extractOpeningDatetime`'s year-inference (`opening-time.ts`) defaults
+   `referenceDate` to the real current clock time — correct when there's
+   no other date signal, but for THIS source the exhibition's real year is
+   already known independently, from the same source's own
+   `dateRangeExtractor` (`structuredStartDate: "2026-03-19"`). Running in
+   July (well after March), the inferred year rolled forward to 2027,
+   showing a currently-running exhibition's already-past inauguración as
+   happening 12 months in the future. Fixed by anchoring
+   `extractOpeningDatetime`'s `referenceDate` to the candidate's own
+   `runStartDate` when one is already known (`page-fetch.ts`'s
+   `processCandidate`) — falls back to the real current time exactly as
+   before when `runStartDate` isn't set, so uchile.cl/artes.uchile.cl (no
+   structured start date at all) are unaffected. `EnrichCandidateLike`
+   gained a `runStartDate` field for this.
+
 ## Cost governance
 
 A self-tracked ledger keeps both processes bounded, without depending on

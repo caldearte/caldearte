@@ -162,6 +162,7 @@ interface EnrichCandidateLike {
   openingTimeConfirmed: boolean;
   description: string | null;
   location: string;
+  runStartDate: string | null;
 }
 
 // Deliberately conservative: unknown per-request latency to arbitrary
@@ -201,7 +202,23 @@ async function processCandidate<T extends EnrichCandidateLike>(
     // the case it exists for.
     const openingConfig = !c.openingTimeConfirmed && c.sourceUrl ? findOpeningTimeConfig(c.sourceUrl) : null;
     if (openingConfig) {
-      const opening = extractOpeningDatetime(html, openingConfig);
+      // Anchor year-inference to the already-known runStartDate (structured,
+      // deterministic — see extractors.ts's dateRangeExtractor) instead of
+      // the run's real "now", when available. Real bug found 2026-07-27
+      // adding museoregionalaysen.gob.cl: its inauguración text never
+      // states a year ("Jueves 19 de marzo"), and inferYear's default
+      // referenceDate (today) rolls the year forward once the mentioned
+      // month has already passed THIS calendar year — correct for a source
+      // with no other date signal, but wrong here: this exact exhibition's
+      // runStartDate (2026-03-19) already confirms the real year, so
+      // inferring "next year" would show a currently-running exhibition's
+      // past inauguración as happening 12 months in the future. Falls back
+      // to the real referenceDate exactly like before for a source with no
+      // structured runStartDate at all (uchile.cl/artes.uchile.cl, whose
+      // rawDateText has no year either but also no independent date signal
+      // to anchor against).
+      const openingReferenceDate = c.runStartDate && !Number.isNaN(new Date(c.runStartDate).getTime()) ? new Date(c.runStartDate) : referenceDate;
+      const opening = extractOpeningDatetime(html, openingConfig, openingReferenceDate);
       if (opening) {
         console.log(
           `[page-fetch] recovered opening ${opening.timeConfirmed ? "date+time" : "date (no time confirmed)"} from ${c.sourceUrl}`,

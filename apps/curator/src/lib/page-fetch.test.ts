@@ -138,6 +138,7 @@ function makeCandidate(
     openingTimeConfirmed: boolean;
     description: string | null;
     location: string;
+    runStartDate: string | null;
   }>,
 ) {
   return {
@@ -152,6 +153,7 @@ function makeCandidate(
     openingTimeConfirmed: false,
     description: null as string | null,
     location: "",
+    runStartDate: null as string | null,
     ...overrides,
   };
 }
@@ -197,6 +199,36 @@ test("enrichCandidates recovers opening time for a candidate whose source is con
 
   assert.equal(candidate.imageUrl, "https://x.cl/ya-tiene.jpg", "image untouched, it already had one");
   assert.ok(candidate.openingDatetime, "opening time recovered");
+});
+
+// Real bug, found 2026-07-27 adding museoregionalaysen.gob.cl: its
+// inauguración text never states a year ("Inauguración: Jueves 19 de marzo
+// Hora: 18:30 h."), and extractOpeningDatetime's year-inference used to
+// default to referenceDate=today — for a real run happening in July, "19
+// de marzo" (already passed this year) rolled forward to NEXT year, wrongly
+// showing a currently-running exhibition's already-past inauguración as
+// happening 12 months in the future. Fixed by anchoring the inference to
+// the candidate's own already-known runStartDate (2026-03-19, from the same
+// source's dateRangeExtractor) instead of the run's real "now" — the
+// runStartDate independently confirms the real year, no inference needed.
+test("enrichCandidates anchors opening-time year-inference to the candidate's own runStartDate, not the run's real 'now'", async () => {
+  const candidate = makeCandidate({
+    sourceUrl: "https://www.museoregionalaysen.gob.cl/cartelera/exposicion-temporal-visiones-de-aysen",
+    runStartDate: "2026-03-19",
+  });
+
+  const fetchImpl: FetchLike = async () => ({
+    ok: true,
+    status: 200,
+    text: async () => "<p><strong>Inauguración: </strong>Jueves 19 de marzo</p><p><strong>Hora: </strong>18:30 h.</p>",
+  });
+
+  // Real run happening in July 2026 — well after "19 de marzo" already
+  // passed this year, which is exactly the scenario that used to roll the
+  // inferred year forward to 2027.
+  await enrichCandidates([candidate], fetchImpl, new Date(2026, 6, 27));
+
+  assert.ok(candidate.openingDatetime?.startsWith("2026-03-19"), `expected 2026-03-19, got ${candidate.openingDatetime}`);
 });
 
 test("enrichCandidates recovers BOTH image and opening time from a single fetch — never fetches the same sourceUrl twice", async () => {

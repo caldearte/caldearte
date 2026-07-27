@@ -384,6 +384,32 @@ test("fetchBrightSources against the real KNOWN_SOURCES config for mnba.gob.cl r
   assert.equal(results[0].items[0].structuredEndDate, "2027-07-31");
 });
 
+test("fetchBrightSources against the real KNOWN_SOURCES config for museoregionalaysen.gob.cl reads the embedded machine-readable date directly, same CMS/template as mnba.gob.cl (regression check against production config, added 2026-07-27)", async () => {
+  const aysen = KNOWN_SOURCES.find((s) => s.url.includes("museoregionalaysen.gob.cl"));
+  assert.ok(aysen?.extractor?.kind === "articleList");
+  const config = aysen.extractor as ArticleListConfig;
+
+  const html = `
+    <article  class="node node--evento node--681 node--teaser">
+      <h2 class="destacado__title"><a href="/cartelera/exposicion-temporal-visiones-de-aysen">Exposición temporal &quot;Visiones de Aysén&quot;</a></h2>
+      <div class="field field--hidden field--type-daterange field--name-field-fechas"><time datetime="2026-03-19T12:00:00Z">19/Marzo/2026</time>
+       hasta el <time datetime="2026-08-01T12:00:00Z">01/Agosto/2026</time>
+      </div>
+      <div class="field field--name-institucion"><a href="/espacios/bodega">Bodega</a> - <a href="/inmuebles/museo-regional-de-aysen">Museo Regional de Aysén</a></div>
+    </article>
+  `;
+
+  const results = await withStubFetch(() => textResponse(html), () => fetchBrightSources([{ url: aysen.url, note: aysen.note, extractor: config, fixedLocation: aysen.fixedLocation }]));
+
+  assert.equal(results.length, 1);
+  assert.equal(results[0].kind, "items");
+  if (results[0].kind !== "items") throw new Error("unreachable");
+  assert.equal(results[0].items[0].title, 'Exposición temporal "Visiones de Aysén"', "&quot; entities decoded");
+  assert.equal(results[0].items[0].structuredStartDate, "2026-03-19");
+  assert.equal(results[0].items[0].structuredEndDate, "2026-08-01");
+  assert.deepEqual(results[0].source.fixedLocation, { location: "Coyhaique", placeName: "Museo Regional de Aysén" });
+});
+
 test("mergeBrightSources dedups by domain with the hand-curated list winning", () => {
   const merged = mergeBrightSources([
     // Same domain as a KNOWN_SOURCES entry — must not appear twice.

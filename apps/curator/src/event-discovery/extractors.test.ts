@@ -90,6 +90,23 @@ test("extractArticleList pairs each event with its own structured title/link/ima
   });
 });
 
+// Real bug, found 2026-07-27 adding museoregionalaysen.gob.cl: its listing
+// wraps quoted event names in literal &quot; entities (e.g. `Exposición
+// temporal &quot;Visiones de Aysén&quot;`) — extractImgTags already decoded
+// entities in image URLs (mnba.gob.cl's own &amp; bug, found earlier), but
+// the title never went through the same decode, so it would have shipped
+// literal &quot; on the calendar for any source whose markup does this.
+test("extractArticleList decodes HTML entities in the title, same as it already does for image URLs", () => {
+  const html = `
+    <article class="mod-cal-result__item">
+      <h4 class="mod__item-title"><a href="/agenda/evento-uno">Exposición temporal &quot;Visiones de Aysén&quot;</a></h4>
+    </article>
+  `;
+  const items = extractArticleList(html, "https://artes.uchile.cl/agenda/30dias/6", UCHILE_CONFIG);
+  assert.ok(items);
+  assert.equal(items[0].title, 'Exposición temporal "Visiones de Aysén"');
+});
+
 test("extractArticleList falls back to placeholder date text when days/place are missing, but skips a block with no title link", () => {
   const html = `
     <article class="mod-cal-result__item">
