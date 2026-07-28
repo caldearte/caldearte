@@ -19,8 +19,14 @@
 // detection; isSocialMediaUrl stays exported for image-rehost.ts, which
 // still needs to know when a recovered image is one of these signed,
 // short-lived CDN links that must be re-hosted before it rots.
-import { findDescriptionConfig, findLocationConfig, findOpeningTimeConfig } from "./known-sources.js";
+import { findDescriptionConfig, findDetailDateRangeConfig, findLocationConfig, findOpeningTimeConfig } from "./known-sources.js";
 import { extractDescription } from "./description-extract.js";
+// extractDateRange is a pure parser (any HTML string in, {runStartDate,
+// runEndDate} or null out) — reused here for detailDateRangeExtractor
+// (mssa.cl, 2026-07-28) exactly as-is, same function extractArticleList
+// already runs against a LISTING block. A second lib/ -> event-discovery/
+// import, alongside known-sources.ts's existing type-only one.
+import { extractDateRange } from "../event-discovery/extractors.js";
 import { extractComunaName, type RegionLike } from "./locations.js";
 import {
   extractGenericInauguracionHour,
@@ -322,12 +328,14 @@ export async function enrichCandidates<T extends EnrichCandidateLike>(
   }
 }
 
-interface EnrichItemDescriptionLike {
+interface EnrichItemDetailsLike {
   sourceUrl: string;
   description: string | null;
+  structuredStartDate: string | null;
+  structuredEndDate: string | null;
 }
 
-// Pre-curation description recovery — Haiku needs REAL prose to judge
+// Pre-curation detail-page recovery — Haiku needs REAL prose to judge
 // scope (is this genuinely a visual-art exhibition, or a workshop/
 // promotional post/convocatoria?), but many bright-source LISTING pages
 // never carry description text at all (only title/dates/place); the real
@@ -340,29 +348,58 @@ interface EnrichItemDescriptionLike {
 // a genuine, currently-running exhibition, rejected purely because Haiku
 // was never shown its real description in the first place.
 //
+// Also recovers runStartDate/runEndDate (structuredStartDate/EndDate) for
+// a source whose LISTING page gives an incomplete date, per
+// known-sources.ts's detailDateRangeExtractor — mssa.cl (2026-07-28):
+// its listing slider states only an end date ("Abierta hasta el 2 de
+// agosto 2026"), never a start, so without this a real currently-open
+// exhibition would get rejected by enforceDateCompleteness before
+// curation ever saw the detail page's full "Fecha de inicio"/"Fecha de
+// término" facts. Shares the SAME detail-page fetch as description
+// recovery (one request per item, not two) — both extractors just run
+// against whatever HTML came back, independently of each other.
+//
 // Runs BEFORE curateBrightSourceItems, for every item still in the
 // curation batch (not just the ones that will end up approved) — a real
 // cost/time tradeoff (an eventually-approved candidate's detail page may
-// get fetched twice: once here for description, once more by
+// get fetched twice: once here for description/dates, once more by
 // enrichCandidates for image/opening-time/location) but Haiku judging
-// real prose instead of a bare title matters more than saving one fetch.
-export async function enrichBrightSourceItemDescriptions<T extends EnrichItemDescriptionLike>(
+// real prose (and code judging real dates) instead of guessing matters
+// more than saving one fetch.
+export async function enrichBrightSourceItemDetails<T extends EnrichItemDetailsLike>(
   items: T[],
   fetchImpl: FetchLike = fetch,
 ): Promise<void> {
-  const eligible = items.filter((item) => item.description === null && findDescriptionConfig(item.sourceUrl));
+  const eligible = items.filter((item) => {
+    const needsDescription = item.description === null && findDescriptionConfig(item.sourceUrl);
+    const needsDateRange = item.structuredStartDate === null && findDetailDateRangeConfig(item.sourceUrl);
+    return needsDescription || needsDateRange;
+  });
   for (let i = 0; i < eligible.length; i += ENRICHMENT_CONCURRENCY) {
     const batch = eligible.slice(i, i + ENRICHMENT_CONCURRENCY);
     await Promise.all(
       batch.map(async (item) => {
         const descriptionConfig = findDescriptionConfig(item.sourceUrl);
-        if (!descriptionConfig) return;
+        const dateRangeConfig = findDetailDateRangeConfig(item.sourceUrl);
+        if (!descriptionConfig && !dateRangeConfig) return;
         const html = await fetchDetailHtml(item.sourceUrl, fetchImpl);
         if (!html) return;
-        const description = extractDescription(html, descriptionConfig);
-        if (description) {
-          console.log(`[page-fetch] pre-curation: recovered description from ${item.sourceUrl}`);
-          item.description = description;
+
+        if (descriptionConfig && item.description === null) {
+          const description = extractDescription(html, descriptionConfig);
+          if (description) {
+            console.log(`[page-fetch] pre-curation: recovered description from ${item.sourceUrl}`);
+            item.description = description;
+          }
+        }
+
+        if (dateRangeConfig && item.structuredStartDate === null) {
+          const dateRange = extractDateRange(html, dateRangeConfig);
+          if (dateRange) {
+            console.log(`[page-fetch] pre-curation: recovered date range from ${item.sourceUrl}`);
+            item.structuredStartDate = dateRange.runStartDate;
+            item.structuredEndDate = dateRange.runEndDate;
+          }
         }
       }),
     );

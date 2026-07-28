@@ -22,7 +22,7 @@
 // doesn't match. A type-only import from event-discovery/ is the one place
 // this file points "up" instead of down — extractor shapes are inherently
 // owned by the extraction registry, not worth duplicating here.
-import type { ExtractorConfig } from "../event-discovery/extractors.js";
+import type { ExtractorConfig, DateRangeConfig } from "../event-discovery/extractors.js";
 import type { OpeningTimeConfig } from "./opening-time.js";
 import type { DescriptionConfig } from "./description-extract.js";
 
@@ -69,6 +69,21 @@ export interface KnownSource {
   // Absent on a `fixedLocation` source — there's nothing to look up,
   // the comuna is already a constant.
   locationExtractor?: DescriptionConfig;
+  // Sibling to openingTimeExtractor/descriptionExtractor: for a source
+  // whose LISTING page states only an incomplete date (mssa.cl's slider,
+  // confirmed 2026-07-28: "Abierta hasta el 2 de agosto 2026" — a real
+  // end date, but never a start date, unlike every other articleList
+  // source's dateRangeExtractor which parses a full range straight off
+  // the listing block), recover the full runStartDate/runEndDate from the
+  // event's own detail page instead — same DateRangeConfig shape as
+  // ArticleListConfig's own dateRangeExtractor (extractDateRange is
+  // generic over any HTML string, listing block or detail page), just
+  // fetched pre-curation (lib/page-fetch.ts's enrichBrightSourceItemDetails)
+  // rather than parsed from the block. Necessary here specifically
+  // because a missing runStartDate would otherwise make
+  // enforceDateCompleteness reject an otherwise-real exhibition before
+  // curation ever gets to see the detail page's real dates.
+  detailDateRangeExtractor?: DateRangeConfig;
 }
 
 export const KNOWN_SOURCES: KnownSource[] = [
@@ -468,6 +483,25 @@ export const KNOWN_SOURCES: KnownSource[] = [
       pattern: /class="info-box2">([\s\S]*?)<!-- \/Section: contenido-->/,
     },
   },
+  {
+    url: "https://www.mssa.cl/exposiciones/",
+    note: 'Museo de la Solidaridad Salvador Allende (MSSA), Santiago — single fixed venue, evaluated 2026-07-27/28 as the ORIGINAL source for exhibitions that chilecultura.gob.cl (the national aggregator, already a known source) also re-lists; adding it matters because of the new replace-priority dedup (2026-07-28, see docs/region-discovery.md): a real case found comparing both sources for "América despierta" showed chilecultura.gob.cl carrying a stale run_end_date the museum\'s own page had already corrected — the aggregator wins no ties against MSSA\'s own page now that isAggregatorSource can tell them apart.\n\nListing page (`/exposiciones/`) is a homepage-style slider: the FIRST section ("actuales", `temporalidad-actuales` class) lists the museum\'s 2-3 currently open exhibitions; a second "Anteriores" section (`temporalidad-anteriores`) lists dozens of past, closed ones — blockRegex matches only the `actuales` class so past exhibitions are never scraped as if current. Each `actuales` block gives title/image/link plus ONLY an end date ("Abierta hasta el 2 de agosto 2026") — no start date at all on the listing, unlike every other articleList source\'s dateRangeExtractor so far. Confirmed against the real detail page instead: a clean, structured fact block (`Fecha de Inauguración: 24/04/2026`, `Fecha de inicio: 24/04/2026`, `Fecha de término: 16/08/2026`, all DD/MM/YYYY, no hour ever stated for any of the three — confirmed 2026-07-27 across both sampled exhibitions) — recovered pre-curation via the new `detailDateRangeExtractor` (lib/page-fetch.ts\'s enrichBrightSourceItemDetails), since a missing runStartDate on the listing alone would otherwise make enforceDateCompleteness reject a real, currently-open exhibition before curation ever saw the detail page. `openingTimeExtractor`\'s pattern also matches this same DD/MM/YYYY shape (numeric month, not the Spanish 3-letter abbreviation every other openingTimeExtractor config uses) — required a small generalization to lib/opening-time.ts\'s month resolution (numeric-or-abbreviation, same flexibility extractDateRange already had via resolveMonthGroup) since no other source needed it before.',
+    lastReviewedAt: "2026-07-28",
+    extractor: {
+      kind: "articleList",
+      blockRegex: /<li class="[^"]*temporalidad-actuales[^"]*">([\s\S]*?)<\/li>/g,
+      titleLinkRegex: /<h2><a href="([^"]+)"[^>]*>([^<]+)/,
+      daysRegex: /<div class="cat_slider"><a href="[^"]+">([^<]+)<\/a><\/div>/,
+    },
+    fixedLocation: { location: "Santiago", placeName: "Museo de la Solidaridad Salvador Allende" },
+    openingTimeExtractor: {
+      pattern: /Fecha de Inauguraci[oó]n:\s*(?<day>\d{1,2})\/(?<month>\d{1,2})\/(?<year>\d{4})/i,
+    },
+    detailDateRangeExtractor: {
+      pattern:
+        /Fecha de inicio:\s*<\/span>\s*(?<startDay>\d{1,2})\/(?<startMonth>\d{1,2})\/(?<startYear>\d{4})[\s\S]*?Fecha de t[eé]rmino:\s*<\/span>\s*(?<endDay>\d{1,2})\/(?<endMonth>\d{1,2})\/(?<endYear>\d{4})/i,
+    },
+  },
 ];
 
 export function knownSourceDomain(url: string): string {
@@ -510,6 +544,19 @@ export function findLocationConfig(sourceUrl: string): DescriptionConfig | null 
     return null;
   }
   return KNOWN_SOURCES.find((s) => s.locationExtractor && knownSourceDomain(s.url) === domain)?.locationExtractor ?? null;
+}
+
+// Used by lib/page-fetch.ts's enrichBrightSourceItemDetails to decide,
+// per item, whether its sourceUrl's domain is opted in to pre-curation
+// runStartDate/runEndDate recovery from the detail page.
+export function findDetailDateRangeConfig(sourceUrl: string): DateRangeConfig | null {
+  let domain: string;
+  try {
+    domain = knownSourceDomain(sourceUrl);
+  } catch {
+    return null;
+  }
+  return KNOWN_SOURCES.find((s) => s.detailDateRangeExtractor && knownSourceDomain(s.url) === domain)?.detailDateRangeExtractor ?? null;
 }
 
 // Used by run.ts's duplicate-replacement logic (2026-07-28): when a new

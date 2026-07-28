@@ -26,7 +26,7 @@ import { knownSourceDomain, isAggregatorSource } from "../lib/known-sources.js";
 import { KNOWN_LOW_QUALITY_SOURCE_DOMAINS } from "../lib/known-exclusions.js";
 import { matchRegionId, type RegionLike } from "../lib/locations.js";
 import { normalizeLocation, isLikelySameTitle } from "../lib/event-filters.js";
-import { enrichCandidates, enrichBrightSourceItemDescriptions, isSocialMediaUrl, type FetchLike as PageFetchLike } from "../lib/page-fetch.js";
+import { enrichCandidates, enrichBrightSourceItemDetails, isSocialMediaUrl, type FetchLike as PageFetchLike } from "../lib/page-fetch.js";
 import { rehostImage, type RehostImageFn } from "../lib/image-rehost.js";
 import { sendRunSummaryEmail, type RunSummary, type CandidateSummary } from "../lib/notify.js";
 import {
@@ -909,8 +909,8 @@ export async function run(deps: RunDeps = {}): Promise<void> {
           // title/dates/place, never the real description — this source's
           // LISTING page has no prose, only its detail page does, and that
           // was previously only fetched for already-approved candidates.
-          // See enrichBrightSourceItemDescriptions' own doc comment.
-          await enrichBrightSourceItemDescriptions(newItems, pageFetchFn);
+          // See enrichBrightSourceItemDetails' own doc comment.
+          await enrichBrightSourceItemDetails(newItems, pageFetchFn);
           ({ candidates, usage } = await curateBrightSourceItems(messagesClient, newItems, monthLabel, {
             fixedLocation: result.source.fixedLocation,
           }));

@@ -44,6 +44,22 @@ const ES_MONTH_ABBR: Record<string, number> = {
   jul: 6, ago: 7, sep: 8, oct: 9, nov: 10, dic: 11,
 };
 
+// Some sources state the month as a plain number instead of a Spanish
+// abbreviation (mssa.cl's detail-page facts, "24/04/2026" — confirmed
+// 2026-07-28) — same numeric-or-abbreviation flexibility already used by
+// event-discovery/extractors.ts's resolveMonthGroup for date RANGES,
+// mirrored here since this module deliberately doesn't import that one
+// (see this file's own top comment on why collapseWhitespace is
+// duplicated instead of shared).
+function resolveMonth(raw: string | undefined): number | undefined {
+  if (!raw) return undefined;
+  if (/^\d{1,2}$/.test(raw)) {
+    const n = Number(raw);
+    return n >= 1 && n <= 12 ? n - 1 : undefined;
+  }
+  return ES_MONTH_ABBR[raw.toLowerCase()];
+}
+
 // Wall-clock time in America/Santiago -> absolute UTC ISO instant. No
 // hardcoded UTC offset (Chile's DST rule has changed more than once in
 // recent years) — standard two-pass Intl offset-correction: guess the
@@ -149,7 +165,7 @@ export function extractOpeningDatetime(html: string, config: OpeningTimeConfig, 
   if (!match?.groups) return null;
 
   const { day, month, year, hour, minute } = match.groups;
-  const month0 = ES_MONTH_ABBR[month?.toLowerCase() ?? ""];
+  const month0 = resolveMonth(month);
   if (month0 === undefined) return null;
 
   const dayNum = Number(day);

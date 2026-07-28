@@ -86,6 +86,21 @@ test("extractOpeningDatetime yields a date-only result (timeConfirmed: false) wh
   assert.equal(readBackInSantiago(result!.iso), "00:00");
 });
 
+// mssa.cl (2026-07-28): its detail page states "Fecha de Inauguración:
+// 24/04/2026" — numeric month, not the Spanish 3-letter abbreviation
+// every other openingTimeExtractor config so far used.
+test("extractOpeningDatetime accepts a numeric month (mssa.cl's DD/MM/YYYY facts), date-only, no hour", () => {
+  const config: OpeningTimeConfig = {
+    pattern: /Fecha de Inauguraci[oó]n:\s*(?<day>\d{1,2})\/(?<month>\d{1,2})\/(?<year>\d{4})/i,
+  };
+  const html = "<p>Fecha de Inauguración: </p>24/04/2026";
+  const result = extractOpeningDatetime(html, config);
+  assert.ok(result);
+  assert.equal(result!.timeConfirmed, false);
+  assert.equal(readBackInSantiago(result!.iso), "00:00");
+  assert.deepEqual(utcIsoToSantiagoDateParts(result!.iso), { year: 2026, month0: 3, day: 24 });
+});
+
 test("parseLocalDatetimeToUtcIso converts Haiku's plain Chile-local format to a real UTC instant (real bug, found 2026-07-20: was written through unconverted, shifting every timed inauguración 4h early)", () => {
   // 12:30 Chile (winter, UTC-4, no DST in July) = 16:30 UTC.
   assert.equal(parseLocalDatetimeToUtcIso("2026-07-26T12:30"), "2026-07-26T16:30:00.000Z");
