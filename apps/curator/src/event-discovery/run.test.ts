@@ -475,6 +475,90 @@ test(
         },
       );
 
+      // 2026-07-28: place_name joined the dedup fingerprint, and the fuzzy
+      // title check gained an overlap-coefficient branch — real case,
+      // evaluating balmacedartejoven.cl as a candidate bright source: the
+      // same real exhibition is titled completely differently on
+      // chilecultura.gob.cl vs. the venue's own site (see
+      // event-filters.test.ts's own BAJ-style isLikelySameTitle test).
+      // Exercises insertCandidates/loadExistingKeys directly rather than
+      // through run() — the shared unitCandidates/SEARCH_CONTENT fixture's
+      // grounding text and this describe block's monotonically-advancing
+      // "now" cadence chain don't leave room for a candidate whose date
+      // needs to independently vary across sub-cases here.
+      await t.test("place_name joined the dedup fingerprint: an abbreviated repost still dedupes when place_name matches, but NOT when place_name differs — same location+date+title-similarity alone isn't enough", async () => {
+        const { insertCandidates, loadExistingKeys, loadAllRegions } = await import("./run.js");
+
+        await client.from("events").insert({
+          title: "__test__ Estado de Posibilidad: Exposición del Laboratorio I de Artes Visuales",
+          freeform_location: "Santiago",
+          place_name: "Balmaceda Arte Joven",
+          opening_datetime: "2026-07-05T19:00:00-04:00",
+          opening_time_confirmed: true,
+          medium_type: "tradicional",
+          sensitivity_tags: [],
+          source: "discovered",
+          source_url: "https://chilecultura.gob.cl/events/__test__1/",
+          curation_status: "approved",
+          curation_reasoning: "seed",
+        });
+
+        const baseCandidate = {
+          description: null,
+          artist: null,
+          runStartDate: null,
+          runEndDate: null,
+          openingTimeConfirmed: true,
+          mediumType: "tradicional" as const,
+          sensitivityTags: [],
+          curationReasoning: "ok",
+          imageUrl: null,
+          status: "approved" as const,
+          location: "Santiago",
+          dateQuote: null,
+          locationQuote: null,
+          runStartDateQuote: null,
+          runEndDateQuote: null,
+        };
+
+        // Abbreviated title (shares only 2 words with the stored event's
+        // title — jaccard well under 0.6, only the new overlap-coefficient
+        // branch catches it), same venue, same day (different hour — the
+        // date-ONLY bucket, not the exact-datetime one, is what matches).
+        const samePlaceRepost = {
+          ...baseCandidate,
+          title: "__test__ LAB#1: «Estado de Posibilidad»",
+          placeName: "Balmaceda Arte Joven",
+          openingDatetime: "2026-07-05T20:00:00-04:00",
+          sourceUrl: "https://balmacedartejoven.cl/__test__/lab1-estado-de-posibilidad/",
+        };
+
+        const regions = await loadAllRegions();
+        const seenBefore = await loadExistingKeys();
+        const insertedSamePlace = await insertCandidates([samePlaceRepost], regions, seenBefore, new Date(2026, 6, 1));
+        assert.equal(insertedSamePlace, 0, "same place_name ('Balmaceda Arte Joven'): abbreviated-title repost recognized as a duplicate, not inserted");
+
+        // Identical abbreviated title and day, but at a DIFFERENT venue —
+        // place_name being part of the fingerprint means this must NOT be
+        // treated as a duplicate of the Balmaceda event.
+        const differentPlaceRepost = {
+          ...baseCandidate,
+          title: "__test__ LAB#1: «Estado de Posibilidad»",
+          placeName: "Centro Cultural Otro Lugar",
+          openingDatetime: "2026-07-05T20:00:00-04:00",
+          sourceUrl: "https://otrositio.cl/__test__/otro-lugar/",
+        };
+
+        const seenAfter = await loadExistingKeys();
+        const insertedDifferentPlace = await insertCandidates([differentPlaceRepost], regions, seenAfter, new Date(2026, 6, 1));
+        assert.equal(insertedDifferentPlace, 1, "different place_name ('Centro Cultural Otro Lugar'): inserted as a distinct event, not silently dropped");
+
+        await client
+          .from("events")
+          .delete()
+          .in("title", ["__test__ Estado de Posibilidad: Exposición del Laboratorio I de Artes Visuales", "__test__ LAB#1: «Estado de Posibilidad»"]);
+      });
+
       await t.test("bright-sources pass inserts events and auto-detects the new source domain", async () => {
         await run({
           messagesClient,

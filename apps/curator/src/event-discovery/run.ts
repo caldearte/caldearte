@@ -214,19 +214,40 @@ export async function recordBrightSourcesFetched(urls: string[], now: Date): Pro
 //   unconditionally on the exact fingerprint alone, no title check
 //   needed — that's what the San Felipe case itself actually was: a
 //   re-run finding an event already in the calendar from days earlier.
-function locationDateKey(location: string, c: Pick<EventCandidate, "openingDatetime" | "runStartDate" | "runEndDate">): string {
+// placeName joined the fingerprint (2026-07-28, alongside comuna and
+// title): a real cross-source case (chilecultura.gob.cl vs. the venue's
+// own site both listing "Balmaceda Arte Joven" / "Estado de Posibilidad")
+// showed comuna alone is too coarse — many venues share a comuna — while
+// place_name pins it down to the actual venue. Normalized the same way as
+// title (accents/quotes/case), since venue names get punctuated
+// differently across sources too ("Balmaceda Arte Joven" vs "BAJ RM").
+function locationDateKey(
+  location: string,
+  placeName: string | null,
+  c: Pick<EventCandidate, "openingDatetime" | "runStartDate" | "runEndDate">,
+): string {
   const dateFingerprint = c.openingDatetime ?? `${c.runStartDate ?? ""}|${c.runEndDate ?? ""}`;
-  return `${normalizeLocation(location)}|${dateFingerprint}`;
+  return `${normalizeLocation(location)}|${normalizeTitle(placeName ?? "")}|${dateFingerprint}`;
 }
 
 // Date-only (no time-of-day) companion to locationDateKey, for the fuzzy
 // title-similarity fallback below — deliberately coarser than
 // locationDateKey's exact-datetime fingerprint, since the whole point is to
 // catch cases where two sources report slightly different exact hours for
-// what's otherwise the same real opening.
-function locationDateOnlyKey(location: string, c: Pick<EventCandidate, "openingDatetime" | "runStartDate" | "runEndDate">): string {
-  const dateOnly = (c.openingDatetime ?? c.runStartDate ?? c.runEndDate ?? "").slice(0, 10);
-  return `${normalizeLocation(location)}|${dateOnly}`;
+// what's otherwise the same real opening (inauguración: date only, per the
+// user's own read of the odds — two distinct inauguraciones sharing venue,
+// title-similarity AND day, differing only by hour, is negligible). For an
+// exposición (no openingDatetime), both runStartDate AND runEndDate are
+// part of the fingerprint — a real exhibition run is defined by its whole
+// span, not just when it opens; using only runStartDate (as this used to)
+// would treat two different-length runs starting the same day as one.
+function locationDateOnlyKey(
+  location: string,
+  placeName: string | null,
+  c: Pick<EventCandidate, "openingDatetime" | "runStartDate" | "runEndDate">,
+): string {
+  const dateOnly = c.openingDatetime ? c.openingDatetime.slice(0, 10) : `${c.runStartDate ?? ""}|${c.runEndDate ?? ""}`;
+  return `${normalizeLocation(location)}|${normalizeTitle(placeName ?? "")}|${dateOnly}`;
 }
 
 export interface SeenKeys {
@@ -250,7 +271,7 @@ export interface SeenKeys {
 export async function loadExistingKeys(): Promise<SeenKeys> {
   const { data, error } = await getSupabaseClient()
     .from("events")
-    .select("title, source_url, freeform_location, opening_datetime, run_start_date, run_end_date")
+    .select("title, source_url, freeform_location, place_name, opening_datetime, run_start_date, run_end_date")
     .eq("source", "discovered");
 
   if (error) {
@@ -259,7 +280,7 @@ export async function loadExistingKeys(): Promise<SeenKeys> {
 
   const titlesByLocationDateOnly = new Map<string, string[]>();
   for (const row of data ?? []) {
-    const key = locationDateOnlyKey(row.freeform_location, {
+    const key = locationDateOnlyKey(row.freeform_location, row.place_name, {
       openingDatetime: row.opening_datetime,
       runStartDate: row.run_start_date,
       runEndDate: row.run_end_date,
@@ -274,7 +295,7 @@ export async function loadExistingKeys(): Promise<SeenKeys> {
     sourceUrls: new Set((data ?? []).flatMap((row) => (row.source_url ? [row.source_url] : []))),
     locationDates: new Set(
       (data ?? []).map((row) =>
-        locationDateKey(row.freeform_location, {
+        locationDateKey(row.freeform_location, row.place_name, {
           openingDatetime: row.opening_datetime,
           runStartDate: row.run_start_date,
           runEndDate: row.run_end_date,
@@ -330,8 +351,8 @@ export async function insertCandidates(
     if (!isCurrentOrUpcoming(c, now)) continue;
 
     const titleKey = normalizeTitle(c.title);
-    const locDateKey = locationDateKey(c.location, c);
-    const locDateOnlyKey = locationDateOnlyKey(c.location, c);
+    const locDateKey = locationDateKey(c.location, c.placeName, c);
+    const locDateOnlyKey = locationDateOnlyKey(c.location, c.placeName, c);
     const isDuplicateTitle = seen.titles.has(titleKey);
     const isDuplicateSourceUrl = c.sourceUrl !== null && seen.sourceUrls.has(c.sourceUrl);
     const isDuplicateLocationDate = seen.locationDates.has(locDateKey);

@@ -2260,6 +2260,66 @@ against the real endpoint one more time right before shipping — a
 downstream/upstream shape mismatch like this had every unit test passing
 while still crashing on the very first real call.
 
+### Cross-source dedup: place_name joins the fingerprint, title similarity gets an overlap-coefficient branch (2026-07-28)
+
+Evaluating `balmacedartejoven.cl` as a candidate bright source surfaced a
+real dedup gap: the exact same exhibition is titled completely
+differently across sources — "Estado de Posibilidad: Exposición del
+Laboratorio I de Artes Visuales" on chilecultura.gob.cl vs. "LAB#1:
+«Estado de Posibilidad»" on the venue's own site (an internal lab code
+name vs. a full descriptive title). The two share only 2 of 7 total
+distinct words (Jaccard ≈ 0.29), well under `isLikelySameTitle`'s
+existing 0.6 threshold, so the location+date fuzzy-match bucket
+(`titlesByLocationDateOnly`, run.ts) never fired. Testing the actual
+overlap ratio between the two sources found only 1 of 4 known BAJ events
+had a matching title at all — low, but not zero, and the one match that
+existed proved the underlying gap.
+
+**Two changes, both requested explicitly** (comuna+lugar+fecha as the
+"harder"/stricter dimensions, título as the deliberately more permissive
+one — "un rango aceptable de coincidencia... lo demás es más duro"):
+
+1. **`place_name` joined the fingerprint** (`locationDateKey`/
+   `locationDateOnlyKey`, run.ts) — comuna alone is too coarse (many
+   venues share a comuna); place_name (normalized the same
+   accent/case/quote-insensitive way as title, since venue names get
+   punctuated differently across sources too) narrows it to the actual
+   venue. Strictly a precision increase on the EXACT fingerprint (more
+   fields = fewer accidental collisions, never more) — the tradeoff is
+   real but accepted: if two sources genuinely phrase the same venue's
+   name differently enough that `normalizeTitle` doesn't unify them, that
+   pair won't dedupe. Preferred over losing real, distinct events to a
+   false merge.
+
+2. **`isLikelySameTitle` gained an overlap-coefficient branch**
+   (`shared.length / min(|wordsA|, |wordsB|)`, alongside the pre-existing
+   Jaccard check) — catches exactly the "one title is a terse
+   internal-code subset of a longer descriptive one" case (overlap ≈ 0.67
+   for the real BAJ pair) that Jaccard structurally can't, since Jaccard
+   penalizes the LONGER title's extra words even when the shorter title
+   is almost entirely contained in it. Still gated on `shared.length >= 2`
+   (unchanged) — verified against the existing ARTEPUERTO regression test
+   (a single shared proper noun across genuinely different sub-events)
+   that this gate alone, independent of which similarity formula is used,
+   is what prevents that false-positive class; a dedicated new test
+   confirms a single-word title fully contained in another (overlap =
+   1.0) still doesn't qualify without a second shared word.
+
+Also fixed, same commit: the date-only fingerprint used for an exposición
+(no `openingDatetime`) only ever included `runStartDate`, silently
+dropping `runEndDate` — two different-length runs starting the same day
+would have been treated as one. Now uses the full `runStartDate|
+runEndDate` pair, matching the run's actual explicit request (inicio+fin
+for expos, solo inicio — date-only, hour ignored — for inauguraciones).
+
+Net effect: none of the existing dedup regression tests changed behavior
+(same Jaccard threshold, same shared-word floor, place_name only ever
+narrows a match, never widens one) — the two changes are additive,
+scoped to the exact gap this real case exposed.
+
+`balmacedartejoven.cl` itself was not added as a source in this pass —
+this was purely the dedup groundwork it exposed the need for.
+
 ## Cost governance
 
 A self-tracked ledger keeps both processes bounded, without depending on
