@@ -1633,7 +1633,7 @@ test(
       // description — this source's listing has no prose, only the detail
       // page does, and description recovery used to only run AFTER
       // curation (enrichCandidates), which only ever helps an already-
-      // approved candidate. Fixed by enrichBrightSourceItemDescriptions
+      // approved candidate. Fixed by enrichBrightSourceItemDetails
       // running BEFORE curateBrightSourceItems — this test confirms the
       // block Haiku actually receives contains the real recovered
       // description, not a bare title/date/place with no prose at all.

@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
-  enrichBrightSourceItemDescriptions,
+  enrichBrightSourceItemDetails,
   enrichCandidates,
   extractJsonLdImage,
   extractOgImage,
@@ -422,13 +422,15 @@ test("enrichCandidates does not attempt description recovery for a source with n
 // recovery only ran AFTER curation (enrichCandidates, above), so Haiku
 // judged this exact exhibition on title/dates/place alone and correctly
 // rejected it for "sin descripción... no es posible confirmar que sea una
-// exposición real". enrichBrightSourceItemDescriptions runs BEFORE
+// exposición real". enrichBrightSourceItemDetails runs BEFORE
 // curation instead, against the real known-sources.ts config for this
 // domain (mirrors the description-recovery test above, but pre-curation).
-test("enrichBrightSourceItemDescriptions recovers description from the detail page BEFORE curation, for a source with descriptionExtractor configured", async () => {
+test("enrichBrightSourceItemDetails recovers description from the detail page BEFORE curation, for a source with descriptionExtractor configured", async () => {
   const item = {
     sourceUrl: "https://www.museodeancud.gob.cl/cartelera/exposicion-temporal-pinceladas-de-esperanza-los-colores-del-alma",
     description: null as string | null,
+    structuredStartDate: null as string | null,
+    structuredEndDate: null as string | null,
   };
 
   const fetchImpl: FetchLike = async () => ({
@@ -437,15 +439,17 @@ test("enrichBrightSourceItemDescriptions recovers description from the detail pa
     text: async () => '<div class="text-long"><p>Exposición colectiva guiada por César de la Puente Ruiz, con obras de creadoras y creadores de la comunidad.</p></div>',
   });
 
-  await enrichBrightSourceItemDescriptions([item], fetchImpl);
+  await enrichBrightSourceItemDetails([item], fetchImpl);
 
   assert.equal(item.description, "Exposición colectiva guiada por César de la Puente Ruiz, con obras de creadoras y creadores de la comunidad.");
 });
 
-test("enrichBrightSourceItemDescriptions does not overwrite a description the item already has (e.g. molinomachmar.cl's listing prose, or MAVI's activity content)", async () => {
+test("enrichBrightSourceItemDetails does not overwrite a description the item already has (e.g. molinomachmar.cl's listing prose, or MAVI's activity content)", async () => {
   const item = {
     sourceUrl: "https://www.museodeancud.gob.cl/cartelera/exposicion-ya-con-descripcion",
     description: "Ya tiene descripción real desde el listado.",
+    structuredStartDate: null as string | null,
+    structuredEndDate: null as string | null,
   };
 
   const fetchImpl: FetchLike = async () => ({
@@ -454,13 +458,18 @@ test("enrichBrightSourceItemDescriptions does not overwrite a description the it
     text: async () => '<div class="text-long"><p>Otro texto que no debería usarse.</p></div>',
   });
 
-  await enrichBrightSourceItemDescriptions([item], fetchImpl);
+  await enrichBrightSourceItemDetails([item], fetchImpl);
 
   assert.equal(item.description, "Ya tiene descripción real desde el listado.");
 });
 
-test("enrichBrightSourceItemDescriptions does nothing for a source with no descriptionExtractor configured — never fetches", async () => {
-  const item = { sourceUrl: "https://portaldisc.com/expo-1", description: null as string | null };
+test("enrichBrightSourceItemDetails does nothing for a source with no descriptionExtractor/detailDateRangeExtractor configured — never fetches", async () => {
+  const item = {
+    sourceUrl: "https://portaldisc.com/expo-1",
+    description: null as string | null,
+    structuredStartDate: null as string | null,
+    structuredEndDate: null as string | null,
+  };
 
   let fetchCalled = false;
   const fetchImpl: FetchLike = async () => {
@@ -468,10 +477,60 @@ test("enrichBrightSourceItemDescriptions does nothing for a source with no descr
     return { ok: true, status: 200, text: async () => "" };
   };
 
-  await enrichBrightSourceItemDescriptions([item], fetchImpl);
+  await enrichBrightSourceItemDetails([item], fetchImpl);
 
   assert.equal(fetchCalled, false);
   assert.equal(item.description, null);
+});
+
+// mssa.cl (2026-07-28): its listing slider states only an end date
+// ("Abierta hasta el ..."), never a start — detailDateRangeExtractor
+// recovers the full runStartDate/runEndDate from the detail page's own
+// "Fecha de inicio"/"Fecha de término" facts pre-curation, same posture
+// as description recovery above but for structuredStartDate/EndDate.
+test("enrichBrightSourceItemDetails recovers structuredStartDate/EndDate from the detail page BEFORE curation, for a source with detailDateRangeExtractor configured", async () => {
+  const item = {
+    sourceUrl: "https://www.mssa.cl/exposicion/america-despierta-de-la-bienal-de-carnegie-international-58-al-mssa/",
+    description: null as string | null,
+    structuredStartDate: null as string | null,
+    structuredEndDate: null as string | null,
+  };
+
+  const fetchImpl: FetchLike = async () => ({
+    ok: true,
+    status: 200,
+    text: async () =>
+      '<p><span class="tit_ficha_expo">Fecha de Inauguración: </span>24/04/2026</p>' +
+      '<p><span class="tit_ficha_expo">Fecha de inicio: </span>24/04/2026</p>' +
+      '<p><span class="tit_ficha_expo">Fecha de término: </span>16/08/2026</p>',
+  });
+
+  await enrichBrightSourceItemDetails([item], fetchImpl);
+
+  assert.equal(item.structuredStartDate, "2026-04-24");
+  assert.equal(item.structuredEndDate, "2026-08-16");
+});
+
+test("enrichBrightSourceItemDetails does not overwrite structuredStartDate the item already has", async () => {
+  const item = {
+    sourceUrl: "https://www.mssa.cl/exposicion/ya-tiene-fechas/",
+    description: null as string | null,
+    structuredStartDate: "2026-01-01" as string | null,
+    structuredEndDate: "2026-02-01" as string | null,
+  };
+
+  const fetchImpl: FetchLike = async () => ({
+    ok: true,
+    status: 200,
+    text: async () =>
+      '<p><span class="tit_ficha_expo">Fecha de inicio: </span>05/05/2026</p>' +
+      '<p><span class="tit_ficha_expo">Fecha de término: </span>05/06/2026</p>',
+  });
+
+  await enrichBrightSourceItemDetails([item], fetchImpl);
+
+  assert.equal(item.structuredStartDate, "2026-01-01");
+  assert.equal(item.structuredEndDate, "2026-02-01");
 });
 
 // 2026-07-24: a real aggregator (arteinformado.com, uchile.cl,

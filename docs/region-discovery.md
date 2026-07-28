@@ -2449,6 +2449,49 @@ existing location+date fingerprints already cover the realistic
 case) — just something to keep in mind if a future duplicate check seems
 to fire on title alone when it shouldn't.
 
+### New source: mssa.cl (2026-07-28) — the source whose stale-date problem motivated the REPLACE feature above
+
+Added as a bright source in its own right, not just as the comparison
+case that exposed chilecultura.gob.cl's stale `run_end_date`: it's the
+ORIGINAL (`fixedLocation`, not an aggregator) for its own exhibitions, so
+`isAggregatorSource` now lets it win ties against the national
+aggregator going forward, not just this one time.
+
+Two real structural gaps this source needed, neither seen on any prior
+source:
+
+1. **The listing page's date text is incomplete, not just informal.**
+   `/exposiciones/`'s "actuales" slider (`temporalidad-actuales` class —
+   blockRegex matches only this, never the separate "Anteriores"/
+   `temporalidad-anteriores` section of dozens of past shows) gives each
+   current exhibition only an END date ("Abierta hasta el 2 de agosto
+   2026") — no start date anywhere on the listing. Every prior
+   `dateRangeExtractor` source gave a full range on the listing itself;
+   this is the first one that structurally can't. Left as-is, Haiku would
+   see a rawDateText with no start info either, and
+   `enforceDateCompleteness` would reject an otherwise-real, currently-
+   open exhibition for lacking `runStartDate`.
+
+2. **The detail page has the real answer, cleanly structured** — a
+   `Fecha de Inauguración` / `Fecha de inicio` / `Fecha de término` fact
+   block, all `DD/MM/YYYY`, confirmed against both sampled exhibitions
+   that no hour is ever stated for any of the three. `known-sources.ts`
+   gained a new sibling field, `detailDateRangeExtractor` (same
+   `DateRangeConfig` shape `dateRangeExtractor` already uses — the
+   underlying `extractDateRange` parser is generic over any HTML string,
+   listing block or detail page), and `lib/page-fetch.ts`'s pre-curation
+   description recovery (`enrichBrightSourceItemDescriptions`) was
+   broadened and renamed to `enrichBrightSourceItemDetails`: same single
+   detail-page fetch per item, now also runs `extractDateRange` against
+   it when `structuredStartDate` is still null, so `runStartDate`/
+   `runEndDate` are fully resolved BEFORE curation ever needs to judge
+   date completeness. `openingTimeExtractor`'s pattern matches the same
+   `DD/MM/YYYY` text (numeric month) — required generalizing
+   `lib/opening-time.ts`'s month resolution to accept a plain number, not
+   just the Spanish 3-letter abbreviation every prior source used (same
+   numeric-or-abbreviation flexibility `extractDateRange`'s
+   `resolveMonthGroup` already had).
+
 ## Cost governance
 
 A self-tracked ledger keeps both processes bounded, without depending on
