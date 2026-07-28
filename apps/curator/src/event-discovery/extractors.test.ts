@@ -91,6 +91,8 @@ test("extractArticleList pairs each event with its own structured title/link/ima
     rawDateText: "Del 1 al 20 de julio",
     structuredStartDate: null,
     structuredEndDate: null,
+    location: null,
+    placeName: null,
   });
   assert.deepEqual(items[1], {
     title: "Muestra Dos",
@@ -101,6 +103,8 @@ test("extractArticleList pairs each event with its own structured title/link/ima
     rawDateText: "Del 5 al 30 de julio",
     structuredStartDate: null,
     structuredEndDate: null,
+    location: null,
+    placeName: null,
   });
 });
 
@@ -234,6 +238,8 @@ test("extractWordpressItems maps title/image/description/dates/link by configure
       rawDateText: "Inauguración 20 de julio a las 19h.",
       structuredStartDate: "2026-07-01",
       structuredEndDate: "2026-08-30",
+      location: null,
+      placeName: null,
     },
   ]);
 });
@@ -251,6 +257,8 @@ test("extractWordpressItems falls back gracefully: missing link uses fallbackUrl
       rawDateText: "",
       structuredStartDate: null,
       structuredEndDate: null,
+      location: null,
+      placeName: null,
     },
   ]);
 });
@@ -272,6 +280,60 @@ test("extractWordpressItems is genuinely config-driven: a different WordPress si
   assert.equal(result[0].sourceUrl, "https://otro.cl/p/1");
   assert.equal(result[0].imageUrl, "https://otro.cl/img.jpg");
   assert.equal(result[0].structuredStartDate, null);
+});
+
+// chilecultura.gob.cl's real API shape (2026-07-28): YYYY-MM-DD dates
+// (not WordPress's YYYYMMDD), per-item commune/venue_name already given
+// by the API itself (locationField/placeNameField), and rich-HTML
+// descriptions with named Spanish entities (á, ñ, °, – etc.) that need
+// decoding to plain text before Haiku ever sees them.
+const CHILECULTURA_CONFIG: WordpressRestConfig = {
+  kind: "wordpressRestApi",
+  titleField: "name",
+  linkField: "url",
+  imageField: "image",
+  descriptionField: "description",
+  startDateField: "start_date",
+  endDateField: "end_date",
+  locationField: "commune",
+  placeNameField: "venue_name",
+};
+
+test("extractWordpressItems reads YYYY-MM-DD dates directly, maps location/placeName from configured fields, and decodes HTML entities in the description", () => {
+  const items = [
+    {
+      name: "Exposición Andina",
+      url: "https://chilecultura.gob.cl/evento/1",
+      image: "https://chilecultura.gob.cl/img/1.jpg",
+      description: "<p>Segundo piso &mdash; obras de artistas de la Regi&oacute;n, 20&deg; muestra &ndash; entrada liberada.</p>",
+      start_date: "2026-08-01",
+      end_date: "2026-08-30",
+      commune: "Valparaíso",
+      venue_name: "Parque Cultural de Valparaíso",
+    },
+  ];
+  const result = extractWordpressItems(items, CHILECULTURA_CONFIG, "https://chilecultura.gob.cl/");
+  assert.deepEqual(result, [
+    {
+      title: "Exposición Andina",
+      sourceUrl: "https://chilecultura.gob.cl/evento/1",
+      imageUrl: "https://chilecultura.gob.cl/img/1.jpg",
+      description: "Segundo piso — obras de artistas de la Región, 20° muestra – entrada liberada.",
+      locationHint: null,
+      rawDateText: "Segundo piso — obras de artistas de la Región, 20° muestra – entrada liberada.",
+      structuredStartDate: "2026-08-01",
+      structuredEndDate: "2026-08-30",
+      location: "Valparaíso",
+      placeName: "Parque Cultural de Valparaíso",
+    },
+  ]);
+});
+
+test("extractWordpressItems leaves location/placeName null when locationField/placeNameField aren't configured (every existing source, unaffected)", () => {
+  const items = [{ title: { rendered: "Expo C" }, meta: { link_al_evento: "https://parquecultural.cl/expo-c" } }];
+  const result = extractWordpressItems(items, PARQUE_CULTURAL_CONFIG, "https://parquecultural.cl/agenda");
+  assert.equal(result[0].location, null);
+  assert.equal(result[0].placeName, null);
 });
 
 // --- extractDateRange: deterministic parsing of a source's own date text ---

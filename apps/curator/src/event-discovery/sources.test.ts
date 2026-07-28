@@ -475,6 +475,38 @@ test("fetchBrightSources against the real KNOWN_SOURCES config for mallecoescult
   assert.equal(item.structuredEndDate, "2023-12-18", "single-date event: start and end are the same day");
 });
 
+test("fetchBrightSources against the real KNOWN_SOURCES config for chilecultura.gob.cl dispatches to the JSON parser and maps commune/venue_name to location/placeName (regression check against production config, added 2026-07-28)", async () => {
+  const chilecultura = KNOWN_SOURCES.find((s) => s.url.includes("chilecultura.gob.cl"));
+  assert.ok(chilecultura?.extractor?.kind === "wordpressRestApi");
+  assert.equal(chilecultura.type, undefined, "hand-curated sources never set type — dispatch must not depend on it");
+  assert.ok(!chilecultura.fixedLocation, "genuine national aggregator — no single fixed venue");
+
+  const items = [
+    {
+      name: "Exposición Real",
+      url: "https://chilecultura.gob.cl/evento/1",
+      image: "https://chilecultura.gob.cl/img/1.jpg",
+      description: "Segundo piso &mdash; muestra 20&deg; aniversario.",
+      start_date: "2026-08-01",
+      end_date: "2026-08-30",
+      commune: "Valparaíso",
+      venue_name: "Parque Cultural de Valparaíso",
+    },
+  ];
+  const results = await withStubFetch(() => jsonResponse(items), () => fetchBrightSources([chilecultura]));
+
+  assert.equal(results.length, 1);
+  assert.equal(results[0].kind, "items");
+  if (results[0].kind !== "items") throw new Error("unreachable");
+  const [item] = results[0].items;
+  assert.equal(item.title, "Exposición Real");
+  assert.equal(item.description, "Segundo piso — muestra 20° aniversario.", "HTML entities decoded to plain text");
+  assert.equal(item.structuredStartDate, "2026-08-01", "YYYY-MM-DD read directly, unlike WordPress's YYYYMMDD");
+  assert.equal(item.structuredEndDate, "2026-08-30");
+  assert.equal(item.location, "Valparaíso", "commune mapped via locationField");
+  assert.equal(item.placeName, "Parque Cultural de Valparaíso", "venue_name mapped via placeNameField");
+});
+
 test("mergeBrightSources dedups by domain with the hand-curated list winning", () => {
   const merged = mergeBrightSources([
     // Same domain as a KNOWN_SOURCES entry — must not appear twice.

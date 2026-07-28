@@ -418,6 +418,27 @@ export const KNOWN_SOURCES: KnownSource[] = [
       pattern: /tribe-locality">([^<]+)<\/span>/,
     },
   },
+  {
+    url: "https://chilecultura.gob.cl/api/v1.0/eventos/search?page=1&page_size=100&disciplines=4&status=approved",
+    note: 'Agenda oficial del Ministerio de las Culturas, las Artes y el Patrimonio — agregador nacional (no un solo venue). Real REST API found by intercepting the live site\'s own network request (2026-07-27) — `disciplines=4` filters to "Artes visuales" (NOT `discipline_id`/`main_discipline`, which silently return everything unfiltered); `region` uses the site\'s own internal numbering, not official Chilean region codes, so left unset here (national scope) rather than risk a wrong id. With `page_size=100` all ~50 filtered results return on page 1 (`page_count: 1`, confirmed against the real response) — no pagination needed. Real per-item shape: `name`/`url`/`image`/`description` (rich HTML), `start_date`/`end_date` (YYYY-MM-DD, unlike WordPress\'s YYYYMMDD), `commune`/`venue_name` already given per item — cleanest per-item location data of any bright source so far, no locationExtractor/detail-page fetch needed at all (see BrightSourceItem.location/placeName, extractors.ts). Real cost, computed against all 50 fetched items through the project\'s own estimateCostUsd (2026-07-27): ~$0.046/week (~$0.20/month) — negligible against the ~$5-9/mo baseline.',
+    lastReviewedAt: "2026-07-27",
+    extractor: {
+      kind: "wordpressRestApi",
+      titleField: "name",
+      linkField: "url",
+      imageField: "image",
+      descriptionField: "description",
+      startDateField: "start_date",
+      endDateField: "end_date",
+      locationField: "commune",
+      placeNameField: "venue_name",
+    },
+    // No fixedLocation — genuine national aggregator, real per-item
+    // commune/venue_name from the API itself (locationField/placeNameField
+    // above), same posture as arteinformado.com/uchile.cl but with cleaner
+    // data: Haiku isn't even asked (curateBrightSourceItems's needsLocation
+    // is suppressed once every item in a batch already has item.location).
+  },
 ];
 
 export function knownSourceDomain(url: string): string {

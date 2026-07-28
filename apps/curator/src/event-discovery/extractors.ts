@@ -51,6 +51,19 @@ export interface BrightSourceItem {
   rawDateText: string;
   structuredStartDate: string | null; // YYYY-MM-DD
   structuredEndDate: string | null; // YYYY-MM-DD
+  // Already-resolved, trusted comuna/placeName — distinct from
+  // `locationHint` (raw text for HAIKU to interpret). Populated only when
+  // the source itself gives a clean per-item value (so far: a JSON API
+  // with its own commune/venue fields, e.g. chilecultura.gob.cl's
+  // `commune`/`venue_name` — see WordpressRestConfig's locationField/
+  // placeNameField below). When set, discover.ts's mergeBrightSourceCandidate
+  // uses it directly, same precedence tier as a source-level
+  // `fixedLocation`, just resolved per item instead of one constant for
+  // the whole source. null for every source that doesn't have this
+  // (articleList sources keep using locationHint/locationExtractor/Haiku
+  // as before).
+  location: string | null;
+  placeName: string | null;
 }
 
 export function collapseWhitespace(text: string): string {
@@ -279,6 +292,8 @@ export function extractArticleList(html: string, pageUrl: string, config: Articl
       rawDateText: days || "fecha no indicada",
       structuredStartDate: dateRange?.runStartDate ?? null,
       structuredEndDate: dateRange?.runEndDate ?? null,
+      location: null,
+      placeName: null,
     });
   }
 
@@ -294,8 +309,18 @@ export interface WordpressRestConfig {
   linkField: string; // e.g. "meta.link_al_evento"
   imageField: string; // e.g. "meta.imagen_evento"
   descriptionField?: string; // e.g. "meta.extracto_corto"
-  startDateField?: string; // e.g. "meta.fecha_de_inicio" (YYYYMMDD)
-  endDateField?: string; // e.g. "meta.fecha_de_termino" (YYYYMMDD)
+  startDateField?: string; // e.g. "meta.fecha_de_inicio" (YYYYMMDD or YYYY-MM-DD)
+  endDateField?: string; // e.g. "meta.fecha_de_termino" (YYYYMMDD or YYYY-MM-DD)
+  // Real find, chilecultura.gob.cl (2026-07-28): unlike parquecultural.cl,
+  // this JSON API already gives a clean, bare comuna per item (`commune`)
+  // and a real venue name (`venue_name`) — a genuine aggregator (national,
+  // many comunas), but with no per-item guessing needed at all, not even
+  // the detail-page fetch aggregators like arteinformado.com still need.
+  // When set, BrightSourceItem.location/placeName are populated directly
+  // and discover.ts's curateBrightSourceItems skips asking Haiku for
+  // either field.
+  locationField?: string; // e.g. "commune"
+  placeNameField?: string; // e.g. "venue_name"
 }
 
 function getStringPath(obj: unknown, path: string | undefined): string | undefined {
@@ -309,12 +334,45 @@ function getStringPath(obj: unknown, path: string | undefined): string | undefin
   return typeof value === "string" ? value : undefined;
 }
 
-// YYYYMMDD -> YYYY-MM-DD, or null when absent/malformed — null (not a
-// display placeholder) since this now feeds BrightSourceItem's
-// structuredStartDate/EndDate directly, used as real data, not prose.
-function formatWpDate(yyyymmdd: string | undefined): string | null {
-  if (!yyyymmdd || yyyymmdd.length !== 8) return null;
-  return `${yyyymmdd.slice(0, 4)}-${yyyymmdd.slice(4, 6)}-${yyyymmdd.slice(6, 8)}`;
+// YYYYMMDD -> YYYY-MM-DD (parquecultural.cl), or already YYYY-MM-DD[...]
+// passed through as-is (chilecultura.gob.cl, confirmed 2026-07-28: its
+// start_date/end_date are already ISO date strings, not the 8-digit form)
+// — null when absent or neither shape matches. Not a display placeholder:
+// this feeds BrightSourceItem's structuredStartDate/EndDate directly, used
+// as real data, not prose.
+function formatWpDate(raw: string | undefined): string | null {
+  if (!raw) return null;
+  if (/^\d{4}-\d{2}-\d{2}/.test(raw)) return raw.slice(0, 10);
+  if (/^\d{8}$/.test(raw)) return `${raw.slice(0, 4)}-${raw.slice(4, 6)}-${raw.slice(6, 8)}`;
+  return null;
+}
+
+// Decodes the common named entities that show up in real Spanish-language
+// rich-text HTML (chilecultura.gob.cl's `description` field, confirmed
+// 2026-07-28: "&oacute;n", "&iacute;a", etc. — a genuinely different case
+// from decodeHtmlEntities above, which only ever needed to handle
+// "&amp;" inside image-style query strings) — then strips tags via
+// collapseWhitespace. Applied only to WordpressRestApi description fields
+// so far; parquecultural.cl's own extracto_corto is already plain text,
+// so this is a harmless no-op for it (no tags, no named entities).
+const SPANISH_HTML_ENTITIES: Record<string, string> = {
+  aacute: "á", eacute: "é", iacute: "í", oacute: "ó", uacute: "ú",
+  Aacute: "Á", Eacute: "É", Iacute: "Í", Oacute: "Ó", Uacute: "Ú",
+  ntilde: "ñ", Ntilde: "Ñ", uuml: "ü", Uuml: "Ü",
+  iexcl: "¡", iquest: "¿", ldquo: "“", rdquo: "”",
+  lsquo: "‘", rsquo: "’", hellip: "…", nbsp: " ",
+  deg: "°", ordm: "º", ordf: "ª", ndash: "–", mdash: "—",
+};
+
+function htmlToPlainText(html: string): string {
+  const withEntities = html
+    .replace(/&amp;/g, "&")
+    .replace(/&quot;/g, '"')
+    .replace(/&#0?39;/g, "'")
+    .replace(/&(aacute|eacute|iacute|oacute|uacute|Aacute|Eacute|Iacute|Oacute|Uacute|ntilde|Ntilde|uuml|Uuml|iexcl|iquest|ldquo|rdquo|lsquo|rsquo|hellip|nbsp|deg|ordm|ordf|ndash|mdash);/g, (_, name: string) => SPANISH_HTML_ENTITIES[name])
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">");
+  return collapseWhitespace(withEntities);
 }
 
 // A WordPress REST API response is already structured — no HTML parsing,
@@ -328,16 +386,23 @@ function formatWpDate(yyyymmdd: string | undefined): string | null {
 export function extractWordpressItems(items: unknown[], config: WordpressRestConfig, fallbackUrl: string): BrightSourceItem[] {
   return items.map((item) => {
     const title = getStringPath(item, config.titleField) ?? "(sin título)";
-    const description = getStringPath(item, config.descriptionField) ?? null;
+    const rawDescription = getStringPath(item, config.descriptionField);
+    const description = rawDescription ? htmlToPlainText(rawDescription) || null : null;
     return {
       title,
       sourceUrl: getStringPath(item, config.linkField) ?? fallbackUrl,
       imageUrl: getStringPath(item, config.imageField) ?? null,
       description,
-      locationHint: null, // wordpressRestApi sources are always fixedLocation single-venue ones so far — no per-item venue text to infer from
+      // wordpressRestApi sources are either fixedLocation single-venue
+      // (no per-item venue text to infer from) or, like chilecultura.gob.cl,
+      // already give a clean per-item location/placeName below — locationHint
+      // (a raw hint for Haiku to interpret) has never applied to this shape.
+      locationHint: null,
       rawDateText: description ?? "",
       structuredStartDate: formatWpDate(getStringPath(item, config.startDateField)),
       structuredEndDate: formatWpDate(getStringPath(item, config.endDateField)),
+      location: getStringPath(item, config.locationField) ?? null,
+      placeName: getStringPath(item, config.placeNameField) ?? null,
     };
   });
 }

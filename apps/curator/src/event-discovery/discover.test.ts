@@ -841,15 +841,20 @@ const baseBrightItem: BrightSourceItem = {
   rawDateText: "Del 5 al 31 de julio",
   structuredStartDate: null,
   structuredEndDate: null,
+  location: null,
+  placeName: null,
 };
 
-function stubBrightClient(rows: unknown[]): MessagesClient {
+function stubBrightClient(rows: unknown[], captureSystemPrompt?: { value: string }): MessagesClient {
   return {
     messages: {
-      create: async () => ({
-        content: [{ type: "text", text: "```json\n" + JSON.stringify(rows) + "\n```" }],
-        usage: { input_tokens: 10, output_tokens: 5 },
-      }),
+      create: async (params: { system: Array<{ text: string }> }) => {
+        if (captureSystemPrompt) captureSystemPrompt.value = params.system[0].text;
+        return {
+          content: [{ type: "text", text: "```json\n" + JSON.stringify(rows) + "\n```" }],
+          usage: { input_tokens: 10, output_tokens: 5 },
+        };
+      },
     },
   };
 }
@@ -973,6 +978,90 @@ test("curateBrightSourceItems uses Haiku's location/placeName for an aggregator 
 
   assert.equal(candidates[0].location, "Santiago");
   assert.equal(candidates[0].placeName, "MAC - Espacio Quinta Normal");
+});
+
+// chilecultura.gob.cl-style sources (2026-07-28): the API itself already
+// gives commune/venue_name per item, so item.location/placeName must win
+// over whatever Haiku reports for those fields, same precedence tier as
+// fixedLocation (which always wins over everything).
+test("curateBrightSourceItems prefers the item's own location/placeName over Haiku's row when no fixedLocation is set", async () => {
+  const items: BrightSourceItem[] = [{ ...baseBrightItem, location: "Valparaíso", placeName: "Parque Cultural de Valparaíso" }];
+  const client = stubBrightClient([
+    {
+      index: 0,
+      status: "approved",
+      artist: null,
+      runStartDate: "2026-07-05",
+      runEndDate: "2026-07-31",
+      openingDatetime: null,
+      openingTimeConfirmed: false,
+      location: "Un lugar inventado por Haiku",
+      placeName: "Otro nombre inventado",
+      mediumType: "tradicional",
+      sensitivityTags: [],
+      curationReasoning: "ok",
+    },
+  ]);
+
+  const { candidates } = await curateBrightSourceItems(client, items, "julio 2026", {});
+
+  assert.equal(candidates[0].location, "Valparaíso");
+  assert.equal(candidates[0].placeName, "Parque Cultural de Valparaíso");
+});
+
+test("curateBrightSourceItems doesn't ask Haiku for location when every item already carries its own item.location (needsLocation suppressed)", async () => {
+  const items: BrightSourceItem[] = [{ ...baseBrightItem, location: "Valparaíso", placeName: "Parque Cultural de Valparaíso" }];
+  const captured = { value: "" };
+  const client = stubBrightClient(
+    [
+      {
+        index: 0,
+        status: "approved",
+        artist: null,
+        runStartDate: "2026-07-05",
+        runEndDate: "2026-07-31",
+        openingDatetime: null,
+        openingTimeConfirmed: false,
+        location: null,
+        placeName: null,
+        mediumType: "tradicional",
+        sensitivityTags: [],
+        curationReasoning: "ok",
+      },
+    ],
+    captured,
+  );
+
+  await curateBrightSourceItems(client, items, "julio 2026", {});
+
+  assert.match(captured.value, /No reportes `location`\/`placeName`/);
+});
+
+test("curateBrightSourceItems still asks Haiku for location when at least one item in the batch has a null item.location", async () => {
+  const items: BrightSourceItem[] = [
+    { ...baseBrightItem, location: "Valparaíso", placeName: "Parque Cultural de Valparaíso" },
+    { ...baseBrightItem, title: "Otra muestra", location: null, placeName: null },
+  ];
+  const captured = { value: "" };
+  const rows = items.map((_, index) => ({
+    index,
+    status: "approved" as const,
+    artist: null,
+    runStartDate: "2026-07-05",
+    runEndDate: "2026-07-31",
+    openingDatetime: null,
+    openingTimeConfirmed: false,
+    location: "Santiago",
+    placeName: null,
+    mediumType: "tradicional" as const,
+    sensitivityTags: [],
+    curationReasoning: "ok",
+  }));
+  const client = stubBrightClient(rows, captured);
+
+  await curateBrightSourceItems(client, items, "julio 2026", {});
+
+  assert.match(captured.value, /infiérela del lugar\/institución/);
 });
 
 test("curateBrightSourceItems rejects an aggregator candidate outside Chile even though it's an approved bright-source item (Chile-only backstop still applies)", async () => {

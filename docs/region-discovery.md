@@ -2192,6 +2192,52 @@ location recovery deliberately stay post-curation, approved-only — none
 of those affect whether Haiku can tell "is this genuinely a visual-art
 exhibition," only description does.
 
+### New source: chilecultura.gob.cl (2026-07-28) — national aggregator, first source with clean per-item location
+
+Chile's official national art/culture agenda (Ministerio de las Culturas,
+las Artes y el Patrimonio). Unlike every other aggregator so far
+(arteinformado.com, uchile.cl root), this one is a real JSON REST API, not
+an HTML listing — found by intercepting the live site's own outgoing
+request in the browser (`disciplines=4` filters to "Artes visuales";
+`discipline_id`/`main_discipline` looked plausible but silently returned
+everything unfiltered — `region` uses the site's own internal numbering,
+not official Chilean region codes, so left unset for national scope
+rather than risk a wrong id). `page_size=100` returns all ~50 filtered
+results in one page (`page_count: 1`), no pagination needed.
+
+**Real per-item shape** already gives clean structured fields no other
+source has offered together: `start_date`/`end_date` as `YYYY-MM-DD`
+(WordPress's own REST fields use `YYYYMMDD` instead — `formatWpDate`,
+extractors.ts, now handles both), and `commune`/`venue_name` already
+resolved per item — no detail-page fetch or venue-name-to-comuna
+inference needed at all, unlike every other aggregator.
+
+**Extended the extractor architecture to carry this** (`BrightSourceItem`,
+`WordpressRestConfig`, extractors.ts): two new optional fields,
+`location`/`placeName` on the item and `locationField`/`placeNameField`
+(dotted paths) on the config. `discover.ts`'s `mergeBrightSourceCandidate`
+now prefers `item.location`/`item.placeName` over whatever Haiku's row
+says (same precedence tier as `fixedLocation`, which still wins over
+everything when set) — and `curateBrightSourceItems` skips asking Haiku
+for location at all (`needsLocation: false`) once every item in a batch
+already carries its own `item.location`, saving the tokens a location
+question would otherwise cost.
+
+**Description field needed real entity decoding**: the API's
+`description` is rich HTML (`<p>`, named Spanish entities like `&aacute;`,
+`&ntilde;`, `&deg;`, `&ndash;`/`&mdash;`) — a new `htmlToPlainText`
+(extractors.ts, `SPANISH_HTML_ENTITIES` table) strips tags and decodes
+entities before the text ever reaches Haiku. Verified against all 50 real
+fetched items: 0 leftover `&xxx;` artifacts, 0 null locations, 0
+unparseable dates.
+
+**Real cost, computed before shipping** (per the project's own
+`estimateCostUsd`, run against the actual `buildBrightSourceBlock` text
+for all 50 real items): ~21,214 input + ~5,000 output tokens ≈ $0.046/
+week ≈ $0.20/month — negligible against the ~$5-9/mo baseline (same
+real-fetched-data measurement methodology as the 2026-07-20 cost
+analysis, not an estimate).
+
 ## Cost governance
 
 A self-tracked ledger keeps both processes bounded, without depending on
