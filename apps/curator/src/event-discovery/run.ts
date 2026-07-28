@@ -22,7 +22,7 @@ import type { Tables } from "@caldearte/shared-types";
 import { getSupabaseClient } from "../lib/supabase-client.js";
 import { recordUsage, getConfigNumber, getCurrentMonthSpend } from "../lib/usage-tracking.js";
 import { estimateCostUsd } from "../lib/pricing.js";
-import { knownSourceDomain } from "../lib/known-sources.js";
+import { knownSourceDomain, isAggregatorSource } from "../lib/known-sources.js";
 import { KNOWN_LOW_QUALITY_SOURCE_DOMAINS } from "../lib/known-exclusions.js";
 import { matchRegionId, type RegionLike } from "../lib/locations.js";
 import { normalizeLocation, isLikelySameTitle } from "../lib/event-filters.js";
@@ -250,10 +250,22 @@ function locationDateOnlyKey(
   return `${normalizeLocation(location)}|${normalizeTitle(placeName ?? "")}|${dateOnly}`;
 }
 
+// Carries enough of an already-stored event's own data for
+// shouldReplaceExisting (below) to judge it against a new duplicate
+// candidate, and for insertCandidates to target the exact row with an
+// UPDATE when the new one wins.
+export interface ExistingEventInfo {
+  id: string;
+  title: string;
+  sourceUrl: string | null;
+  openingDatetime: string | null;
+  openingTimeConfirmed: boolean;
+}
+
 export interface SeenKeys {
-  titles: Set<string>;
-  sourceUrls: Set<string>;
-  locationDates: Set<string>;
+  titles: Map<string, ExistingEventInfo>;
+  sourceUrls: Map<string, ExistingEventInfo>;
+  locationDates: Map<string, ExistingEventInfo>;
   // Real bug (found 2026-07-20, via a user-requested audit): none of the
   // three exact-match signals above catch two DIFFERENT sources reporting
   // the SAME real event with different exact hours ("19:00" vs "19:30")
@@ -265,45 +277,79 @@ export interface SeenKeys {
   // deliberately conservative (both a Jaccard threshold AND a minimum
   // shared-word count) since a false merge here silently drops a real,
   // distinct event, which is worse than an occasional missed duplicate.
-  titlesByLocationDateOnly: Map<string, string[]>;
+  titlesByLocationDateOnly: Map<string, ExistingEventInfo[]>;
 }
 
 export async function loadExistingKeys(): Promise<SeenKeys> {
   const { data, error } = await getSupabaseClient()
     .from("events")
-    .select("title, source_url, freeform_location, place_name, opening_datetime, run_start_date, run_end_date")
+    .select("id, title, source_url, freeform_location, place_name, opening_datetime, opening_time_confirmed, run_start_date, run_end_date")
     .eq("source", "discovered");
 
   if (error) {
     throw new Error(`Failed to load existing discovered events: ${error.message}`);
   }
 
-  const titlesByLocationDateOnly = new Map<string, string[]>();
-  for (const row of data ?? []) {
+  const rows = data ?? [];
+  const toInfo = (row: (typeof rows)[number]): ExistingEventInfo => ({
+    id: row.id,
+    title: row.title,
+    sourceUrl: row.source_url,
+    openingDatetime: row.opening_datetime,
+    openingTimeConfirmed: row.opening_time_confirmed,
+  });
+
+  const titlesByLocationDateOnly = new Map<string, ExistingEventInfo[]>();
+  for (const row of rows) {
     const key = locationDateOnlyKey(row.freeform_location, row.place_name, {
       openingDatetime: row.opening_datetime,
       runStartDate: row.run_start_date,
       runEndDate: row.run_end_date,
     });
     const existing = titlesByLocationDateOnly.get(key);
-    if (existing) existing.push(row.title);
-    else titlesByLocationDateOnly.set(key, [row.title]);
+    if (existing) existing.push(toInfo(row));
+    else titlesByLocationDateOnly.set(key, [toInfo(row)]);
   }
 
   return {
-    titles: new Set((data ?? []).map((row) => normalizeTitle(row.title))),
-    sourceUrls: new Set((data ?? []).flatMap((row) => (row.source_url ? [row.source_url] : []))),
-    locationDates: new Set(
-      (data ?? []).map((row) =>
+    titles: new Map(rows.map((row) => [normalizeTitle(row.title), toInfo(row)])),
+    sourceUrls: new Map(rows.flatMap((row) => (row.source_url ? [[row.source_url, toInfo(row)] as const] : []))),
+    locationDates: new Map(
+      rows.map((row) => [
         locationDateKey(row.freeform_location, row.place_name, {
           openingDatetime: row.opening_datetime,
           runStartDate: row.run_start_date,
           runEndDate: row.run_end_date,
         }),
-      ),
+        toInfo(row),
+      ]),
     ),
     titlesByLocationDateOnly,
   };
+}
+
+// Real rule, set by the project owner (2026-07-28): a duplicate isn't
+// always a wash — the "better" version should win and REPLACE the stored
+// row instead of being silently dropped. Two tiers, in order:
+// 1. Whichever side has a CONFIRMED opening date+time wins outright — a
+//    candidate with only a bare date (or nothing) never beats one that
+//    has the real hour, regardless of source.
+// 2. If both sides tie on that (both confirmed, or neither), the venue's
+//    own site wins over an aggregator merely re-listing it (see
+//    isAggregatorSource) — real case: chilecultura.gob.cl carried a stale
+//    run_end_date for an MSSA exhibition that MSSA's own detail page had
+//    already corrected. A true tie (same tier on both signals) keeps
+//    whatever's already stored, per explicit instruction.
+function shouldReplaceExisting(candidate: EventCandidate, existing: ExistingEventInfo): boolean {
+  const candidateHasOpening = candidate.openingDatetime !== null && candidate.openingTimeConfirmed;
+  const existingHasOpening = existing.openingDatetime !== null && existing.openingTimeConfirmed;
+  if (candidateHasOpening !== existingHasOpening) return candidateHasOpening;
+
+  const candidateIsAggregator = candidate.sourceUrl !== null && isAggregatorSource(candidate.sourceUrl);
+  const existingIsAggregator = existing.sourceUrl !== null && isAggregatorSource(existing.sourceUrl);
+  if (candidateIsAggregator !== existingIsAggregator) return !candidateIsAggregator;
+
+  return false;
 }
 
 export async function insertCandidates(
@@ -353,18 +399,20 @@ export async function insertCandidates(
     const titleKey = normalizeTitle(c.title);
     const locDateKey = locationDateKey(c.location, c.placeName, c);
     const locDateOnlyKey = locationDateOnlyKey(c.location, c.placeName, c);
-    const isDuplicateTitle = seen.titles.has(titleKey);
-    const isDuplicateSourceUrl = c.sourceUrl !== null && seen.sourceUrls.has(c.sourceUrl);
-    const isDuplicateLocationDate = seen.locationDates.has(locDateKey);
-    const isFuzzyDuplicateTitle = (seen.titlesByLocationDateOnly.get(locDateOnlyKey) ?? []).some((existingTitle) =>
-      isLikelySameTitle(existingTitle, c.title),
+    const titleMatch = seen.titles.get(titleKey);
+    const sourceUrlMatch = c.sourceUrl !== null ? seen.sourceUrls.get(c.sourceUrl) : undefined;
+    const locationDateMatch = seen.locationDates.get(locDateKey);
+    const fuzzyMatch = (seen.titlesByLocationDateOnly.get(locDateOnlyKey) ?? []).find((existing) =>
+      isLikelySameTitle(existing.title, c.title),
     );
-    if (isDuplicateTitle || isDuplicateSourceUrl || isDuplicateLocationDate || isFuzzyDuplicateTitle) {
-      const reason = isFuzzyDuplicateTitle && !isDuplicateTitle && !isDuplicateSourceUrl && !isDuplicateLocationDate
+    const existingMatch = titleMatch ?? sourceUrlMatch ?? locationDateMatch ?? fuzzyMatch;
+
+    if (existingMatch && !shouldReplaceExisting(c, existingMatch)) {
+      const reason = fuzzyMatch && !titleMatch && !sourceUrlMatch && !locationDateMatch
         ? " (same location + date, similar title — likely the same event reported with a different exact hour)"
-        : isDuplicateLocationDate && !isDuplicateTitle && !isDuplicateSourceUrl
+        : locationDateMatch && !titleMatch && !sourceUrlMatch
           ? " (same location + date, different title/source)"
-          : isDuplicateSourceUrl && !isDuplicateTitle
+          : sourceUrlMatch && !titleMatch
             ? " (same sourceUrl, different title)"
             : "";
       console.log(`[event-discovery] skipping duplicate: "${c.title}"${reason}`);
@@ -383,25 +431,86 @@ export async function insertCandidates(
       imageUrl = await rehostImageFn(imageUrl, client);
     }
 
-    const { error } = await client.from("events").insert({
-      freeform_location: c.location,
-      place_name: c.placeName,
-      region_id: matchRegionId(c.location, regions),
-      title: c.title,
-      description: c.description,
-      artist: c.artist,
-      opening_datetime: c.openingDatetime,
-      opening_time_confirmed: c.openingTimeConfirmed,
-      run_start_date: c.runStartDate,
-      run_end_date: c.runEndDate,
-      medium_type: c.mediumType,
-      sensitivity_tags: c.sensitivityTags,
-      source: "discovered",
-      source_url: c.sourceUrl,
-      image_url: imageUrl,
-      curation_status: c.status,
-      curation_reasoning: c.curationReasoning,
-    });
+    // Real rule, set by the project owner (2026-07-28): a "better" version
+    // of an already-stored event (confirmed opening date+time it lacked,
+    // or the venue's own site over an aggregator — see
+    // shouldReplaceExisting above) REPLACES the existing row in place
+    // (same id, so nothing downstream keyed off it breaks) instead of
+    // being silently dropped as a duplicate.
+    if (existingMatch) {
+      const { error: updateError } = await client
+        .from("events")
+        .update({
+          freeform_location: c.location,
+          place_name: c.placeName,
+          region_id: matchRegionId(c.location, regions),
+          title: c.title,
+          description: c.description,
+          artist: c.artist,
+          opening_datetime: c.openingDatetime,
+          opening_time_confirmed: c.openingTimeConfirmed,
+          run_start_date: c.runStartDate,
+          run_end_date: c.runEndDate,
+          medium_type: c.mediumType,
+          sensitivity_tags: c.sensitivityTags,
+          source_url: c.sourceUrl,
+          image_url: imageUrl,
+          curation_status: c.status,
+          curation_reasoning: c.curationReasoning,
+        })
+        .eq("id", existingMatch.id);
+
+      if (updateError) {
+        console.error(`[event-discovery] failed to replace duplicate "${c.title}": ${updateError.message}`);
+        continue;
+      }
+
+      console.log(
+        `[event-discovery] replaced duplicate: "${c.title}" — ${
+          c.openingDatetime && c.openingTimeConfirmed && !(existingMatch.openingDatetime && existingMatch.openingTimeConfirmed)
+            ? "new version confirms the opening date+time, the stored one didn't"
+            : "new version is from the venue's own site, the stored one was from an aggregator"
+        }`,
+      );
+
+      const updatedInfo: ExistingEventInfo = {
+        id: existingMatch.id,
+        title: c.title,
+        sourceUrl: c.sourceUrl,
+        openingDatetime: c.openingDatetime,
+        openingTimeConfirmed: c.openingTimeConfirmed,
+      };
+      seen.titles.set(titleKey, updatedInfo);
+      if (c.sourceUrl) seen.sourceUrls.set(c.sourceUrl, updatedInfo);
+      const bucket = seen.titlesByLocationDateOnly.get(locDateOnlyKey);
+      if (bucket) bucket.push(updatedInfo);
+      else seen.titlesByLocationDateOnly.set(locDateOnlyKey, [updatedInfo]);
+      continue;
+    }
+
+    const { data: insertedRow, error } = await client
+      .from("events")
+      .insert({
+        freeform_location: c.location,
+        place_name: c.placeName,
+        region_id: matchRegionId(c.location, regions),
+        title: c.title,
+        description: c.description,
+        artist: c.artist,
+        opening_datetime: c.openingDatetime,
+        opening_time_confirmed: c.openingTimeConfirmed,
+        run_start_date: c.runStartDate,
+        run_end_date: c.runEndDate,
+        medium_type: c.mediumType,
+        sensitivity_tags: c.sensitivityTags,
+        source: "discovered",
+        source_url: c.sourceUrl,
+        image_url: imageUrl,
+        curation_status: c.status,
+        curation_reasoning: c.curationReasoning,
+      })
+      .select("id")
+      .single();
 
     if (error) {
       // Real production incident: one malformed candidate (missing every
@@ -413,8 +522,20 @@ export async function insertCandidates(
       continue;
     }
 
-    seen.titles.add(titleKey);
-    if (c.sourceUrl) seen.sourceUrls.add(c.sourceUrl);
+    // Real id (not just the key strings) recorded here too — .select()
+    // above, added alongside the replace-a-duplicate feature (2026-07-28)
+    // — so a LATER candidate in this same batch that turns out to be a
+    // "better" version of THIS one (see shouldReplaceExisting) can UPDATE
+    // it in place instead of just being dropped as a same-batch duplicate.
+    const freshInfo: ExistingEventInfo = {
+      id: insertedRow.id,
+      title: c.title,
+      sourceUrl: c.sourceUrl,
+      openingDatetime: c.openingDatetime,
+      openingTimeConfirmed: c.openingTimeConfirmed,
+    };
+    seen.titles.set(titleKey, freshInfo);
+    if (c.sourceUrl) seen.sourceUrls.set(c.sourceUrl, freshInfo);
     // seen.locationDates is deliberately NOT updated here — see this
     // function's own doc comment above (2026-07-23 MAC case): the blind
     // location+date fingerprint only applies against events already
@@ -422,8 +543,8 @@ export async function insertCandidates(
     // same batch. Sibling comparisons rely on titlesByLocationDateOnly
     // below instead, which requires title similarity too.
     const bucket = seen.titlesByLocationDateOnly.get(locDateOnlyKey);
-    if (bucket) bucket.push(c.title);
-    else seen.titlesByLocationDateOnly.set(locDateOnlyKey, [c.title]);
+    if (bucket) bucket.push(freshInfo);
+    else seen.titlesByLocationDateOnly.set(locDateOnlyKey, [freshInfo]);
     inserted += 1;
   }
 
@@ -642,7 +763,7 @@ export async function run(deps: RunDeps = {}): Promise<void> {
   // rejected (within the rolling window) — computed once per run, reused
   // across every due bright source below.
   const rejectedSourceUrls = await loadRecentlyRejectedSourceUrls(now);
-  const excludedSourceUrls = new Set([...seenKeys.sourceUrls, ...rejectedSourceUrls]);
+  const excludedSourceUrls = new Set([...seenKeys.sourceUrls.keys(), ...rejectedSourceUrls]);
 
   const units = deps.brightSourcesOnly ? [] : await getUnitsDueForRun(now);
   console.log(

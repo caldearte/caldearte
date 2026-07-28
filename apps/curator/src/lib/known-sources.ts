@@ -511,3 +511,32 @@ export function findLocationConfig(sourceUrl: string): DescriptionConfig | null 
   }
   return KNOWN_SOURCES.find((s) => s.locationExtractor && knownSourceDomain(s.url) === domain)?.locationExtractor ?? null;
 }
+
+// Used by run.ts's duplicate-replacement logic (2026-07-28): when a new
+// candidate and an already-stored event turn out to be the same real
+// exhibition (per the location+date/title dedup fingerprint) and neither
+// has a confirmed opening date+time to break the tie, the venue's own
+// site should win over an aggregator that merely re-lists it — a real
+// case (MSSA vs. chilecultura.gob.cl) showed the national aggregator can
+// carry a stale run_end_date the museum's own page has already corrected.
+// Reuses `fixedLocation`'s absence as the aggregator signal rather than a
+// new dedicated field — every KNOWN_SOURCES entry without one today
+// (artes.uchile.cl, uchile.cl root, arteinformado.com, mallecoescultura.cl,
+// chilecultura.gob.cl) is already documented as a genuine multi-venue
+// aggregator, and every one WITH `fixedLocation` is a single venue's own
+// site — a real multi-venue "original" source (e.g. a gallery network
+// posting its own events across several sedes, no fixedLocation but still
+// the primary source) doesn't exist in KNOWN_SOURCES yet; revisit this
+// function if one ever gets added. A sourceUrl that doesn't match any
+// known source at all (e.g. a Tavily-discovered social media post) is
+// treated as NOT an aggregator — it's a primary post, not a re-listing.
+export function isAggregatorSource(sourceUrl: string): boolean {
+  let domain: string;
+  try {
+    domain = knownSourceDomain(sourceUrl);
+  } catch {
+    return false;
+  }
+  const match = KNOWN_SOURCES.find((s) => knownSourceDomain(s.url) === domain);
+  return match !== undefined && !match.fixedLocation;
+}
