@@ -25,6 +25,20 @@ test("extractImgTags decodes HTML entities in src (e.g. Drupal's correctly-escap
   assert.deepEqual(extractImgTags(html), [{ url: "/img.jpg?h=abc123&itok=xyz789", description: "foto" }]);
 });
 
+// Real bug, found 2026-07-27 adding mallecoescultura.cl: `src` holds a tiny
+// base64 placeholder for lazy-loaded images ("lazyload" class), the real
+// URL only lives in `data-src`. Preferring `src` unconditionally would
+// have stored the base64 placeholder itself as imageUrl.
+test("extractImgTags prefers data-src over src when both are present (lazy-load pattern)", () => {
+  const html = `<img src="data:image/png;base64,tinyplaceholder==" data-src="/site/real-photo.jpg" alt="Exposición">`;
+  assert.deepEqual(extractImgTags(html), [{ url: "/site/real-photo.jpg", description: "Exposición" }]);
+});
+
+test("extractImgTags falls back to src when there's no data-src (every other source, unaffected)", () => {
+  const html = `<img src="/real.jpg" alt="obra">`;
+  assert.deepEqual(extractImgTags(html), [{ url: "/real.jpg", description: "obra" }]);
+});
+
 test("filterKnownSourceImages resolves relative URLs, drops chrome, nulls 'vacio' alts", () => {
   const images = [
     { url: " /dam/expo-prev.jpg", description: "vacio" },
@@ -282,6 +296,19 @@ test("extractDateRange reads an already-embedded machine-readable ISO date direc
   const html = '<time datetime="2025-07-10T12:00:00Z">10/Julio/2025</time>\n hasta el <time datetime="2027-07-31T12:00:00Z">31/Julio/2027</time>';
   const result = extractDateRange(html, config);
   assert.deepEqual(result, { runStartDate: "2025-07-10", runEndDate: "2027-07-31" });
+});
+
+// Real markup, added 2026-07-27 for mallecoescultura.cl: The Events
+// Calendar plugin gives exactly ONE date per event (an inauguración/
+// presentation, never a multi-week run) — the `dayIso` shorthand treats
+// that single day as both runStartDate and runEndDate.
+test("extractDateRange treats a single dayIso match as both start and end (mallecoescultura.cl-style, one-date events)", () => {
+  const config: DateRangeConfig = {
+    pattern: /tribe-events-calendar-list__event-datetime"\s*datetime="(?<dayIso>\d{4}-\d{2}-\d{2})"/,
+  };
+  const html = '<time class="tribe-events-calendar-list__event-datetime" datetime="2023-12-18">18 diciembre @ 19:30</time>';
+  const result = extractDateRange(html, config);
+  assert.deepEqual(result, { runStartDate: "2023-12-18", runEndDate: "2023-12-18" });
 });
 
 test("extractDateRange parses day + 3-letter-month pairs with a shared year element (molinomachmar.cl-style)", () => {

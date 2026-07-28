@@ -72,12 +72,19 @@ function decodeHtmlEntities(text: string): string {
 export function extractImgTags(html: string): Array<{ url: string; description: string | null }> {
   const images: Array<{ url: string; description: string | null }> = [];
   const imgTagRegex = /<img\b[^>]*>/gi;
+  // data-src wins over src when both are present — a real lazy-load pattern
+  // (mallecoescultura.cl, confirmed 2026-07-27): `src` holds a tiny base64
+  // placeholder ("lazyload" class), the real image URL only lives in
+  // `data-src`, filled in by client-side JS on scroll. Preferring `src`
+  // unconditionally would have stored the base64 placeholder itself as
+  // imageUrl — a garbage multi-KB "URL" the frontend could never render.
+  const dataSrcRegex = /\bdata-src=["']([^"']+)["']/i;
   const srcRegex = /\bsrc=["']([^"']+)["']/i;
   const altRegex = /\balt=["']([^"']*)["']/i;
 
   for (const match of html.matchAll(imgTagRegex)) {
     const tag = match[0];
-    const src = tag.match(srcRegex)?.[1];
+    const src = tag.match(dataSrcRegex)?.[1] ?? tag.match(srcRegex)?.[1];
     if (!src) continue;
     const alt = tag.match(altRegex)?.[1] ?? null;
     images.push({ url: decodeHtmlEntities(src), description: alt && alt.trim().length > 0 ? alt.trim() : null });
@@ -186,6 +193,18 @@ export function extractDateRange(html: string, config: DateRangeConfig): { runSt
 
   if (g.startIso && g.endIso) {
     return { runStartDate: g.startIso, runEndDate: g.endIso };
+  }
+
+  // Single-date shorthand — a source whose "event" is one dated happening
+  // (an inauguración/presentation, not a multi-week exhibition run) only
+  // ever gives ONE date, not a range. mallecoescultura.cl (confirmed
+  // 2026-07-27, The Events Calendar plugin's list markup: one <time
+  // datetime="..."> per event, no separate end date). Treating that single
+  // day as both runStartDate and runEndDate satisfies
+  // enforceDateCompleteness's "both start and end" requirement honestly —
+  // the event genuinely runs (or opens) that one day.
+  if (g.dayIso) {
+    return { runStartDate: g.dayIso, runEndDate: g.dayIso };
   }
 
   const startMonth = resolveMonthGroup(g.startMonth);

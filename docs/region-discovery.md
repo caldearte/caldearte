@@ -1985,6 +1985,130 @@ same shape):**
    structured start date at all) are unaffected. `EnrichCandidateLike`
    gained a `runStartDate` field for this.
 
+### New source: museodeancud.gob.cl (2026-07-27)
+
+Museo Regional de Ancud (Chiloé) — same SNPC/Drupal template as mnba.gob.cl
+and museoregionalaysen.gob.cl, confirmed against real fetched HTML: the
+`articleList` config (block/title/days/place regexes, embedded `<time
+datetime>` date range, `descriptionExtractor` reading the same `text-long`
+container) is byte-identical to the other two SNPC sources, just pointed at
+this domain. `fixedLocation: { location: "Ancud", placeName: "Museo
+Regional de Ancud" }`. `/cartelera` (1 real exposición at last check) +
+`additionalPages: ["/cartelera/proximos"]` (empty at last check, same
+pattern as the others). No `openingTimeExtractor` — the one detail page
+checked never states an inauguración hour, and per this doc's own
+escalation checklist, a pattern only gets written once verified against
+real markup, not guessed by analogy to the other SNPC sources.
+
+### Candidate sources reviewed and rejected (2026-07-27)
+
+Logged so these don't get re-proposed and re-investigated from scratch —
+each was checked against the real live site, not judged from the URL
+alone:
+
+- **eldivisadero.cl** (`/_categoria/Cultura/...`) and **aysenahora.cl**
+  (`/category/cultura/`) — both real local news outlets (Coyhaique/Aysén),
+  not event listings. Sampled ~10 items each: at most 1 genuine visual-art
+  exhibition per page, the rest conventional theater, music, dance,
+  general regional news mixed into the same "Cultura" category. No
+  per-item date/place fields in the listing at all — the event (if any) is
+  buried in free-text article prose, which would mean asking Haiku to
+  re-derive data the deterministic-fields architecture was built
+  specifically to avoid. Institution type (news outlet vs. museum vs.
+  municipality) was explicitly NOT the deciding factor here — content
+  density and listing structure were.
+- **maho.cl/web/blog/** — turned out to be the Municipalidad de Alto
+  Hospicio's press blog (not a museum, despite the name reading like one).
+  Sampled 10 titles: zero art content (housing handovers, judo medals,
+  security operations, a Día del Niño activity). Rejected purely on
+  content grounds, not because it's a municipality — a genuinely
+  art-active municipal/community/school source would be exactly as valid
+  as a gallery (see `overview.md`'s own scope: street interventions,
+  community centers, neighborhood associations all count).
+- **edicioncero.cl** (`/category/arte-y-cultura/`) — a real Iquique news
+  outlet with a dedicated arte-y-cultura category, but effectively
+  abandoned: last post in that category is dated 2025-07-03, over a year
+  stale as of this review. An inactive feed adds nothing going forward
+  regardless of past content quality.
+- **diariolongino.cl** — general Tarapacá regional news outlet, no
+  dedicated cultura/arte category at all (only nacional, deporte, salud,
+  opinión, ciencia-y-tecnología). The handful of culture-adjacent items
+  found on the homepage (an orchestra concert, a religious exhibition
+  about La Tirana, a children's painting contest) skew out-of-scope or
+  borderline; no structured per-item event data anywhere on the site.
+- **redmuseosaysen.cl/noticias-red-museos-aysen** — a regional museum
+  network's own news page, but built on Wix and rendered entirely
+  client-side: a plain fetch returns only the empty page shell, no post
+  content or dates anywhere in the raw HTML (confirmed no embedded JSON
+  either). Reading it would require the same headless-browser machinery
+  built for MAVI (`headless-discovery/`) — a real engineering/cost step
+  up, not justified without first confirming the content (a museum
+  *network's* news, likely more encuentros/convocatorias than a per-museum
+  exhibition calendar) is worth it. If any single member museum has its
+  own plain-HTML cartelera page, that's the better target, not the
+  network's aggregate news feed.
+- **facebook.com/centroculturaldealtohospicioccaho** — confirmed via a
+  real headless browser render (not just a plain fetch) that Facebook
+  shows at most the single most-recent post before covering the rest of
+  the page with a "sign in to see more" modal — a real, deliberate
+  anti-scraping wall that a plain fetch OR a JS-rendering headless browser
+  both hit equally; this isn't a parsing problem to solve with a better
+  extractor. The only real path to a Facebook Page's post history is
+  Meta's Graph API (app review, access token) — already flagged in
+  `CLAUDE.md` as needing explicit user approval before any work toward it
+  (Phase 4).
+
+### New source: mallecoescultura.cl (2026-07-27) — added despite being currently empty
+
+Malleco es Cultura, a regional cultural-tourism portal spanning 8 comunas
+(Angol, Collipulli, Lonquimay, Los Sauces, Purén, Renaico, Traiguén,
+Victoria). The URLs the user originally pointed at
+(`/categoria/exhibicion/`, `/etiqueta/exposicion/`) turned out to be a
+retrospective blog archive — past-tense recap posts ("FUE INAUGURADA")
+with no per-item date field at all, same shape as the news-outlet sources
+rejected the same day. The real target was one layer deeper: the site
+runs "The Events Calendar" (Modern Tribe/StellarWP), a real WordPress
+events plugin, at `/eventos/`, pre-filterable server-side to just the
+"Exposición" category via `/eventos/categoria/exposicion/`. That filter
+isn't perfectly clean (the site cross-tags some concerts/talks with
+"exposicion" too, confirmed checking its own past-events archive) but
+meaningfully narrows what Haiku has to review either way.
+
+**Verified against the plugin's own `/eventos/lista/?eventDisplay=past`
+archive** (12 real historical events, confirmed via `extractArticleList`
+against the actual production config) since the live upcoming list is
+genuinely empty right now ("No hay eventos programados."). Added anyway,
+per explicit instruction: a fetch that finds nothing costs one HTTP GET +
+zero Haiku tokens, and the source is already wired up the moment a real
+exhibition gets scheduled — same reasoning as
+museoregionalaysen.gob.cl's low-traffic cadence decision, above.
+
+Config: `blockRegex`/`titleLinkRegex`/`daysRegex`/`placeRegex` against the
+plugin's `tribe-events-calendar-list__event` markup; `descriptionRegex`
+reads real inline prose already on the listing (no separate detail-page
+fetch needed for that field, same as molinomachmar.cl); `locationExtractor`
+reads a detail-page `<span class="tribe-locality">` — an aggregator (8
+comunas), not `fixedLocation`, but this field is even cleaner than the
+other aggregators' full street addresses (already just the bare comuna
+name).
+
+**Two general fixes made while verifying, both reusable beyond this one
+source:**
+
+1. **`extractImgTags` now prefers `data-src` over `src`.** This site
+   lazy-loads images (`src` holds a tiny base64 placeholder, the real URL
+   only lives in `data-src`) — the first source this session to actually
+   hit that pattern. Preferring `src` unconditionally would have stored
+   the placeholder itself as `imageUrl`. Falls back to `src` when there's
+   no `data-src`, so every other existing source is unaffected.
+2. **`extractDateRange` gained a `dayIso` shorthand.** The Events Calendar
+   plugin gives exactly ONE date per event (an inauguración/presentation,
+   never a multi-week exhibition run) — no separate end date exists
+   anywhere to capture. `dayIso` treats that single day as both
+   `runStartDate` and `runEndDate`, satisfying `enforceDateCompleteness`
+   honestly instead of leaving the candidate dateless. Reusable for any
+   future single-date-event source, not specific to this plugin.
+
 ## Cost governance
 
 A self-tracked ledger keeps both processes bounded, without depending on
