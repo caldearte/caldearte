@@ -2157,6 +2157,41 @@ rejected with a real `sourceUrl`, `insertCandidates` upserts it into
 `rejected_candidates` — same defensive posture as the rest of that
 function (a failure here logs and moves on, never breaks the run).
 
+### Description recovery moved before curation, not just after (2026-07-28)
+
+Real production case, found testing the dedup mechanism above against
+museodeancud.gob.cl: Haiku correctly rejected a genuine, currently-running
+exhibition ("Pinceladas de esperanza: los colores del alma") — reasoning:
+"sin descripción... no es posible confirmar que sea una exposición real".
+This source's LISTING page has no prose at all (only title/dates/place);
+the real description only lives on the event's own detail page
+(`descriptionExtractor`, known-sources.ts). Description recovery already
+existed (`enrichCandidates`'s own description-recovery step, added
+2026-07-24) — but that only ever runs AFTER curation, for already-approved
+candidates, which only helps a candidate Haiku already said yes to. A
+candidate Haiku is on the fence about (or rejects for lack of substance)
+never got a second look with real prose.
+
+**Fix**: new `enrichBrightSourceItemDescriptions` (`lib/page-fetch.ts`) —
+same `findDescriptionConfig`/`extractDescription` machinery as
+`enrichCandidates`'s own description step, but runs on `BrightSourceItem[]`
+BEFORE `curateBrightSourceItems`, for every item still in the curation
+batch (post-dedup, not just eventually-approved ones). Wired into both
+`event-discovery/run.ts`'s bright-source loop and
+`headless-discovery/run.ts`'s MAVI call (a no-op there in practice, since
+MAVI's description always comes from `activity.content` already — kept
+for consistency).
+
+**Real cost/time tradeoff, accepted deliberately**: an eventually-approved
+candidate's detail page now gets fetched twice — once here for
+description, once more by `enrichCandidates` for image/opening-time/
+location. Not worth the added complexity of threading the already-fetched
+HTML through to avoid a second GET; Haiku judging real prose instead of a
+bare title is worth more than saving one fetch. Image/opening-time/
+location recovery deliberately stay post-curation, approved-only — none
+of those affect whether Haiku can tell "is this genuinely a visual-art
+exhibition," only description does.
+
 ## Cost governance
 
 A self-tracked ledger keeps both processes bounded, without depending on
