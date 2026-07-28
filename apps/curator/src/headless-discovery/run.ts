@@ -57,6 +57,8 @@ function maviActivityToBrightSourceItem(activity: MaviActivity): BrightSourceIte
     rawDateText: activity.content,
     structuredStartDate: null, // MAVI's API never gives structured dates, see lib/mavi-headless.ts
     structuredEndDate: null,
+    location: null, // fixedLocation above — MAVI is always the same museum
+    placeName: null,
   };
 }
 

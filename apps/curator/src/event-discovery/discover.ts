@@ -973,8 +973,8 @@ function mergeBrightSourceCandidate(
     curationReasoning: row.curationReasoning,
     imageUrl: item.imageUrl,
     status: row.status,
-    location: fixedLocation?.location ?? row.location ?? "",
-    placeName: fixedLocation?.placeName ?? row.placeName ?? null,
+    location: fixedLocation?.location ?? item.location ?? row.location ?? "",
+    placeName: fixedLocation?.placeName ?? item.placeName ?? row.placeName ?? null,
     sourceUrl: item.sourceUrl,
     // Grounding-quote fields don't apply on this path at all — there's
     // real source text behind every field Haiku still touches, and the
@@ -1015,7 +1015,13 @@ export async function curateBrightSourceItems(
   const emptyUsage: DiscoverUsage = { inputTokens: 0, outputTokens: 0 };
   if (items.length === 0) return { candidates: [], usage: emptyUsage };
 
-  const systemPrompt = buildBrightSourceSystemPrompt(monthLabel, { needsLocation: !opts.fixedLocation });
+  // If every item already carries a real per-item location (e.g. a JSON
+  // API that already gives commune/venue_name — see WordpressRestConfig's
+  // locationField/placeNameField), there's nothing left for Haiku to
+  // infer: mergeBrightSourceCandidate above always prefers item.location
+  // over row.location anyway, so asking would be pure wasted tokens.
+  const needsLocation = !opts.fixedLocation && !items.every((item) => item.location !== null);
+  const systemPrompt = buildBrightSourceSystemPrompt(monthLabel, { needsLocation });
   const block = buildBrightSourceBlock(items);
 
   const response = await client.messages.create({
