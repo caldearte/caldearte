@@ -2238,6 +2238,28 @@ week ≈ $0.20/month — negligible against the ~$5-9/mo baseline (same
 real-fetched-data measurement methodology as the 2026-07-20 cost
 analysis, not an estimate).
 
+**Real production bug, found on the very first live run**: crashed
+immediately with `items.map is not a function`. `fetchJsonApiSource`
+(sources.ts) had always assumed the JSON response body itself is the
+items array — true for parquecultural.cl (the only prior
+`wordpressRestApi` source), but chilecultura.gob.cl's real response
+wraps it instead: `{ total_count, page_count, next, previous, results:
+[...] }`. A manually-fetched sample during development had already been
+unwrapped (saved as just the `results` array), so this never showed up
+until the real API call ran in production. **Fix**: new optional
+`resultsField` (dotted path, same idiom as `locationField` etc.) on
+`WordpressRestConfig` — `chilecultura.gob.cl`'s config now sets
+`resultsField: "results"`; `fetchJsonApiSource` reads the array via a new
+`getPath` helper (extractors.ts) instead of assuming the body itself is
+one, and throws a clear error (caught by the existing per-source
+try/catch, same degrade-one-source-not-the-run posture as any other
+bright-source failure) if the resolved value still isn't an array.
+Lesson: when a manually-fetched sample gets pre-processed before saving
+("just the array, for convenience"), verify the *actual* wire shape
+against the real endpoint one more time right before shipping — a
+downstream/upstream shape mismatch like this had every unit test passing
+while still crashing on the very first real call.
+
 ## Cost governance
 
 A self-tracked ledger keeps both processes bounded, without depending on

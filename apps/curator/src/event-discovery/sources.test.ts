@@ -203,6 +203,43 @@ test("fetchBrightSources against the real KNOWN_SOURCES config for parquecultura
   assert.equal(results[0].items[0].title, "Muestra Real");
 });
 
+// Real production bug, found 2026-07-28 running chilecultura.gob.cl:
+// fetchJsonApiSource assumed the JSON response body itself is always the
+// items array — true for parquecultural.cl, false for chilecultura.gob.cl,
+// whose body wraps results in { ..., results: [...] } and crashed with
+// "items.map is not a function" on the very first production run.
+test("fetchBrightSources reads the items array via resultsField when the JSON response wraps it, instead of assuming the body itself is the array", async () => {
+  const source: BrightSource = {
+    url: "https://sitio.cl/api/eventos",
+    note: "sitio",
+    extractor: { kind: "wordpressRestApi", resultsField: "results", titleField: "name", linkField: "url", imageField: "image" },
+  };
+  const body = { total_count: 1, results: [{ name: "Muestra Real", url: "https://sitio.cl/e/1", image: "https://sitio.cl/i.jpg" }] };
+
+  const results = await withStubFetch(() => jsonResponse(body), () => fetchBrightSources([source]));
+
+  assert.equal(results.length, 1);
+  assert.equal(results[0].kind, "items");
+  if (results[0].kind !== "items") throw new Error("unreachable");
+  assert.equal(results[0].items[0].title, "Muestra Real");
+});
+
+test("fetchBrightSources logs and skips (doesn't crash the run, degrades the same as any other bright-source failure) a json-api source whose response isn't an array at the configured (or default) resultsField", async () => {
+  const source: BrightSource = {
+    url: "https://sitio.cl/api/eventos",
+    note: "sitio",
+    extractor: { kind: "wordpressRestApi", titleField: "name", linkField: "url", imageField: "image" },
+  };
+  // No resultsField configured, but the body is wrapped anyway — a
+  // config/reality mismatch, same failure mode the real chilecultura.gob.cl
+  // bug was.
+  const body = { results: [{ name: "Muestra Real" }] };
+
+  const results = await withStubFetch(() => jsonResponse(body), () => fetchBrightSources([source]));
+
+  assert.equal(results.length, 0, "one broken source shouldn't crash the whole run — logged and skipped");
+});
+
 test("fetchBrightSources logs and skips (doesn't crash the run) a json-api source with no extractor configured", async () => {
   const source: BrightSource = { url: "https://sitio.cl/wp-json/wp/v2/events", note: "sitio", type: "json-api" };
 
@@ -481,19 +518,31 @@ test("fetchBrightSources against the real KNOWN_SOURCES config for chilecultura.
   assert.equal(chilecultura.type, undefined, "hand-curated sources never set type — dispatch must not depend on it");
   assert.ok(!chilecultura.fixedLocation, "genuine national aggregator — no single fixed venue");
 
-  const items = [
-    {
-      name: "Exposición Real",
-      url: "https://chilecultura.gob.cl/evento/1",
-      image: "https://chilecultura.gob.cl/img/1.jpg",
-      description: "Segundo piso &mdash; muestra 20&deg; aniversario.",
-      start_date: "2026-08-01",
-      end_date: "2026-08-30",
-      commune: "Valparaíso",
-      venue_name: "Parque Cultural de Valparaíso",
-    },
-  ];
-  const results = await withStubFetch(() => jsonResponse(items), () => fetchBrightSources([chilecultura]));
+  // Real shape (2026-07-28, confirmed against the live API): the body is
+  // a wrapper object, not a bare array — { total_count, page_count, next,
+  // previous, results: [...] } — unlike parquecultural.cl's own bare
+  // array. resultsField: "results" (known-sources.ts) is what makes this
+  // work; a real production run crashed with "items.map is not a
+  // function" before this was added.
+  const body = {
+    total_count: 1,
+    page_count: 1,
+    next: null,
+    previous: null,
+    results: [
+      {
+        name: "Exposición Real",
+        url: "https://chilecultura.gob.cl/evento/1",
+        image: "https://chilecultura.gob.cl/img/1.jpg",
+        description: "Segundo piso &mdash; muestra 20&deg; aniversario.",
+        start_date: "2026-08-01",
+        end_date: "2026-08-30",
+        commune: "Valparaíso",
+        venue_name: "Parque Cultural de Valparaíso",
+      },
+    ],
+  };
+  const results = await withStubFetch(() => jsonResponse(body), () => fetchBrightSources([chilecultura]));
 
   assert.equal(results.length, 1);
   assert.equal(results[0].kind, "items");

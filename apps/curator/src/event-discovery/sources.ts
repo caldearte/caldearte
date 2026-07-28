@@ -28,6 +28,7 @@ import {
   extractWordpressItems,
   filterKnownSourceImages,
   collapseWhitespace,
+  getPath,
   type BrightSourceItem,
   type ExtractorConfig,
 } from "./extractors.js";
@@ -130,10 +131,22 @@ async function fetchJsonApiSource(source: BrightSource): Promise<BrightSourceFet
   if (!res.ok) {
     throw new Error(`json-api source ${source.url} responded ${res.status}`);
   }
-  const items = (await res.json()) as unknown[];
+  const body = await res.json();
 
   if (source.extractor?.kind !== "wordpressRestApi") {
     throw new Error(`json-api source ${source.url} has no wordpressRestApi extractor configured`);
+  }
+
+  // Real bug, found 2026-07-28 running chilecultura.gob.cl in production:
+  // the response body isn't always the array itself (parquecultural.cl
+  // is, but chilecultura.gob.cl wraps it as `{ ..., results: [...] }`) —
+  // resultsField (config, extractors.ts) says where to find it, absent
+  // means the body itself is the array, unchanged default behavior.
+  const items = getPath(body, source.extractor.resultsField);
+  if (!Array.isArray(items)) {
+    throw new Error(
+      `json-api source ${source.url} response is not an array${source.extractor.resultsField ? ` at resultsField "${source.extractor.resultsField}"` : ""} (got ${typeof items})`,
+    );
   }
 
   return { kind: "items", source, items: extractWordpressItems(items, source.extractor, source.url) };
