@@ -308,6 +308,22 @@ export async function insertCandidates(
     // own logs without the DB write or the crash surface that came with it.
     if (c.status !== "approved") {
       console.log(`[event-discovery] rejected: "${c.title}" — ${c.curationReasoning}`);
+      // Recorded by source_url only — never touches `location` (routinely
+      // null on a rejected candidate), the exact field whose null-ness
+      // caused the 2026-07-22 crash that removed rejected-candidate
+      // storage from `events` in the first place. Lets a future run skip
+      // re-curating this same item (see loadRecentlyRejectedSourceUrls,
+      // above) instead of re-spending Haiku tokens on the same verdict
+      // every fetch cycle. Ancillary — a failure here must never break
+      // the actual run.
+      if (c.sourceUrl) {
+        const { error: rejectError } = await client
+          .from("rejected_candidates")
+          .upsert({ source_url: c.sourceUrl, title: c.title, reason: c.curationReasoning, created_at: now.toISOString() }, { onConflict: "source_url" });
+        if (rejectError) {
+          console.error(`[event-discovery] failed to record rejected candidate "${c.title}": ${rejectError.message}`);
+        }
+      }
       continue;
     }
 
@@ -426,6 +442,43 @@ async function pruneOldRawSearchResults(now: Date): Promise<void> {
   }
 }
 
+// ~3 months — see rejected_candidates' own migration doc comment for why
+// this window exists at all (skip re-curating a bright source's typically-
+// static listing every run, without excluding an item forever if its
+// content genuinely changes later).
+export const REJECTED_CANDIDATE_WINDOW_MS = 90 * 24 * 60 * 60 * 1000;
+
+async function pruneOldRejectedCandidates(now: Date): Promise<void> {
+  const cutoff = new Date(now.getTime() - REJECTED_CANDIDATE_WINDOW_MS).toISOString();
+  const { error } = await getSupabaseClient().from("rejected_candidates").delete().lt("created_at", cutoff);
+  if (error) {
+    console.error(`[event-discovery] failed to prune rejected_candidates: ${error.message}`);
+  }
+}
+
+// Pre-curation dedup — bright sources only (see docs/region-discovery.md's
+// dated section on this): a fixed listing (e.g. a museum's cartelera, or
+// chilecultura.gob.cl's ~50-item national Artes-visuales feed) mostly
+// repeats week to week, and until now every item got re-sent to Haiku
+// regardless, spending real tokens re-deriving the exact same verdict.
+// Returns every source_url this bright-source item set should be filtered
+// against BEFORE it ever reaches curateBrightSourceItems: source_urls
+// already rejected within the rolling window, keyed only by source_url
+// (never touches location — that's the field whose null-ness caused the
+// 2026-07-22 crash that got rejected-candidate storage removed from
+// `events` in the first place).
+export async function loadRecentlyRejectedSourceUrls(now: Date): Promise<Set<string>> {
+  const cutoff = new Date(now.getTime() - REJECTED_CANDIDATE_WINDOW_MS).toISOString();
+  const { data, error } = await getSupabaseClient()
+    .from("rejected_candidates")
+    .select("source_url")
+    .gte("created_at", cutoff);
+  if (error) {
+    throw new Error(`Failed to load rejected_candidates: ${error.message}`);
+  }
+  return new Set((data ?? []).map((row) => row.source_url));
+}
+
 // Logs EVERY raw Tavily hit for a unit (before filterKnownExclusions, so
 // the log reflects everything Tavily actually returned) — not just what
 // Haiku turns into a candidate. `events` can't serve this purpose: a
@@ -541,6 +594,7 @@ export async function run(deps: RunDeps = {}): Promise<void> {
 
   await pruneOldRawSearchResults(now);
   await pruneExpiredEvents(now);
+  await pruneOldRejectedCandidates(now);
 
   const systemPrompt = buildSystemPrompt(currentMonthLabel(now));
   const brightSources = mergeBrightSources(await loadDetectedSources());
@@ -562,6 +616,12 @@ export async function run(deps: RunDeps = {}): Promise<void> {
   const seenKeys = await loadExistingKeys();
   const regions = await loadAllRegions();
   const allCandidates: EventCandidate[] = [];
+  // Pre-curation dedup, bright sources only (docs/region-discovery.md).
+  // Never asks Haiku about an item we've already approved (any age) or
+  // rejected (within the rolling window) — computed once per run, reused
+  // across every due bright source below.
+  const rejectedSourceUrls = await loadRecentlyRejectedSourceUrls(now);
+  const excludedSourceUrls = new Set([...seenKeys.sourceUrls, ...rejectedSourceUrls]);
 
   const units = deps.brightSourcesOnly ? [] : await getUnitsDueForRun(now);
   console.log(
@@ -690,7 +750,19 @@ export async function run(deps: RunDeps = {}): Promise<void> {
         let candidates: EventCandidate[];
         let usage: DiscoverUsage;
         if (result.kind === "items") {
-          ({ candidates, usage } = await curateBrightSourceItems(messagesClient, result.items, monthLabel, {
+          // Pre-curation dedup — skip anything already approved (ever) or
+          // rejected (within the rolling window) before it ever reaches
+          // Haiku. See excludedSourceUrls' own comment, above.
+          const newItems = result.items.filter((item) => !excludedSourceUrls.has(item.sourceUrl));
+          const skipped = result.items.length - newItems.length;
+          if (skipped > 0) {
+            console.log(`[event-discovery] bright source ${sourceUrl}: ${skipped}/${result.items.length} item(s) already seen, skipped before curation`);
+          }
+          if (newItems.length === 0) {
+            console.log(`[event-discovery] bright source ${sourceUrl}: nothing new, skipping curation entirely`);
+            continue;
+          }
+          ({ candidates, usage } = await curateBrightSourceItems(messagesClient, newItems, monthLabel, {
             fixedLocation: result.source.fixedLocation,
           }));
         } else {

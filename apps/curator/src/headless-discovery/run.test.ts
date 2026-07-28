@@ -133,5 +133,56 @@ test(
         await client.from("bright_source_fetch_state").delete().eq("url", MAVI_SOURCE_URL);
       }
     });
+
+    // 2026-07-28: same pre-curation dedup as event-discovery/run.ts's
+    // bright-source loop (docs/region-discovery.md) — an activity whose
+    // detailUrl already has an approved event must never reach Haiku.
+    await t.test("an activity whose detailUrl already has an approved event is skipped BEFORE curation", async () => {
+      await client.from("bright_source_fetch_state").delete().eq("url", MAVI_SOURCE_URL);
+      const activity: MaviActivity = {
+        title: "__test_mavi_dedup__",
+        content: "Desde el 1 de agosto de 2026 hasta el 30 de septiembre de 2026, sala principal, Santiago.",
+        detailUrl: "https://www.uc.cl/agenda/actividad/__test_mavi_dedup__",
+        imageUrl: null,
+        placeName: "Museo de Artes Visuales MAVI UC",
+      };
+
+      await client.from("events").insert({
+        title: "__test_mavi_dedup__ (ya aprobado)",
+        freeform_location: "Santiago",
+        run_start_date: "2026-08-01",
+        run_end_date: "2026-09-30",
+        medium_type: "tradicional",
+        sensitivity_tags: [],
+        source: "discovered",
+        source_url: activity.detailUrl,
+        curation_status: "approved",
+        curation_reasoning: "seed",
+      });
+
+      let haikuCallCount = 0;
+      const countingMessagesClient: MessagesClient = {
+        messages: {
+          create: async () => {
+            haikuCallCount += 1;
+            return { content: [{ type: "text", text: "```json\n[]\n```" }], usage: { input_tokens: 0, output_tokens: 0 } };
+          },
+        },
+      };
+
+      try {
+        await run({
+          now: NOW,
+          fetchMaviActivitiesFn: async () => [activity],
+          messagesClient: countingMessagesClient,
+          pageFetchFn: (async () => new Response("", { status: 404 })) as typeof fetch,
+        });
+
+        assert.equal(haikuCallCount, 0, "the activity was excluded before ever building a Haiku call");
+      } finally {
+        await client.from("events").delete().eq("source_url", activity.detailUrl);
+        await client.from("bright_source_fetch_state").delete().eq("url", MAVI_SOURCE_URL);
+      }
+    });
   },
 );

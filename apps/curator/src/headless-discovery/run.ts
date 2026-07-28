@@ -34,6 +34,7 @@ import {
   loadAllRegions,
   loadBrightSourceFetchState,
   loadExistingKeys,
+  loadRecentlyRejectedSourceUrls,
   isSourceDue,
   recordBrightSourcesFetched,
   toCandidateSummary,
@@ -102,30 +103,47 @@ export async function run(deps: HeadlessRunDeps = {}): Promise<void> {
 
   if (activities.length > 0) {
     const items = activities.map(maviActivityToBrightSourceItem);
-    const { candidates, usage } = await curateBrightSourceItems(messagesClient, items, currentMonthLabel(now), {
-      fixedLocation: MAVI_FIXED_LOCATION,
-    });
 
-    await recordUsage({ purpose: "event_discovery", model: EVENT_DISCOVERY_MODEL, usage });
-    summary.cost.anthropicUsd = estimateCostUsd(EVENT_DISCOVERY_MODEL, usage);
-    summary.cost.totalUsd = summary.cost.anthropicUsd;
-
-    const regions = await loadAllRegions();
-    await enrichCandidates(candidates, pageFetchFn, now, regions);
-
+    // Pre-curation dedup, same mechanism as event-discovery/run.ts's
+    // bright-source loop (docs/region-discovery.md) — skip anything
+    // already approved (ever) or rejected (within the rolling window)
+    // before it ever reaches Haiku.
     const seenKeys = await loadExistingKeys();
-    const inserted = await insertCandidates(candidates, regions, seenKeys, now);
-
-    summary.candidates.total = candidates.length;
-    summary.candidates.insertedCount = inserted;
-    summary.eventGroups.push({ label: MAVI_SOURCE_URL, candidates: candidates.map(toCandidateSummary) });
-    for (const c of candidates) {
-      if (c.status === "approved") summary.candidates.approvedByCuration += 1;
-      if (c.status === "rejected") summary.candidates.rejectedByCuration += 1;
-      summary.candidates.byMediumType[c.mediumType] = (summary.candidates.byMediumType[c.mediumType] ?? 0) + 1;
-      if (c.sensitivityTags.length > 0) summary.candidates.sensitivityTagged += 1;
+    const rejectedSourceUrls = await loadRecentlyRejectedSourceUrls(now);
+    const excludedSourceUrls = new Set([...seenKeys.sourceUrls, ...rejectedSourceUrls]);
+    const newItems = items.filter((item) => !excludedSourceUrls.has(item.sourceUrl));
+    const skipped = items.length - newItems.length;
+    if (skipped > 0) {
+      console.log(`[headless-discovery] ${MAVI_SOURCE_URL}: ${skipped}/${items.length} item(s) already seen, skipped before curation`);
     }
-    console.log(`[headless-discovery] ${inserted} new approved event(s) inserted`);
+
+    if (newItems.length > 0) {
+      const { candidates, usage } = await curateBrightSourceItems(messagesClient, newItems, currentMonthLabel(now), {
+        fixedLocation: MAVI_FIXED_LOCATION,
+      });
+
+      await recordUsage({ purpose: "event_discovery", model: EVENT_DISCOVERY_MODEL, usage });
+      summary.cost.anthropicUsd = estimateCostUsd(EVENT_DISCOVERY_MODEL, usage);
+      summary.cost.totalUsd = summary.cost.anthropicUsd;
+
+      const regions = await loadAllRegions();
+      await enrichCandidates(candidates, pageFetchFn, now, regions);
+
+      const inserted = await insertCandidates(candidates, regions, seenKeys, now);
+
+      summary.candidates.total = candidates.length;
+      summary.candidates.insertedCount = inserted;
+      summary.eventGroups.push({ label: MAVI_SOURCE_URL, candidates: candidates.map(toCandidateSummary) });
+      for (const c of candidates) {
+        if (c.status === "approved") summary.candidates.approvedByCuration += 1;
+        if (c.status === "rejected") summary.candidates.rejectedByCuration += 1;
+        summary.candidates.byMediumType[c.mediumType] = (summary.candidates.byMediumType[c.mediumType] ?? 0) + 1;
+        if (c.sensitivityTags.length > 0) summary.candidates.sensitivityTagged += 1;
+      }
+      console.log(`[headless-discovery] ${inserted} new approved event(s) inserted`);
+    } else {
+      console.log(`[headless-discovery] ${MAVI_SOURCE_URL}: nothing new, skipping curation entirely`);
+    }
   }
 
   await recordBrightSourcesFetched([MAVI_SOURCE_URL], now);
