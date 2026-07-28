@@ -2057,6 +2057,39 @@ alone:
   Meta's Graph API (app review, access token) — already flagged in
   `CLAUDE.md` as needing explicit user approval before any work toward it
   (Phase 4).
+- **fme.cl** (Fundación Minera Escondida) — `/exposiciones/` is a
+  retrospective archive: year filters only go up to 2025 (no 2026), body
+  text in past tense, no run dates on any detail page at all. Its two
+  `/extension-cultural/sala-de-arte-{antofagasta,san-pedro-atacama}/`
+  pages have exactly the right SHAPE (a real fixed gallery, month-range
+  exhibition listings, per-item detail pages) but are both explicitly
+  headed "...2025" and every listed exhibition's month range is already
+  well past by 2026-07-27 — the site hasn't been updated for the 2026
+  season yet, and the year lives only in the page-level heading, not per
+  item, so there's no deterministic way to tell a stale listing from a
+  refreshed one without a human re-check. Worth revisiting once FME
+  updates those two pages for 2026 — not rejected on structure, rejected
+  on staleness.
+- **balmacedartejoven.cl/galerias-baj/** (2026-07-28) — a real, active
+  national gallery network (5 sedes: Antofagasta, Valparaíso,
+  Metropolitana, Bío Bío, Los Lagos), genuinely different situation from
+  every source added this session: the LISTING page carries no date or
+  comuna signal at all (title + image + a region-level category tag like
+  "Los Lagos"/"Bío Bío", not a comuna), and detail-page dates are
+  free-text prose with no consistent phrasing — sampled 5 real detail
+  pages: one gave a full date with year ("hasta el 29 de julio de 2026"),
+  one gave a date with NO year at all ("hasta el 20 de mayo" — genuinely
+  ambiguous without external context), and one had no date anywhere in
+  the body text, only the unrelated WordPress publish date. No
+  `dateRangeExtractor` regex can reliably parse that inconsistency, unlike
+  every other bright source added so far. Building around it would mean a
+  new pre-curation mechanism (routing detail-page prose into `rawDateText`
+  for Haiku to interpret, not just `description`) plus accepting a real
+  residual risk of occasional wrong-year guesses on ambiguous phrasing —
+  explicitly decided not worth it (2026-07-28): BAJ's own exhibitions
+  already surface through chilecultura.gob.cl (the national aggregator,
+  added the same week) with clean structured dates/location, a more
+  consistent path to the same real content than scraping BAJ directly.
 
 ### New source: mallecoescultura.cl (2026-07-27) — added despite being currently empty
 
