@@ -2403,6 +2403,52 @@ hex/decimal references now resolve by codepoint before the named-entity
 table gets a turn — benefits any future source using numeric entities,
 not just this one.
 
+### Duplicate handling: the "better" version can now REPLACE the stored one, not just get dropped (2026-07-28)
+
+Real case that prompted this: evaluating mssa.cl (Museo de la Solidaridad
+Salvador Allende) as a candidate bright source, all 3 of its currently
+running exhibitions turned out to already be in the calendar via
+chilecultura.gob.cl — but one of them (`América despierta`) had a WRONG
+`run_end_date` (chilecultura said 2026-08-02; MSSA's own detail page,
+with a real structured `Fecha de término: 16/08/2026` field, said
+2026-08-16). Until now, `insertCandidates`'s dedup only ever SKIPPED a
+duplicate — the stale aggregator-sourced row would never get corrected
+even once a better version showed up.
+
+**Explicit rule, two tiers, in order** (from the project owner):
+1. Whichever side has a **confirmed opening date+time** wins outright — a
+   candidate with only a bare date (or nothing) never beats one with the
+   real hour, regardless of source.
+2. If both tie on that (both confirmed, or neither), the **venue's own
+   site wins over an aggregator** merely re-listing it. A true tie (same
+   tier on both signals) keeps whatever's already stored.
+
+**Implementation**: `lib/known-sources.ts` gained `isAggregatorSource(url)`
+— reuses `fixedLocation`'s absence as the aggregator signal (every
+KNOWN_SOURCES entry without one today — artes.uchile.cl, uchile.cl root,
+arteinformado.com, mallecoescultura.cl, chilecultura.gob.cl — is already
+documented as a genuine multi-venue aggregator; every one WITH
+`fixedLocation` is a single venue's own site) rather than a new dedicated
+field. `event-discovery/run.ts`'s `SeenKeys` now carries `Map<string,
+ExistingEventInfo>` (id, title, sourceUrl, opening fields) instead of
+plain `Set<string>`/`string[]`, so a matched duplicate can be looked up
+and, when it should win, `UPDATE`d in place by `id` (same row, not a
+delete+reinsert) instead of just skipped. `insertCandidates`'s own INSERT
+path now also captures the fresh row's real `id` (added `.select("id")`)
+so a LATER candidate in the same batch that turns out to be a better
+version of THIS one can replace it too, not just rows from past runs.
+
+**Real edge case found writing the tests**: the plain exact-title dedup
+signal (the oldest one, predates this session) doesn't know about
+place_name/comuna at all — it was never a problem before because two
+genuinely different tests' titles never collided, but a REPLACE now
+changes the stored title, which can retroactively make two same-batch
+candidates share an exact-title match despite having different
+place_names. Not fixed here (out of scope for this task, and the
+existing location+date fingerprints already cover the realistic
+case) — just something to keep in mind if a future duplicate check seems
+to fire on title alone when it shouldn't.
+
 ## Cost governance
 
 A self-tracked ledger keeps both processes bounded, without depending on

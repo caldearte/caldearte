@@ -112,7 +112,7 @@ export async function run(deps: HeadlessRunDeps = {}): Promise<void> {
     // before it ever reaches Haiku.
     const seenKeys = await loadExistingKeys();
     const rejectedSourceUrls = await loadRecentlyRejectedSourceUrls(now);
-    const excludedSourceUrls = new Set([...seenKeys.sourceUrls, ...rejectedSourceUrls]);
+    const excludedSourceUrls = new Set([...seenKeys.sourceUrls.keys(), ...rejectedSourceUrls]);
     const newItems = items.filter((item) => !excludedSourceUrls.has(item.sourceUrl));
     const skipped = items.length - newItems.length;
     if (skipped > 0) {

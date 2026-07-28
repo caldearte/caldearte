@@ -536,14 +536,37 @@ test(
         const regions = await loadAllRegions();
         const seenBefore = await loadExistingKeys();
         const insertedSamePlace = await insertCandidates([samePlaceRepost], regions, seenBefore, new Date(2026, 6, 1));
-        assert.equal(insertedSamePlace, 0, "same place_name ('Balmaceda Arte Joven'): abbreviated-title repost recognized as a duplicate, not inserted");
+        assert.equal(insertedSamePlace, 0, "same place_name ('Balmaceda Arte Joven'): abbreviated-title repost recognized as a duplicate, not a fresh insert");
 
-        // Identical abbreviated title and day, but at a DIFFERENT venue —
-        // place_name being part of the fingerprint means this must NOT be
-        // treated as a duplicate of the Balmaceda event.
+        // Both sides have a confirmed opening (tier 1 of
+        // shouldReplaceExisting ties) — the seeded row came from
+        // chilecultura.gob.cl (a known aggregator), the repost from
+        // balmacedartejoven.cl (not a known aggregator) — tier 2 (original
+        // source over aggregator) decides: the repost REPLACES the seeded
+        // row in place, same id, rather than being dropped.
+        const { data: replaced } = await client
+          .from("events")
+          .select("title, source_url")
+          .eq("place_name", "Balmaceda Arte Joven")
+          .single();
+        assert.equal(replaced?.title, "__test__ LAB#1: «Estado de Posibilidad»", "the original-source repost's title replaced the aggregator's");
+        assert.equal(
+          replaced?.source_url,
+          "https://balmacedartejoven.cl/__test__/lab1-estado-de-posibilidad/",
+          "source_url now points at the venue's own site, not chilecultura.gob.cl",
+        );
+
+        // Same day, same-ish title, but at a DIFFERENT venue — place_name
+        // being part of the fingerprint means this must NOT be treated as
+        // a duplicate of the Balmaceda event. Title deliberately NOT
+        // byte-identical to samePlaceRepost's own (2026-07-28: the first
+        // insertCandidates call above replaced the stored row's title with
+        // that exact string — reusing it here would collide on the
+        // separate, location-blind exact-title dedup signal, which isn't
+        // what this test is exercising).
         const differentPlaceRepost = {
           ...baseCandidate,
-          title: "__test__ LAB#1: «Estado de Posibilidad»",
+          title: "__test__ LAB#1: «Estado de Posibilidad» (Sala B)",
           placeName: "Centro Cultural Otro Lugar",
           openingDatetime: "2026-07-05T20:00:00-04:00",
           sourceUrl: "https://otrositio.cl/__test__/otro-lugar/",
@@ -556,7 +579,210 @@ test(
         await client
           .from("events")
           .delete()
-          .in("title", ["__test__ Estado de Posibilidad: Exposición del Laboratorio I de Artes Visuales", "__test__ LAB#1: «Estado de Posibilidad»"]);
+          .in("title", [
+            "__test__ Estado de Posibilidad: Exposición del Laboratorio I de Artes Visuales",
+            "__test__ LAB#1: «Estado de Posibilidad»",
+            "__test__ LAB#1: «Estado de Posibilidad» (Sala B)",
+          ]);
+      });
+
+      // 2026-07-28: a duplicate isn't always a wash — explicit rule from
+      // the project owner. Two tiers, tested independently here (the test
+      // above already covers tier 2 — original source over aggregator —
+      // as a side effect of a real case; these isolate each tier plus the
+      // true-tie case).
+      await t.test("shouldReplaceExisting tier 1: a confirmed opening date+time always wins, regardless of source — a bare-date candidate never beats one with the real hour", async () => {
+        const { insertCandidates, loadExistingKeys, loadAllRegions } = await import("./run.js");
+
+        // Seeded WITHOUT a confirmed opening (date-only run range) —
+        // itself from the venue's own site (not an aggregator), so a
+        // naive tier-2-only rule would keep it. Tier 1 must still fire.
+        // Same title as the candidate below on purpose — deliberately
+        // sidesteps the location+date fingerprint (whose shape differs
+        // completely between an openingDatetime-only candidate and a
+        // run-range-only one, so it would never connect the two on its
+        // own) to isolate tier 1 specifically via the plain title signal.
+        await client.from("events").insert({
+          title: "__test__ Tier1 Mismo Titulo",
+          freeform_location: "Santiago",
+          place_name: "GAM",
+          run_start_date: "2026-07-01",
+          run_end_date: "2026-08-01",
+          opening_time_confirmed: false,
+          medium_type: "tradicional",
+          sensitivity_tags: [],
+          source: "discovered",
+          source_url: "https://gam.cl/__test__/tier1-seed/",
+          curation_status: "approved",
+          curation_reasoning: "seed",
+        });
+
+        // Even from an AGGREGATOR domain (chilecultura.gob.cl) — tier 1
+        // (has the confirmed hour) must still win over tier 2 (would
+        // otherwise favor the seed, since GAM's own site isn't an
+        // aggregator).
+        const withConfirmedOpening = {
+          title: "__test__ Tier1 Mismo Titulo",
+          description: null,
+          artist: null,
+          runStartDate: null,
+          runEndDate: null,
+          openingDatetime: "2026-07-01T19:00:00-04:00",
+          openingTimeConfirmed: true,
+          mediumType: "tradicional" as const,
+          sensitivityTags: [],
+          curationReasoning: "ok",
+          imageUrl: null,
+          status: "approved" as const,
+          location: "Santiago",
+          placeName: "GAM",
+          dateQuote: null,
+          locationQuote: null,
+          runStartDateQuote: null,
+          runEndDateQuote: null,
+          sourceUrl: "https://chilecultura.gob.cl/events/__test__tier1/",
+        };
+
+        const regions = await loadAllRegions();
+        const seen = await loadExistingKeys();
+        // "now" pinned to the candidate's own opening day — its only date
+        // signal (no run range) — so isCurrentOrUpcoming doesn't filter
+        // it out before the replace logic under test ever runs.
+        const inserted = await insertCandidates([withConfirmedOpening], regions, seen, new Date(2026, 6, 1));
+        assert.equal(inserted, 0, "not a fresh insert — replaced the existing row in place");
+
+        const { data: replaced } = await client
+          .from("events")
+          .select("source_url, opening_time_confirmed")
+          .eq("title", "__test__ Tier1 Mismo Titulo")
+          .single();
+        assert.equal(
+          replaced?.source_url,
+          "https://chilecultura.gob.cl/events/__test__tier1/",
+          "the confirmed-opening candidate replaced the bare-date seed, despite coming from an aggregator",
+        );
+        assert.equal(replaced?.opening_time_confirmed, true);
+
+        await client.from("events").delete().eq("title", "__test__ Tier1 Mismo Titulo");
+      });
+
+      await t.test("shouldReplaceExisting: a candidate WITHOUT a confirmed opening never replaces an existing one that already HAS one", async () => {
+        const { insertCandidates, loadExistingKeys, loadAllRegions } = await import("./run.js");
+
+        // Seeded WITH a confirmed opening, from the venue's own site.
+        // Same title as the candidate below, same reasoning as the
+        // previous test (mismatched fingerprint shapes otherwise).
+        await client.from("events").insert({
+          title: "__test__ Tier1 Reverso Mismo Titulo",
+          freeform_location: "Santiago",
+          place_name: "GAM",
+          opening_datetime: "2026-07-10T19:00:00-04:00",
+          opening_time_confirmed: true,
+          medium_type: "tradicional",
+          sensitivity_tags: [],
+          source: "discovered",
+          source_url: "https://gam.cl/__test__/tier1-reverso/",
+          curation_status: "approved",
+          curation_reasoning: "seed",
+        });
+
+        const bareCandidate = {
+          title: "__test__ Tier1 Reverso Mismo Titulo",
+          description: null,
+          artist: null,
+          runStartDate: "2026-07-01",
+          runEndDate: "2026-08-01",
+          openingDatetime: null,
+          openingTimeConfirmed: false,
+          mediumType: "tradicional" as const,
+          sensitivityTags: [],
+          curationReasoning: "ok",
+          imageUrl: null,
+          status: "approved" as const,
+          location: "Santiago",
+          placeName: "GAM",
+          dateQuote: null,
+          locationQuote: null,
+          runStartDateQuote: null,
+          runEndDateQuote: null,
+          sourceUrl: "https://chilecultura.gob.cl/events/__test__tier1reverso/",
+        };
+
+        const regions = await loadAllRegions();
+        const seen = await loadExistingKeys();
+        const inserted = await insertCandidates([bareCandidate], regions, seen, new Date(2026, 6, 5));
+        assert.equal(inserted, 0, "not a fresh insert — recognized as a duplicate");
+
+        const { data: kept } = await client
+          .from("events")
+          .select("source_url")
+          .eq("title", "__test__ Tier1 Reverso Mismo Titulo")
+          .single();
+        assert.equal(
+          kept?.source_url,
+          "https://gam.cl/__test__/tier1-reverso/",
+          "the existing confirmed-opening row was kept, not overwritten by a bare-date candidate",
+        );
+
+        await client.from("events").delete().eq("title", "__test__ Tier1 Reverso Mismo Titulo");
+      });
+
+      await t.test("shouldReplaceExisting: a true tie (same opening-completeness tier, same aggregator-or-not tier) keeps whatever's already stored", async () => {
+        const { insertCandidates, loadExistingKeys, loadAllRegions } = await import("./run.js");
+
+        // Seeded from ANOTHER aggregator (arteinformado.com) — both sides
+        // will be "aggregator" and both will lack a confirmed opening,
+        // a true tie on both signals.
+        await client.from("events").insert({
+          title: "__test__ Empate Original",
+          freeform_location: "Santiago",
+          place_name: "GAM",
+          run_start_date: "2026-07-01",
+          run_end_date: "2026-08-01",
+          opening_time_confirmed: false,
+          medium_type: "tradicional",
+          sensitivity_tags: [],
+          source: "discovered",
+          source_url: "https://www.arteinformado.com/agenda/f/__test__empate",
+          curation_status: "approved",
+          curation_reasoning: "seed",
+        });
+
+        const tiedCandidate = {
+          title: "__test__ Empate Repost",
+          description: null,
+          artist: null,
+          runStartDate: "2026-07-01",
+          runEndDate: "2026-08-01",
+          openingDatetime: null,
+          openingTimeConfirmed: false,
+          mediumType: "tradicional" as const,
+          sensitivityTags: [],
+          curationReasoning: "ok",
+          imageUrl: null,
+          status: "approved" as const,
+          location: "Santiago",
+          placeName: "GAM",
+          dateQuote: null,
+          locationQuote: null,
+          runStartDateQuote: null,
+          runEndDateQuote: null,
+          sourceUrl: "https://chilecultura.gob.cl/events/__test__empate/",
+        };
+
+        const regions = await loadAllRegions();
+        const seen = await loadExistingKeys();
+        const inserted = await insertCandidates([tiedCandidate], regions, seen, new Date(2026, 6, 5));
+        assert.equal(inserted, 0, "not a fresh insert — recognized as a duplicate");
+
+        const { data: kept } = await client
+          .from("events")
+          .select("title")
+          .eq("source_url", "https://www.arteinformado.com/agenda/f/__test__empate")
+          .single();
+        assert.equal(kept?.title, "__test__ Empate Original", "true tie keeps whatever was already stored, per explicit instruction");
+
+        await client.from("events").delete().eq("title", "__test__ Empate Original");
       });
 
       await t.test("bright-sources pass inserts events and auto-detects the new source domain", async () => {
