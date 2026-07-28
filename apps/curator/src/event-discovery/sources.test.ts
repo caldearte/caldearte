@@ -556,6 +556,84 @@ test("fetchBrightSources against the real KNOWN_SOURCES config for chilecultura.
   assert.equal(item.placeName, "Parque Cultural de Valparaíso", "venue_name mapped via placeNameField");
 });
 
+test("fetchBrightSources against the real KNOWN_SOURCES config for mamchiloe.cl reads the listing page's own full post body (no detail-page fetch needed), same posture as molinomachmar.cl (regression check against production config, added 2026-07-28)", async () => {
+  const mam = KNOWN_SOURCES.find((s) => s.url.includes("mamchiloe.cl"));
+  assert.ok(mam?.extractor?.kind === "articleList");
+  assert.deepEqual(mam.fixedLocation, { location: "Castro", placeName: "Museo de Arte Moderno de Chiloé" });
+  const config = mam.extractor as ArticleListConfig;
+
+  // Trimmed real markup, confirmed 2026-07-28 against the live
+  // /category/hoy/ page — old-school WordPress "Kubrick"-family theme.
+  const html = `
+    <div class="box-1 post-7898 post type-post status-publish format-standard hentry category-hoy category-muestras_mam" id="post-7898">
+      <h2 class="posttitle"><a href="https://www.mamchiloe.cl/2026/02/2026-muestra-anual-38/" rel="bookmark" title="Permanent Link to 2026 MUESTRA ANUAL 38">2026 MUESTRA ANUAL 38</a></h2>
+      <div class="postinfo"><span class="date">Feb 16th, 26</span></div>
+      <div class="entry">
+        <p><b>38ª Muestra Anual del MAM Chiloé, desde el 17 de enero al 17 de junio.</b></p>
+        <p>Este ciclo de exposiciones reúne a cinco pintores.</p>
+        <p><img src="https://www.mamchiloe.cl/wp-content/uploads/2026/02/Chumono-2026.2-1024x768.jpg" alt=""></p>
+      </div>
+    </div>
+    <div id="footer">
+  `;
+
+  const results = await withStubFetch(() => textResponse(html), () => fetchBrightSources([{ url: mam.url, note: mam.note, extractor: config, fixedLocation: mam.fixedLocation }]));
+
+  assert.equal(results.length, 1);
+  assert.equal(results[0].kind, "items");
+  if (results[0].kind !== "items") throw new Error("unreachable");
+  const [item] = results[0].items;
+  assert.equal(item.title, "2026 MUESTRA ANUAL 38");
+  assert.equal(item.sourceUrl, "https://www.mamchiloe.cl/2026/02/2026-muestra-anual-38/");
+  assert.equal(item.rawDateText, "38ª Muestra Anual del MAM Chiloé, desde el 17 de enero al 17 de junio.");
+  assert.equal(item.imageUrl, "https://www.mamchiloe.cl/wp-content/uploads/2026/02/Chumono-2026.2-1024x768.jpg");
+});
+
+test("fetchBrightSources against the real KNOWN_SOURCES config for centronacionaldearte.cultura.gob.cl reads title/link/date from the listing, with a lookahead-based titleLinkRegex since the title lives in a separate <span> before the link (regression check against production config, added 2026-07-28)", async () => {
+  const cnac = KNOWN_SOURCES.find((s) => s.url.includes("centronacionaldearte"));
+  assert.ok(cnac?.extractor?.kind === "articleList");
+  assert.deepEqual(cnac.fixedLocation, { location: "Cerrillos", placeName: "Centro Nacional de Arte Contemporáneo" });
+  const config = cnac.extractor as ArticleListConfig;
+
+  // Trimmed real markup, confirmed 2026-07-28 — the second item has an
+  // extra <h3> kicker between the title <span> and the "+ Más" link,
+  // which the titleLinkRegex must tolerate too (real find: an earlier,
+  // stricter version of the regex only matched items WITHOUT a kicker).
+  const html = `
+    <div class="box1">
+      <img class="img-box1" src="https://centronacionaldearte.cultura.gob.cl/wp-content/uploads/2026/05/expo_estrella1_.jpg" width="385" height="259">
+      <div class="info-box1">
+        <p>miércoles 27 de mayo de 2026</p>
+        <span>ESTRELLA DISTANTE 30 años de coleccionismo estatal en arte contemporáneo</span>
+        <a class="mas" href="https://centronacionaldearte.cultura.gob.cl/estrella-distante-30-anos-de-coleccionismo-estatal-en-arte-contemporaneo/">+ Más</a>
+      </div>
+    </div> <!-- box1 -->
+    <div class="box1">
+      <img class="img-box1" src="https://centronacionaldearte.cultura.gob.cl/wp-content/uploads/2025/10/jsc.jpg" width="385" height="259">
+      <div class="info-box1">
+        <p>jueves 9 de octubre de 2025</p>
+        <span>Francys Alys inaugura exposición "Juegos de niñxs 1999-2022"</span>
+        <h3>Considerado entre los artistas visuales más relevantes de la actualidad</h3>
+        <a class="mas" href="https://centronacionaldearte.cultura.gob.cl/francys-alys-inaugura-exposicion-juegos-de-ninxs-1999-2022-en-centro-nacional-de-arte-contemporaneo/">+ Más</a>
+      </div>
+    </div> <!-- box1 -->
+  `;
+
+  const results = await withStubFetch(() => textResponse(html), () => fetchBrightSources([{ url: cnac.url, note: cnac.note, extractor: config, fixedLocation: cnac.fixedLocation }]));
+
+  assert.equal(results.length, 1);
+  assert.equal(results[0].kind, "items");
+  if (results[0].kind !== "items") throw new Error("unreachable");
+  assert.equal(results[0].items.length, 2);
+  assert.equal(results[0].items[0].title, "ESTRELLA DISTANTE 30 años de coleccionismo estatal en arte contemporáneo");
+  assert.equal(
+    results[0].items[0].sourceUrl,
+    "https://centronacionaldearte.cultura.gob.cl/estrella-distante-30-anos-de-coleccionismo-estatal-en-arte-contemporaneo/",
+  );
+  assert.equal(results[0].items[0].rawDateText, "miércoles 27 de mayo de 2026");
+  assert.equal(results[0].items[1].title, 'Francys Alys inaugura exposición "Juegos de niñxs 1999-2022"', "title extraction tolerates the extra <h3> kicker");
+});
+
 test("mergeBrightSources dedups by domain with the hand-curated list winning", () => {
   const merged = mergeBrightSources([
     // Same domain as a KNOWN_SOURCES entry — must not appear twice.
