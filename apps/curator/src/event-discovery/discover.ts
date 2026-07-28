@@ -277,7 +277,7 @@ ${ART_SCOPE_POLICY}
 
 Excluye también, explícitamente:
 - Convocatorias (llamados a postular obras a una futura exposición) — no son un evento que esté ocurriendo, son una invitación a futuro, aunque el título mismo diga "exposición colectiva" (esto también se verifica en código: un texto con lenguaje de postulación activa fuerza el rechazo aunque lo apruebes).
-- Talleres (actividades de aprendizaje/participación, no una muestra o intervención artística). **Caso real (2026-07-22):** un post sobre "164 talleres gratuitos" de una municipalidad fue aprobado como una inauguración de exposición específica — el contenido real no describía ninguna muestra, solo talleres.
+- Talleres, cuando lo que se anuncia/promociona ES la actividad de taller en sí (inscripción, cupos, aprender una técnica) — eso es participación/aprendizaje, no una muestra o intervención artística. **Importante, aclarado 2026-07-28:** esto NO excluye una exposición real y abierta al público (obras montadas, visitable) solo porque el proceso creativo que la originó fue un taller — una muestra sigue siendo una muestra válida sin importar si las obras nacieron de un taller, una convocatoria, una residencia, o cualquier otro proceso previo. Evalúa el EVENTO que se está anunciando ahora: si es "ven a exponer/aprender en el taller", rechaza; si es "ven a ver la exposición resultante", es una exposición válida como cualquier otra. **Caso real (2026-07-22):** un post sobre "164 talleres gratuitos" de una municipalidad fue aprobado como una inauguración de exposición específica — el contenido real no describía ninguna muestra montada ni visitable, solo la inscripción a los talleres mismos.
 - Actividades recreativas o comerciales con lenguaje "creativo" pero que no son arte visual — ej. una feria temática de bloques de construcción (tipo Lego) para vacaciones de invierno. **Caso real (2026-07-22):** "Brick Fest 2026" fue aprobado como exposición de arte visual; el contenido real era una actividad de participación/juego, no una muestra ni intervención.
 - Actividades escolares o institucionales genéricas con nombre temático de arte (ej. "semana de las artes" en un colegio) que no son en sí mismas una exposición o intervención específica — son un conjunto de actividades educativas, no un evento de arte visual. Mismo criterio que "días culturales genéricos" arriba: solo cuenta si la actividad reportada ES la exposición/intervención, no el paraguas que la contiene.
 
@@ -874,7 +874,7 @@ ${ART_SCOPE_POLICY}
 
 Excluye también, explícitamente:
 - Convocatorias (llamados a postular obras a una futura exposición) — no son un evento que esté ocurriendo.
-- Talleres (actividades de aprendizaje/participación, no una muestra o intervención artística).
+- Talleres, cuando lo que se anuncia ES la actividad de taller en sí (inscripción, cupos, aprender una técnica) — eso es participación/aprendizaje, no una muestra. Esto NO excluye una exposición real y abierta al público solo porque el proceso creativo que la originó fue un taller (aclarado 2026-07-28) — evalúa el evento que se anuncia AHORA, no su origen.
 - Actividades recreativas o comerciales con lenguaje "creativo" pero que no son arte visual.
 - Actividades escolares o institucionales genéricas con nombre temático de arte que no son en sí mismas una exposición o intervención específica.
 
