@@ -1205,11 +1205,192 @@ test(
 
         await client.from("events").delete().eq("title", "__test__ Item Determinista");
       });
+
+      // 2026-07-28: pre-curation dedup — a bright source's item set gets
+      // re-fetched in full every cadence cycle, but until now every item
+      // was re-sent to Haiku regardless of whether we'd already curated
+      // it. Real cost problem once a high-volume mixed-content source
+      // (chilecultura.gob.cl, ~50 items/week nationally) entered the
+      // picture — most of those items repeat week to week.
+      await t.test("a bright-source item whose sourceUrl already has an approved event is skipped BEFORE curation — Haiku is never called for it", async () => {
+        await client.from("bright_source_fetch_state").delete().neq("url", "");
+        const alreadyApprovedUrl = "https://fuente-estructurada.cl/expo-ya-aprobada";
+        await client.from("events").insert({
+          title: "__test__ Ya Aprobado Antes",
+          freeform_location: "Valparaíso",
+          run_start_date: "2027-01-01",
+          run_end_date: "2027-01-31",
+          medium_type: "tradicional",
+          sensitivity_tags: [],
+          source: "discovered",
+          source_url: alreadyApprovedUrl,
+          curation_status: "approved",
+          curation_reasoning: "seed",
+        });
+
+        let haikuCallCount = 0;
+        const countingMessagesClient = {
+          messages: {
+            create: async () => {
+              haikuCallCount += 1;
+              return { content: [{ type: "text", text: fencedJson([]) }], usage: { input_tokens: 0, output_tokens: 0 } };
+            },
+          },
+        };
+
+        await run({
+          messagesClient: countingMessagesClient,
+          searchUnitFn: async () => ({ results: [], credits: 0 }),
+          fetchBrightSourcesFn: async () => [
+            {
+              kind: "items",
+              source: { url: "https://fuente-estructurada.cl/agenda", note: "fuente estructurada", fixedLocation: { location: "Valparaíso", placeName: "Parque Cultural de Valparaíso" } },
+              items: [
+                {
+                  title: "__test__ Ya Aprobado Antes",
+                  sourceUrl: alreadyApprovedUrl,
+                  imageUrl: null,
+                  description: null,
+                  locationHint: null,
+                  rawDateText: "Del 1 al 31 de enero",
+                  structuredStartDate: "2027-01-01",
+                  structuredEndDate: "2027-01-31",
+                },
+              ],
+            },
+          ],
+          now: new Date(2027, 7, 11),
+        });
+
+        assert.equal(haikuCallCount, 0, "the item was fully excluded before ever building a Haiku call");
+
+        await client.from("events").delete().eq("title", "__test__ Ya Aprobado Antes");
+      });
+
+      await t.test("a bright-source item whose sourceUrl was recently rejected is skipped BEFORE curation, but re-curated once the rejection window expires", async () => {
+        await client.from("bright_source_fetch_state").delete().neq("url", "");
+        const recentlyRejectedUrl = "https://fuente-estructurada.cl/expo-ya-rechazada";
+        await client.from("rejected_candidates").upsert(
+          { source_url: recentlyRejectedUrl, title: "__test__ Ya Rechazado Antes", reason: "no es arte visual", created_at: new Date(2027, 7, 1).toISOString() },
+          { onConflict: "source_url" },
+        );
+
+        let haikuCallCount = 0;
+        const countingMessagesClient = {
+          messages: {
+            create: async () => {
+              haikuCallCount += 1;
+              return { content: [{ type: "text", text: fencedJson([]) }], usage: { input_tokens: 0, output_tokens: 0 } };
+            },
+          },
+        };
+        const item = {
+          title: "__test__ Ya Rechazado Antes",
+          sourceUrl: recentlyRejectedUrl,
+          imageUrl: null,
+          description: null,
+          locationHint: null,
+          rawDateText: "Del 1 al 28 de febrero",
+          structuredStartDate: "2027-02-01",
+          structuredEndDate: "2027-02-28",
+        };
+        const source = { url: "https://fuente-estructurada.cl/agenda", note: "fuente estructurada", fixedLocation: { location: "Valparaíso", placeName: "Parque Cultural de Valparaíso" } };
+
+        try {
+          await run({
+            messagesClient: countingMessagesClient,
+            searchUnitFn: async () => ({ results: [], credits: 0 }),
+            fetchBrightSourcesFn: async () => [{ kind: "items" as const, source, items: [item] }],
+            now: new Date(2027, 7, 11), // 10 days after the rejection — well within the 90-day window
+          });
+          assert.equal(haikuCallCount, 0, "still within the rejection window — skipped before curation");
+
+          await client.from("bright_source_fetch_state").delete().neq("url", "");
+          await run({
+            messagesClient: countingMessagesClient,
+            searchUnitFn: async () => ({ results: [], credits: 0 }),
+            fetchBrightSourcesFn: async () => [{ kind: "items" as const, source, items: [item] }],
+            now: new Date(2027, 10, 5), // 96 days after the rejection — past the 90-day window
+          });
+          assert.equal(haikuCallCount, 1, "the rejection window expired — Haiku gets asked again");
+        } finally {
+          await client.from("rejected_candidates").delete().eq("source_url", recentlyRejectedUrl);
+        }
+      });
+
+      await t.test("a rejected candidate with a real sourceUrl is upserted into rejected_candidates, without touching location", async () => {
+        await client.from("bright_source_fetch_state").delete().neq("url", "");
+        const newlyRejectedUrl = "https://fuente-estructurada.cl/expo-recien-rechazada";
+        await client.from("rejected_candidates").delete().eq("source_url", newlyRejectedUrl);
+
+        const rejectingMessagesClient = {
+          messages: {
+            create: async () => ({
+              content: [
+                {
+                  type: "text",
+                  text: fencedJson([
+                    {
+                      index: 0,
+                      status: "rejected",
+                      artist: null,
+                      runStartDate: null,
+                      runEndDate: null,
+                      openingDatetime: null,
+                      openingTimeConfirmed: false,
+                      location: null,
+                      placeName: null,
+                      mediumType: "tradicional",
+                      sensitivityTags: [],
+                      curationReasoning: "Es un taller, no una exposición.",
+                    },
+                  ]),
+                },
+              ],
+              usage: { input_tokens: 10, output_tokens: 5 },
+            }),
+          },
+        };
+
+        try {
+          await run({
+            messagesClient: rejectingMessagesClient,
+            searchUnitFn: async () => ({ results: [], credits: 0 }),
+            fetchBrightSourcesFn: async () => [
+              {
+                kind: "items",
+                source: { url: "https://fuente-estructurada.cl/agenda", note: "fuente estructurada", fixedLocation: { location: "Valparaíso", placeName: "Parque Cultural de Valparaíso" } },
+                items: [
+                  {
+                    title: "__test__ Recien Rechazado",
+                    sourceUrl: newlyRejectedUrl,
+                    imageUrl: null,
+                    description: null,
+                    locationHint: null,
+                    rawDateText: "Del 1 al 28 de marzo",
+                    structuredStartDate: "2027-03-01",
+                    structuredEndDate: "2027-03-28",
+                  },
+                ],
+              },
+            ],
+            now: new Date(2027, 7, 12),
+          });
+
+          const { data: row } = await client.from("rejected_candidates").select("*").eq("source_url", newlyRejectedUrl).maybeSingle();
+          assert.ok(row, "the rejected candidate was recorded");
+          assert.equal(row!.title, "__test__ Recien Rechazado");
+          assert.equal(row!.reason, "Es un taller, no una exposición.");
+        } finally {
+          await client.from("rejected_candidates").delete().eq("source_url", newlyRejectedUrl);
+        }
+      });
     } finally {
       await client.from("events").delete().like("title", "__test__%");
       await client.from("detected_sources").delete().like("url", "%nuevositio.cl%");
       await client.from("bright_source_fetch_state").delete().neq("url", "");
       await client.from("raw_search_results").delete().eq("unit_name", TEST_UNIT);
+      await client.from("rejected_candidates").delete().like("source_url", "%fuente-estructurada.cl%");
       // Surgical, by this suite's stub token counts — not by purpose alone
       // (would race with usage-tracking.test.ts's own rows).
       await client

@@ -1,3 +1,4 @@
+Connecting to db 5432
 export type Json =
   | string
   | number
@@ -310,6 +311,30 @@ export type Database = {
           population?: number | null
           search_frequency?: string | null
           status?: string
+        }
+        Relationships: []
+      }
+      rejected_candidates: {
+        Row: {
+          created_at: string
+          id: string
+          reason: string
+          source_url: string
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          reason: string
+          source_url: string
+          title: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          reason?: string
+          source_url?: string
+          title?: string
         }
         Relationships: []
       }

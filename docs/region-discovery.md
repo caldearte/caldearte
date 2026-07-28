@@ -2109,6 +2109,54 @@ source:**
    honestly instead of leaving the candidate dateless. Reusable for any
    future single-date-event source, not specific to this plugin.
 
+### Pre-curation dedup for bright sources (2026-07-28)
+
+Every bright-source fetch cycle re-pulls its listing in full and, until
+now, re-sent EVERY item to Haiku regardless of whether it had already
+been curated in a previous run — no "already seen, don't ask again"
+step existed anywhere before Haiku. Harmless at the scale of a single
+museum's 2-3 exhibitions, but a real, measured cost problem once
+chilecultura.gob.cl entered the picture (the Ministerio de las
+Culturas' national agenda, ~50 "Artes visuales" events/week — most of
+which repeat week to week, since a listing this size barely changes day
+to day).
+
+**Scope, deliberately limited to bright sources** (not the comuna/
+Tavily path): a comuna search returns genuinely different Tavily
+results run to run, so the repeat problem is much smaller there — and
+it's exactly the code path that already caused a real production crash
+(2026-07-22) from processing a rejected candidate's null `location`
+through code that assumed it was always a string, which is why rejected
+candidates stopped being stored in `events` at all (see
+`run.ts:insertCandidates`'s own comment). Reopening that path for a
+comparatively marginal win wasn't worth it.
+
+**New table, `rejected_candidates`** (migration
+`20260728010000_add_rejected_candidates.sql`) — separate from `events`,
+on purpose: never touches `location`, so it can't reopen the crash class
+above, and stays clear of `events`' public views/RLS, which assume every
+row there is real approved (or pending_review) content. Just
+`source_url` (unique), `title`, `reason`, `created_at`. Rolling ~90-day
+window (`REJECTED_CANDIDATE_WINDOW_MS`), pruned on every run alongside
+`raw_search_results`/expired events — long enough to skip re-curating a
+typically-static listing for a full exhibition cycle, short enough that
+an item whose content genuinely changes eventually gets a fresh look
+instead of being excluded forever.
+
+**Mechanism**: before a bright source's items ever reach
+`curateBrightSourceItems`, they're filtered against
+`excludedSourceUrls` — the union of `seenKeys.sourceUrls` (every
+`source_url` ever approved into `events`, no time limit at all: if it's
+already there, there's never a reason to ask Haiku about it again,
+however old) and `loadRecentlyRejectedSourceUrls(now)` (rejections
+within the rolling window). Computed once per run, reused across every
+due bright source. A source where every item gets filtered out skips
+calling Haiku entirely for that pass. Same mechanism in
+`headless-discovery/run.ts`'s MAVI call. When a candidate comes back
+rejected with a real `sourceUrl`, `insertCandidates` upserts it into
+`rejected_candidates` — same defensive posture as the rest of that
+function (a failure here logs and moves on, never breaks the run).
+
 ## Cost governance
 
 A self-tracked ledger keeps both processes bounded, without depending on
