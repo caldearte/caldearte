@@ -321,6 +321,28 @@ export interface WordpressRestConfig {
   // either field.
   locationField?: string; // e.g. "commune"
   placeNameField?: string; // e.g. "venue_name"
+  // Real bug, found 2026-07-28 running chilecultura.gob.cl in production:
+  // fetchJsonApiSource assumed the response body itself is the items
+  // array (true for parquecultural.cl, the only prior wordpressRestApi
+  // source) — chilecultura.gob.cl's real response instead wraps it in
+  // `{ total_count, page_count, next, previous, results: [...] }`,
+  // crashing with "items.map is not a function". Dotted path (same idiom
+  // as titleField etc.) to the array within the response body; absent
+  // means the body itself is the array, unchanged default behavior.
+  resultsField?: string; // e.g. "results"
+}
+
+// Same traversal as getStringPath below, but returns the raw value
+// instead of requiring it to be a string — used to pull the items array
+// out of a wrapped JSON response body via resultsField.
+export function getPath(obj: unknown, path: string | undefined): unknown {
+  if (!path) return obj;
+  return path.split(".").reduce<unknown>((acc, key) => {
+    if (acc && typeof acc === "object" && key in (acc as Record<string, unknown>)) {
+      return (acc as Record<string, unknown>)[key];
+    }
+    return undefined;
+  }, obj);
 }
 
 function getStringPath(obj: unknown, path: string | undefined): string | undefined {
