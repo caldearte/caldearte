@@ -2353,6 +2353,56 @@ scoped to the exact gap this real case exposed.
 `balmacedartejoven.cl` itself was not added as a source in this pass —
 this was purely the dedup groundwork it exposed the need for.
 
+### New sources: mamchiloe.cl and centronacionaldearte.cultura.gob.cl (2026-07-28)
+
+Two more real, single-fixed-venue museums added, both `articleList`
+sources with `fixedLocation`.
+
+**mamchiloe.cl** (Museo de Arte Moderno de Chiloé, Castro) — genuinely
+low-cadence: MAM mounts ONE flagship "Muestra Anual" exhibition per
+summer season (real archive since 1989, `/category/muestras_mam/`), so
+`/category/hoy/` typically has 0-1 new items per YEAR. Added anyway, same
+zero-marginal-cost reasoning as mallecoescultura.cl/
+museoregionalaysen.gob.cl. Old-school WordPress "Kubrick"-family theme
+(`box-N post-NNNN` blocks) — confirmed the listing page already carries
+the FULL post body (real image, complete curatorial text), same posture
+as molinomachmar.cl: no separate detail-page fetch needed at all.
+`daysRegex` captures the entry's own opening summary line when present
+(e.g. "38ª Muestra Anual del MAM Chiloé, desde el 17 de enero al 17 de
+junio.") — no year in that phrase, but the post title always states it
+(e.g. "2026 MUESTRA ANUAL 38"), which Haiku always sees too; left for
+Haiku to interpret given the volume is too low to justify a dedicated
+year-stitching regex.
+
+**centronacionaldearte.cultura.gob.cl** (Centro Nacional de Arte
+Contemporáneo, Cerrillos) — official Ministerio de las Culturas
+institution, real active "Exposiciones" category (2023 through May 2026
+at review time). Listing gives a real per-item date, but it's the
+PUBLISH date, not the exhibition's own — a `descriptionExtractor`
+recovers the actual detail-page body pre-curation (same posture as
+uchile.cl/mnba.gob.cl before those got deterministic dates), since the
+listing itself carries no prose at all. That body prose states real
+exhibition dates but too inconsistently phrased for a dedicated
+`dateRangeExtractor` (full "Del 4 de noviembre de 2023 al 5 de mayo
+2024" ranges alongside relative ones like "El próximo 30 de mayo a las
+12hrs" with no year in that specific phrase) — left for Haiku, which
+sees the recovered text alongside the nearby publish-date line and can
+resolve the implied year the same way a human reader would.
+`titleLinkRegex` needed a lookahead: the visible title lives in its own
+`<span>`, separate from the `<a class="mas" href="...">+ Más</a>` link
+that carries the URL — the first known-sources.ts config where the link
+text isn't the title itself.
+
+**Real bug found building CNAC** (fixed the same commit, general, not
+CNAC-specific): `lib/description-extract.ts`'s `decodeHtmlEntities` only
+had a named-entity lookup table (`&aacute;` etc.) — CNAC's WordPress
+install encodes every accented character and curly quote as a HEX
+NUMERIC entity instead (`&#xE1;` for á, `&#x2014;` for an em dash), which
+the old decoder silently left undecoded. Fixed generically: numeric
+hex/decimal references now resolve by codepoint before the named-entity
+table gets a turn — benefits any future source using numeric entities,
+not just this one.
+
 ## Cost governance
 
 A self-tracked ledger keeps both processes bounded, without depending on

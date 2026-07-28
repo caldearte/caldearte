@@ -440,6 +440,34 @@ export const KNOWN_SOURCES: KnownSource[] = [
     // data: Haiku isn't even asked (curateBrightSourceItems's needsLocation
     // is suppressed once every item in a batch already has item.location).
   },
+  {
+    url: "https://www.mamchiloe.cl/category/hoy/",
+    note: 'Museo de Arte Moderno de Chiloé (MAM Chiloé), Castro — single fixed venue, confirmed 2026-07-28 against the real "Información práctica" page: "Parque Municipal de Castro s/n, Chiloé". Genuinely low-cadence: MAM mounts ONE flagship "Muestra Anual" exhibition per summer season (real archive since 1989, /category/muestras_mam/), so this listing typically has 0-1 new items per YEAR — added anyway per the same zero-marginal-cost reasoning as mallecoescultura.cl/museoregionalaysen.gob.cl: one fetch costs nothing when empty, and it\'s already wired up the moment the next Muestra Anual is announced. Real markup (old-school WordPress "Kubrick"-family theme, `box-N post-NNNN` blocks, N increments per item) — confirmed against both /category/hoy/ (1 item) and /category/muestras_mam/ (5 items, full archive) — already carries the FULL post body on the listing page itself (title, real image, complete curatorial text), no separate detail-page fetch needed at all, same posture as molinomachmar.cl. `daysRegex` captures the entry\'s own opening summary line (e.g. "38ª Muestra Anual del MAM Chiloé, desde el 17 de enero al 17 de junio.") when present — no year in that specific phrase, but the post title itself always states the year (e.g. "2026 MUESTRA ANUAL 38"), which Haiku always sees too; left for Haiku to interpret rather than a dedicated regex given the volume is too low to be worth it.',
+    lastReviewedAt: "2026-07-28",
+    extractor: {
+      kind: "articleList",
+      blockRegex:
+        /<div class="box-\d+ post-\d+ post type-post status-publish format-standard hentry[^"]*" id="post-\d+">([\s\S]*?)(?=<div class="box-\d+ post-\d+ post type-post status-publish format-standard hentry|<div id="footer")/,
+      titleLinkRegex: /<h2 class="posttitle"><a href="([^"]+)"[^>]*>([^<]*)<\/a><\/h2>/,
+      daysRegex: /<div class="entry">\s*<p><b>([^<]+)<\/b><\/p>/,
+    },
+    fixedLocation: { location: "Castro", placeName: "Museo de Arte Moderno de Chiloé" },
+  },
+  {
+    url: "https://centronacionaldearte.cultura.gob.cl/categoria/programacion/exposiciones/",
+    note: 'Centro Nacional de Arte Contemporáneo (CNAC), Cerrillos — official Ministerio de las Culturas institution, single fixed venue confirmed 2026-07-28 against the real "Información para el visitante" page: "Pedro Aguirre Cerda 6100, Cerrillos, Santiago, Región Metropolitana, Chile". Real, active, dedicated "Exposiciones" category (posts from 2023 through May 2026 at time of review, 4 archive pages, not stale). Listing page gives title/image/a real per-item date (`<p>miércoles 27 de mayo de 2026</p>`, absolute but the PUBLISH date, not necessarily the exhibition\'s own dates) — no prose at all on the listing, unlike MAM Chiloé, so a real `descriptionExtractor` (below) recovers the actual body text from each detail page pre-curation. That body prose states real exhibition dates, but INCONSISTENTLY phrased (sometimes a full "Del 4 de noviembre de 2023 al 5 de mayo 2024" range, sometimes relative — "El próximo 30 de mayo a las 12hrs", "este sábado 27 de septiembre se inauguró" — with no year in that specific phrase, resolvable only via the nearby publish-date context) — too inconsistent for a dedicated dateRangeExtractor regex; left for Haiku to interpret from the recovered description text (which includes the publish-date line) plus the item\'s own rawDateText, same posture as uchile.cl/mnba.gob.cl before those got deterministic dates. `titleLinkRegex` uses a lookahead to capture href from the `<a class="mas" href="...">+ Más</a>` link while the visible title text lives in a separate preceding `<span>` (not inside that same `<a>`, unlike every other articleList source so far).\n\nReal bug found building this (2026-07-28): CNAC\'s WordPress install encodes every accented character as a HEX NUMERIC HTML entity (`&#xE1;` for á, `&#x2014;` for an em dash, etc.), not a named one — `lib/description-extract.ts`\'s `decodeHtmlEntities` only had a named-entity lookup table and silently left numeric references undecoded. Fixed generically (numeric hex/decimal references resolved by codepoint, before the named-entity table), not just for CNAC — any future source using numeric entities benefits too.',
+    lastReviewedAt: "2026-07-28",
+    extractor: {
+      kind: "articleList",
+      blockRegex: /<div class="box1">([\s\S]*?)<\/div> <!-- box1 -->/,
+      titleLinkRegex: /(?=<span>[^<]+<\/span>[\s\S]*?<a class="mas" href="([^"]+)">)<span>([^<]+)<\/span>/,
+      daysRegex: /<p>([^<]+)<\/p>/,
+    },
+    fixedLocation: { location: "Cerrillos", placeName: "Centro Nacional de Arte Contemporáneo" },
+    descriptionExtractor: {
+      pattern: /class="info-box2">([\s\S]*?)<!-- \/Section: contenido-->/,
+    },
+  },
 ];
 
 export function knownSourceDomain(url: string): string {

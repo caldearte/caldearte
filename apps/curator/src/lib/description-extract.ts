@@ -33,8 +33,21 @@ const HTML_ENTITIES: Record<string, string> = {
   lsquo: "‘", rsquo: "’", hellip: "…", mdash: "—", ndash: "–",
 };
 
+// Numeric character references (&#xE1; / &#225;) handled generically
+// rather than added to the named-entity table one by one — real find,
+// centronacionaldearte.cultura.gob.cl (2026-07-28): its WordPress install
+// encodes EVERY accented character and curly quote as a hex numeric
+// reference, not a named one (`&#xF3;` for ó, `&#x2014;` for an em dash,
+// etc.) — the old `/&(#?\w+);/g` pattern matched these too (`#?` allowed
+// the leading `#`) but then looked them up in HTML_ENTITIES by the literal
+// string "#xE1", which was never in the table, so they silently passed
+// through undecoded. Numeric references are resolved first, by codepoint,
+// before the named-entity table gets a chance at whatever's left.
 function decodeHtmlEntities(text: string): string {
-  return text.replace(/&(#?\w+);/g, (full, name: string) => HTML_ENTITIES[name] ?? full);
+  return text
+    .replace(/&#x([0-9A-Fa-f]+);/g, (_, hex: string) => String.fromCodePoint(parseInt(hex, 16)))
+    .replace(/&#(\d+);/g, (_, dec: string) => String.fromCodePoint(parseInt(dec, 10)))
+    .replace(/&(\w+);/g, (full, name: string) => HTML_ENTITIES[name] ?? full);
 }
 
 function stripTagsAndCollapse(html: string): string {

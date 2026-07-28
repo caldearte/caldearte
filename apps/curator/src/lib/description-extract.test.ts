@@ -58,3 +58,32 @@ test("extractDescription returns null when the captured group strips down to emp
   const html = '<div class="text-long"><img src="/solo-imagen.jpg" /></div>';
   assert.equal(extractDescription(html, MNBA_CONFIG), null);
 });
+
+// Real bug, found 2026-07-28 building centronacionaldearte.cultura.gob.cl:
+// its WordPress install encodes every accented character and curly quote
+// as a HEX NUMERIC entity (&#xE1; for á, &#x2014; for an em dash), not a
+// named one — the old decoder only had a named-entity lookup table and
+// silently left these undecoded (a literal "&#xE1;" leaking into what
+// Haiku reads). Fixed generically: numeric hex/decimal references resolve
+// by codepoint before the named-entity table gets a turn.
+const CNAC_CONFIG: DescriptionConfig = {
+  pattern: /class="info-box2">([\s\S]*?)<!-- \/Section: contenido-->/,
+};
+
+test("extractDescription decodes hex numeric HTML entities (&#xE1; etc.), not just named ones (real centronacionaldearte.cultura.gob.cl markup)", () => {
+  const html =
+    'class="info-box2">' +
+    "<p>El pr&#xF3;ximo 30 de mayo a las 12hrs, el Centro Nacional de Arte Contempor&#xE1;neo &#x2014;instituci&#xF3;n p&#xFA;blica&#x2014; inaugura &#x201C;Estrella distante&#x201D;.</p>" +
+    "<!-- /Section: contenido-->";
+
+  const result = extractDescription(html, CNAC_CONFIG);
+  assert.equal(
+    result,
+    "El próximo 30 de mayo a las 12hrs, el Centro Nacional de Arte Contemporáneo —institución pública— inaugura “Estrella distante”.",
+  );
+});
+
+test("extractDescription decodes decimal numeric HTML entities (&#241; etc.) the same way as hex ones", () => {
+  const html = 'class="info-box2">' + "<p>Dise&#241;o y curadur&#237;a.</p>" + "<!-- /Section: contenido-->";
+  assert.equal(extractDescription(html, CNAC_CONFIG), "Diseño y curaduría.");
+});
