@@ -1,6 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
+  enrichBrightSourceItemDescriptions,
   enrichCandidates,
   extractJsonLdImage,
   extractOgImage,
@@ -414,6 +415,63 @@ test("enrichCandidates does not attempt description recovery for a source with n
   await enrichCandidates([candidate], fetchImpl);
 
   assert.equal(candidate.description, null);
+});
+
+// Real production bug, found 2026-07-28: museodeancud.gob.cl's listing
+// page has no prose at all, only the detail page does — description
+// recovery only ran AFTER curation (enrichCandidates, above), so Haiku
+// judged this exact exhibition on title/dates/place alone and correctly
+// rejected it for "sin descripción... no es posible confirmar que sea una
+// exposición real". enrichBrightSourceItemDescriptions runs BEFORE
+// curation instead, against the real known-sources.ts config for this
+// domain (mirrors the description-recovery test above, but pre-curation).
+test("enrichBrightSourceItemDescriptions recovers description from the detail page BEFORE curation, for a source with descriptionExtractor configured", async () => {
+  const item = {
+    sourceUrl: "https://www.museodeancud.gob.cl/cartelera/exposicion-temporal-pinceladas-de-esperanza-los-colores-del-alma",
+    description: null as string | null,
+  };
+
+  const fetchImpl: FetchLike = async () => ({
+    ok: true,
+    status: 200,
+    text: async () => '<div class="text-long"><p>Exposición colectiva guiada por César de la Puente Ruiz, con obras de creadoras y creadores de la comunidad.</p></div>',
+  });
+
+  await enrichBrightSourceItemDescriptions([item], fetchImpl);
+
+  assert.equal(item.description, "Exposición colectiva guiada por César de la Puente Ruiz, con obras de creadoras y creadores de la comunidad.");
+});
+
+test("enrichBrightSourceItemDescriptions does not overwrite a description the item already has (e.g. molinomachmar.cl's listing prose, or MAVI's activity content)", async () => {
+  const item = {
+    sourceUrl: "https://www.museodeancud.gob.cl/cartelera/exposicion-ya-con-descripcion",
+    description: "Ya tiene descripción real desde el listado.",
+  };
+
+  const fetchImpl: FetchLike = async () => ({
+    ok: true,
+    status: 200,
+    text: async () => '<div class="text-long"><p>Otro texto que no debería usarse.</p></div>',
+  });
+
+  await enrichBrightSourceItemDescriptions([item], fetchImpl);
+
+  assert.equal(item.description, "Ya tiene descripción real desde el listado.");
+});
+
+test("enrichBrightSourceItemDescriptions does nothing for a source with no descriptionExtractor configured — never fetches", async () => {
+  const item = { sourceUrl: "https://portaldisc.com/expo-1", description: null as string | null };
+
+  let fetchCalled = false;
+  const fetchImpl: FetchLike = async () => {
+    fetchCalled = true;
+    return { ok: true, status: 200, text: async () => "" };
+  };
+
+  await enrichBrightSourceItemDescriptions([item], fetchImpl);
+
+  assert.equal(fetchCalled, false);
+  assert.equal(item.description, null);
 });
 
 // 2026-07-24: a real aggregator (arteinformado.com, uchile.cl,

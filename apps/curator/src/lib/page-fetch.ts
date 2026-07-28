@@ -321,3 +321,50 @@ export async function enrichCandidates<T extends EnrichCandidateLike>(
     await Promise.all(batch.map((c) => processCandidate(c, fetchImpl, referenceDate, regions)));
   }
 }
+
+interface EnrichItemDescriptionLike {
+  sourceUrl: string;
+  description: string | null;
+}
+
+// Pre-curation description recovery — Haiku needs REAL prose to judge
+// scope (is this genuinely a visual-art exhibition, or a workshop/
+// promotional post/convocatoria?), but many bright-source LISTING pages
+// never carry description text at all (only title/dates/place); the real
+// prose only lives on the event's own detail page (known-sources.ts's
+// descriptionExtractor). Fetching that AFTER curation (enrichCandidates,
+// above) only ever helps an ALREADY-approved candidate — real production
+// case, found 2026-07-28 running museodeancud.gob.cl: Haiku correctly
+// rejected "Pinceladas de esperanza: los colores del alma" for "sin
+// descripción... no es posible confirmar que sea una exposición real" —
+// a genuine, currently-running exhibition, rejected purely because Haiku
+// was never shown its real description in the first place.
+//
+// Runs BEFORE curateBrightSourceItems, for every item still in the
+// curation batch (not just the ones that will end up approved) — a real
+// cost/time tradeoff (an eventually-approved candidate's detail page may
+// get fetched twice: once here for description, once more by
+// enrichCandidates for image/opening-time/location) but Haiku judging
+// real prose instead of a bare title matters more than saving one fetch.
+export async function enrichBrightSourceItemDescriptions<T extends EnrichItemDescriptionLike>(
+  items: T[],
+  fetchImpl: FetchLike = fetch,
+): Promise<void> {
+  const eligible = items.filter((item) => item.description === null && findDescriptionConfig(item.sourceUrl));
+  for (let i = 0; i < eligible.length; i += ENRICHMENT_CONCURRENCY) {
+    const batch = eligible.slice(i, i + ENRICHMENT_CONCURRENCY);
+    await Promise.all(
+      batch.map(async (item) => {
+        const descriptionConfig = findDescriptionConfig(item.sourceUrl);
+        if (!descriptionConfig) return;
+        const html = await fetchDetailHtml(item.sourceUrl, fetchImpl);
+        if (!html) return;
+        const description = extractDescription(html, descriptionConfig);
+        if (description) {
+          console.log(`[page-fetch] pre-curation: recovered description from ${item.sourceUrl}`);
+          item.description = description;
+        }
+      }),
+    );
+  }
+}

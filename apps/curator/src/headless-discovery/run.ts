@@ -24,7 +24,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { recordUsage, getConfigNumber, getCurrentMonthSpend } from "../lib/usage-tracking.js";
 import { estimateCostUsd } from "../lib/pricing.js";
-import { enrichCandidates, type FetchLike as PageFetchLike } from "../lib/page-fetch.js";
+import { enrichCandidates, enrichBrightSourceItemDescriptions, type FetchLike as PageFetchLike } from "../lib/page-fetch.js";
 import { fetchMaviActivities, type MaviActivity } from "../lib/mavi-headless.js";
 import { sendHeadlessRunSummaryEmail, type HeadlessRunSummary } from "../lib/notify.js";
 import { curateBrightSourceItems, currentMonthLabel, EVENT_DISCOVERY_MODEL, type MessagesClient } from "../event-discovery/discover.js";
@@ -118,6 +118,11 @@ export async function run(deps: HeadlessRunDeps = {}): Promise<void> {
     }
 
     if (newItems.length > 0) {
+      // Same pre-curation description recovery as event-discovery/run.ts's
+      // bright-source loop — a no-op here in practice (MAVI's description
+      // always comes from activity.content already), kept for consistency
+      // in case that ever changes.
+      await enrichBrightSourceItemDescriptions(newItems, pageFetchFn);
       const { candidates, usage } = await curateBrightSourceItems(messagesClient, newItems, currentMonthLabel(now), {
         fixedLocation: MAVI_FIXED_LOCATION,
       });

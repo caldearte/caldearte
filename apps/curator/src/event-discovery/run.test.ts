@@ -1318,6 +1318,55 @@ test(
         }
       });
 
+      // Real production bug, found 2026-07-28 (museodeancud.gob.cl): a
+      // genuine exhibition got rejected because Haiku never saw its real
+      // description — this source's listing has no prose, only the detail
+      // page does, and description recovery used to only run AFTER
+      // curation (enrichCandidates), which only ever helps an already-
+      // approved candidate. Fixed by enrichBrightSourceItemDescriptions
+      // running BEFORE curateBrightSourceItems — this test confirms the
+      // block Haiku actually receives contains the real recovered
+      // description, not a bare title/date/place with no prose at all.
+      await t.test("an item with no description in the listing gets it recovered from the detail page BEFORE the Haiku block is built", async () => {
+        await client.from("bright_source_fetch_state").delete().neq("url", "");
+        let capturedBlock = "";
+        const capturingMessagesClient = {
+          messages: {
+            create: async (params: { messages: Array<{ content: string }> }) => {
+              capturedBlock = params.messages[0].content;
+              return { content: [{ type: "text", text: fencedJson([]) }], usage: { input_tokens: 0, output_tokens: 0 } };
+            },
+          },
+        };
+
+        await run({
+          messagesClient: capturingMessagesClient,
+          searchUnitFn: async () => ({ results: [], credits: 0 }),
+          pageFetchFn: (async () => new Response("<div class=\"text-long\"><p>Descripción real recuperada antes de curar.</p></div>", { status: 200 })) as typeof fetch,
+          fetchBrightSourcesFn: async () => [
+            {
+              kind: "items",
+              source: { url: "https://www.museodeancud.gob.cl/cartelera", note: "fuente real, para probar el fix de descripción pre-curación" },
+              items: [
+                {
+                  title: "__test__ Sin Descripcion En Listado",
+                  sourceUrl: "https://www.museodeancud.gob.cl/cartelera/expo-sin-descripcion",
+                  imageUrl: null,
+                  description: null,
+                  locationHint: null,
+                  rawDateText: "Del 1 al 30 de abril",
+                  structuredStartDate: "2027-04-01",
+                  structuredEndDate: "2027-04-30",
+                },
+              ],
+            },
+          ],
+          now: new Date(2027, 7, 13),
+        });
+
+        assert.match(capturedBlock, /Descripción real recuperada antes de curar\./, "the block sent to Haiku includes the description recovered from the detail page, not just title/date/place");
+      });
+
       await t.test("a rejected candidate with a real sourceUrl is upserted into rejected_candidates, without touching location", async () => {
         await client.from("bright_source_fetch_state").delete().neq("url", "");
         const newlyRejectedUrl = "https://fuente-estructurada.cl/expo-recien-rechazada";
