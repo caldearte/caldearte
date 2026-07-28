@@ -43,3 +43,29 @@ test("isLikelySameTitle: the exact real trio from the ARTEPUERTO audit finding i
 test("isLikelySameTitle: identical titles are trivially similar", () => {
   assert.equal(isLikelySameTitle("Dejar Atrás", "Dejar Atrás"), true);
 });
+
+// Real case, found 2026-07-28 evaluating balmacedartejoven.cl as a
+// candidate bright source: the same real exhibition is titled completely
+// differently on chilecultura.gob.cl (a full descriptive title) vs. the
+// venue's own site (a terse internal lab code name) — low Jaccard (2 of 7
+// total distinct words) but high overlap (2 of the shorter title's only 3
+// words), which the overlap-coefficient branch added alongside Jaccard
+// now catches.
+test("isLikelySameTitle flags a terse internal-code title that's mostly a SUBSET of a longer descriptive one, even when Jaccard alone would miss it (real case: chilecultura.gob.cl vs. balmacedartejoven.cl)", () => {
+  assert.equal(
+    isLikelySameTitle(
+      "Estado de Posibilidad: Exposición del Laboratorio I de Artes Visuales",
+      "LAB#1: «Estado de Posibilidad»",
+    ),
+    true,
+  );
+});
+
+// The overlap-coefficient branch must stay gated on shared >= 2, same as
+// Jaccard — otherwise a title that's ENTIRELY a subset of another (overlap
+// = 1.0) would qualify off a single shared proper noun, re-opening exactly
+// the ARTEPUERTO false-positive class the shared >= 2 floor exists to
+// prevent.
+test("isLikelySameTitle's overlap-coefficient branch still requires 2+ shared words — a single-word title fully contained in another doesn't qualify alone", () => {
+  assert.equal(isLikelySameTitle("ARTEPUERTO", "Feria ARTEPUERTO de Verano en Valparaíso"), false);
+});

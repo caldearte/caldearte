@@ -81,7 +81,22 @@ export function isLikelySameTitle(a: string, b: string): boolean {
   if (wordsA.size === 0 || wordsB.size === 0) return false;
 
   const shared = [...wordsA].filter((w) => wordsB.has(w));
+  if (shared.length < 2) return false;
+
   const union = new Set([...wordsA, ...wordsB]).size;
   const jaccard = shared.length / union;
-  return shared.length >= 2 && jaccard >= 0.6;
+  // Overlap coefficient (shared / the SMALLER title's word count) is a
+  // second, independent way to pass, alongside the original Jaccard
+  // check — added for a real case (2026-07-28): the same real exhibition
+  // titled "Estado de Posibilidad: Exposición del Laboratorio I de Artes
+  // Visuales" on chilecultura.gob.cl and "LAB#1: «Estado de Posibilidad»"
+  // on the venue's own site share only 2 of 7 total distinct words
+  // (Jaccard ≈ 0.29, well under 0.6), but those 2 words are 2 of the
+  // terser title's only 3 (overlap ≈ 0.67) — a much better signal when
+  // one source uses an internal code name and another a full descriptive
+  // title for the exact same event. Still gated on shared >= 2 above,
+  // same as the original check, so a single shared proper noun (the
+  // ARTEPUERTO case below) never qualifies on its own.
+  const overlap = shared.length / Math.min(wordsA.size, wordsB.size);
+  return jaccard >= 0.6 || overlap >= 0.6;
 }
