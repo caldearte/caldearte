@@ -94,9 +94,26 @@ Closed out the initial project brief, moved into a dedicated repo.
   `/privacidad` page, RLS tightened to column-restricted views
   (`events_public`/`regions_public`), and IP-geolocation-based default city
   detection (own comuna → same región → Santiago if outside Chile).
-- Still open within Phase 1a: running a real manual audit of the curation
-  policy against the production data that's now accumulated (flagged in
-  [risks.md](risks.md)).
+- Still open within Phase 1a — the punch list before pushing real
+  distribution/marketing, decided 2026-07-28 after a UX audit of the live
+  site plus a PO/BA read on promotion-readiness:
+  - Running a real manual audit of the curation policy against the
+    production data that's now accumulated (flagged in
+    [risks.md](risks.md)).
+  - UX fixes found auditing the live site: the value-prop tagline ("Calendario
+    de arte curado por inteligencia humana potenciada por IA") only lives in
+    the `<meta description>` and the footer — nothing states it above the
+    fold; the mobile header drops the vigente date-range entirely (`Header.tsx`'s
+    `headerSummaryMobile` vs. desktop's `headerSummary` — desktop shows "27 de
+    JULIO al 2 de AGOSTO," mobile shows neither); the "Curatoria" menu item
+    lands on a page whose title leads with "Privacidad" before "curatoría."
+  - Retomar el newsletter (weekly digest, opt-in per comuna, double
+    opt-in via Resend — full flow already designed in an earlier planning
+    session, deliberately deferred 2026-07-21 until post-image-fix data
+    quality was confirmed, which it now has been) — this is the core
+    loop's first retention mechanism, worth shipping before or alongside
+    any real promotion push, otherwise one-time traffic has no reason to
+    come back on its own.
 
 ## Phase 1b — Inbound-mail flows
 
@@ -143,20 +160,87 @@ Two distinct flows, both needing Resend's *inbound* email (someone emails
   not a copy of `es-CL.ts`'s phrasing — see the header comment in
   [es-CL.ts](../apps/web/src/i18n/es-CL.ts) for the full note.
 
-## Phase 2 — Geo/temporal personalization (low priority, pending real signal)
+## Phase 2 — Community
 
-- User city detection: **implemented and live** (2026-07-17) — comuna
-  selection (manual + auto-detected) already covers most of the practical
-  need this phase was meant to solve.
-- PostGIS-based distance ranking on top of that would be a marginal
-  refinement, not a missing essential — deprioritized until there's a real
-  usage signal it's actually needed (e.g. users in a large región
-  complaining events far within their own comuna's región feel
-  undifferentiated).
-- Geocoding mechanism also **not yet designed**: the original plan cached
-  lat/lng once per venue on the (now-retired) `venues` table; with location
-  as freeform text per event, there's no venue entity to cache coordinates
-  against, and this needs a rethink if this phase is ever picked back up.
+**Renamed 2026-07-28** — this phase used to be "geo/temporal
+personalization"; that content moved to Phase 5 (still low priority, no
+real signal it's needed).
+
+Caldearte today is a one-way calendar: we find events, curate them, show
+them. The strategic bet is that the real differentiator isn't the
+calendar itself (any aggregator can list dates) — it's becoming the place
+where Chile's visual-art community leaves its own trace: what they went
+to, what they thought, eventually what they'd buy. Positioning reference:
+Letterboxd for film, Untappd for beer — the curated database is the entry
+point, the community layer built on top is what people actually come
+back for.
+
+Five sub-phases, each a deliberate prerequisite for the next — none of
+this gets built speculatively all at once; each stage needs real usage
+signal before the next one is worth the investment, same "measure before
+building infra" discipline the rest of this project has followed.
+
+- **2.1 — Accounts + private "quiero ir" / "ya la vi" per exposición.**
+  Needs real login, not just cookies (the existing city/family-mode
+  preference cookies aren't enough for cross-session, potentially
+  cross-device state). **Decided 2026-07-28**: Google OAuth via
+  [Auth.js](https://authjs.dev), staged — Google-only first (fastest to
+  ship, zero email-deliverability risk, no new inbound-email complexity:
+  a magic-link alternative, if added later, is outbound-only, same
+  "link to our own GET endpoint" pattern as the newsletter's double
+  opt-in, NOT Phase 1b's inbound-parsing complexity). JWT session
+  strategy (no separate sessions table) keeps the schema to just `users`
+  + an `event_marks` table (`user_id`, `event_id`, `mark_type`: `quiero_ir`
+  | `visitada`). "Quiero ir" is still fundamentally calendar logic — a
+  personal to-do list; "ya la vi" is the one that starts being genuinely
+  new, and gives the "Expos anteriores" archive a second, personal reason
+  to exist beyond SEO.
+- **2.2 — Public profile.** "Lo que Fulano ha visto" — tests the social/
+  identity angle cheaply, before any moderation surface exists.
+- **2.3 — Rating + short review per exposición.** First real
+  user-generated content Caldearte has to moderate — scoped narrowly
+  (text only, tied to an exposición we already curated) to keep the
+  moderation surface small while this gets validated.
+- **2.4 — Per-artwork detail, self-served by the venue/artist, not
+  crowdsourced from visitors.** Two real problems ruled out visitor-
+  submitted photos: (1) no source publishes structured per-artwork data
+  (title/image/price/legend) for a temporary exhibition the way sources
+  already do for the exhibition itself, so this can't be extracted
+  top-down like Event Discovery does — it has to be entered by whoever
+  actually has the rights to it; (2) a visitor's photo of someone else's
+  artwork is a real copyright exposure, not just a moderation-quality
+  question. Self-service by the venue/artist solves both: they own the
+  rights, and they're the authoritative source for the real title/price/
+  legend. **Only works once 2.1–2.3 have built a real audience** — a
+  self-service upload tool with no eyeballs behind it has no reason for a
+  gallery to bother. Needs a lightweight identity-verification step
+  before a venue can claim/enrich "their" exposición (domain-based proof
+  of control — same idea as Google Business Profile's verification, not
+  the payment-based KYC below) — free for any venue that verifies,
+  regardless of size, so a street intervention or a community space has
+  the same access as an established museum. Verification/access to
+  participate is never gated behind payment — that would recreate the
+  same big-venue-vs-small-venue inequity the curation policy already
+  deliberately avoids; only optional extras (visibility, analytics) get
+  monetized, per 2.5.
+- **2.5 — Commission on sales, only when a sale actually happens.**
+  Nobody pays to list or participate — only a venue that sells something
+  through Caldearte pays a percentage, same alignment-of-incentive logic
+  as a real gallery's own commission model. Two shapes, deliberately
+  starting with the cheaper one: **(a) referral model first** — Caldearte
+  connects buyer↔venue ("quiero comprar esta obra"), the actual sale and
+  payment happen off-platform, the venue self-reports and pays commission
+  after the fact (weaker enforcement, but zero payment infrastructure to
+  build — the right way to validate whether demand for this even exists).
+  **(b) Full marketplace later, only if (a) validates demand** — Caldearte
+  processes payment directly (Webpay/Mercado Pago), takes its cut,
+  forwards the rest — real payment infrastructure, refund/dispute policy,
+  likely needs real legal/accounting input before launch, a genuinely
+  different category of build than anything else in this roadmap. A
+  buyer's personal "adquisiciones" (collection) can ship as a lightweight
+  self-declared mark (same mechanism as "quiero ir"/"ya la vi") well
+  before any of this — an automatic, verified version only makes sense
+  once real transactions actually flow through (b).
 
 ## Phase 3 — Image pipeline, hardening
 
@@ -188,4 +272,20 @@ Two distinct flows, both needing Resend's *inbound* email (someone emails
 
 ## Phase 5 — Parked / optional, doesn't block anything above
 
-- Exploring monetization, only if there's organic traction.
+- **Geo/temporal personalization** (moved here 2026-07-28, formerly Phase
+  2) — user city detection is already implemented and live (2026-07-17,
+  manual + auto-detected comuna selection), which already covers most of
+  the practical need this was meant to solve. PostGIS-based distance
+  ranking on top would be a marginal refinement, not a missing essential
+  — deprioritized until there's a real usage signal (e.g. users in a
+  large región complaining events far within their own comuna's región
+  feel undifferentiated). Geocoding mechanism also not yet designed: the
+  original plan cached lat/lng once per venue on the (now-retired)
+  `venues` table; with location as freeform text per event, there's no
+  venue entity to cache coordinates against — needs a rethink if this is
+  ever picked back up.
+- **Monetization, generally** — no longer an empty line item: Phase 2.5
+  (commission on venue-facilitated sales) is the concrete hypothesis
+  already in motion, gated on Phase 2.1–2.4 building real community usage
+  first. Anything beyond that stays unexplored until there's organic
+  traction to build on.
