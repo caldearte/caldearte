@@ -25,7 +25,7 @@ import { estimateCostUsd } from "../lib/pricing.js";
 import { knownSourceDomain, isAggregatorSource } from "../lib/known-sources.js";
 import { KNOWN_LOW_QUALITY_SOURCE_DOMAINS } from "../lib/known-exclusions.js";
 import { matchRegionId, type RegionLike } from "../lib/locations.js";
-import { normalizeLocation, isLikelySameTitle } from "../lib/event-filters.js";
+import { normalizeLocation, isLikelySameTitle, placeNamesLikelySame } from "../lib/event-filters.js";
 import { enrichCandidates, enrichBrightSourceItemDetails, isSocialMediaUrl, type FetchLike as PageFetchLike } from "../lib/page-fetch.js";
 import { rehostImage, type RehostImageFn } from "../lib/image-rehost.js";
 import { sendRunSummaryEmail, type RunSummary, type CandidateSummary } from "../lib/notify.js";
@@ -241,13 +241,49 @@ function locationDateKey(
 // part of the fingerprint — a real exhibition run is defined by its whole
 // span, not just when it opens; using only runStartDate (as this used to)
 // would treat two different-length runs starting the same day as one.
+//
+// Deliberately does NOT include placeName in the BUCKET key (real bug,
+// found 2026-07-29 running a manual curation audit): 8 exhibitions at the
+// same physical MAC - Quinta Normal venue were inserted TWICE, once from
+// arteinformado.com ("MAC - Museo de Arte Contemporáneo") and once from
+// uchile.cl ("MAC - Quinta Normal") — same real venue, worded differently
+// per source. Requiring an EXACT placeName string match to even land in
+// the same bucket meant isLikelySameTitle never got a chance to compare
+// "Vestiario" against "Exposición 'Vestiario' en el Museo de Arte
+// Contemporáneo" — the exact case this fuzzy fallback exists for.
+// placeName isn't dropped from the dedup decision entirely, though — see
+// placeNamesLikelySame below, checked alongside title similarity at the
+// call site. Broadening this bucket to comuna+date alone, with no
+// placeName check anywhere, would reopen the false-merge case placeName
+// was added to prevent in the first place — this file's own existing
+// test seeds exactly that scenario (two DIFFERENT venues sharing a
+// comuna, a near-identical title, same day — must NOT merge) and would
+// fail without placeNamesLikelySame's veto. locationDateKey (above) keeps
+// placeName in its STRICT exact-match tier unchanged.
+// Prefers the run-date RANGE over openingDatetime when both are present —
+// the opposite priority from locationDateKey's strict fingerprint above.
+// Real bug, found 2026-07-29 building the MAC - Quinta Normal fix itself:
+// the two real duplicate rows had IDENTICAL run_start_date/run_end_date
+// ("2026-04-25"/"2026-08-23"), but only the arteinformado.com one also had
+// a confirmed openingDatetime — with openingDatetime prioritized first
+// (the original logic here), the two rows' dateOnly fingerprints came out
+// as "2026-04-24" (opening day) vs "2026-04-25|2026-08-23" (run range):
+// different buckets, so placeNamesLikelySame's fix above still couldn't
+// have caught them without this too. The run-date range is the more
+// stable, more-often-present signal for "the same exhibition" (an
+// opening is one specific moment WITHIN a run, a narrower concept) — only
+// fall back to openingDatetime when a candidate genuinely has no run
+// range at all (a bare inauguración with no separately-stated exhibition
+// span, allowed by enforceDateCompleteness).
 function locationDateOnlyKey(
   location: string,
-  placeName: string | null,
   c: Pick<EventCandidate, "openingDatetime" | "runStartDate" | "runEndDate">,
 ): string {
-  const dateOnly = c.openingDatetime ? c.openingDatetime.slice(0, 10) : `${c.runStartDate ?? ""}|${c.runEndDate ?? ""}`;
-  return `${normalizeLocation(location)}|${normalizeTitle(placeName ?? "")}|${dateOnly}`;
+  const dateOnly =
+    c.runStartDate && c.runEndDate
+      ? `${c.runStartDate}|${c.runEndDate}`
+      : (c.openingDatetime?.slice(0, 10) ?? `${c.runStartDate ?? ""}|${c.runEndDate ?? ""}`);
+  return `${normalizeLocation(location)}|${dateOnly}`;
 }
 
 // Carries enough of an already-stored event's own data for
@@ -257,6 +293,7 @@ function locationDateOnlyKey(
 export interface ExistingEventInfo {
   id: string;
   title: string;
+  placeName: string | null;
   sourceUrl: string | null;
   openingDatetime: string | null;
   openingTimeConfirmed: boolean;
@@ -271,12 +308,15 @@ export interface SeenKeys {
   // the SAME real event with different exact hours ("19:00" vs "19:30")
   // and different exact title wording — the location+datetime fingerprint
   // misses on the time difference, and title/sourceUrl obviously differ
-  // too. Bucketed by the coarser date-only key; within a bucket, a new
-  // candidate is a duplicate if its title is a close match (see
-  // isLikelySameTitle) to ANY existing title already in that bucket —
-  // deliberately conservative (both a Jaccard threshold AND a minimum
-  // shared-word count) since a false merge here silently drops a real,
-  // distinct event, which is worse than an occasional missed duplicate.
+  // too. Bucketed by the coarser date-only key (comuna + date, no
+  // placeName — see locationDateOnlyKey's own doc comment); within a
+  // bucket, a new candidate is a duplicate if BOTH its title (see
+  // isLikelySameTitle) AND its placeName (see placeNamesLikelySame,
+  // 2026-07-29, deliberately more lenient) are a close match to the SAME
+  // existing entry already in that bucket — deliberately conservative on
+  // the title side (both a Jaccard threshold AND a minimum shared-word
+  // count) since a false merge here silently drops a real, distinct
+  // event, which is worse than an occasional missed duplicate.
   titlesByLocationDateOnly: Map<string, ExistingEventInfo[]>;
 }
 
@@ -294,6 +334,7 @@ export async function loadExistingKeys(): Promise<SeenKeys> {
   const toInfo = (row: (typeof rows)[number]): ExistingEventInfo => ({
     id: row.id,
     title: row.title,
+    placeName: row.place_name,
     sourceUrl: row.source_url,
     openingDatetime: row.opening_datetime,
     openingTimeConfirmed: row.opening_time_confirmed,
@@ -301,7 +342,7 @@ export async function loadExistingKeys(): Promise<SeenKeys> {
 
   const titlesByLocationDateOnly = new Map<string, ExistingEventInfo[]>();
   for (const row of rows) {
-    const key = locationDateOnlyKey(row.freeform_location, row.place_name, {
+    const key = locationDateOnlyKey(row.freeform_location, {
       openingDatetime: row.opening_datetime,
       runStartDate: row.run_start_date,
       runEndDate: row.run_end_date,
@@ -398,12 +439,12 @@ export async function insertCandidates(
 
     const titleKey = normalizeTitle(c.title);
     const locDateKey = locationDateKey(c.location, c.placeName, c);
-    const locDateOnlyKey = locationDateOnlyKey(c.location, c.placeName, c);
+    const locDateOnlyKey = locationDateOnlyKey(c.location, c);
     const titleMatch = seen.titles.get(titleKey);
     const sourceUrlMatch = c.sourceUrl !== null ? seen.sourceUrls.get(c.sourceUrl) : undefined;
     const locationDateMatch = seen.locationDates.get(locDateKey);
-    const fuzzyMatch = (seen.titlesByLocationDateOnly.get(locDateOnlyKey) ?? []).find((existing) =>
-      isLikelySameTitle(existing.title, c.title),
+    const fuzzyMatch = (seen.titlesByLocationDateOnly.get(locDateOnlyKey) ?? []).find(
+      (existing) => isLikelySameTitle(existing.title, c.title) && placeNamesLikelySame(existing.placeName, c.placeName),
     );
     const existingMatch = titleMatch ?? sourceUrlMatch ?? locationDateMatch ?? fuzzyMatch;
 
@@ -476,6 +517,7 @@ export async function insertCandidates(
       const updatedInfo: ExistingEventInfo = {
         id: existingMatch.id,
         title: c.title,
+        placeName: c.placeName,
         sourceUrl: c.sourceUrl,
         openingDatetime: c.openingDatetime,
         openingTimeConfirmed: c.openingTimeConfirmed,
@@ -530,6 +572,7 @@ export async function insertCandidates(
     const freshInfo: ExistingEventInfo = {
       id: insertedRow.id,
       title: c.title,
+      placeName: c.placeName,
       sourceUrl: c.sourceUrl,
       openingDatetime: c.openingDatetime,
       openingTimeConfirmed: c.openingTimeConfirmed,

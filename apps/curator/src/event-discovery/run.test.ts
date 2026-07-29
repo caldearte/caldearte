@@ -586,6 +586,70 @@ test(
           ]);
       });
 
+      // Real bug, found 2026-07-29 running a manual curation audit against
+      // production: 8 exhibitions at the same physical MAC - Quinta Normal
+      // venue were inserted TWICE, once from arteinformado.com
+      // ("MAC - Museo de Arte Contemporáneo") and once from uchile.cl
+      // ("MAC - Quinta Normal") — same real venue, worded differently per
+      // source, so the old exact-placeName-match bucket never even
+      // compared their titles. Reproduces that exact shape: the seeded row
+      // (arteinformado.com-style, confirmed opening) must win over the
+      // uchile.cl-style candidate (no confirmed opening, different
+      // placeName spelling, different title wording) via REPLACE-then-skip
+      // — not a fresh second insert.
+      await t.test("cross-source dedup catches the same venue named differently by two sources (real MAC - Quinta Normal case)", async () => {
+        const { insertCandidates, loadExistingKeys, loadAllRegions } = await import("./run.js");
+
+        await client.from("events").insert({
+          title: "__test__ Vestiario",
+          freeform_location: "Santiago",
+          place_name: "MAC - Museo de Arte Contemporáneo",
+          run_start_date: "2026-04-25",
+          run_end_date: "2026-08-23",
+          opening_datetime: "2026-04-24T19:00:00-04:00",
+          opening_time_confirmed: true,
+          medium_type: "tradicional",
+          sensitivity_tags: [],
+          source: "discovered",
+          source_url: "https://www.arteinformado.com/agenda/f/__test__vestiario-243860",
+          curation_status: "approved",
+          curation_reasoning: "seed",
+        });
+
+        const candidate = {
+          title: '__test__ Exposición "Vestiario" en el Museo de Arte Contemporáneo',
+          description: null,
+          artist: null,
+          runStartDate: "2026-04-25",
+          runEndDate: "2026-08-23",
+          openingDatetime: null,
+          openingTimeConfirmed: false,
+          mediumType: "tradicional" as const,
+          sensitivityTags: [],
+          curationReasoning: "ok",
+          imageUrl: null,
+          status: "approved" as const,
+          location: "Santiago",
+          placeName: "MAC - Quinta Normal",
+          dateQuote: null,
+          locationQuote: null,
+          runStartDateQuote: null,
+          runEndDateQuote: null,
+          sourceUrl: "https://uchile.cl/agenda/__test__/exposicion-vestiario-en-el-museo-de-arte-contemporaneo",
+        };
+
+        const regions = await loadAllRegions();
+        const seen = await loadExistingKeys();
+        const inserted = await insertCandidates([candidate], regions, seen, new Date(2026, 3, 25));
+        assert.equal(inserted, 0, "recognized as a duplicate of the seeded row — not a fresh second insert");
+
+        const { data: rows } = await client.from("events").select("title, place_name, source_url").eq("place_name", "MAC - Museo de Arte Contemporáneo").ilike("title", "__test__%");
+        assert.equal(rows?.length, 1, "still exactly one row for this exhibition, not two");
+        assert.equal(rows?.[0]?.title, "__test__ Vestiario", "seeded row's confirmed opening wins (tier 1) — the candidate never had a confirmed opening, so it doesn't replace, just gets skipped");
+
+        await client.from("events").delete().ilike("title", "__test__%Vestiario%");
+      });
+
       // 2026-07-28: a duplicate isn't always a wash — explicit rule from
       // the project owner. Two tiers, tested independently here (the test
       // above already covers tier 2 — original source over aggregator —

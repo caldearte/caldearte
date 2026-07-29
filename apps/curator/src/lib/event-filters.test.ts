@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { normalizeLocation, isLikelySameTitle } from "./event-filters.js";
+import { normalizeLocation, isLikelySameTitle, placeNamesLikelySame } from "./event-filters.js";
 
 test("normalizeLocation collapses a trailing ', Chile'/region suffix — real bug, found 2026-07-20: the same festival got inserted 3x in one run because 'Valparaíso, Chile' vs 'Valparaíso' produced different dedup fingerprints", () => {
   assert.equal(normalizeLocation("Valparaíso, Chile"), normalizeLocation("Valparaíso"));
@@ -68,4 +68,30 @@ test("isLikelySameTitle flags a terse internal-code title that's mostly a SUBSET
 // prevent.
 test("isLikelySameTitle's overlap-coefficient branch still requires 2+ shared words — a single-word title fully contained in another doesn't qualify alone", () => {
   assert.equal(isLikelySameTitle("ARTEPUERTO", "Feria ARTEPUERTO de Verano en Valparaíso"), false);
+});
+
+// Real case, found 2026-07-29 auditing production data: 8 exhibitions at
+// the same physical MAC - Quinta Normal venue got inserted twice, once
+// from arteinformado.com ("MAC - Museo de Arte Contemporáneo") and once
+// from uchile.cl ("MAC - Quinta Normal") — same venue, worded differently.
+test("placeNamesLikelySame flags the same venue named differently by two sources, once generic venue-type words are stripped", () => {
+  assert.equal(placeNamesLikelySame("MAC - Museo de Arte Contemporáneo", "MAC - Quinta Normal"), true);
+});
+
+test("placeNamesLikelySame requires a real single-word match — not two names that just both mention a generic venue-type word", () => {
+  assert.equal(placeNamesLikelySame("Museo Regional de Ancud", "Museo Nacional de Bellas Artes"), false);
+});
+
+test("placeNamesLikelySame does NOT flag two genuinely different venues that happen to share a comuna — the exact case run.ts's own dedup test guards against", () => {
+  assert.equal(placeNamesLikelySame("Balmaceda Arte Joven", "Centro Cultural Otro Lugar"), false);
+});
+
+test("placeNamesLikelySame treats a null/empty placeName on either side as 'no signal' rather than a veto", () => {
+  assert.equal(placeNamesLikelySame(null, "MAC - Quinta Normal"), true);
+  assert.equal(placeNamesLikelySame("MAC - Quinta Normal", null), true);
+  assert.equal(placeNamesLikelySame(null, null), true);
+});
+
+test("placeNamesLikelySame: identical placeName strings trivially match", () => {
+  assert.equal(placeNamesLikelySame("Balmaceda Arte Joven", "Balmaceda Arte Joven"), true);
 });

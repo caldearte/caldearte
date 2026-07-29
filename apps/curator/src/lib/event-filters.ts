@@ -69,15 +69,17 @@ const GENERIC_TITLE_WORDS = new Set([
 // borderline Jaccard score on very short titles, both risk merging two
 // genuinely different events at the same venue on the same day, which is a
 // worse outcome than an occasional missed duplicate).
+function tokenizeSignificantWords(title: string): Set<string> {
+  return new Set(
+    stripAccents(title.toLowerCase())
+      .split(/[^a-z0-9]+/)
+      .filter((w) => w.length > 2 && !/^\d+$/.test(w) && !GENERIC_TITLE_WORDS.has(w)),
+  );
+}
+
 export function isLikelySameTitle(a: string, b: string): boolean {
-  const tokenize = (title: string) =>
-    new Set(
-      stripAccents(title.toLowerCase())
-        .split(/[^a-z0-9]+/)
-        .filter((w) => w.length > 2 && !/^\d+$/.test(w) && !GENERIC_TITLE_WORDS.has(w)),
-    );
-  const wordsA = tokenize(a);
-  const wordsB = tokenize(b);
+  const wordsA = tokenizeSignificantWords(a);
+  const wordsB = tokenizeSignificantWords(b);
   if (wordsA.size === 0 || wordsB.size === 0) return false;
 
   const shared = [...wordsA].filter((w) => wordsB.has(w));
@@ -99,4 +101,31 @@ export function isLikelySameTitle(a: string, b: string): boolean {
   // ARTEPUERTO case below) never qualifies on its own.
   const overlap = shared.length / Math.min(wordsA.size, wordsB.size);
   return jaccard >= 0.6 || overlap >= 0.6;
+}
+
+// Used by run.ts's fuzzy cross-run dedup ALONGSIDE isLikelySameTitle, not
+// instead of it — the coarse comuna+date bucket (locationDateOnlyKey,
+// 2026-07-29) deliberately no longer requires placeName to match exactly
+// to even be compared (that used to hide real duplicates whose sources
+// spell the same venue differently — see run.ts's own comment). But
+// comuna+date+similar-title alone isn't safe either: two DIFFERENT venues
+// in the same comuna can have a near-identical title on the same day
+// (this file's own dedup test seeds exactly that case) — placeName still
+// has to weigh in, just leniently instead of requiring an exact string.
+// Deliberately a LOWER bar than isLikelySameTitle (>=1 shared significant
+// word, not >=2): venue names are short ("MAC - Quinta Normal" / "MAC -
+// Museo de Arte Contemporáneo" share only "mac" once generic words like
+// "museo"/"centro"/"galeria" are stripped — the same GENERIC_TITLE_WORDS
+// list already covers common venue-type nouns), so requiring 2 shared
+// words the way title-matching does would make this check useless for
+// exactly the short-venue-name case it exists for. A null/empty
+// placeName on either side is treated as "no signal" (permissive true)
+// rather than a veto — same posture as `location`'s own coarser
+// comuna-only fallback before place_name existed at all.
+export function placeNamesLikelySame(a: string | null, b: string | null): boolean {
+  if (!a || !b) return true;
+  const wordsA = tokenizeSignificantWords(a);
+  const wordsB = tokenizeSignificantWords(b);
+  if (wordsA.size === 0 || wordsB.size === 0) return true;
+  return [...wordsA].some((w) => wordsB.has(w));
 }
