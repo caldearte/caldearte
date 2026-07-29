@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { esCL } from "@/i18n/es-CL";
 import {
   buildRegionMetaByCityId,
@@ -139,14 +139,54 @@ function CityRow({ city, counts, selected, active, onSelect, onHover }: CityRowP
   );
 }
 
+// Same stroke-based style as the existing card icons (EventCardBase.tsx's
+// DirectionsGlyph et al.): 16x16, viewBox 24, currentColor, round caps —
+// so these read as part of the same icon family, not a one-off import.
+function LocationPinIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <path
+        d="M12 21s7-6.13 7-11.5A7 7 0 0 0 5 9.5C5 14.87 12 21 12 21Z"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <circle cx="12" cy="9.5" r="2.25" stroke="currentColor" strokeWidth="2" />
+    </svg>
+  );
+}
+
+// Clock-with-backwards-arrow "history" glyph — same convention Google
+// Maps/most apps use for "recent" lists, distinct from a plain clock so it
+// doesn't read as an opening-time indicator (already used elsewhere in
+// the app for that).
+function RecentHistoryIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <path
+        d="M3 11a9 9 0 1 1 2.6 6.3"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path d="M3 5v5h5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M12 8v4.5l3 2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
 // A collapsible section header — used both for a real admin región (with
 // its roman-numeral badge) and for the two quick-pick sections above the
-// región list (no badge). One shared component so both look and behave
-// identically: same chevron, same expand/collapse click target, same
-// keyboard-nav row.
+// región list (with a small icon instead — a location pin / history glyph
+// — so they read as shortcuts rather than a third geographic level). One
+// shared component so both look and behave identically: same chevron,
+// same expand/collapse click target, same keyboard-nav row.
 interface SectionRowProps {
   title: string;
   numeral?: string | null;
+  icon?: ReactNode;
   navKey: string;
   expanded: boolean;
   active: boolean;
@@ -155,7 +195,7 @@ interface SectionRowProps {
   onHover: () => void;
 }
 
-function SectionRow({ title, numeral, navKey, expanded, active, totalCount, onToggle, onHover }: SectionRowProps) {
+function SectionRow({ title, numeral, icon, navKey, expanded, active, totalCount, onToggle, onHover }: SectionRowProps) {
   return (
     <button
       id={regionOptionId(navKey)}
@@ -170,6 +210,7 @@ function SectionRow({ title, numeral, navKey, expanded, active, totalCount, onTo
       {numeral && (
         <span className="text-[10px] font-semibold text-muted-gray bg-picker-subtle rounded px-1.5 py-0.5 shrink-0">{numeral}</span>
       )}
+      {icon && <span className="text-muted-gray shrink-0">{icon}</span>}
       <span className="flex-grow text-sm font-medium text-heading-gray">{title}</span>
       <span className="text-[13px] text-picker-placeholder">{totalCount}</span>
     </button>
@@ -522,6 +563,7 @@ export default function CityPickerPanel({
             <div className="border-b border-picker-border/30">
               <SectionRow
                 title={esCL.cityPickerCurrentLocation}
+                icon={<LocationPinIcon />}
                 navKey={CURRENT_LOCATION_KEY}
                 expanded={isRegionExpanded(CURRENT_LOCATION_KEY)}
                 active={activeEntry?.type === "region" && activeEntry.key === CURRENT_LOCATION_KEY}
@@ -547,6 +589,7 @@ export default function CityPickerPanel({
             <div className="border-b border-picker-border/30">
               <SectionRow
                 title={esCL.cityPickerRecentlyVisited}
+                icon={<RecentHistoryIcon />}
                 navKey={RECENT_CITIES_KEY}
                 expanded={isRegionExpanded(RECENT_CITIES_KEY)}
                 active={activeEntry?.type === "region" && activeEntry.key === RECENT_CITIES_KEY}
