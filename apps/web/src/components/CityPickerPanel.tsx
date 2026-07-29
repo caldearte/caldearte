@@ -440,37 +440,46 @@ export default function CityPickerPanel({
 
       <div id="city-picker-listbox" role="listbox" aria-label={esCL.chooseCity} className="flex-grow overflow-y-auto px-4 pb-10">
         <div className="max-w-[680px] mx-auto">
-          {currentLocationCity && (
-            <div className="pb-2 border-b border-picker-border/30">
-              <p className="pl-[52px] pr-3 pt-2 pb-1 text-[11px] font-semibold text-muted-gray uppercase tracking-wide">
-                {esCL.cityPickerCurrentLocation}
-              </p>
-              <CityRow
-                city={currentLocationCity}
-                counts={cityCounts[currentLocationCity.id] ?? ZERO_COUNTS}
-                selected={currentLocationCity.id === pendingCityId}
-                active={activeEntry?.type === "city" && activeEntry.city.id === currentLocationCity.id}
-                onSelect={(c) => setPendingCityId(c.id)}
-                onHover={() => setActiveIndex(navIndexByKey.get(`city:${currentLocationCity.id}`) ?? 0)}
-              />
-            </div>
-          )}
-          {recentCities.length > 0 && (
-            <div className="pb-2 border-b border-picker-border/30">
-              <p className="pl-[52px] pr-3 pt-2 pb-1 text-[11px] font-semibold text-muted-gray uppercase tracking-wide">
-                {esCL.cityPickerRecentlyVisited}
-              </p>
-              {recentCities.map((c) => (
-                <CityRow
-                  key={c.id}
-                  city={c}
-                  counts={cityCounts[c.id] ?? ZERO_COUNTS}
-                  selected={c.id === pendingCityId}
-                  active={activeEntry?.type === "city" && activeEntry.city.id === c.id}
-                  onSelect={(city) => setPendingCityId(city.id)}
-                  onHover={() => setActiveIndex(navIndexByKey.get(`city:${c.id}`) ?? 0)}
-                />
-              ))}
+          {(currentLocationCity || recentCities.length > 0) && (
+            // Sticky, not scrolled-away: pinned to the top of this scroll
+            // container so it stays visible while the región list scrolls
+            // underneath — "deberia quedar fijo y visible siempre" (user
+            // report, 2026-07-29). bg-white so scrolled-under content
+            // doesn't show through.
+            <div className="sticky top-0 z-10 bg-white">
+              {currentLocationCity && (
+                <div className="pb-2 border-b border-picker-border/30">
+                  <p className="pl-[52px] pr-3 pt-2 pb-1 text-[11px] font-semibold text-muted-gray uppercase tracking-wide">
+                    {esCL.cityPickerCurrentLocation}
+                  </p>
+                  <CityRow
+                    city={currentLocationCity}
+                    counts={cityCounts[currentLocationCity.id] ?? ZERO_COUNTS}
+                    selected={currentLocationCity.id === pendingCityId}
+                    active={activeEntry?.type === "city" && activeEntry.city.id === currentLocationCity.id}
+                    onSelect={(c) => setPendingCityId(c.id)}
+                    onHover={() => setActiveIndex(navIndexByKey.get(`city:${currentLocationCity.id}`) ?? 0)}
+                  />
+                </div>
+              )}
+              {recentCities.length > 0 && (
+                <div className="pb-2 border-b border-picker-border/30">
+                  <p className="pl-[52px] pr-3 pt-2 pb-1 text-[11px] font-semibold text-muted-gray uppercase tracking-wide">
+                    {esCL.cityPickerRecentlyVisited}
+                  </p>
+                  {recentCities.map((c) => (
+                    <CityRow
+                      key={c.id}
+                      city={c}
+                      counts={cityCounts[c.id] ?? ZERO_COUNTS}
+                      selected={c.id === pendingCityId}
+                      active={activeEntry?.type === "city" && activeEntry.city.id === c.id}
+                      onSelect={(city) => setPendingCityId(city.id)}
+                      onHover={() => setActiveIndex(navIndexByKey.get(`city:${c.id}`) ?? 0)}
+                    />
+                  ))}
+                </div>
+              )}
             </div>
           )}
           {!hasAnyCityResult ? (
@@ -541,7 +550,7 @@ export default function CityPickerPanel({
         </div>
       </div>
 
-      <div className="shrink-0 border-t border-picker-border px-6 pt-3.5 pb-4 flex items-center justify-between gap-4">
+      <div className="shrink-0 border-t border-picker-border px-6 pt-3.5 pb-4 grid grid-cols-[1fr_auto_1fr] items-center gap-4">
         <div className="hidden md:flex items-center gap-6 text-[11px] text-picker-placeholder">
           <span>{esCL.cityPickerHints.navigate}</span>
           <span>{esCL.cityPickerHints.select}</span>
@@ -551,7 +560,7 @@ export default function CityPickerPanel({
           ref={exploreButtonRef}
           onClick={() => onExplore(pendingCityId, pendingWindowMode)}
           onKeyDown={handleExploreKeyDown}
-          className="ml-auto inline-flex items-center gap-2 bg-heading-gray text-white rounded-lg px-5 py-2.5 text-sm font-semibold"
+          className="col-start-2 inline-flex items-center gap-2 bg-heading-gray text-white rounded-lg px-5 py-2.5 text-sm font-semibold"
         >
           {esCL.explorar} →
         </button>

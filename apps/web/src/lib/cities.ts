@@ -164,6 +164,27 @@ export function resolveDefaultCityId(
   return DEFAULT_CITY_ID;
 }
 
+// The city picker's "Tu ubicación actual" row needs the visitor's TRUE own
+// comuna, not resolveDefaultCityId's "nearby active city" substitute — real
+// bug found 2026-07-29: a visitor in La Reina (which had zero events at the
+// time) was shown "Tu ubicación actual: Santiago", because
+// resolveDefaultCityId's own region-mate fallback (tier 3 above) silently
+// swapped in a different comuna. That fallback is correct FOR ITS PURPOSE
+// (picking a reasonable default city to show), but wrong for a row that
+// claims to report where the visitor actually is. No hasEvents gate and no
+// substitution here — returns the real comuna id if recognized, else null
+// (outside Chile, no geo header, or an unrecognized comuna name) so the
+// picker can hide the row entirely rather than guess.
+export function resolveGeoCityId(
+  geoCity: string | undefined,
+  geoCountry: string | undefined,
+  metaByCityId: Map<string, RegionMeta>,
+): string | null {
+  if (geoCountry !== "CL" || !geoCity) return null;
+  const ownId = slugify(geoCity);
+  return metaByCityId.has(ownId) ? ownId : null;
+}
+
 // Narrows citiesWithEvents' output for the "Arte en todas partes" carousel
 // (real gap found 2026-07-20: with all 346 comunas seeded, the horizontal
 // scroll got too long). Same "misma región -> aledaña" idea
