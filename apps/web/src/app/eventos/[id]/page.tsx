@@ -2,12 +2,13 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getSupabaseClient } from "@/lib/supabase-client";
-import { fetchApprovedEvents, truncateDescription } from "@/lib/events";
+import { fetchApprovedEvents, truncateDescription, resolveCityId, displayNameForCity } from "@/lib/events";
 import { extractDomain, resolveCardImage } from "@/lib/image-source";
 import { dateOnlyFromIso, todayInSantiago } from "@/lib/date";
 import { esCL } from "@/i18n/es-CL";
 import InauguracionCard from "@/components/InauguracionCard";
 import ExpoCard from "@/components/ExpoCard";
+import EventCityLink from "@/components/EventCityLink";
 import Footer from "@/components/Footer";
 
 export const revalidate = 3600; // matches the archive/sitemap revalidate window
@@ -69,11 +70,17 @@ export default async function EventPage({ params }: { params: Promise<PageParams
   // next step instead of a dead end.
   const description = truncateDescription(event.description, 500);
 
+  const cityId = resolveCityId(event);
+  const cityName = displayNameForCity(event);
+
   return (
     <main className="min-h-screen w-full bg-white px-4 py-8 md:px-[61px] max-w-[680px] mx-auto">
-      <Link href="/" className="text-sm text-muted-gray">
-        ← {esCL.appName}
-      </Link>
+      <div className="flex items-center justify-between gap-2">
+        <Link href="/" className="text-sm text-muted-gray shrink-0">
+          ← {esCL.appName}
+        </Link>
+        <EventCityLink cityId={cityId} cityName={cityName} />
+      </div>
 
       {/* Real bug, found 2026-07-23: this used to check only whether
           openingDatetime was set at all, regardless of whether it had

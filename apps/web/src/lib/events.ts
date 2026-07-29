@@ -136,12 +136,15 @@ export async function fetchApprovedEvents(
 // from before region_id existed, or whose location text didn't match any
 // seeded region. cityIdFromRegionName always succeeds (no whitelist to
 // fall outside of — see cities.ts), so regionName wins whenever present.
-function resolveCityId(event: EventRecord): string {
+// Exported for the event detail page (apps/web/src/app/eventos/[id]/page.tsx)
+// — the "back to this comuna" link needs the exact same id a click on this
+// event elsewhere in the app would already resolve to, not a fresh guess.
+export function resolveCityId(event: EventRecord): string {
   if (event.regionName) return cityIdFromRegionName(event.regionName);
   return deriveCityId(event.freeformLocation);
 }
 
-function displayNameForCity(event: EventRecord): string {
+export function displayNameForCity(event: EventRecord): string {
   if (event.regionName) return event.regionName;
   const segments = event.freeformLocation.split(",").map((s) => s.trim());
   return segments[segments.length - 1] || event.freeformLocation;

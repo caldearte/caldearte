@@ -4,7 +4,7 @@ import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { esCL } from "@/i18n/es-CL";
 import { cityById } from "@/lib/cities";
-import { CITY_COOKIE, FAMILY_MODE_COOKIE, WINDOW_MODE_COOKIE } from "@/lib/cookies";
+import { CITY_COOKIE, FAMILY_MODE_COOKIE, WINDOW_MODE_COOKIE, setCookie } from "@/lib/cookies";
 import { fmtShort } from "@/lib/date";
 import type { CityCounts, EventRecord, RegionMeta, WindowMode } from "@/lib/events";
 import Header from "./Header";
@@ -34,10 +34,6 @@ interface CalendarViewProps {
   nextEvent: EventRecord | null; // empty-state fallback, beyond "today"
   regions: RegionMeta[]; // for the city picker's región grouping
   archiveHref: string | null; // "Expos anteriores" row target in MenuDrawer — null when no month is archived yet
-}
-
-function setCookie(name: string, value: string): void {
-  document.cookie = `${name}=${encodeURIComponent(value)}; path=/; max-age=${60 * 60 * 24 * 365}`;
 }
 
 export default function CalendarView({
