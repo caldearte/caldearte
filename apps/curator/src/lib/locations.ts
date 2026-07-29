@@ -166,6 +166,20 @@ export interface RegionLike {
 // Shared by matchRegionId (returns the id, for the events.region_id FK)
 // and extractComunaName below (returns the canonical name, for a clean
 // display string) — same segment-by-segment matching either way.
+// Real gap found 2026-07-29, via a user report: INE's official seeded name
+// for comuna XI's capital is "Coihaique", but the comuna's own
+// institutions (Museo Regional de Aysén's own address text, most media)
+// universally write "Coyhaique" — an exact-match-only comparison never
+// resolves that, silently leaving region_id null and dropping the event
+// into the frontend's "otro" bucket, invisible under its real región.
+// Checked only as a FALLBACK after a direct match fails (below), so a
+// region matching exactly still wins on its own name — this never
+// overrides a real, distinct comuna. Keys/values are pre-normalized
+// (stripAccents+lowercase) to match how they're looked up.
+const COMUNA_ALIASES: Record<string, string> = {
+  coyhaique: "coihaique",
+};
+
 function findMatchingRegion(location: string | null | undefined, regions: RegionLike[]): RegionLike | null {
   if (!location) return null;
   const normalized = stripAccents(location.toLowerCase());
@@ -173,6 +187,11 @@ function findMatchingRegion(location: string | null | undefined, regions: Region
   for (const segment of segments) {
     const match = regions.find((r) => stripAccents(r.name.toLowerCase()) === segment);
     if (match) return match;
+    const alias = COMUNA_ALIASES[segment];
+    if (alias) {
+      const aliasMatch = regions.find((r) => stripAccents(r.name.toLowerCase()) === alias);
+      if (aliasMatch) return aliasMatch;
+    }
   }
   return null;
 }
