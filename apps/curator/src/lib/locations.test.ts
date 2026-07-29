@@ -55,6 +55,17 @@ test("matchRegionId ignores which search unit produced the candidate — matches
   assert.equal(matchRegionId("Centro Cultural Recoleta, Buenos Aires, Argentina", REGIONS), null);
 });
 
+// Real production gap, found 2026-07-29: the seeded comuna is officially
+// named "Coihaique" (INE spelling), but real sources (Museo Regional de
+// Aysén's own address, most media) universally write "Coyhaique" — an
+// exact match never resolves that, leaving region_id null and the event
+// falling into "otro" instead of grouping under its real región.
+test("matchRegionId resolves the popular 'Coyhaique' spelling to the officially-seeded 'Coihaique' region", () => {
+  const regionsWithCoihaique = [...REGIONS, { id: "r-coihaique", name: "Coihaique" }];
+  assert.equal(matchRegionId("Museo Regional de Aysén, Coyhaique", regionsWithCoihaique), "r-coihaique");
+  assert.equal(matchRegionId("Coihaique", regionsWithCoihaique), "r-coihaique", "the official spelling still matches directly");
+});
+
 // --- extractComunaName: pulls a clean comuna name out of a longer,
 // messier address blob (2026-07-24, see page-fetch.ts's locationExtractor
 // — a real aggregator bright source's detail page states its own address,
