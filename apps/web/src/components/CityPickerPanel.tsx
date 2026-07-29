@@ -9,7 +9,6 @@ import {
   matchesQuery,
   cityById,
   OTHER_CITY,
-  type AdminRegionGroup,
   type City,
   type CountryGroup,
 } from "@/lib/cities";
@@ -77,6 +76,14 @@ function regionOptionId(key: string): string {
   return `region-option-${key}`;
 }
 
+// Quick-pick sections (below) are collapsible siblings of the "Chile"
+// group, not a separate widget — same expand/collapse machinery
+// (expandedRegions/toggleRegion/isRegionExpanded) via these two keys, in
+// their own "quickpick::" namespace so they can never collide with a real
+// región's `regionKey`.
+const CURRENT_LOCATION_KEY = "quickpick::current-location";
+const RECENT_CITIES_KEY = "quickpick::recent";
+
 type NavEntry = { type: "region"; key: string } | { type: "city"; city: City };
 
 interface CityRowProps {
@@ -124,8 +131,14 @@ function CityRow({ city, counts, selected, active, onSelect, onHover }: CityRowP
   );
 }
 
-interface RegionRowProps {
-  region: AdminRegionGroup;
+// A collapsible section header — used both for a real admin región (with
+// its roman-numeral badge) and for the two quick-pick sections above the
+// región list (no badge). One shared component so both look and behave
+// identically: same chevron, same expand/collapse click target, same
+// keyboard-nav row.
+interface SectionRowProps {
+  title: string;
+  numeral?: string | null;
   navKey: string;
   expanded: boolean;
   active: boolean;
@@ -134,7 +147,7 @@ interface RegionRowProps {
   onHover: () => void;
 }
 
-function RegionRow({ region, navKey, expanded, active, totalCount, onToggle, onHover }: RegionRowProps) {
+function SectionRow({ title, numeral, navKey, expanded, active, totalCount, onToggle, onHover }: SectionRowProps) {
   return (
     <button
       id={regionOptionId(navKey)}
@@ -147,12 +160,10 @@ function RegionRow({ region, navKey, expanded, active, totalCount, onToggle, onH
       }`}
     >
       <span className="text-[11px] text-picker-placeholder w-3 shrink-0">{expanded ? "▾" : "▸"}</span>
-      {region.adminRegionNumeral && (
-        <span className="text-[10px] font-semibold text-muted-gray bg-picker-subtle rounded px-1.5 py-0.5 shrink-0">
-          {region.adminRegionNumeral}
-        </span>
+      {numeral && (
+        <span className="text-[10px] font-semibold text-muted-gray bg-picker-subtle rounded px-1.5 py-0.5 shrink-0">{numeral}</span>
       )}
-      <span className="flex-grow text-sm font-medium text-heading-gray">{region.adminRegionName}</span>
+      <span className="flex-grow text-sm font-medium text-heading-gray">{title}</span>
       <span className="text-[13px] text-picker-placeholder">{totalCount}</span>
     </button>
   );
@@ -206,8 +217,15 @@ export default function CityPickerPanel({
       // which never mounts/opens this panel at all) should still show up.
       setRecentCityIds(getRecentCityIds());
       const selectedMeta = metaByCityId.get(cityId);
+      // Quick-pick sections start expanded too — collapsing them is a
+      // manual per-open choice, not a default (see the user's own framing:
+      // "todas con chevron de colapsables" — collapsible, not collapsed).
       setExpandedRegions(
-        selectedMeta?.adminRegionName ? new Set([regionKey(selectedMeta.country, selectedMeta.adminRegionName)]) : new Set(),
+        new Set([
+          CURRENT_LOCATION_KEY,
+          RECENT_CITIES_KEY,
+          ...(selectedMeta?.adminRegionName ? [regionKey(selectedMeta.country, selectedMeta.adminRegionName)] : []),
+        ]),
       );
     }
   }
@@ -260,15 +278,17 @@ export default function CityPickerPanel({
   // after the events + search filters above — no separate pass needed.
   const groups: CountryGroup[] = useMemo(() => groupCitiesByRegion(filteredCities, metaByCityId), [filteredCities, metaByCityId]);
 
-  // Quick-pick rows, pinned above the región list — "save the time of
-  // finding where you are" (the user's own framing, 2026-07-29). Hidden
+  // Quick-pick sections, listed above the "Chile" group as ordinary
+  // collapsible siblings (not sticky/pinned — a sticky version felt wrong
+  // in practice, see the user's 2026-07-29 follow-up) — "save the time of
+  // finding where you are" (the user's own original framing). Hidden
   // while actively searching: the intent has already shifted to "find a
   // specific place", not "jump back to somewhere familiar", and hiding
   // them sidesteps ever needing to de-duplicate against the filtered
   // results below (a quick-pick city still also appears in its normal
   // alphabetical spot in the full región list — that's fine, same
-  // "pinned shortcut + still browsable normally" pattern ride-hailing/
-  // delivery apps already use for exactly this).
+  // "shortcut + still browsable normally" pattern ride-hailing/delivery
+  // apps already use for exactly this).
   const currentLocationCity: City | null =
     !isSearching && actualCityId && actualCityId !== cityId && actualCityId !== OTHER_CITY.id
       ? cityById(actualCityId, cityNames)
@@ -282,6 +302,7 @@ export default function CityPickerPanel({
             .map((id) => cityById(id, cityNames)),
     [isSearching, recentCityIds, cityId, actualCityId, cityNames],
   );
+  const recentCitiesCounts = useMemo(() => countsFor(recentCities, cityCounts), [recentCities, cityCounts]);
 
   // While actively searching, every región left standing (i.e. containing
   // a match) shows fully expanded regardless of manual toggle state — "si
@@ -297,8 +318,16 @@ export default function CityPickerPanel({
   // how many regions/comunas are actually visible right now.
   const navEntries = useMemo(() => {
     const entries: NavEntry[] = [];
-    if (currentLocationCity) entries.push({ type: "city", city: currentLocationCity });
-    for (const city of recentCities) entries.push({ type: "city", city });
+    if (currentLocationCity) {
+      entries.push({ type: "region", key: CURRENT_LOCATION_KEY });
+      if (isSearching || expandedRegions.has(CURRENT_LOCATION_KEY)) entries.push({ type: "city", city: currentLocationCity });
+    }
+    if (recentCities.length > 0) {
+      entries.push({ type: "region", key: RECENT_CITIES_KEY });
+      if (isSearching || expandedRegions.has(RECENT_CITIES_KEY)) {
+        for (const city of recentCities) entries.push({ type: "city", city });
+      }
+    }
     for (const group of groups) {
       for (const region of group.regions) {
         const key = regionKey(group.country, region.adminRegionName);
@@ -440,18 +469,19 @@ export default function CityPickerPanel({
 
       <div id="city-picker-listbox" role="listbox" aria-label={esCL.chooseCity} className="flex-grow overflow-y-auto px-4 pb-10">
         <div className="max-w-[680px] mx-auto">
-          {(currentLocationCity || recentCities.length > 0) && (
-            // Sticky, not scrolled-away: pinned to the top of this scroll
-            // container so it stays visible while the región list scrolls
-            // underneath — "deberia quedar fijo y visible siempre" (user
-            // report, 2026-07-29). bg-white so scrolled-under content
-            // doesn't show through.
-            <div className="sticky top-0 z-10 bg-white">
-              {currentLocationCity && (
-                <div className="pb-2 border-b border-picker-border/30">
-                  <p className="pl-[52px] pr-3 pt-2 pb-1 text-[11px] font-semibold text-muted-gray uppercase tracking-wide">
-                    {esCL.cityPickerCurrentLocation}
-                  </p>
+          {currentLocationCity && (
+            <div className="border-b border-picker-border/30">
+              <SectionRow
+                title={esCL.cityPickerCurrentLocation}
+                navKey={CURRENT_LOCATION_KEY}
+                expanded={isRegionExpanded(CURRENT_LOCATION_KEY)}
+                active={activeEntry?.type === "region" && activeEntry.key === CURRENT_LOCATION_KEY}
+                totalCount={(cityCounts[currentLocationCity.id] ?? ZERO_COUNTS).inauguraciones + (cityCounts[currentLocationCity.id] ?? ZERO_COUNTS).exposActuales}
+                onToggle={() => toggleRegion(CURRENT_LOCATION_KEY)}
+                onHover={() => setActiveIndex(navIndexByKey.get(`region:${CURRENT_LOCATION_KEY}`) ?? 0)}
+              />
+              {isRegionExpanded(CURRENT_LOCATION_KEY) && (
+                <div role="listbox" aria-labelledby={regionOptionId(CURRENT_LOCATION_KEY)}>
                   <CityRow
                     city={currentLocationCity}
                     counts={cityCounts[currentLocationCity.id] ?? ZERO_COUNTS}
@@ -462,11 +492,21 @@ export default function CityPickerPanel({
                   />
                 </div>
               )}
-              {recentCities.length > 0 && (
-                <div className="pb-2 border-b border-picker-border/30">
-                  <p className="pl-[52px] pr-3 pt-2 pb-1 text-[11px] font-semibold text-muted-gray uppercase tracking-wide">
-                    {esCL.cityPickerRecentlyVisited}
-                  </p>
+            </div>
+          )}
+          {recentCities.length > 0 && (
+            <div className="border-b border-picker-border/30">
+              <SectionRow
+                title={esCL.cityPickerRecentlyVisited}
+                navKey={RECENT_CITIES_KEY}
+                expanded={isRegionExpanded(RECENT_CITIES_KEY)}
+                active={activeEntry?.type === "region" && activeEntry.key === RECENT_CITIES_KEY}
+                totalCount={recentCitiesCounts.inauguraciones + recentCitiesCounts.exposActuales}
+                onToggle={() => toggleRegion(RECENT_CITIES_KEY)}
+                onHover={() => setActiveIndex(navIndexByKey.get(`region:${RECENT_CITIES_KEY}`) ?? 0)}
+              />
+              {isRegionExpanded(RECENT_CITIES_KEY) && (
+                <div role="listbox" aria-labelledby={regionOptionId(RECENT_CITIES_KEY)}>
                   {recentCities.map((c) => (
                     <CityRow
                       key={c.id}
@@ -501,8 +541,9 @@ export default function CityPickerPanel({
                     const total = countsFor(region.cities, cityCounts);
                     return (
                       <div key={key} className="border-b border-picker-border/30">
-                        <RegionRow
-                          region={region}
+                        <SectionRow
+                          title={region.adminRegionName}
+                          numeral={region.adminRegionNumeral}
                           navKey={key}
                           expanded={expanded}
                           active={activeEntry?.type === "region" && activeEntry.key === key}
