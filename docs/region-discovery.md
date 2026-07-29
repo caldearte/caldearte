@@ -2492,6 +2492,60 @@ source:
    numeric-or-abbreviation flexibility `extractDateRange`'s
    `resolveMonthGroup` already had).
 
+### Cross-source dedup: two more real gaps found by a manual curation audit (2026-07-29)
+
+A user-requested audit against real production data (`docs/roadmap.md`'s
+Phase 1a punch list) found 8 exhibitions at the same physical MAC -
+Quinta Normal venue duplicated — 16 rows instead of 8, one copy from
+arteinformado.com and one from uchile.cl. Two independent, stacked bugs,
+both in `event-discovery/run.ts`'s cross-run fuzzy dedup
+(`titlesByLocationDateOnly`, `locationDateOnlyKey`):
+
+1. **The fuzzy bucket required an EXACT placeName string match to even
+   compare titles.** arteinformado.com calls the venue "MAC - Museo de
+   Arte Contemporáneo", uchile.cl calls it "MAC - Quinta Normal" — same
+   real venue, worded differently, so the two rows never landed in the
+   same bucket and `isLikelySameTitle` never got a chance to compare
+   "Vestiario" against "Exposición 'Vestiario' en el Museo de Arte
+   Contemporáneo". Fixed by dropping placeName from the bucket KEY
+   (comuna + date only, same posture as before place_name was ever added)
+   but not from the dedup DECISION — a new `placeNamesLikelySame`
+   (`lib/event-filters.ts`) checks it leniently instead (≥1 shared
+   significant word after stripping the same generic venue-type
+   vocabulary `isLikelySameTitle` already strips — "mac" alone is enough
+   to connect the two spellings above). Deliberately a lower bar than
+   title matching's ≥2-shared-word floor: short venue names would
+   otherwise never clear it. Still required alongside a real title match,
+   not instead of one — dropping placeName from the bucket key with NO
+   placeName check anywhere would have reopened the exact false-merge
+   case `place_name` was added to prevent in the first place (two
+   *different* venues sharing a comuna, a near-identical title, same day
+   — this file's own existing test seeds exactly that scenario).
+2. **The date-only bucket key prioritized `openingDatetime` over the
+   run-date range** — found immediately after fixing (1), writing the
+   regression test: the two real duplicate rows had IDENTICAL
+   `run_start_date`/`run_end_date`, but only the arteinformado.com copy
+   also had a confirmed `openingDatetime`. With opening-date prioritized,
+   the two rows' date-only fingerprints came out as `"2026-04-24"`
+   (opening day) vs. `"2026-04-25|2026-08-23"` (run range) — different
+   buckets, so (1)'s fix alone still couldn't have caught them. Flipped
+   the priority: prefer the run-date range when both `runStartDate` AND
+   `runEndDate` are present, fall back to `openingDatetime` only for a
+   candidate with no separately-stated run range at all (a bare
+   inauguración). `locationDateKey` (the STRICT exact-match tier) keeps
+   its original opening-date-first priority unchanged — only the fuzzy
+   bucket's coarser key changed.
+
+`ExistingEventInfo` gained a `placeName` field to make (1) possible —
+every construction site (`loadExistingKeys`'s `toInfo`, the REPLACE and
+fresh-insert paths) now carries it through.
+
+**Production cleanup**: the 16 duplicate rows found were resolved by hand
+via the existing tier-1 rule (confirmed opening wins) — all 8
+arteinformado.com copies had one, none of the 8 uchile.cl copies did, so
+the 8 uchile.cl rows were deleted directly (not a code path, a one-time
+manual SQL cleanup after the audit).
+
 ## Cost governance
 
 A self-tracked ledger keeps both processes bounded, without depending on
