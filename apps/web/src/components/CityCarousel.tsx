@@ -68,9 +68,24 @@ export default function CityCarousel({ cityCounts, cityNames, cityThumbnails, re
         })}
       </div>
       <div className="flex justify-center gap-2 mt-4">
-        {cities.map((c, i) => (
-          <span key={c.id} className={`w-2 h-2 rounded-full ${i === activeDot ? "bg-dot-active" : "bg-dot-inactive"}`} />
-        ))}
+        {cities.map((c, i) => {
+          // One dot per city overcounts real snap stops once more than one
+          // card is visible at once: with N cards visible, the last N-1
+          // cards are already all on screen together once you've scrolled
+          // as far as you can, so there are only cities.length-(N-1) real
+          // stops. Rather than compute that in JS, hide exactly the
+          // trailing dots that stop being real stops at each breakpoint —
+          // mirrors the same w-[85%]/sm:w-[46%]/md:w-[31%] visible-card
+          // counts (1/2/3) already on the cards below.
+          const hideFromSm = i === cities.length - 1; // 2 cards visible (sm) — last dot isn't a distinct stop
+          const hideFromMd = i === cities.length - 2; // 3 cards visible (md) — 2nd-to-last dot isn't either
+          return (
+            <span
+              key={c.id}
+              className={`w-2 h-2 rounded-full ${i === activeDot ? "bg-dot-active" : "bg-dot-inactive"} ${hideFromSm ? "sm:hidden" : ""} ${hideFromMd ? "md:hidden" : ""}`}
+            />
+          );
+        })}
       </div>
     </section>
   );
