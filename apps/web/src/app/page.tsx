@@ -78,17 +78,28 @@ export default async function HomePage() {
   // These headers don't exist on localhost (no-op there, falls through to
   // Santiago) — real geo-detection only happens on an actual Vercel deploy.
   const cityCookieValue = cookieStore.get(CITY_COOKIE)?.value;
+  const geoCity = headerStore.get("x-vercel-ip-city") ?? undefined;
+  const geoCountry = headerStore.get("x-vercel-ip-country") ?? undefined;
   const cityId =
     cityCookieValue !== undefined
       ? cityCookieValue in cityNames || cityCookieValue === DEFAULT_CITY_ID
         ? cityCookieValue
         : DEFAULT_CITY_ID
-      : resolveDefaultCityId(
-          headerStore.get("x-vercel-ip-city") ?? undefined,
-          headerStore.get("x-vercel-ip-country") ?? undefined,
-          buildRegionMetaByCityId(regions),
-          cityCounts,
-        );
+      : resolveDefaultCityId(geoCity, geoCountry, buildRegionMetaByCityId(regions), cityCounts);
+
+  // Unlike `cityId` above, this is computed EVERY render, even once a
+  // CITY_COOKIE already picked a different city — it's what feeds the city
+  // picker's "Tu ubicación actual" quick-pick row (CityPickerPanel), which
+  // needs to keep offering "jump back home" after the visitor has
+  // wandered off to browse a different comuna, not just on the very first
+  // visit. `actualCityHasRealSignal` is the real gate on showing that row
+  // at all — `resolveDefaultCityId` itself always returns SOMETHING
+  // (falls back to DEFAULT_CITY_ID/Santiago for a non-Chilean visitor or a
+  // missing geo header), and that fallback is a GUESS, not a detection —
+  // showing "tu ubicación actual: Santiago" to someone genuinely outside
+  // Chile would be actively wrong, not just unhelpful.
+  const actualCityId = resolveDefaultCityId(geoCity, geoCountry, buildRegionMetaByCityId(regions), cityCounts);
+  const actualCityHasRealSignal = geoCountry === "CL" && Boolean(geoCity);
 
   const cityEventsInRange = filterByCity(activeInRange, cityId);
   const { inauguraciones, exposActuales } = splitInauguracionesYExpos(cityEventsInRange, rangeStart, rangeEnd);
@@ -113,6 +124,7 @@ export default async function HomePage() {
         inauguraciones={inauguraciones}
         exposActuales={exposActuales}
         cityId={cityId}
+        actualCityId={actualCityHasRealSignal ? actualCityId : null}
         cityNames={cityNames}
         familyMode={familyMode}
         today={today}
