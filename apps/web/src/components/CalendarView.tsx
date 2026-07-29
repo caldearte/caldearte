@@ -3,8 +3,8 @@
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { esCL } from "@/i18n/es-CL";
-import { cityById } from "@/lib/cities";
-import { CITY_COOKIE, FAMILY_MODE_COOKIE, WINDOW_MODE_COOKIE, setCookie } from "@/lib/cookies";
+import { cityById, OTHER_CITY } from "@/lib/cities";
+import { CITY_COOKIE, FAMILY_MODE_COOKIE, WINDOW_MODE_COOKIE, setCookie, pushRecentCityId } from "@/lib/cookies";
 import { fmtShort } from "@/lib/date";
 import type { CityCounts, EventRecord, RegionMeta, WindowMode } from "@/lib/events";
 import Header from "./Header";
@@ -20,6 +20,7 @@ interface CalendarViewProps {
   inauguraciones: EventRecord[];
   exposActuales: EventRecord[];
   cityId: string;
+  actualCityId: string | null; // IP-geolocated comuna, recomputed every render regardless of cityId — CityPickerPanel's "Tu ubicación actual" row; null when there's no real signal (outside Chile, no geo header)
   cityNames: Record<string, string>; // real observed comuna names, id -> name — see cities.ts
   familyMode: boolean;
   today: string; // YYYY-MM-DD, computed server-side for SSR/CSR consistency
@@ -40,6 +41,7 @@ export default function CalendarView({
   inauguraciones,
   exposActuales,
   cityId,
+  actualCityId,
   cityNames,
   familyMode,
   today,
@@ -63,7 +65,15 @@ export default function CalendarView({
 
   const city = cityById(cityId, cityNames);
 
+  // Records the city being LEFT (not the destination) into "Últimas
+  // visitadas" — a self-visit (re-confirming the same city) and "otro"
+  // (not a real memorable place) are never worth remembering.
+  function recordDeparture(nextCityId: string) {
+    if (nextCityId !== cityId && cityId !== OTHER_CITY.id) pushRecentCityId(cityId);
+  }
+
   function goToCity(nextCityId: string) {
+    recordDeparture(nextCityId);
     setCookie(CITY_COOKIE, nextCityId);
     setLocationOpen(false);
     window.scrollTo(0, 0);
@@ -80,6 +90,7 @@ export default function CalendarView({
   // until then (see CityPickerPanel). Closing via the X or Escape calls
   // onClose only, never this — so unconfirmed picks are simply discarded.
   function explore(nextCityId: string, nextWindowMode: WindowMode) {
+    recordDeparture(nextCityId);
     setCookie(CITY_COOKIE, nextCityId);
     setCookie(WINDOW_MODE_COOKIE, nextWindowMode);
     setLocationOpen(false);
@@ -166,6 +177,7 @@ export default function CalendarView({
       <CityPickerPanel
         open={locationOpen}
         cityId={cityId}
+        actualCityId={actualCityId}
         cityCountsDay={cityCountsDay}
         cityCountsWeek={cityCountsWeek}
         cityNames={cityNames}

@@ -43,6 +43,8 @@ export const esCL = {
   citySearchPlaceholder: "Buscar comuna o región...",
   citySearchAriaLabel: "Buscar comuna o región",
   noCityResults: "No encontramos resultados.",
+  cityPickerCurrentLocation: "Tu ubicación actual",
+  cityPickerRecentlyVisited: "Últimas visitadas",
   cityPickerHints: {
     navigate: "↑↓ navegar",
     select: "↵ seleccionar",

@@ -7,15 +7,19 @@ import {
   citiesWithEvents,
   groupCitiesByRegion,
   matchesQuery,
+  cityById,
+  OTHER_CITY,
   type AdminRegionGroup,
   type City,
   type CountryGroup,
 } from "@/lib/cities";
+import { getRecentCityIds } from "@/lib/cookies";
 import { sumCounts, type CityCounts, type RegionMeta, type WindowMode } from "@/lib/events";
 
 interface CityPickerPanelProps {
   open: boolean;
   cityId: string; // the CONFIRMED city — seeds pendingCityId whenever the panel opens
+  actualCityId: string | null; // IP-geolocated comuna (page.tsx) — feeds the "Tu ubicación actual" quick-pick row; null when there's no real geo signal
   cityCountsDay: Record<string, CityCounts>;
   cityCountsWeek: Record<string, CityCounts>;
   cityNames: Record<string, string>;
@@ -157,6 +161,7 @@ function RegionRow({ region, navKey, expanded, active, totalCount, onToggle, onH
 export default function CityPickerPanel({
   open,
   cityId,
+  actualCityId,
   cityCountsDay,
   cityCountsWeek,
   cityNames,
@@ -171,6 +176,7 @@ export default function CityPickerPanel({
   const [expandedRegions, setExpandedRegions] = useState<Set<string>>(new Set());
   const [pendingCityId, setPendingCityId] = useState(cityId);
   const [pendingWindowMode, setPendingWindowMode] = useState(windowMode);
+  const [recentCityIds, setRecentCityIds] = useState<string[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const exploreButtonRef = useRef<HTMLButtonElement>(null);
@@ -195,6 +201,10 @@ export default function CityPickerPanel({
       setActiveIndex(0);
       setPendingCityId(cityId);
       setPendingWindowMode(windowMode);
+      // Read fresh each open, not just once on mount — a visit recorded
+      // since the last time this panel was open (e.g. via CityCarousel,
+      // which never mounts/opens this panel at all) should still show up.
+      setRecentCityIds(getRecentCityIds());
       const selectedMeta = metaByCityId.get(cityId);
       setExpandedRegions(
         selectedMeta?.adminRegionName ? new Set([regionKey(selectedMeta.country, selectedMeta.adminRegionName)]) : new Set(),
@@ -250,6 +260,29 @@ export default function CityPickerPanel({
   // after the events + search filters above — no separate pass needed.
   const groups: CountryGroup[] = useMemo(() => groupCitiesByRegion(filteredCities, metaByCityId), [filteredCities, metaByCityId]);
 
+  // Quick-pick rows, pinned above the región list — "save the time of
+  // finding where you are" (the user's own framing, 2026-07-29). Hidden
+  // while actively searching: the intent has already shifted to "find a
+  // specific place", not "jump back to somewhere familiar", and hiding
+  // them sidesteps ever needing to de-duplicate against the filtered
+  // results below (a quick-pick city still also appears in its normal
+  // alphabetical spot in the full región list — that's fine, same
+  // "pinned shortcut + still browsable normally" pattern ride-hailing/
+  // delivery apps already use for exactly this).
+  const currentLocationCity: City | null =
+    !isSearching && actualCityId && actualCityId !== cityId && actualCityId !== OTHER_CITY.id
+      ? cityById(actualCityId, cityNames)
+      : null;
+  const recentCities: City[] = useMemo(
+    () =>
+      isSearching
+        ? []
+        : recentCityIds
+            .filter((id) => id !== cityId && id !== actualCityId && id !== OTHER_CITY.id)
+            .map((id) => cityById(id, cityNames)),
+    [isSearching, recentCityIds, cityId, actualCityId, cityNames],
+  );
+
   // While actively searching, every región left standing (i.e. containing
   // a match) shows fully expanded regardless of manual toggle state — "si
   // el texto matchea una comuna, mostrar la comuna y su región
@@ -264,6 +297,8 @@ export default function CityPickerPanel({
   // how many regions/comunas are actually visible right now.
   const navEntries = useMemo(() => {
     const entries: NavEntry[] = [];
+    if (currentLocationCity) entries.push({ type: "city", city: currentLocationCity });
+    for (const city of recentCities) entries.push({ type: "city", city });
     for (const group of groups) {
       for (const region of group.regions) {
         const key = regionKey(group.country, region.adminRegionName);
@@ -275,7 +310,7 @@ export default function CityPickerPanel({
       for (const city of group.ungrouped) entries.push({ type: "city", city });
     }
     return entries;
-  }, [groups, expandedRegions, isSearching]);
+  }, [groups, expandedRegions, isSearching, currentLocationCity, recentCities]);
 
   const navIndexByKey = useMemo(() => {
     const map = new Map<string, number>();
@@ -405,6 +440,39 @@ export default function CityPickerPanel({
 
       <div id="city-picker-listbox" role="listbox" aria-label={esCL.chooseCity} className="flex-grow overflow-y-auto px-4 pb-10">
         <div className="max-w-[680px] mx-auto">
+          {currentLocationCity && (
+            <div className="pb-2 border-b border-picker-border/30">
+              <p className="pl-[52px] pr-3 pt-2 pb-1 text-[11px] font-semibold text-muted-gray uppercase tracking-wide">
+                {esCL.cityPickerCurrentLocation}
+              </p>
+              <CityRow
+                city={currentLocationCity}
+                counts={cityCounts[currentLocationCity.id] ?? ZERO_COUNTS}
+                selected={currentLocationCity.id === pendingCityId}
+                active={activeEntry?.type === "city" && activeEntry.city.id === currentLocationCity.id}
+                onSelect={(c) => setPendingCityId(c.id)}
+                onHover={() => setActiveIndex(navIndexByKey.get(`city:${currentLocationCity.id}`) ?? 0)}
+              />
+            </div>
+          )}
+          {recentCities.length > 0 && (
+            <div className="pb-2 border-b border-picker-border/30">
+              <p className="pl-[52px] pr-3 pt-2 pb-1 text-[11px] font-semibold text-muted-gray uppercase tracking-wide">
+                {esCL.cityPickerRecentlyVisited}
+              </p>
+              {recentCities.map((c) => (
+                <CityRow
+                  key={c.id}
+                  city={c}
+                  counts={cityCounts[c.id] ?? ZERO_COUNTS}
+                  selected={c.id === pendingCityId}
+                  active={activeEntry?.type === "city" && activeEntry.city.id === c.id}
+                  onSelect={(city) => setPendingCityId(city.id)}
+                  onHover={() => setActiveIndex(navIndexByKey.get(`city:${c.id}`) ?? 0)}
+                />
+              ))}
+            </div>
+          )}
           {!hasAnyCityResult ? (
             <p className="text-sm text-muted-gray text-center py-10">{esCL.noCityResults}</p>
           ) : (
