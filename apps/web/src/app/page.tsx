@@ -13,7 +13,7 @@ import {
   listArchiveMonths,
   type WindowMode,
 } from "@/lib/events";
-import { DEFAULT_CITY_ID, buildRegionMetaByCityId, resolveDefaultCityId } from "@/lib/cities";
+import { DEFAULT_CITY_ID, buildRegionMetaByCityId, resolveDefaultCityId, resolveGeoCityId } from "@/lib/cities";
 import { todayInSantiago, currentWeekInSantiago, isCurrentOrUpcoming } from "@/lib/date";
 import { CITY_COOKIE, FAMILY_MODE_COOKIE, WINDOW_MODE_COOKIE } from "@/lib/cookies";
 import CalendarView from "@/components/CalendarView";
@@ -92,14 +92,14 @@ export default async function HomePage() {
   // picker's "Tu ubicación actual" quick-pick row (CityPickerPanel), which
   // needs to keep offering "jump back home" after the visitor has
   // wandered off to browse a different comuna, not just on the very first
-  // visit. `actualCityHasRealSignal` is the real gate on showing that row
-  // at all — `resolveDefaultCityId` itself always returns SOMETHING
-  // (falls back to DEFAULT_CITY_ID/Santiago for a non-Chilean visitor or a
-  // missing geo header), and that fallback is a GUESS, not a detection —
-  // showing "tu ubicación actual: Santiago" to someone genuinely outside
-  // Chile would be actively wrong, not just unhelpful.
-  const actualCityId = resolveDefaultCityId(geoCity, geoCountry, buildRegionMetaByCityId(regions), cityCounts);
-  const actualCityHasRealSignal = geoCountry === "CL" && Boolean(geoCity);
+  // visit. Uses resolveGeoCityId, NOT resolveDefaultCityId — this row
+  // claims to report where the visitor actually IS, so it must never
+  // substitute a region-mate city just because the visitor's own comuna
+  // has zero events right now (real bug found 2026-07-29: showed
+  // "Santiago" to a visitor in La Reina). null means no real signal
+  // (outside Chile, no geo header, or an unrecognized comuna) — the row is
+  // hidden entirely rather than guessing.
+  const actualCityId = resolveGeoCityId(geoCity, geoCountry, buildRegionMetaByCityId(regions));
 
   const cityEventsInRange = filterByCity(activeInRange, cityId);
   const { inauguraciones, exposActuales } = splitInauguracionesYExpos(cityEventsInRange, rangeStart, rangeEnd);
@@ -124,7 +124,7 @@ export default async function HomePage() {
         inauguraciones={inauguraciones}
         exposActuales={exposActuales}
         cityId={cityId}
-        actualCityId={actualCityHasRealSignal ? actualCityId : null}
+        actualCityId={actualCityId}
         cityNames={cityNames}
         familyMode={familyMode}
         today={today}
