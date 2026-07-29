@@ -16,6 +16,8 @@ import {
   searchEvents,
   filterByPlaceName,
   truncateDescription,
+  resolveCityId,
+  displayNameForCity,
   type EventRecord,
 } from "./events";
 
@@ -254,4 +256,20 @@ test("truncateDescription cuts a long description to maxLength and appends an el
   assert.equal(result?.length, 221); // 220 chars + "…"
   assert.ok(result?.endsWith("…"));
   assert.equal(result?.slice(0, 220), "a".repeat(220));
+});
+
+// Exported for the event detail page's comuna link (apps/web/src/app/eventos/[id]/page.tsx,
+// EventCityLink) — needs the exact same id/name a click on this event
+// elsewhere in the app already resolves to.
+test("resolveCityId prefers regionName (curator-validated) over a freeform_location guess", () => {
+  assert.equal(resolveCityId(event({ freeformLocation: "Algún texto libre", regionName: "Punta Arenas" })), "punta-arenas");
+});
+
+test("resolveCityId falls back to freeform_location's trailing segment when there's no regionName", () => {
+  assert.equal(resolveCityId(event({ freeformLocation: "Galería X, Valparaíso", regionName: null })), "valparaiso");
+});
+
+test("displayNameForCity prefers regionName, falls back to freeform_location's trailing segment", () => {
+  assert.equal(displayNameForCity(event({ freeformLocation: "Algún texto libre", regionName: "Punta Arenas" })), "Punta Arenas");
+  assert.equal(displayNameForCity(event({ freeformLocation: "Galería X, Valparaíso", regionName: null })), "Valparaíso");
 });
