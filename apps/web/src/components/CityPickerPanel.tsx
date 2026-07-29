@@ -68,6 +68,15 @@ function regionKey(country: string, adminRegionName: string): string {
   return `${country}::${adminRegionName}`;
 }
 
+// The "Chile" country header is collapsible too, same chevron as a región
+// row — real gap found 2026-07-29: the user's original ask was "tu
+// ubicación, últimas visitadas, Chile como hermanas... todas con chevron
+// de colapsables", and the first pass only made the two quick-picks and
+// the individual regiones collapsible, missing the country level itself.
+function countryKey(country: string): string {
+  return `country::${country}`;
+}
+
 function cityOptionId(cityId: string): string {
   return `city-option-${cityId}`;
 }
@@ -101,7 +110,6 @@ function CityRow({ city, counts, selected, active, onSelect, onHover }: CityRowP
       id={cityOptionId(city.id)}
       role="option"
       aria-selected={selected}
-      ref={active ? (el) => el?.scrollIntoView({ block: "nearest" }) : undefined}
       onClick={() => onSelect(city)}
       onMouseEnter={onHover}
       className={`w-full flex items-center gap-2 pl-[52px] pr-3 py-2.5 rounded-lg text-left transition-colors ${
@@ -152,7 +160,6 @@ function SectionRow({ title, numeral, navKey, expanded, active, totalCount, onTo
     <button
       id={regionOptionId(navKey)}
       aria-expanded={expanded}
-      ref={active ? (el) => el?.scrollIntoView({ block: "nearest" }) : undefined}
       onClick={onToggle}
       onMouseEnter={onHover}
       className={`w-full flex items-center gap-2.5 px-3 py-3.5 text-left rounded-lg transition-colors ${
@@ -191,6 +198,17 @@ export default function CityPickerPanel({
   const inputRef = useRef<HTMLInputElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const exploreButtonRef = useRef<HTMLButtonElement>(null);
+  // Real bug found 2026-07-29: every row previously scrolled itself into
+  // view via an inline callback ref whenever it was "active" — but that ref
+  // is a new function identity every render, so React re-invoked it on
+  // EVERY render, not just when a row newly became active. Combined with
+  // onHover also setting activeIndex, moving the mouse during a manual
+  // scroll kept re-triggering scrollIntoView, fighting the user's own
+  // scroll ("recalcula y marea con el scroll"). Now scrollIntoView only
+  // runs from the effect below, and only after an actual keyboard nav —
+  // mouse hover still highlights a row but never yanks the scroll position,
+  // since the user's cursor is already right there.
+  const isKeyboardNavRef = useRef(false);
 
   const metaByCityId = useMemo(() => buildRegionMetaByCityId(regions), [regions]);
   const cityCounts = pendingWindowMode === "day" ? cityCountsDay : cityCountsWeek;
@@ -217,13 +235,18 @@ export default function CityPickerPanel({
       // which never mounts/opens this panel at all) should still show up.
       setRecentCityIds(getRecentCityIds());
       const selectedMeta = metaByCityId.get(cityId);
-      // Quick-pick sections start expanded too — collapsing them is a
-      // manual per-open choice, not a default (see the user's own framing:
-      // "todas con chevron de colapsables" — collapsible, not collapsed).
+      // Quick-pick sections AND every country header start expanded too —
+      // collapsing any of them is a manual per-open choice, not a default
+      // (see the user's own framing: "todas con chevron de colapsables" —
+      // collapsible, not collapsed). Countries come straight from
+      // `regions` (not the not-yet-computed `groups`) since there's only
+      // ever a handful of them.
+      const allCountries = new Set(regions.map((r) => r.country));
       setExpandedRegions(
         new Set([
           CURRENT_LOCATION_KEY,
           RECENT_CITIES_KEY,
+          ...[...allCountries].map(countryKey),
           ...(selectedMeta?.adminRegionName ? [regionKey(selectedMeta.country, selectedMeta.adminRegionName)] : []),
         ]),
       );
@@ -329,14 +352,18 @@ export default function CityPickerPanel({
       }
     }
     for (const group of groups) {
-      for (const region of group.regions) {
-        const key = regionKey(group.country, region.adminRegionName);
-        entries.push({ type: "region", key });
-        if (isSearching || expandedRegions.has(key)) {
-          for (const city of region.cities) entries.push({ type: "city", city });
+      const cKey = countryKey(group.country);
+      entries.push({ type: "region", key: cKey });
+      if (isSearching || expandedRegions.has(cKey)) {
+        for (const region of group.regions) {
+          const key = regionKey(group.country, region.adminRegionName);
+          entries.push({ type: "region", key });
+          if (isSearching || expandedRegions.has(key)) {
+            for (const city of region.cities) entries.push({ type: "city", city });
+          }
         }
+        for (const city of group.ungrouped) entries.push({ type: "city", city });
       }
-      for (const city of group.ungrouped) entries.push({ type: "city", city });
     }
     return entries;
   }, [groups, expandedRegions, isSearching, currentLocationCity, recentCities]);
@@ -358,6 +385,17 @@ export default function CityPickerPanel({
 
   const activeEntry = navEntries[activeIndex];
 
+  // Only scrolls when activeIndex changed via the keyboard (see
+  // isKeyboardNavRef's comment above) — looks up the DOM node by id rather
+  // than a per-row ref, so this runs exactly once per real navigation step.
+  useEffect(() => {
+    if (!isKeyboardNavRef.current) return;
+    isKeyboardNavRef.current = false;
+    const id = !activeEntry ? undefined : activeEntry.type === "region" ? regionOptionId(activeEntry.key) : cityOptionId(activeEntry.city.id);
+    if (id) document.getElementById(id)?.scrollIntoView({ block: "nearest" });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeIndex]);
+
   function toggleRegion(key: string) {
     setExpandedRegions((prev) => {
       const next = new Set(prev);
@@ -370,9 +408,11 @@ export default function CityPickerPanel({
   function handleInputKeyDown(e: KeyboardEvent<HTMLInputElement>) {
     if (e.key === "ArrowDown") {
       e.preventDefault();
+      isKeyboardNavRef.current = true;
       setActiveIndex((i) => Math.min(i + 1, navEntries.length - 1));
     } else if (e.key === "ArrowUp") {
       e.preventDefault();
+      isKeyboardNavRef.current = true;
       setActiveIndex((i) => Math.max(i - 1, 0));
     } else if (e.key === "Enter") {
       e.preventDefault();
@@ -420,7 +460,16 @@ export default function CityPickerPanel({
       : cityOptionId(activeEntry.city.id)
     : undefined;
 
+  // Real bug found 2026-07-29: this used to gate the whole "Chile" section
+  // (see below), but navEntries only contains cities from EXPANDED
+  // sections — so collapsing the last-expanded quick-pick made this false
+  // and hid the entire región list, not just the row the user collapsed
+  // ("al colapsar 'Últimas visitadas' desaparece Chile"). Only meaningful
+  // while actively searching (where every matching región auto-expands, so
+  // this really does mean "no matches"); collapsing a row during normal
+  // browsing must never affect it.
   const hasAnyCityResult = navEntries.some((e) => e.type === "city");
+  const showNoResults = isSearching ? !hasAnyCityResult : groups.length === 0;
 
   return (
     <div
@@ -522,67 +571,82 @@ export default function CityPickerPanel({
               )}
             </div>
           )}
-          {!hasAnyCityResult ? (
+          {showNoResults ? (
             <p className="text-sm text-muted-gray text-center py-10">{esCL.noCityResults}</p>
           ) : (
             groups.map((group) => {
               const countryCities = [...group.regions.flatMap((r) => r.cities), ...group.ungrouped];
               const countryCounts = countsFor(countryCities, cityCounts);
               const countryPhrase = esCL.cityStats(countryCounts.inauguraciones, countryCounts.exposActuales);
+              const cKey = countryKey(group.country);
+              const countryExpanded = isRegionExpanded(cKey);
               return (
                 <div key={group.country}>
-                  <div className="flex items-center justify-between py-2 border-b border-picker-border/60">
-                    <span className="text-sm font-semibold text-heading-gray">{group.country}</span>
+                  <button
+                    id={regionOptionId(cKey)}
+                    aria-expanded={countryExpanded}
+                    onClick={() => toggleRegion(cKey)}
+                    onMouseEnter={() => setActiveIndex(navIndexByKey.get(`region:${cKey}`) ?? 0)}
+                    className={`w-full flex items-center gap-2 py-2 border-b border-picker-border/60 text-left transition-colors ${
+                      activeEntry?.type === "region" && activeEntry.key === cKey ? "bg-stone-100" : "hover:bg-stone-50"
+                    }`}
+                  >
+                    <span className="text-[11px] text-picker-placeholder w-3 shrink-0">{countryExpanded ? "▾" : "▸"}</span>
+                    <span className="flex-grow text-sm font-semibold text-heading-gray">{group.country}</span>
                     {countryPhrase && <span className="text-[13px] text-muted-gray">{countryPhrase}</span>}
-                  </div>
-                  {group.regions.map((region) => {
-                    const key = regionKey(group.country, region.adminRegionName);
-                    const expanded = isRegionExpanded(key);
-                    const total = countsFor(region.cities, cityCounts);
-                    return (
-                      <div key={key} className="border-b border-picker-border/30">
-                        <SectionRow
-                          title={region.adminRegionName}
-                          numeral={region.adminRegionNumeral}
-                          navKey={key}
-                          expanded={expanded}
-                          active={activeEntry?.type === "region" && activeEntry.key === key}
-                          totalCount={total.inauguraciones + total.exposActuales}
-                          onToggle={() => toggleRegion(key)}
-                          onHover={() => setActiveIndex(navIndexByKey.get(`region:${key}`) ?? 0)}
-                        />
-                        {expanded && (
-                          <div role="listbox" aria-labelledby={regionOptionId(key)}>
-                            {region.cities.map((city) => (
-                              <CityRow
-                                key={city.id}
-                                city={city}
-                                counts={cityCounts[city.id] ?? ZERO_COUNTS}
-                                selected={city.id === pendingCityId}
-                                active={activeEntry?.type === "city" && activeEntry.city.id === city.id}
-                                onSelect={(c) => setPendingCityId(c.id)}
-                                onHover={() => setActiveIndex(navIndexByKey.get(`city:${city.id}`) ?? 0)}
-                              />
-                            ))}
+                  </button>
+                  {countryExpanded && (
+                    <>
+                      {group.regions.map((region) => {
+                        const key = regionKey(group.country, region.adminRegionName);
+                        const expanded = isRegionExpanded(key);
+                        const total = countsFor(region.cities, cityCounts);
+                        return (
+                          <div key={key} className="border-b border-picker-border/30">
+                            <SectionRow
+                              title={region.adminRegionName}
+                              numeral={region.adminRegionNumeral}
+                              navKey={key}
+                              expanded={expanded}
+                              active={activeEntry?.type === "region" && activeEntry.key === key}
+                              totalCount={total.inauguraciones + total.exposActuales}
+                              onToggle={() => toggleRegion(key)}
+                              onHover={() => setActiveIndex(navIndexByKey.get(`region:${key}`) ?? 0)}
+                            />
+                            {expanded && (
+                              <div role="listbox" aria-labelledby={regionOptionId(key)}>
+                                {region.cities.map((city) => (
+                                  <CityRow
+                                    key={city.id}
+                                    city={city}
+                                    counts={cityCounts[city.id] ?? ZERO_COUNTS}
+                                    selected={city.id === pendingCityId}
+                                    active={activeEntry?.type === "city" && activeEntry.city.id === city.id}
+                                    onSelect={(c) => setPendingCityId(c.id)}
+                                    onHover={() => setActiveIndex(navIndexByKey.get(`city:${city.id}`) ?? 0)}
+                                  />
+                                ))}
+                              </div>
+                            )}
                           </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                  {group.ungrouped.length > 0 && (
-                    <div>
-                      {group.ungrouped.map((city) => (
-                        <CityRow
-                          key={city.id}
-                          city={city}
-                          counts={cityCounts[city.id] ?? ZERO_COUNTS}
-                          selected={city.id === pendingCityId}
-                          active={activeEntry?.type === "city" && activeEntry.city.id === city.id}
-                          onSelect={(c) => setPendingCityId(c.id)}
-                          onHover={() => setActiveIndex(navIndexByKey.get(`city:${city.id}`) ?? 0)}
-                        />
-                      ))}
-                    </div>
+                        );
+                      })}
+                      {group.ungrouped.length > 0 && (
+                        <div>
+                          {group.ungrouped.map((city) => (
+                            <CityRow
+                              key={city.id}
+                              city={city}
+                              counts={cityCounts[city.id] ?? ZERO_COUNTS}
+                              selected={city.id === pendingCityId}
+                              active={activeEntry?.type === "city" && activeEntry.city.id === city.id}
+                              onSelect={(c) => setPendingCityId(c.id)}
+                              onHover={() => setActiveIndex(navIndexByKey.get(`city:${city.id}`) ?? 0)}
+                            />
+                          ))}
+                        </div>
+                      )}
+                    </>
                   )}
                 </div>
               );
