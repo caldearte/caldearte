@@ -16,6 +16,7 @@ import CityPickerPanel from "./CityPickerPanel";
 import MenuDrawer from "./MenuDrawer";
 import SearchPanel from "./SearchPanel";
 import GeoConsentBanner from "./GeoConsentBanner";
+import GeoLocationChangedBanner from "./GeoLocationChangedBanner";
 
 interface CalendarViewProps {
   inauguraciones: EventRecord[];
@@ -108,6 +109,12 @@ export default function CalendarView({
   return (
     <div className="w-full relative">
       <GeoConsentBanner show={showGeoConsentPrompt} regions={regions} />
+      <GeoLocationChangedBanner
+        hasPreciseLocation={hasPreciseLocation}
+        actualCityId={actualCityId}
+        cityNames={cityNames}
+        regions={regions}
+      />
 
       <Header
         city={city}

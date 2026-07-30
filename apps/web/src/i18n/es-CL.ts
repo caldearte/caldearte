@@ -47,10 +47,12 @@ export const esCL = {
   cityPickerRecentlyVisited: "Últimas visitadas",
   // Opt-in browser Geolocation upgrade — the automatic IP-based location
   // above is a coarse estimate; this asks the visitor's permission for a
-  // much more precise reading. Never shown as an error toast — errorText
-  // renders inline, small, non-blocking (denial/no-support are expected,
-  // normal outcomes, not failures).
-  cityPickerUseExactLocation: "Usar mi ubicación exacta",
+  // much more precise reading. Rendered as a sober inline banner (full
+  // picker width), not a small easy-to-miss link — real feedback
+  // 2026-07-30: "ese link pasa muy desapercibido". Never shown as an
+  // error toast — errorText renders inline, small, non-blocking
+  // (denial/no-support are expected, normal outcomes, not failures).
+  cityPickerUseExactLocation: "Comparte tu ubicación para ver siempre tu comuna real aquí",
   cityPickerLocatingExact: "Buscando tu ubicación...",
   cityPickerExactLocationError: "No pudimos obtener tu ubicación.",
   cityPickerHints: {
@@ -66,6 +68,14 @@ export const esCL = {
   geoConsentPrompt: "¿Quieres compartir tu ubicación para ver las inauguraciones y exposiciones cerca de ti ahora?",
   geoConsentAccept: "Sí, compartir",
   geoConsentDecline: "No, gracias",
+  // GeoLocationChangedBanner — shown only after a real precise reading is
+  // already known (silent background re-check on page load detected a
+  // different comuna than last time). Declining just quietly updates the
+  // cached reading so it doesn't keep asking about the same move; only
+  // accepting changes what's actually shown.
+  geoLocationChangedPrompt: (cityName: string) => `Tu ubicación cambió a ${cityName}. ¿Quieres ver qué hay ahí?`,
+  geoLocationChangedAccept: "Sí, ver ahí",
+  geoLocationChangedDecline: "No, gracias",
   menu: "Menú",
   curatoria: "Curatoria",
   familyMode: "Modo familiar",
