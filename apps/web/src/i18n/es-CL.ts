@@ -82,7 +82,7 @@ export const esCL = {
   geoLocationChangedAccept: "Sí, ver ahí",
   geoLocationChangedDecline: "No, gracias",
   menu: "Menú",
-  curatoria: "Curatoria",
+  curatoria: "Curatoría",
   familyMode: "Modo familiar",
   otherCity: "Otro",
 
@@ -224,14 +224,17 @@ export const esCL = {
   },
 
   privacidad: {
-    title: "Privacidad y curatoría",
+    title: "Privacidad",
     dataTitle: "Qué datos guardamos",
     dataBody:
-      "Guardamos dos cookies de preferencia — la ciudad que elegiste y si tienes activado el modo familiar — por un año, solo en tu navegador. No creamos cuentas, no usamos rastreadores de terceros, y no guardamos nada de lo que escribas en el formulario de contacto: solo lo reenviamos por correo. Usamos Vercel Analytics para ver estadísticas agregadas de visitas, sin cookies ni datos que te identifiquen.",
-    curationTitle: "Cómo curamos",
+      "Guardamos varias cookies de preferencia en tu navegador, por un año: la comuna que elegiste, si tienes activado el modo familiar, tus filtros de vista, tus últimas comunas visitadas, y tu ubicación si la compartiste. No creamos cuentas, no usamos rastreadores de terceros, y no guardamos nada de lo que escribas en el formulario de contacto: solo lo reenviamos por correo. Usamos Vercel Analytics para ver estadísticas agregadas de visitas, sin cookies ni datos que te identifiquen.",
     contactTitle: "¿Encontraste un error o algo que reportar?",
     contactBody: "Escríbenos desde el ",
     contactLinkLabel: "formulario de contacto",
+  },
+
+  curatoriaPage: {
+    title: "Curatoría",
   },
 
   contacto: {
