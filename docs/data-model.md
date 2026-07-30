@@ -143,6 +143,25 @@ rejected_candidates (added 20260728010000_add_rejected_candidates.sql —
     its own migration comment on the 2026-07-22 null-location crash)
   -- Rolling ~90-day window, pruned on Event Discovery's own cadence.
 
+newsletter_subscribers (added 20260730180000_add_newsletter_subscribers.sql
+    — weekly digest, double opt-in, see docs/roadmap.md's Phase 1a
+    newsletter item)
+  id, email (unique), city_id (fk to regions — the subscriber's chosen
+    comuna, NOT necessarily their geolocated one),
+  confirm_token (unique, opaque — doubles as the unsubscribe token too,
+    one value per subscriber is enough),
+  confirmed_at (nullable; null = still pending double opt-in),
+  unsubscribed_at (nullable; null = active), created_at
+  -- RLS: service_role has full access (the curator's weekly-send module,
+  -- and the confirm/unsubscribe Edge Functions). anon has INSERT only —
+  -- apps/web/src/app/api/newsletter/subscribe writes the pending row with
+  -- the anon key (never service_role, see
+  -- apps/web/src/lib/supabase-client.ts's assertAnonRole guard); no
+  -- SELECT/UPDATE/DELETE grant at all, so confirming/unsubscribing go
+  -- through the Edge Functions (service-role) instead, reached via the
+  -- token in the confirmation/every-digest-email link — never through
+  -- this table's RLS directly.
+
 curation_escalations (added 20260730150000_add_curation_escalations.sql
     — see region-discovery.md's "Cross-source curation conflict
     escalation" section)
@@ -203,7 +222,7 @@ Fixed in the cost-governance migration for all tables that existed then.
 | `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Vercel project env var | the only keys that go to the frontend; browser-safe by design (anon key, RLS-gated) |
 | `SUPABASE_ACCESS_TOKEN` | GitHub Actions secret | already in use — authenticates the Supabase CLI in `deploy-migrations.yml` |
 | `SUPABASE_DB_PASSWORD` | GitHub Actions secret | already in use — lets `deploy-migrations.yml` run `supabase db push` against production |
-| `RESEND_API_KEY` | Vercel project env var (server-only, never `NEXT_PUBLIC_*`) AND GitHub Actions secret | in use since 2026-07-17 for `apps/web/src/app/api/contact/route.ts`'s outbound-only contact-form relay; also in use since 2026-07-30 for `apps/curator`'s run-summary and cross-source-conflict-escalation emails (`lib/notify.ts`), sending from `contacto@caldearte.com` in both cases. |
+| `RESEND_API_KEY` | Vercel project env var (server-only, never `NEXT_PUBLIC_*`) AND GitHub Actions secret | in use since 2026-07-17 for `apps/web/src/app/api/contact/route.ts`'s outbound-only contact-form relay; also in use since 2026-07-30 for `apps/curator`'s run-summary and cross-source-conflict-escalation emails (`lib/notify.ts`), sending from `contacto@caldearte.com` in both cases; also used by the newsletter's confirmation email (`apps/web/src/app/api/newsletter/subscribe/route.ts`) and weekly digest (`apps/curator/src/lib/notify.ts`'s `sendDigestEmail`). |
 | ~~`APPROVAL_TOKEN_SECRET`~~ | not needed | originally planned to sign the one-time links behind email approval buttons — the cross-source conflict escalation feature that shipped 2026-07-30 (see region-discovery.md) uses opaque random tokens stored in `curation_escalations` and looked up by exact value instead, same trust model as everything else behind `service_role`-only RLS in this schema. No signing needed. |
 | `RESEND_WEBHOOK_SECRET` | Supabase Edge Function secret | verifies inbound-email webhooks (date inquiry, public mailbox) really come from Resend — still Phase 1b, not built |
 | `META_APP_ID` / `META_APP_SECRET` | Phase 4, GitHub Actions secret | not needed until Phase 4 |

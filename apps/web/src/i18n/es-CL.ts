@@ -227,10 +227,20 @@ export const esCL = {
     title: "Privacidad",
     dataTitle: "Qué datos guardamos",
     dataBody:
-      "Guardamos varias cookies de preferencia en tu navegador, por un año: la comuna que elegiste, si tienes activado el modo familiar, tus filtros de vista, tus últimas comunas visitadas, y tu ubicación si la compartiste. No creamos cuentas, no usamos rastreadores de terceros, y no guardamos nada de lo que escribas en el formulario de contacto: solo lo reenviamos por correo. Usamos Vercel Analytics para ver estadísticas agregadas de visitas, sin cookies ni datos que te identifiquen.",
+      "Guardamos varias cookies de preferencia en tu navegador, por un año: la comuna que elegiste, si tienes activado el modo familiar, tus filtros de vista, tus últimas comunas visitadas, y tu ubicación si la compartiste. Si te suscribes al newsletter, guardamos tu correo y la comuna elegida, y cada envío incluye un link para darte de baja en un clic. No creamos cuentas, no usamos rastreadores de terceros, y no guardamos nada de lo que escribas en el formulario de contacto: solo lo reenviamos por correo. Usamos Vercel Analytics para ver estadísticas agregadas de visitas, sin cookies ni datos que te identifiquen.",
     contactTitle: "¿Encontraste un error o algo que reportar?",
     contactBody: "Escríbenos desde el ",
     contactLinkLabel: "formulario de contacto",
+  },
+
+  newsletter: {
+    title: "Recibe la semana en arte",
+    emailPlaceholder: "tu@correo.cl",
+    cityPlaceholder: "Tu comuna",
+    submit: "Suscribirme",
+    sending: "Enviando…",
+    success: "Revisa tu correo para confirmar la suscripción.",
+    error: "No pudimos suscribirte. Intenta de nuevo.",
   },
 
   curatoriaPage: {
