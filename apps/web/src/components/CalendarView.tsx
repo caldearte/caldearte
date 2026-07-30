@@ -18,6 +18,7 @@ import MenuDrawer from "./MenuDrawer";
 import SearchPanel from "./SearchPanel";
 import GeoConsentBanner from "./GeoConsentBanner";
 import GeoLocationChangedBanner from "./GeoLocationChangedBanner";
+import NewsletterStatusModal, { type NewsletterStatus } from "./NewsletterStatusModal";
 
 interface CalendarViewProps {
   inauguraciones: EventRecord[];
@@ -39,6 +40,7 @@ interface CalendarViewProps {
   nextEvent: EventRecord | null; // empty-state fallback, beyond the current week
   regions: RegionMeta[]; // for the city picker's región grouping
   archiveHref: string | null; // "Expos anteriores" row target in MenuDrawer — null when no month is archived yet
+  newsletterStatus: NewsletterStatus | null; // from ?newsletter= — set by /newsletter/confirmar or /newsletter/baja's redirect
 }
 
 export default function CalendarView({
@@ -61,6 +63,7 @@ export default function CalendarView({
   nextEvent,
   regions,
   archiveHref,
+  newsletterStatus,
 }: CalendarViewProps) {
   const router = useRouter();
   const cityPickerTriggerRef = useRef<HTMLButtonElement>(null);
@@ -116,6 +119,7 @@ export default function CalendarView({
 
   return (
     <div className="w-full relative">
+      <NewsletterStatusModal status={newsletterStatus} />
       <GeoConsentBanner show={showGeoConsentPrompt} regions={regions} />
       <GeoLocationChangedBanner
         hasPreciseLocation={hasPreciseLocation}
