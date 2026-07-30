@@ -7,6 +7,7 @@ import {
   citiesWithEvents,
   slugify,
   resolveDefaultCityId,
+  nearestCityIdByCoords,
   matchesQuery,
   buildRegionMetaByCityId,
   groupCitiesByRegion,
@@ -24,6 +25,8 @@ function regionMeta(overrides: Partial<RegionMeta> = {}): RegionMeta {
     adminRegionName: "Región Metropolitana de Santiago",
     adminRegionOrder: 7, // RM's real geographic slot: between V Valparaíso (6) and VI O'Higgins (8)
     adminRegionNumeral: "RM",
+    lat: null,
+    lng: null,
     ...overrides,
   };
 }
@@ -140,6 +143,41 @@ test("resolveDefaultCityId: missing geo headers (e.g. localhost) fall back to Sa
 test("resolveDefaultCityId: own comuna has no events and no región-mate has events either -> Santiago", () => {
   const metaByCityId = buildRegionMetaByCityId([regionMeta({ name: "Las Condes", adminRegionName: "Región Metropolitana de Santiago" })]);
   assert.equal(resolveDefaultCityId("Las Condes", "CL", metaByCityId, {}), DEFAULT_CITY_ID);
+});
+
+// Real coordinates (supabase/migrations/20260730005132_backfill_region_coordinates.sql):
+// La Reina (-33.4428, -70.5319) and Santiago (-33.4489, -70.6693) are
+// close but genuinely distinct comunas — this is exactly the case
+// resolveGeoCityId's name-only match can't distinguish (Vercel's
+// x-vercel-ip-city header only resolves to "Santiago" for the whole
+// metro area), which nearestCityIdByCoords exists to fix.
+test("nearestCityIdByCoords picks the closest comuna centroid, not just any comuna with events", () => {
+  const regions = [
+    regionMeta({ name: "La Reina", lat: -33.4428, lng: -70.5319 }),
+    regionMeta({ name: "Santiago", lat: -33.4489, lng: -70.6693 }),
+  ];
+  // A point sitting right on La Reina's own centroid must resolve to La
+  // Reina, not the region-mate Santiago.
+  assert.equal(nearestCityIdByCoords(-33.4428, -70.5319, regions), "la-reina");
+});
+
+test("nearestCityIdByCoords returns null when every candidate is implausibly far (bad/missing coordinate reading)", () => {
+  const regions = [regionMeta({ name: "Santiago", lat: -33.4489, lng: -70.6693 })];
+  // Buenos Aires, ~1100km away — no seeded comuna should ever win this.
+  assert.equal(nearestCityIdByCoords(-34.6, -58.4, regions), null);
+});
+
+test("nearestCityIdByCoords ignores regions with no coordinates yet", () => {
+  const regions = [
+    regionMeta({ name: "Sin Coordenadas", lat: null, lng: null }),
+    regionMeta({ name: "Santiago", lat: -33.4489, lng: -70.6693 }),
+  ];
+  assert.equal(nearestCityIdByCoords(-33.449, -70.669, regions), "santiago");
+});
+
+test("nearestCityIdByCoords returns null when no region has coordinates at all", () => {
+  const regions = [regionMeta({ name: "Santiago", lat: null, lng: null })];
+  assert.equal(nearestCityIdByCoords(-33.4489, -70.6693, regions), null);
 });
 
 test("matchesQuery is accent/case-insensitive substring matching", () => {

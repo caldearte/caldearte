@@ -8,6 +8,7 @@ import {
   groupCitiesByRegion,
   matchesQuery,
   cityById,
+  nearestCityIdByCoords,
   OTHER_CITY,
   type City,
   type CountryGroup,
@@ -236,6 +237,14 @@ export default function CityPickerPanel({
   const [pendingCityId, setPendingCityId] = useState(cityId);
   const [pendingWindowMode, setPendingWindowMode] = useState(windowMode);
   const [recentCityIds, setRecentCityIds] = useState<string[]>([]);
+  // Opt-in browser-Geolocation upgrade over the automatic IP-based
+  // `actualCityId` (page.tsx) — null until the visitor explicitly clicks
+  // "Usar mi ubicación exacta" and grants permission. Takes over from
+  // `actualCityId` once set (see currentLocationCity below); never set
+  // automatically, since a location permission prompt firing without a
+  // click is both bad UX and blocked by some browsers.
+  const [preciseCityId, setPreciseCityId] = useState<string | null>(null);
+  const [locatingState, setLocatingState] = useState<"idle" | "locating" | "error">("idle");
   const inputRef = useRef<HTMLInputElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const exploreButtonRef = useRef<HTMLButtonElement>(null);
@@ -271,6 +280,8 @@ export default function CityPickerPanel({
       setActiveIndex(0);
       setPendingCityId(cityId);
       setPendingWindowMode(windowMode);
+      setPreciseCityId(null);
+      setLocatingState("idle");
       // Read fresh each open, not just once on mount — a visit recorded
       // since the last time this panel was open (e.g. via CityCarousel,
       // which never mounts/opens this panel at all) should still show up.
@@ -353,9 +364,13 @@ export default function CityPickerPanel({
   // alphabetical spot in the full región list — that's fine, same
   // "shortcut + still browsable normally" pattern ride-hailing/delivery
   // apps already use for exactly this).
+  // preciseCityId (opt-in browser Geolocation, see handleUseExactLocation
+  // below) takes over from actualCityId (automatic, IP-based) once the
+  // visitor has one — a strictly-more-precise reading always wins.
+  const effectiveLocationCityId = preciseCityId ?? actualCityId;
   const currentLocationCity: City | null =
-    !isSearching && actualCityId && actualCityId !== cityId && actualCityId !== OTHER_CITY.id
-      ? cityById(actualCityId, cityNames)
+    !isSearching && effectiveLocationCityId && effectiveLocationCityId !== cityId && effectiveLocationCityId !== OTHER_CITY.id
+      ? cityById(effectiveLocationCityId, cityNames)
       : null;
   const recentCities: City[] = useMemo(
     () =>
@@ -444,6 +459,31 @@ export default function CityPickerPanel({
       else next.add(key);
       return next;
     });
+  }
+
+  // Opt-in only — never called automatically. Triggers the browser's own
+  // native permission prompt; a denial or lack of support is a normal,
+  // expected outcome (most visitors won't grant this), not an error to
+  // alarm over — surfaced as a small inline note, never a blocking modal.
+  function handleUseExactLocation() {
+    if (typeof navigator === "undefined" || !("geolocation" in navigator)) {
+      setLocatingState("error");
+      return;
+    }
+    setLocatingState("locating");
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const id = nearestCityIdByCoords(position.coords.latitude, position.coords.longitude, regions);
+        if (id) {
+          setPreciseCityId(id);
+          setLocatingState("idle");
+        } else {
+          setLocatingState("error");
+        }
+      },
+      () => setLocatingState("error"),
+      { maximumAge: 5 * 60 * 1000, timeout: 10_000 },
+    );
   }
 
   function handleInputKeyDown(e: KeyboardEvent<HTMLInputElement>) {
@@ -554,6 +594,15 @@ export default function CityPickerPanel({
             placeholder={esCL.citySearchPlaceholder}
             className="w-full text-[15px] px-4 py-3 rounded-xl bg-picker-subtle border border-picker-border text-heading-gray placeholder:text-picker-placeholder focus:outline-none"
           />
+          <button
+            onClick={handleUseExactLocation}
+            disabled={locatingState === "locating"}
+            className="mt-2 inline-flex items-center gap-1.5 text-[12px] text-muted-gray hover:text-heading-gray disabled:opacity-60"
+          >
+            <LocationPinIcon />
+            {locatingState === "locating" ? esCL.cityPickerLocatingExact : esCL.cityPickerUseExactLocation}
+          </button>
+          {locatingState === "error" && <p className="mt-1 text-[11px] text-red-600">{esCL.cityPickerExactLocationError}</p>}
         </div>
       </div>
 

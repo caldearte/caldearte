@@ -82,7 +82,12 @@ function toEventRecord(row: EventRow, regionNameById: Map<string, string>): Even
 // numbering shown as a pill in the city picker ("II", "V", "RM", "XV"...).
 // All three nullable so a future country's comunas can be seeded before
 // this data exists for them (see groupCitiesByRegion in cities.ts for the
-// fallback this enables).
+// fallback this enables). lat/lng are the comuna's approximate populated-
+// center coordinates (not survey-precise boundaries) — used by cities.ts's
+// nearestCityIdByCoords for coordinate-based geo matching (see
+// supabase/migrations/20260730005132_backfill_region_coordinates.sql).
+// Nullable because a handful of comunas (any newly seeded before a
+// coordinate backfill runs) may not have them yet.
 export interface RegionMeta {
   id: string;
   name: string;
@@ -90,6 +95,8 @@ export interface RegionMeta {
   adminRegionName: string | null;
   adminRegionOrder: number | null;
   adminRegionNumeral: string | null;
+  lat: number | null;
+  lng: number | null;
 }
 
 // Reads go through events_public/regions_public, not the base tables
@@ -126,6 +133,8 @@ export async function fetchApprovedEvents(
     adminRegionName: r.admin_region_name,
     adminRegionOrder: r.admin_region_order,
     adminRegionNumeral: r.admin_region_numeral,
+    lat: r.lat,
+    lng: r.lng,
   }));
   const eventRows = (eventsRes.data ?? []) as EventRow[];
   return { events: eventRows.map((row) => toEventRecord(row, regionNameById)), regions };
