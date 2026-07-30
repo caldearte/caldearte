@@ -41,6 +41,7 @@ export default function GeoLocationChangedBanner({ hasPreciseLocation, actualCit
 
   function accept() {
     setCookie(CITY_COOKIE, detectedCityId!);
+    setDismissed(true);
     router.refresh();
   }
 
