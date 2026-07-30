@@ -21,6 +21,30 @@ function emailShell(bodyHtml: string): string {
   </div>`;
 }
 
+// Calls the newsletter-resubscribe Edge Function (service-role) when our
+// own anon-key INSERT hits a unique-email conflict — the anon key can't
+// tell an active row apart from a previously-unsubscribed one, or update
+// either, so a real "I unsubscribed, let me back in" attempt needs
+// service-role to actually reset the row. See that function's own file
+// comment for the bug this fixes.
+async function tryResubscribe(email: string, adminRegionName: string): Promise<{ confirmToken: string } | { alreadySubscribed: true } | null> {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  if (!supabaseUrl) return null;
+  try {
+    const res = await fetch(`${supabaseUrl}/functions/v1/newsletter-resubscribe`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, adminRegionName }),
+    });
+    const data = (await res.json()) as { status: string; confirmToken?: string };
+    if (data.status === "resubscribed" && data.confirmToken) return { confirmToken: data.confirmToken };
+    if (data.status === "already_subscribed") return { alreadySubscribed: true };
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 // Writes the pending row with the anon key (never service_role — see
 // apps/web/src/lib/supabase-client.ts's assertAnonRole guard), gated by
 // newsletter_subscribers' insert-only anon RLS policy (see the
@@ -48,25 +72,28 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "not_configured" }, { status: 500 });
   }
 
-  const confirmToken = crypto.randomUUID().replace(/-/g, "");
+  let confirmToken = crypto.randomUUID().replace(/-/g, "");
 
   const { error: insertError } = await getSupabaseClient()
     .from("newsletter_subscribers")
     .insert({ email, admin_region_name: adminRegionName, confirm_token: confirmToken });
 
   if (insertError) {
-    // A unique-email conflict means this address already has a row (and
-    // its own, different confirm_token) — the anon key only has INSERT on
-    // this table (see the migration), so there's no way to look up or
-    // resend that original token here. Product decision: tell the visitor
-    // directly ("ya estás suscrito") rather than the generic success copy
-    // — clearer than pretending it worked, and this endpoint already only
-    // ever confirms an email's EXISTENCE, never anything more sensitive.
     if (insertError.code === "23505") {
-      return NextResponse.json({ status: "already_subscribed" });
+      const resubscribed = await tryResubscribe(email, adminRegionName);
+      if (resubscribed && "alreadySubscribed" in resubscribed) {
+        return NextResponse.json({ status: "already_subscribed" });
+      }
+      if (resubscribed) {
+        confirmToken = resubscribed.confirmToken;
+      } else {
+        console.error("[newsletter/subscribe] resubscribe attempt failed");
+        return NextResponse.json({ error: "insert_failed" }, { status: 500 });
+      }
+    } else {
+      console.error("[newsletter/subscribe] insert failed", insertError);
+      return NextResponse.json({ error: "insert_failed" }, { status: 500 });
     }
-    console.error("[newsletter/subscribe] insert failed", insertError);
-    return NextResponse.json({ error: "insert_failed" }, { status: 500 });
   }
 
   // Points at our own page, not the Edge Function's URL directly — Supabase
