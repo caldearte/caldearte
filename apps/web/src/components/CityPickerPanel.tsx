@@ -9,12 +9,12 @@ import {
   groupCitiesByRegion,
   matchesQuery,
   cityById,
-  nearestCityIdByCoords,
   OTHER_CITY,
   type City,
   type CountryGroup,
 } from "@/lib/cities";
 import { getRecentCityIds, setCookie, PRECISE_CITY_COOKIE } from "@/lib/cookies";
+import { requestPreciseCityId } from "@/lib/geolocation";
 import { sumCounts, type CityCounts, type RegionMeta, type WindowMode } from "@/lib/events";
 
 interface CityPickerPanelProps {
@@ -241,6 +241,14 @@ export default function CityPickerPanel({
   const [pendingWindowMode, setPendingWindowMode] = useState(windowMode);
   const [recentCityIds, setRecentCityIds] = useState<string[]>([]);
   const [locatingState, setLocatingState] = useState<"idle" | "locating" | "error">("idle");
+  // A same-session freshening of `actualCityId`, scoped to display only —
+  // never persisted itself (the silent check below does that via the
+  // cookie, same as GeoLocationChangedBanner). Real ask 2026-07-30: "si
+  // consultamos la ubicación silenciosamente si abre el selector para
+  // reflejar correctamente la comuna de mi ubicación actual" — opening the
+  // picker should show the truth even if the visitor moved since the
+  // server last rendered, without waiting for a full page reload.
+  const [freshActualCityId, setFreshActualCityId] = useState(actualCityId);
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
@@ -278,6 +286,18 @@ export default function CityPickerPanel({
       setPendingCityId(cityId);
       setPendingWindowMode(windowMode);
       setLocatingState("idle");
+      setFreshActualCityId(actualCityId);
+      // Silent — no prompt fires, since hasPreciseLocation only becomes
+      // true after a real reading was already granted once. A resolved,
+      // different comuna just updates this open's display; the cookie
+      // write keeps future renders (and GeoLocationChangedBanner's own
+      // comparison) in sync too.
+      if (hasPreciseLocation) {
+        requestPreciseCityId(regions, (id) => {
+          setFreshActualCityId(id);
+          setCookie(PRECISE_CITY_COOKIE, id);
+        });
+      }
       // Read fresh each open, not just once on mount — a visit recorded
       // since the last time this panel was open (e.g. via CityCarousel,
       // which never mounts/opens this panel at all) should still show up.
@@ -361,15 +381,17 @@ export default function CityPickerPanel({
   // "shortcut + still browsable normally" pattern ride-hailing/delivery
   // apps already use for exactly this).
   const currentLocationCity: City | null =
-    !isSearching && actualCityId && actualCityId !== cityId && actualCityId !== OTHER_CITY.id ? cityById(actualCityId, cityNames) : null;
+    !isSearching && freshActualCityId && freshActualCityId !== cityId && freshActualCityId !== OTHER_CITY.id
+      ? cityById(freshActualCityId, cityNames)
+      : null;
   const recentCities: City[] = useMemo(
     () =>
       isSearching
         ? []
         : recentCityIds
-            .filter((id) => id !== cityId && id !== actualCityId && id !== OTHER_CITY.id)
+            .filter((id) => id !== cityId && id !== freshActualCityId && id !== OTHER_CITY.id)
             .map((id) => cityById(id, cityNames)),
-    [isSearching, recentCityIds, cityId, actualCityId, cityNames],
+    [isSearching, recentCityIds, cityId, freshActualCityId, cityNames],
   );
   const recentCitiesCounts = useMemo(() => countsFor(recentCities, cityCounts), [recentCities, cityCounts]);
 
@@ -456,29 +478,25 @@ export default function CityPickerPanel({
   // expected outcome (most visitors won't grant this), not an error to
   // alarm over — surfaced as a small inline note, never a blocking modal.
   function handleUseExactLocation() {
-    if (typeof navigator === "undefined" || !("geolocation" in navigator)) {
-      setLocatingState("error");
-      return;
-    }
     setLocatingState("locating");
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        const id = nearestCityIdByCoords(position.coords.latitude, position.coords.longitude, regions);
-        if (id) {
-          // Durable, not local-only state — real bug found 2026-07-30: a
-          // local-only override was lost the moment the visitor navigated
-          // to a different city and came back. Persisting it here means
-          // page.tsx's own actualCityId already reflects this on the next
-          // render, so no separate override/state is needed on this side.
-          setCookie(PRECISE_CITY_COOKIE, id);
-          setLocatingState("idle");
-          router.refresh();
-        } else {
-          setLocatingState("error");
-        }
+    requestPreciseCityId(
+      regions,
+      (id) => {
+        // Durable, not local-only state — real bug found 2026-07-30: a
+        // local-only override was lost the moment the visitor navigated
+        // to a different city and came back. Persisting it here means
+        // page.tsx's own actualCityId already reflects this on future
+        // opens too — but router.refresh() doesn't remount THIS already-
+        // open panel, so freshActualCityId also needs a direct update, or
+        // the currently-open picker keeps showing its stale pre-grant
+        // value (real bug found 2026-07-30, second one: the row didn't
+        // appear at all right after granting, until closed and reopened).
+        setCookie(PRECISE_CITY_COOKIE, id);
+        setFreshActualCityId(id);
+        setLocatingState("idle");
+        router.refresh();
       },
       () => setLocatingState("error"),
-      { maximumAge: 5 * 60 * 1000, timeout: 10_000 },
     );
   }
 
@@ -591,17 +609,19 @@ export default function CityPickerPanel({
             className="w-full text-[15px] px-4 py-3 rounded-xl bg-picker-subtle border border-picker-border text-heading-gray placeholder:text-picker-placeholder focus:outline-none"
           />
           {!hasPreciseLocation && (
-            <>
+            <div className="mt-3">
               <button
                 onClick={handleUseExactLocation}
                 disabled={locatingState === "locating"}
-                className="mt-2 inline-flex items-center gap-1.5 text-[12px] text-muted-gray hover:text-heading-gray disabled:opacity-60"
+                className="w-full flex items-center gap-3 bg-picker-subtle border border-picker-border rounded-xl px-4 py-3 text-left hover:bg-stone-100 transition-colors disabled:opacity-60"
               >
                 <LocationPinIcon />
-                {locatingState === "locating" ? esCL.cityPickerLocatingExact : esCL.cityPickerUseExactLocation}
+                <span className="flex-grow text-sm font-medium text-heading-gray">
+                  {locatingState === "locating" ? esCL.cityPickerLocatingExact : esCL.cityPickerUseExactLocation}
+                </span>
               </button>
               {locatingState === "error" && <p className="mt-1 text-[11px] text-red-600">{esCL.cityPickerExactLocationError}</p>}
-            </>
+            </div>
           )}
         </div>
       </div>

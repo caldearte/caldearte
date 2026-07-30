@@ -3,8 +3,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { esCL } from "@/i18n/es-CL";
-import { nearestCityIdByCoords } from "@/lib/cities";
 import { CITY_COOKIE, GEO_CONSENT_COOKIE, PRECISE_CITY_COOKIE, setCookie } from "@/lib/cookies";
+import { requestPreciseCityId } from "@/lib/geolocation";
 import type { RegionMeta } from "@/lib/events";
 
 interface GeoConsentBannerProps {
@@ -37,26 +37,17 @@ export default function GeoConsentBanner({ show, regions }: GeoConsentBannerProp
   }
 
   function accept() {
-    if (typeof navigator === "undefined" || !("geolocation" in navigator)) {
-      decline();
-      return;
-    }
     setRequesting(true);
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        const id = nearestCityIdByCoords(position.coords.latitude, position.coords.longitude, regions);
+    requestPreciseCityId(
+      regions,
+      (id) => {
         setCookie(GEO_CONSENT_COOKIE, "granted");
-        if (id) {
-          setCookie(CITY_COOKIE, id);
-          setCookie(PRECISE_CITY_COOKIE, id);
-        }
+        setCookie(CITY_COOKIE, id);
+        setCookie(PRECISE_CITY_COOKIE, id);
         setDismissed(true);
         router.refresh();
       },
-      () => {
-        setCookie(GEO_CONSENT_COOKIE, "denied");
-        setDismissed(true);
-      },
+      decline,
     );
   }
 
