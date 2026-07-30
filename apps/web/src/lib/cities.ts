@@ -185,6 +185,46 @@ export function resolveGeoCityId(
   return metaByCityId.has(ownId) ? ownId : null;
 }
 
+const EARTH_RADIUS_KM = 6371;
+
+function haversineDistanceKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const toRad = (deg: number) => (deg * Math.PI) / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLng = toRad(lng2 - lng1);
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
+  return 2 * EARTH_RADIUS_KM * Math.asin(Math.sqrt(a));
+}
+
+// IP-geolocation's estimated coordinate is commonly off by a few to
+// several dozen km in dense urban areas (real gap found 2026-07-30:
+// `resolveGeoCityId`'s name-only match couldn't tell La Reina from
+// Santiago, since Vercel's `x-vercel-ip-city` only resolves to city-level
+// for Greater Santiago — see docs discussion in this PR). Coordinates are
+// finer-grained than that discrete label, so matching against each
+// comuna's centroid (supabase/migrations/20260730005132_backfill_region_coordinates.sql)
+// is a real precision improvement — but a match beyond MAX_PLAUSIBLE_DISTANCE_KM
+// is more likely a bad/missing reading than a genuine signal, so it
+// returns null (caller falls back to the coarser name match) rather than
+// confidently naming a comuna that's implausibly far from the estimate.
+const MAX_PLAUSIBLE_DISTANCE_KM = 50;
+
+// Shared by both the automatic server-side path (Vercel's
+// x-vercel-ip-latitude/longitude headers, page.tsx) and the opt-in
+// client-side path (the browser's own Geolocation API, CityPickerPanel) —
+// same "given a point, which comuna centroid is closest" logic either way.
+export function nearestCityIdByCoords(lat: number, lng: number, regions: RegionMeta[]): string | null {
+  let closest: { id: string; distanceKm: number } | null = null;
+  for (const region of regions) {
+    if (region.lat === null || region.lng === null) continue;
+    const distanceKm = haversineDistanceKm(lat, lng, region.lat, region.lng);
+    if (!closest || distanceKm < closest.distanceKm) {
+      closest = { id: slugify(region.name), distanceKm };
+    }
+  }
+  if (!closest || closest.distanceKm > MAX_PLAUSIBLE_DISTANCE_KM) return null;
+  return closest.id;
+}
+
 // Narrows citiesWithEvents' output for the "Arte en todas partes" carousel
 // (real gap found 2026-07-20: with all 346 comunas seeded, the horizontal
 // scroll got too long). Same "misma región -> aledaña" idea

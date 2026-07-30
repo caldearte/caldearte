@@ -13,7 +13,7 @@ import {
   listArchiveMonths,
   type WindowMode,
 } from "@/lib/events";
-import { DEFAULT_CITY_ID, buildRegionMetaByCityId, resolveDefaultCityId, resolveGeoCityId } from "@/lib/cities";
+import { DEFAULT_CITY_ID, buildRegionMetaByCityId, resolveDefaultCityId, resolveGeoCityId, nearestCityIdByCoords } from "@/lib/cities";
 import { todayInSantiago, currentWeekInSantiago, isCurrentOrUpcoming } from "@/lib/date";
 import { CITY_COOKIE, FAMILY_MODE_COOKIE, WINDOW_MODE_COOKIE } from "@/lib/cookies";
 import CalendarView from "@/components/CalendarView";
@@ -92,14 +92,27 @@ export default async function HomePage() {
   // picker's "Tu ubicación actual" quick-pick row (CityPickerPanel), which
   // needs to keep offering "jump back home" after the visitor has
   // wandered off to browse a different comuna, not just on the very first
-  // visit. Uses resolveGeoCityId, NOT resolveDefaultCityId — this row
-  // claims to report where the visitor actually IS, so it must never
-  // substitute a region-mate city just because the visitor's own comuna
-  // has zero events right now (real bug found 2026-07-29: showed
-  // "Santiago" to a visitor in La Reina). null means no real signal
-  // (outside Chile, no geo header, or an unrecognized comuna) — the row is
-  // hidden entirely rather than guessing.
-  const actualCityId = resolveGeoCityId(geoCity, geoCountry, buildRegionMetaByCityId(regions));
+  // visit. Never substitutes a region-mate city just because the
+  // visitor's own comuna has zero events right now (real bug found
+  // 2026-07-29: showed "Santiago" to a visitor in La Reina) — null means
+  // no real signal (outside Chile, no geo header, or an unrecognized
+  // comuna) and the row is hidden entirely rather than guessing.
+  //
+  // Prefers Vercel's lat/long headers over its city-name header when
+  // both are present: `x-vercel-ip-city` only resolves to city-level
+  // granularity for Greater Santiago (can't distinguish La Reina from
+  // Santiago), but the coordinates are a finer-grained estimate — see
+  // nearestCityIdByCoords's own doc comment (cities.ts) for the distance
+  // sanity check that keeps a bad/missing coordinate reading from ever
+  // outranking the name match.
+  const geoLatHeader = headerStore.get("x-vercel-ip-latitude");
+  const geoLngHeader = headerStore.get("x-vercel-ip-longitude");
+  const geoLat = geoLatHeader ? Number(geoLatHeader) : NaN;
+  const geoLng = geoLngHeader ? Number(geoLngHeader) : NaN;
+  const hasGeoCoords = Number.isFinite(geoLat) && Number.isFinite(geoLng);
+  const actualCityId =
+    (hasGeoCoords ? nearestCityIdByCoords(geoLat, geoLng, regions) : null) ??
+    resolveGeoCityId(geoCity, geoCountry, buildRegionMetaByCityId(regions));
 
   const cityEventsInRange = filterByCity(activeInRange, cityId);
   const { inauguraciones, exposActuales } = splitInauguracionesYExpos(cityEventsInRange, rangeStart, rangeEnd);

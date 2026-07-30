@@ -45,6 +45,14 @@ export const esCL = {
   noCityResults: "No encontramos resultados.",
   cityPickerCurrentLocation: "Tu ubicación actual",
   cityPickerRecentlyVisited: "Últimas visitadas",
+  // Opt-in browser Geolocation upgrade — the automatic IP-based location
+  // above is a coarse estimate; this asks the visitor's permission for a
+  // much more precise reading. Never shown as an error toast — errorText
+  // renders inline, small, non-blocking (denial/no-support are expected,
+  // normal outcomes, not failures).
+  cityPickerUseExactLocation: "Usar mi ubicación exacta",
+  cityPickerLocatingExact: "Buscando tu ubicación...",
+  cityPickerExactLocationError: "No pudimos obtener tu ubicación.",
   cityPickerHints: {
     navigate: "↑↓ navegar",
     select: "↵ seleccionar",
