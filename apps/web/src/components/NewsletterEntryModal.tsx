@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, type FormEvent } from "react";
+import Image from "next/image";
 import { esCL } from "@/i18n/es-CL";
 import { getSupabaseClient } from "@/lib/supabase-client";
 
@@ -16,27 +17,61 @@ interface NewsletterEntryModalProps {
   onClose: () => void;
 }
 
-// Ad-style hero — a spotlight over an abstract "framed painting" motif,
-// pure CSS/SVG rather than a stock or fabricated photo (there's no real
-// gallery-opening photo asset in this repo, and inventing one would read
-// as a fake credential). Shared by both entry points: the first-visit
-// auto-prompt and the Footer's "Suscríbete" link both open this same
-// component (CalendarView.tsx owns the open/close state either way).
+// Three real inauguración photos (provided directly, not stock/generated) —
+// gallery openings and the wine-and-conversation side of it, the thing
+// meant to make someone want to go. /public/images/newsletter/*.jpg.
+const HERO_IMAGES = ["/images/newsletter/hero-1.jpg", "/images/newsletter/hero-2.jpg", "/images/newsletter/hero-3.jpg"];
+const HERO_ROTATE_MS = 4000;
+
+function shuffle<T>(items: T[]): T[] {
+  const copy = [...items];
+  for (let i = copy.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [copy[i], copy[j]] = [copy[j], copy[i]];
+  }
+  return copy;
+}
+
+// Rotating hero — a fresh random order every time this mounts (i.e. every
+// time the modal opens, since both callers unmount it while closed), one
+// image visible at a time, cross-fading every HERO_ROTATE_MS. Shared by
+// both entry points: the first-visit auto-prompt and the Footer's
+// "Suscríbete" link both open NewsletterEntryModal (CalendarView.tsx owns
+// the open/close state either way), and NewsletterStatusModal reuses it
+// for the "confirmed" celebration state.
 export function Hero() {
+  // Starts in the fixed, unshuffled order (matches what the server
+  // rendered) and only randomizes once mounted on the client — shuffling
+  // during the initial render itself (e.g. in useState's lazy initializer)
+  // produces a different Math.random() result server-side vs. client-side
+  // and React flags a hydration mismatch, since both actually render (this
+  // modal can auto-open on first load, not just after a click).
+  const [order, setOrder] = useState(HERO_IMAGES);
+  const [index, setIndex] = useState(0);
+
+  useEffect(() => {
+    setOrder(shuffle(HERO_IMAGES));
+  }, []);
+
+  useEffect(() => {
+    const id = setInterval(() => setIndex((i) => (i + 1) % order.length), HERO_ROTATE_MS);
+    return () => clearInterval(id);
+  }, [order.length]);
+
   return (
-    <div className="relative h-36 md:h-44 rounded-t-xl overflow-hidden bg-heading-gray">
-      <div
-        className="absolute inset-0"
-        style={{
-          background:
-            "radial-gradient(circle at 50% 0%, rgba(251,191,36,0.35), transparent 60%), linear-gradient(135deg, #1c1c1c 0%, #2a2a2a 100%)",
-        }}
-      />
-      <div className="absolute inset-0 flex items-center justify-center gap-3 opacity-90">
-        <div className="w-14 h-20 md:w-16 md:h-24 rounded-sm border-2 border-amber-300/70 bg-gradient-to-br from-amber-200/20 to-rose-300/10" />
-        <div className="w-16 h-24 md:w-20 md:h-28 rounded-sm border-2 border-amber-300 bg-gradient-to-br from-amber-300/30 to-sky-300/10 -translate-y-2" />
-        <div className="w-14 h-20 md:w-16 md:h-24 rounded-sm border-2 border-amber-300/70 bg-gradient-to-br from-rose-200/20 to-amber-200/10" />
-      </div>
+    <div className="relative h-48 md:h-60 rounded-t-xl overflow-hidden bg-heading-gray">
+      {order.map((src, i) => (
+        <Image
+          key={src}
+          src={src}
+          alt=""
+          fill
+          sizes="384px"
+          priority={i === 0}
+          className={`object-cover transition-opacity duration-700 ${i === index ? "opacity-100" : "opacity-0"}`}
+        />
+      ))}
+      <div className="absolute inset-0 bg-gradient-to-t from-black/35 via-transparent to-transparent" />
     </div>
   );
 }
