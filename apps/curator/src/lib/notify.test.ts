@@ -399,6 +399,37 @@ test("buildDigestBody omits the hour for an opening whose time isn't confirmed",
   assert.match(body, /Sín-tesis — Galería NAC — Inauguración: 2026-08-05$/m);
 });
 
+test("buildDigestBody includes the AI-generated intro as the first line when present", () => {
+  const body = buildDigestBody(fixtureDigestSections, "unsub-token", "Esta semana destaca una inauguración en el MAC.");
+  assert.match(body, /^Esta semana destaca una inauguración en el MAC\./);
+});
+
+test("buildDigestHtmlBody includes the AI-generated intro when present, and omits it when null", () => {
+  const withIntro = buildDigestHtmlBody(fixtureDigestSections, "unsub-token", "Esta semana destaca una inauguración en el MAC.");
+  assert.match(withIntro, /Esta semana destaca una inauguración en el MAC\./);
+
+  const withoutIntro = buildDigestHtmlBody(fixtureDigestSections, "unsub-token", null);
+  assert.doesNotMatch(withoutIntro, /Esta semana destaca/);
+});
+
+test("buildDigestHtmlBody renders the week date range right-aligned in the header when provided, and omits it when absent", () => {
+  const withWeek = buildDigestHtmlBody(fixtureDigestSections, "unsub-token", null, { start: "2026-07-27", end: "2026-08-02" });
+  assert.match(withWeek, /27 de julio al 2 de agosto 2026/);
+
+  const withoutWeek = buildDigestHtmlBody(fixtureDigestSections, "unsub-token", null);
+  assert.doesNotMatch(withoutWeek, /de agosto 2026/);
+});
+
+test("buildDigestBody includes the week date range as its first line when provided", () => {
+  const body = buildDigestBody(fixtureDigestSections, "unsub-token", null, { start: "2026-07-27", end: "2026-08-02" });
+  assert.match(body, /^27 de julio al 2 de agosto 2026/);
+});
+
+test("eventCardHtml: the whole card is one link to caldearte.com's event page, with placeName, title, and date inside the black panel", () => {
+  const html = buildDigestHtmlBody(fixtureDigestSections, "unsub-token");
+  assert.match(html, /<a href="https:\/\/www\.caldearte\.com\/eventos\/event-estrella-distante"[^>]*>[\s\S]*?MAC Quinta Normal[\s\S]*?Estrella distante[\s\S]*?<\/a>/);
+});
+
 test("sendDigestEmail: no-ops with a warning when RESEND_API_KEY is unset", async () => {
   const original = process.env.RESEND_API_KEY;
   delete process.env.RESEND_API_KEY;

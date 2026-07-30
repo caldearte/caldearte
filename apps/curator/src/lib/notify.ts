@@ -581,6 +581,23 @@ function fmtDigestDate(e: DigestEvent): string {
   return "";
 }
 
+const MONTHS_ES = [
+  "enero", "febrero", "marzo", "abril", "mayo", "junio",
+  "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre",
+];
+
+// "27 de julio al 2 de agosto 2026" — same "same month collapses" rule as
+// apps/web/src/lib/date.ts's fmtWeekHeader (duplicated, not imported —
+// separate packages), plus the year, which the site's own header omits
+// (always "this week" there) but an email read days or weeks later
+// shouldn't have to guess.
+function fmtWeekHeaderEs(weekStart: string, weekEnd: string): string {
+  const [sy, sm, sd] = weekStart.split("-").map(Number);
+  const [ey, em, ed] = weekEnd.split("-").map(Number);
+  const range = sm === em ? `${sd} al ${ed} de ${MONTHS_ES[sm - 1]}` : `${sd} de ${MONTHS_ES[sm - 1]} al ${ed} de ${MONTHS_ES[em - 1]}`;
+  return `${range} ${ey}`;
+}
+
 function eventUrl(id: string): string {
   return `https://www.caldearte.com/eventos/${id}`;
 }
@@ -617,8 +634,18 @@ export function buildDigestSubject(sections: DigestSection[]): string {
   return `Caldearte — tu semana en arte (${totalEvents} expo${totalEvents === 1 ? "" : "s"})`;
 }
 
-export function buildDigestBody(sections: DigestSection[], unsubscribeToken: string): string {
+export function buildDigestBody(
+  sections: DigestSection[],
+  unsubscribeToken: string,
+  intro: string | null = null,
+  week?: { start: string; end: string },
+): string {
   const lines: string[] = [];
+  if (week) lines.push(fmtWeekHeaderEs(week.start, week.end), "");
+  if (intro) {
+    lines.push(intro);
+    lines.push("");
+  }
   for (const section of sections) {
     lines.push(`-- ${section.label} --`);
     for (const [comuna, events] of groupByComuna(section.events)) {
@@ -635,30 +662,45 @@ export function buildDigestBody(sections: DigestSection[], unsubscribeToken: str
   return lines.join("\n");
 }
 
-// Horizontal thumbnail card — a <table> layout rather than flex/grid,
-// since email clients (Gmail, Outlook chief among them) don't reliably
-// support either; <table> is the one layout primitive that survives every
-// major client's HTML sanitizer.
+// Horizontal card matching the site's own card style, per user reference
+// screenshot: photo left, black rounded panel right (category label, bold
+// title, date, arrow), the whole card as one link — not a bare
+// thumbnail+text row. <table> layout (not flex/grid) since email clients
+// don't reliably support either.
 function eventCardHtml(e: DigestEvent): string {
   const date = fmtDigestDate(e);
   const thumb = e.imageUrl
-    ? `<img src="${escapeHtml(e.imageUrl)}" width="72" height="72" alt="" style="display:block;width:72px;height:72px;border-radius:8px;object-fit:cover;" />`
-    : `<div style="width:72px;height:72px;border-radius:8px;background:#eee;"></div>`;
-  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 14px;">
-    <tr>
-      <td width="72" valign="top" style="padding-right:12px;">
-        <a href="${eventUrl(e.id)}">${thumb}</a>
-      </td>
-      <td valign="top">
-        <a href="${eventUrl(e.id)}" style="color:#1c1c1c;text-decoration:none;font-weight:700;font-size:14px;">${escapeHtml(e.title)}</a><br/>
-        <span style="color:#555;font-size:13px;">${escapeHtml(e.placeName)}</span><br/>
-        ${date ? `<span style="color:#888;font-size:12px;">${escapeHtml(date)}</span>` : ""}
-      </td>
-    </tr>
-  </table>`;
+    ? `<img src="${escapeHtml(e.imageUrl)}" width="110" height="132" alt="" style="display:block;width:110px;height:132px;object-fit:cover;" />`
+    : `<div style="width:110px;height:132px;background:#3a3a3a;"></div>`;
+  return `<a href="${eventUrl(e.id)}" style="display:block;text-decoration:none;margin:0 0 12px;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-radius:16px;overflow:hidden;">
+      <tr>
+        <td width="110" valign="top" style="line-height:0;">${thumb}</td>
+        <td valign="middle" style="background:#1c1c1c;padding:14px 16px;">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+            <tr>
+              <td valign="middle">
+                <p style="margin:0 0 6px;color:#9a9a9a;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.03em;">${escapeHtml(e.placeName)}</p>
+                <p style="margin:0 0 6px;color:#fff;font-size:16px;font-weight:800;line-height:1.25;">${escapeHtml(e.title)}</p>
+                ${date ? `<p style="margin:0;color:#9a9a9a;font-size:12px;">${escapeHtml(date)}</p>` : ""}
+              </td>
+              <td valign="middle" align="right" width="28">
+                <span style="color:#fff;font-size:20px;">&#8594;</span>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </a>`;
 }
 
-export function buildDigestHtmlBody(sections: DigestSection[], unsubscribeToken: string): string {
+export function buildDigestHtmlBody(
+  sections: DigestSection[],
+  unsubscribeToken: string,
+  intro: string | null = null,
+  week?: { start: string; end: string },
+): string {
   const sectionsHtml = sections
     .map((section) => {
       const comunaGroupsHtml = groupByComuna(section.events)
@@ -672,11 +714,20 @@ export function buildDigestHtmlBody(sections: DigestSection[], unsubscribeToken:
     })
     .join("");
 
+  const introHtml = intro ? `<p style="margin:0 0 20px;font-size:14px;color:#333;line-height:1.5;">${escapeHtml(intro)}</p>` : "";
+  const weekLabel = week ? escapeHtml(fmtWeekHeaderEs(week.start, week.end)) : "";
+
   return `<div style="font-family:'Helvetica Neue',Arial,sans-serif;max-width:640px;margin:0 auto;">
     <div style="background:#1c1c1c;padding:24px 28px;border-radius:12px 12px 0 0;">
-      <p style="margin:0;color:#fff;font-size:20px;font-weight:800;letter-spacing:0.02em;">CALDEARTE</p>
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+        <tr>
+          <td valign="middle"><p style="margin:0;color:#fff;font-size:20px;font-weight:800;letter-spacing:0.02em;">CALDEARTE</p></td>
+          ${weekLabel ? `<td valign="middle" align="right"><p style="margin:0;color:#9a9a9a;font-size:13px;">${weekLabel}</p></td>` : ""}
+        </tr>
+      </table>
     </div>
-    <div style="background:#fdf6e3;padding:24px 28px 8px;">
+    <div style="background:#fff;padding:24px 28px 8px;">
+      ${introHtml}
       ${sectionsHtml}
       <p style="margin:28px 0 0;font-size:12px;color:#888;"><a href="${unsubscribeUrl(unsubscribeToken)}" style="color:#888;">Darse de baja</a></p>
     </div>
@@ -687,7 +738,13 @@ export function buildDigestHtmlBody(sections: DigestSection[], unsubscribeToken:
 // never breaks the run — a missing RESEND_API_KEY just means that
 // subscriber doesn't get this week's digest, logged loudly since it's the
 // only way anyone notices.
-export async function sendDigestEmail(email: string, unsubscribeToken: string, sections: DigestSection[]): Promise<void> {
+export async function sendDigestEmail(
+  email: string,
+  unsubscribeToken: string,
+  sections: DigestSection[],
+  intro: string | null = null,
+  week?: { start: string; end: string },
+): Promise<void> {
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) {
     console.warn("sendDigestEmail: RESEND_API_KEY not set — skipping digest email.");
@@ -698,8 +755,8 @@ export async function sendDigestEmail(email: string, unsubscribeToken: string, s
     from: "Caldearte <contacto@caldearte.com>",
     to: email,
     subject: buildDigestSubject(sections),
-    text: buildDigestBody(sections, unsubscribeToken),
-    html: buildDigestHtmlBody(sections, unsubscribeToken),
+    text: buildDigestBody(sections, unsubscribeToken, intro, week),
+    html: buildDigestHtmlBody(sections, unsubscribeToken, intro, week),
     headers: {
       "List-Unsubscribe": `<${unsubscribeUrl(unsubscribeToken)}>`,
     },

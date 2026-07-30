@@ -1,7 +1,7 @@
 import { getSupabaseClient } from "./supabase-client.js";
 import { estimateCostUsd, type ModelId, type Usage } from "./pricing.js";
 
-export type Purpose = "event_discovery";
+export type Purpose = "event_discovery" | "newsletter_intro";
 
 export interface RecordUsageInput {
   purpose: Purpose;

@@ -185,9 +185,69 @@ test(
         sendDigestEmailFn: async (email) => {
           sentTo.push(email);
         },
+        // Stubbed here so this test never hits the real Anthropic API —
+        // the intro-generation behavior itself has its own dedicated test
+        // below, plus intro.test.ts.
+        generateRegionIntroFn: async () => null,
       });
 
       assert.deepEqual(sentTo, ["confirmado-con-eventos@example.com"]);
+    } finally {
+      await client.from("newsletter_subscribers").delete().eq("admin_region_name", TEST_ADMIN_REGION);
+      await client.from("events").delete().eq("region_id", regionId);
+      await client.from("regions").delete().eq("id", regionId);
+    }
+  },
+);
+
+test(
+  "run(): generates the AI intro once per región and reuses it across every subscriber in that región — never once per subscriber",
+  { skip: !hasLocalSupabase },
+  async () => {
+    const { getSupabaseClient } = await import("../lib/supabase-client.js");
+    const client = getSupabaseClient();
+
+    const { data: region, error: regionError } = await client
+      .from("regions")
+      .insert({ name: TEST_REGION, country: "Testland", language: "es", status: "active", admin_region_name: TEST_ADMIN_REGION })
+      .select("id")
+      .single();
+    if (regionError) throw new Error(`Failed to seed test region: ${regionError.message}`);
+    const regionId = region.id;
+
+    try {
+      const { error: eventError } = await client.from("events").insert({
+        title: "Evento de prueba del newsletter",
+        freeform_location: TEST_REGION,
+        region_id: regionId,
+        curation_status: "approved",
+        source: "discovered",
+        opening_datetime: "2026-08-05T20:00:00.000Z",
+      });
+      if (eventError) throw new Error(`Failed to seed test event: ${eventError.message}`);
+
+      const { error: subscribersError } = await client.from("newsletter_subscribers").insert([
+        { email: "sub1@example.com", admin_region_name: TEST_ADMIN_REGION, confirm_token: "tok-1", confirmed_at: new Date().toISOString() },
+        { email: "sub2@example.com", admin_region_name: TEST_ADMIN_REGION, confirm_token: "tok-2", confirmed_at: new Date().toISOString() },
+      ]);
+      if (subscribersError) throw new Error(`Failed to seed test subscribers: ${subscribersError.message}`);
+
+      let introCalls = 0;
+      const introsUsed: Array<string | null> = [];
+      await run({
+        supabase: client,
+        now: new Date("2026-08-05T12:00:00.000Z"),
+        sendDigestEmailFn: async (_email, _token, _sections, intro) => {
+          introsUsed.push(intro ?? null);
+        },
+        generateRegionIntroFn: async () => {
+          introCalls++;
+          return "Intro compartida para toda la región.";
+        },
+      });
+
+      assert.equal(introCalls, 1, "expected exactly one intro generation call for two subscribers in the same región");
+      assert.deepEqual(introsUsed, ["Intro compartida para toda la región.", "Intro compartida para toda la región."]);
     } finally {
       await client.from("newsletter_subscribers").delete().eq("admin_region_name", TEST_ADMIN_REGION);
       await client.from("events").delete().eq("region_id", regionId);

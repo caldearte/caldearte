@@ -14,7 +14,7 @@ function emailShell(bodyHtml: string): string {
     <div style="background:#1c1c1c;padding:28px 32px;border-radius:12px 12px 0 0;">
       <p style="margin:0;color:#fff;font-size:22px;font-weight:800;letter-spacing:0.02em;">CALDEARTE</p>
     </div>
-    <div style="background:#fdf6e3;padding:32px;border-radius:0 0 12px 12px;">
+    <div style="background:#fff;padding:32px;border-radius:0 0 12px 12px;">
       ${bodyHtml}
     </div>
     <p style="text-align:center;color:#999;font-size:12px;margin-top:20px;">Calendario de arte curado por inteligencia humana potenciada por IA</p>
