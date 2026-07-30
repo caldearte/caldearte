@@ -7,6 +7,12 @@ export const WINDOW_MODE_COOKIE = "caldearte_window_mode";
 // city ids, most-recent-first. See pushRecentCityId below.
 export const RECENT_CITIES_COOKIE = "caldearte_recent_cities";
 export const MAX_RECENT_CITIES = 3;
+// "granted" | "denied" — whether the visitor has already answered the
+// first-visit GeoConsentBanner prompt (GeoConsentBanner.tsx). Set on
+// EITHER answer, including a native browser permission denial or a
+// getCurrentPosition error — once answered, never ask again, regardless
+// of which way they answered.
+export const GEO_CONSENT_COOKIE = "caldearte_geo_consent";
 
 // Client-side only (writes document.cookie directly) — matches the
 // 1-year expiry every preference cookie above already uses. Previously

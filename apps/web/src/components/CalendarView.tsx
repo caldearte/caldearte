@@ -15,12 +15,14 @@ import Footer from "./Footer";
 import CityPickerPanel from "./CityPickerPanel";
 import MenuDrawer from "./MenuDrawer";
 import SearchPanel from "./SearchPanel";
+import GeoConsentBanner from "./GeoConsentBanner";
 
 interface CalendarViewProps {
   inauguraciones: EventRecord[];
   exposActuales: EventRecord[];
   cityId: string;
   actualCityId: string | null; // IP-geolocated comuna, recomputed every render regardless of cityId — CityPickerPanel's "Tu ubicación actual" row; null when there's no real signal (outside Chile, no geo header)
+  showGeoConsentPrompt: boolean; // true only when the visitor has never answered GeoConsentBanner's prompt
   cityNames: Record<string, string>; // real observed comuna names, id -> name — see cities.ts
   familyMode: boolean;
   today: string; // YYYY-MM-DD, computed server-side for SSR/CSR consistency
@@ -42,6 +44,7 @@ export default function CalendarView({
   exposActuales,
   cityId,
   actualCityId,
+  showGeoConsentPrompt,
   cityNames,
   familyMode,
   today,
@@ -199,6 +202,8 @@ export default function CalendarView({
       />
 
       <SearchPanel open={searchOpen} events={searchableEvents} onClose={() => setSearchOpen(false)} />
+
+      <GeoConsentBanner show={showGeoConsentPrompt} regions={regions} />
     </div>
   );
 }

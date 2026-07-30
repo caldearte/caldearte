@@ -58,6 +58,14 @@ export const esCL = {
     select: "↵ seleccionar",
     close: "esc cerrar",
   },
+  // First-visit banner (GeoConsentBanner.tsx) — asks once, up front,
+  // whether to use the visitor's real location, rather than burying that
+  // option inside the city picker. Answered either way exactly once (see
+  // GEO_CONSENT_COOKIE); "decline" also covers a native browser permission
+  // denial — both read as "don't ask again", not just an explicit click.
+  geoConsentPrompt: "¿Quieres compartir tu ubicación para ver las inauguraciones y exposiciones cerca de ti ahora?",
+  geoConsentAccept: "Sí, compartir",
+  geoConsentDecline: "No, gracias",
   menu: "Menú",
   curatoria: "Curatoria",
   familyMode: "Modo familiar",
