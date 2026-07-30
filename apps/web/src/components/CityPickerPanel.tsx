@@ -608,21 +608,6 @@ export default function CityPickerPanel({
             placeholder={esCL.citySearchPlaceholder}
             className="w-full text-[15px] px-4 py-3 rounded-xl bg-picker-subtle border border-picker-border text-heading-gray placeholder:text-picker-placeholder focus:outline-none"
           />
-          {!hasPreciseLocation && (
-            <div className="mt-3">
-              <button
-                onClick={handleUseExactLocation}
-                disabled={locatingState === "locating"}
-                className="w-full flex items-center gap-3 bg-picker-subtle border border-picker-border rounded-xl px-4 py-3 text-left hover:bg-stone-100 transition-colors disabled:opacity-60"
-              >
-                <LocationPinIcon />
-                <span className="flex-grow text-sm font-medium text-heading-gray">
-                  {locatingState === "locating" ? esCL.cityPickerLocatingExact : esCL.cityPickerUseExactLocation}
-                </span>
-              </button>
-              {locatingState === "error" && <p className="mt-1 text-[11px] text-red-600">{esCL.cityPickerExactLocationError}</p>}
-            </div>
-          )}
         </div>
       </div>
 
@@ -642,6 +627,21 @@ export default function CityPickerPanel({
               />
               {isRegionExpanded(CURRENT_LOCATION_KEY) && (
                 <div role="listbox" aria-labelledby={regionOptionId(CURRENT_LOCATION_KEY)}>
+                  {!hasPreciseLocation && (
+                    <div className="mx-[52px] mr-3 mb-2">
+                      <div className="flex items-center gap-3 bg-picker-subtle border border-picker-border rounded-xl px-4 py-3">
+                        <span className="flex-grow text-[13px] text-muted-gray">{esCL.cityPickerUseExactLocation}</span>
+                        <button
+                          onClick={handleUseExactLocation}
+                          disabled={locatingState === "locating"}
+                          className="shrink-0 text-sm font-semibold bg-heading-gray text-white rounded-full px-4 py-2 disabled:opacity-60"
+                        >
+                          {locatingState === "locating" ? esCL.cityPickerLocatingExact : esCL.cityPickerShareLocationButton}
+                        </button>
+                      </div>
+                      {locatingState === "error" && <p className="mt-1 text-[11px] text-red-600">{esCL.cityPickerExactLocationError}</p>}
+                    </div>
+                  )}
                   <CityRow
                     city={currentLocationCity}
                     counts={cityCounts[currentLocationCity.id] ?? ZERO_COUNTS}
