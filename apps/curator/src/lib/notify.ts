@@ -556,8 +556,14 @@ function fmtDigestDate(e: DigestEvent): string {
   return "";
 }
 
-function unsubscribeUrl(functionsBaseUrl: string, unsubscribeToken: string): string {
-  return `${functionsBaseUrl}/newsletter-unsubscribe?token=${encodeURIComponent(unsubscribeToken)}`;
+// Points at our own /newsletter/baja page, not the Edge Function's URL
+// directly — Supabase Edge Functions can't serve real HTML (a text/html
+// GET response gets silently rewritten to text/plain by the platform), so
+// the page calls newsletter-unsubscribe server-side and renders a proper
+// result instead. Same fixed site origin apps/web already hardcodes in
+// sitemap.ts/robots.ts/layout.tsx.
+function unsubscribeUrl(unsubscribeToken: string): string {
+  return `https://www.caldearte.com/newsletter/baja?token=${encodeURIComponent(unsubscribeToken)}`;
 }
 
 export function buildDigestSubject(sections: DigestSection[]): string {
@@ -565,7 +571,7 @@ export function buildDigestSubject(sections: DigestSection[]): string {
   return `Caldearte — tu semana en arte (${totalEvents} expo${totalEvents === 1 ? "" : "s"})`;
 }
 
-export function buildDigestBody(sections: DigestSection[], functionsBaseUrl: string, unsubscribeToken: string): string {
+export function buildDigestBody(sections: DigestSection[], unsubscribeToken: string): string {
   const lines: string[] = [];
   for (const section of sections) {
     lines.push(`-- ${section.label} --`);
@@ -576,11 +582,11 @@ export function buildDigestBody(sections: DigestSection[], functionsBaseUrl: str
     }
     lines.push("");
   }
-  lines.push(`Darse de baja: ${unsubscribeUrl(functionsBaseUrl, unsubscribeToken)}`);
+  lines.push(`Darse de baja: ${unsubscribeUrl(unsubscribeToken)}`);
   return lines.join("\n");
 }
 
-export function buildDigestHtmlBody(sections: DigestSection[], functionsBaseUrl: string, unsubscribeToken: string): string {
+export function buildDigestHtmlBody(sections: DigestSection[], unsubscribeToken: string): string {
   const sectionsHtml = sections
     .map((section) => {
       const items = section.events
@@ -599,7 +605,7 @@ export function buildDigestHtmlBody(sections: DigestSection[], functionsBaseUrl:
 
   return `<div style="font-family:sans-serif;max-width:640px;">
     ${sectionsHtml}
-    <p style="margin:28px 0 0;font-size:12px;color:#888;"><a href="${unsubscribeUrl(functionsBaseUrl, unsubscribeToken)}" style="color:#888;">Darse de baja</a></p>
+    <p style="margin:28px 0 0;font-size:12px;color:#888;"><a href="${unsubscribeUrl(unsubscribeToken)}" style="color:#888;">Darse de baja</a></p>
   </div>`;
 }
 
@@ -613,22 +619,15 @@ export async function sendDigestEmail(email: string, unsubscribeToken: string, s
     console.warn("sendDigestEmail: RESEND_API_KEY not set — skipping digest email.");
     return;
   }
-  const supabaseUrl = process.env.SUPABASE_URL;
-  if (!supabaseUrl) {
-    console.warn("sendDigestEmail: SUPABASE_URL not set — skipping digest email (can't build the unsubscribe link).");
-    return;
-  }
-  const functionsBaseUrl = `${supabaseUrl}/functions/v1`;
-
   const resend = new Resend(apiKey);
   const { error } = await resend.emails.send({
     from: "Caldearte <contacto@caldearte.com>",
     to: email,
     subject: buildDigestSubject(sections),
-    text: buildDigestBody(sections, functionsBaseUrl, unsubscribeToken),
-    html: buildDigestHtmlBody(sections, functionsBaseUrl, unsubscribeToken),
+    text: buildDigestBody(sections, unsubscribeToken),
+    html: buildDigestHtmlBody(sections, unsubscribeToken),
     headers: {
-      "List-Unsubscribe": `<${unsubscribeUrl(functionsBaseUrl, unsubscribeToken)}>`,
+      "List-Unsubscribe": `<${unsubscribeUrl(unsubscribeToken)}>`,
     },
   });
 
