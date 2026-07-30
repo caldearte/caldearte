@@ -17,10 +17,20 @@ import { DEFAULT_CITY_ID, buildRegionMetaByCityId, resolveDefaultCityId, resolve
 import { todayInSantiago, currentWeekInSantiago, isCurrentOrUpcoming } from "@/lib/date";
 import { CITY_COOKIE, FAMILY_MODE_COOKIE, TODAY_FILTER_COOKIE, VIGENTES_FILTER_COOKIE, GEO_CONSENT_COOKIE, PRECISE_CITY_COOKIE } from "@/lib/cookies";
 import CalendarView from "@/components/CalendarView";
+import type { NewsletterStatus } from "@/components/NewsletterStatusModal";
 
-export default async function HomePage() {
+const NEWSLETTER_STATUSES: NewsletterStatus[] = ["confirmed", "already_confirmed", "unsubscribed", "already_unsubscribed", "invalid", "error"];
+
+export default async function HomePage({ searchParams }: { searchParams: Promise<{ newsletter?: string }> }) {
   const cookieStore = await cookies();
   const headerStore = await headers();
+  // Landed here from /newsletter/confirmar or /newsletter/baja (both
+  // redirect to `/?newsletter=<status>` after calling their Edge Function
+  // server-side) — see NewsletterStatusModal.tsx.
+  const { newsletter } = await searchParams;
+  const newsletterStatus: NewsletterStatus | null = NEWSLETTER_STATUSES.includes(newsletter as NewsletterStatus)
+    ? (newsletter as NewsletterStatus)
+    : null;
   // Absent cookie means family mode ON — a first-time visitor sees
   // filtered content by default; explicitly turning it off (empty-string
   // cookie value, set by CalendarView.tsx's toggleFamilyMode) is the only
@@ -176,6 +186,7 @@ export default async function HomePage() {
         nextEvent={nextEvent}
         regions={regions}
         archiveHref={archiveHref}
+        newsletterStatus={newsletterStatus}
       />
     </main>
   );

@@ -241,6 +241,7 @@ export const esCL = {
     sending: "Enviando…",
     success: "Revisa tu correo para confirmar la suscripción.",
     error: "No pudimos suscribirte. Intenta de nuevo.",
+    close: "Listo",
     confirmar: {
       title: "Confirmar suscripción",
       confirmed: "Tu suscripción al newsletter de Caldearte quedó confirmada.",
