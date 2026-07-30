@@ -305,6 +305,51 @@ export type Database = {
           },
         ]
       }
+      newsletter_subscribers: {
+        Row: {
+          city_id: string
+          confirm_token: string
+          confirmed_at: string | null
+          created_at: string
+          email: string
+          id: string
+          unsubscribed_at: string | null
+        }
+        Insert: {
+          city_id: string
+          confirm_token: string
+          confirmed_at?: string | null
+          created_at?: string
+          email: string
+          id?: string
+          unsubscribed_at?: string | null
+        }
+        Update: {
+          city_id?: string
+          confirm_token?: string
+          confirmed_at?: string | null
+          created_at?: string
+          email?: string
+          id?: string
+          unsubscribed_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "newsletter_subscribers_city_id_fkey"
+            columns: ["city_id"]
+            isOneToOne: false
+            referencedRelation: "regions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "newsletter_subscribers_city_id_fkey"
+            columns: ["city_id"]
+            isOneToOne: false
+            referencedRelation: "regions_public"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       raw_search_results: {
         Row: {
           created_at: string

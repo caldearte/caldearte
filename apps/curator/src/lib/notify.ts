@@ -530,3 +530,109 @@ export async function sendEscalationEmail(
     console.error("[notify] escalation email send failed", error);
   }
 }
+
+// Newsletter — weekly digest, one email per confirmed subscriber. Section
+// content (which events go where) is decided by
+// apps/curator/src/newsletter/run.ts's buildDigestSections — this file
+// only formats whatever sections it's handed and never omits a non-empty
+// one, matching the product decision that empty sections are dropped
+// upstream, not hidden here.
+export interface DigestEvent {
+  title: string;
+  placeName: string;
+  openingDatetime: string | null;
+  runEndDate: string | null;
+  sourceUrl: string | null;
+}
+
+export interface DigestSection {
+  label: string;
+  events: DigestEvent[];
+}
+
+function fmtDigestDate(e: DigestEvent): string {
+  if (e.openingDatetime) return `Inauguración: ${e.openingDatetime.slice(0, 10)}`;
+  if (e.runEndDate) return `Hasta el ${e.runEndDate}`;
+  return "";
+}
+
+function unsubscribeUrl(functionsBaseUrl: string, unsubscribeToken: string): string {
+  return `${functionsBaseUrl}/newsletter-unsubscribe?token=${encodeURIComponent(unsubscribeToken)}`;
+}
+
+export function buildDigestSubject(sections: DigestSection[]): string {
+  const totalEvents = sections.reduce((sum, s) => sum + s.events.length, 0);
+  return `Caldearte — tu semana en arte (${totalEvents} expo${totalEvents === 1 ? "" : "s"})`;
+}
+
+export function buildDigestBody(sections: DigestSection[], functionsBaseUrl: string, unsubscribeToken: string): string {
+  const lines: string[] = [];
+  for (const section of sections) {
+    lines.push(`-- ${section.label} --`);
+    for (const e of section.events) {
+      const date = fmtDigestDate(e);
+      lines.push(`${e.title} — ${e.placeName}${date ? ` — ${date}` : ""}`);
+      if (e.sourceUrl) lines.push(`  ${e.sourceUrl}`);
+    }
+    lines.push("");
+  }
+  lines.push(`Darse de baja: ${unsubscribeUrl(functionsBaseUrl, unsubscribeToken)}`);
+  return lines.join("\n");
+}
+
+export function buildDigestHtmlBody(sections: DigestSection[], functionsBaseUrl: string, unsubscribeToken: string): string {
+  const sectionsHtml = sections
+    .map((section) => {
+      const items = section.events
+        .map((e) => {
+          const date = fmtDigestDate(e);
+          const title = e.sourceUrl
+            ? `<a href="${escapeHtml(e.sourceUrl)}" style="color:inherit;">${escapeHtml(e.title)}</a>`
+            : escapeHtml(e.title);
+          return `<li style="margin:0 0 10px;"><strong>${title}</strong><br/><span style="color:#555;font-size:13px;">${escapeHtml(e.placeName)}${date ? ` — ${escapeHtml(date)}` : ""}</span></li>`;
+        })
+        .join("");
+      return `<h2 style="font-size:14px;text-transform:uppercase;letter-spacing:0.04em;color:#888;margin:24px 0 10px;border-bottom:1px solid #e2e0da;padding-bottom:6px;">${escapeHtml(section.label)}</h2>
+      <ul style="list-style:none;padding:0;margin:0;">${items}</ul>`;
+    })
+    .join("");
+
+  return `<div style="font-family:sans-serif;max-width:640px;">
+    ${sectionsHtml}
+    <p style="margin:28px 0 0;font-size:12px;color:#888;"><a href="${unsubscribeUrl(functionsBaseUrl, unsubscribeToken)}" style="color:#888;">Darse de baja</a></p>
+  </div>`;
+}
+
+// Ancillary, same posture as sendEscalationEmail: a failed/skipped send
+// never breaks the run — a missing RESEND_API_KEY just means that
+// subscriber doesn't get this week's digest, logged loudly since it's the
+// only way anyone notices.
+export async function sendDigestEmail(email: string, unsubscribeToken: string, sections: DigestSection[]): Promise<void> {
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) {
+    console.warn("sendDigestEmail: RESEND_API_KEY not set — skipping digest email.");
+    return;
+  }
+  const supabaseUrl = process.env.SUPABASE_URL;
+  if (!supabaseUrl) {
+    console.warn("sendDigestEmail: SUPABASE_URL not set — skipping digest email (can't build the unsubscribe link).");
+    return;
+  }
+  const functionsBaseUrl = `${supabaseUrl}/functions/v1`;
+
+  const resend = new Resend(apiKey);
+  const { error } = await resend.emails.send({
+    from: "Caldearte <contacto@caldearte.com>",
+    to: email,
+    subject: buildDigestSubject(sections),
+    text: buildDigestBody(sections, functionsBaseUrl, unsubscribeToken),
+    html: buildDigestHtmlBody(sections, functionsBaseUrl, unsubscribeToken),
+    headers: {
+      "List-Unsubscribe": `<${unsubscribeUrl(functionsBaseUrl, unsubscribeToken)}>`,
+    },
+  });
+
+  if (error) {
+    console.error(`[notify] digest email send failed for ${email}`, error);
+  }
+}

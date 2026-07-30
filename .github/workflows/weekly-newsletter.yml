@@ -1,0 +1,39 @@
+name: Send Weekly Newsletter
+
+# Weekly digest to confirmed newsletter subscribers — see
+# docs/data-model.md's newsletter_subscribers entry and
+# docs/roadmap.md's newsletter section for the full design.
+#
+# Scheduled 1h after headless-bright-sources.yml's own Monday run (07:00
+# UTC) so that week's freshest bright-source events are already curated
+# and approved before the digest goes out. Deliberately its own file —
+# does NOT modify event-discovery.yml's existing schedule (monthly full
+# comuna search, weekly bright-sources-only), which stays as-is per an
+# explicit product decision: general discovery cadence only increases once
+# more of its output has been audited.
+on:
+  workflow_dispatch: {}
+  schedule:
+    - cron: "0 8 * * 1" # Every Monday, 08:00 UTC
+
+jobs:
+  send-newsletter:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Send weekly newsletter
+        run: pnpm --filter @caldearte/curator run send-newsletter
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}

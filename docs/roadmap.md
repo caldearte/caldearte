@@ -124,13 +124,24 @@ Closed out the initial project brief, moved into a dedicated repo.
       [curation-policy.md](curation-policy.md) (the axis-by-axis table)
       stays internal — the public page only carries the same
       already-approved value-prop paragraph it always did.
-  - Retomar el newsletter (weekly digest, opt-in per comuna, double
-    opt-in via Resend — full flow already designed in an earlier planning
-    session, deliberately deferred 2026-07-21 until post-image-fix data
-    quality was confirmed, which it now has been) — this is the core
-    loop's first retention mechanism, worth shipping before or alongside
-    any real promotion push, otherwise one-time traffic has no reason to
-    come back on its own.
+  - **Shipped 2026-07-30**: the newsletter (weekly digest, opt-in per
+    comuna, double opt-in via Resend) — `newsletter_subscribers` table,
+    Footer subscribe form (`apps/web/src/components/NewsletterSignup.tsx`),
+    `/api/newsletter/subscribe` (apps/web, anon-key insert-only), two
+    Supabase Edge Functions (`newsletter-confirm`, `newsletter-unsubscribe`,
+    service-role), a new `apps/curator/src/newsletter/` module
+    (`send-newsletter` script) sending four sections per subscriber
+    (inauguraciones/nuevas/recordatorios/otras comunas, omitting any
+    that's empty), and its own weekly cron
+    (`.github/workflows/weekly-newsletter.yml`, Monday 08:00 UTC).
+    Deliberately does NOT depend on event-discovery.yml's discovery
+    cadence changing — general comuna search stays monthly (an explicit,
+    considered decision, see region-discovery.md) while bright-sources
+    stays weekly; the digest just summarizes whatever's currently
+    approved and running each week, which stays worthwhile thanks to
+    multi-week exhibition runs plus the weekly bright-source trickle.
+    PR held for manual review (touches `supabase/migrations/` and
+    `.github/workflows/`).
 
 ## Phase 1b — Inbound-mail flows
 

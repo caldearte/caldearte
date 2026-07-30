@@ -14,9 +14,14 @@ import {
   buildEscalationSubject,
   buildEscalationBody,
   buildEscalationHtmlBody,
+  sendDigestEmail,
+  buildDigestSubject,
+  buildDigestBody,
+  buildDigestHtmlBody,
   type RunSummary,
   type HeadlessRunSummary,
   type EscalationSide,
+  type DigestSection,
 } from "./notify.js";
 
 test("flagBudgetExceeded: no-ops when GITHUB_TOKEN/GITHUB_REPOSITORY are unset", async () => {
@@ -305,4 +310,84 @@ test("buildEscalationHtmlBody renders both versions with source links and both a
   assert.match(html, /href="https:\/\/uchile\.cl/);
   assert.match(html, /token=accept-token&action=accept/);
   assert.match(html, /token=reject-token&action=reject/);
+});
+
+const fixtureDigestSections: DigestSection[] = [
+  {
+    label: "Inauguraciones de esta semana",
+    events: [
+      {
+        title: "Estrella distante",
+        placeName: "MAC Quinta Normal",
+        openingDatetime: "2026-08-03T20:00:00.000Z",
+        runEndDate: "2026-09-01",
+        sourceUrl: "https://centronacionaldearte.cultura.gob.cl/estrella-distante",
+      },
+    ],
+  },
+  {
+    label: "En otras comunas",
+    events: [
+      {
+        title: "SalaFEM2026",
+        placeName: "Sala FEM",
+        openingDatetime: null,
+        runEndDate: "2026-08-15",
+        sourceUrl: null,
+      },
+    ],
+  },
+];
+
+test("buildDigestSubject counts every event across all sections", () => {
+  assert.equal(buildDigestSubject(fixtureDigestSections), "Caldearte — tu semana en arte (2 expos)");
+});
+
+test("buildDigestSubject uses singular for exactly one event", () => {
+  assert.equal(buildDigestSubject([fixtureDigestSections[0]]), "Caldearte — tu semana en arte (1 expo)");
+});
+
+const fixtureFunctionsBaseUrl = "https://xyzproject.supabase.co/functions/v1";
+
+test("buildDigestBody lists every section's events and includes the unsubscribe link", () => {
+  const body = buildDigestBody(fixtureDigestSections, fixtureFunctionsBaseUrl, "unsub-token");
+  assert.match(body, /Inauguraciones de esta semana/);
+  assert.match(body, /Estrella distante — MAC Quinta Normal/);
+  assert.match(body, /En otras comunas/);
+  assert.match(body, /SalaFEM2026 — Sala FEM/);
+  assert.match(body, /newsletter-unsubscribe\?token=unsub-token/);
+});
+
+test("buildDigestHtmlBody renders every section and links titles with a sourceUrl", () => {
+  const html = buildDigestHtmlBody(fixtureDigestSections, fixtureFunctionsBaseUrl, "unsub-token");
+  assert.match(html, /Inauguraciones de esta semana/);
+  assert.match(html, /href="https:\/\/centronacionaldearte\.cultura\.gob\.cl\/estrella-distante"/);
+  assert.match(html, /SalaFEM2026/);
+  assert.match(html, /newsletter-unsubscribe\?token=unsub-token/);
+});
+
+test("sendDigestEmail: no-ops with a warning when RESEND_API_KEY is unset", async () => {
+  const original = process.env.RESEND_API_KEY;
+  delete process.env.RESEND_API_KEY;
+  try {
+    await sendDigestEmail("visitante@example.com", "unsub-token", fixtureDigestSections);
+  } finally {
+    if (original !== undefined) process.env.RESEND_API_KEY = original;
+  }
+  assert.ok(true);
+});
+
+test("sendDigestEmail: no-ops with a warning when SUPABASE_URL is unset — can't build the unsubscribe link", async () => {
+  const originalKey = process.env.RESEND_API_KEY;
+  const originalUrl = process.env.SUPABASE_URL;
+  process.env.RESEND_API_KEY = "test-key";
+  delete process.env.SUPABASE_URL;
+  try {
+    await sendDigestEmail("visitante@example.com", "unsub-token", fixtureDigestSections);
+  } finally {
+    if (originalKey !== undefined) process.env.RESEND_API_KEY = originalKey;
+    else delete process.env.RESEND_API_KEY;
+    if (originalUrl !== undefined) process.env.SUPABASE_URL = originalUrl;
+  }
+  assert.ok(true);
 });
