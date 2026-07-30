@@ -17,11 +17,6 @@ export default function PrivacidadPage() {
         <p className="text-sm text-muted-gray leading-relaxed">{esCL.privacidad.dataBody}</p>
       </section>
 
-      <section className="mb-8">
-        <h2 className="text-lg font-bold text-heading-gray mb-2">{esCL.privacidad.curationTitle}</h2>
-        <p className="text-sm text-muted-gray leading-relaxed">{esCL.curatoriaText}</p>
-      </section>
-
       <section>
         <h2 className="text-lg font-bold text-heading-gray mb-2">{esCL.privacidad.contactTitle}</h2>
         <p className="text-sm text-muted-gray leading-relaxed">

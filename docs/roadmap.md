@@ -113,8 +113,17 @@ Closed out the initial project brief, moved into a dedicated repo.
       desktop's `headerSummary` — desktop shows "27 de JULIO al 2 de
       AGOSTO," mobile shows neither) — adding it would make the mobile
       header too tall; the current mobile layout reads well as-is.
-    - Still open: the "Curatoria" menu item lands on a page whose title
-      leads with "Privacidad" before "curatoría."
+    - **Fixed 2026-07-30**: split `/privacidad` into two dedicated pages —
+      `/curatoria` (the value-prop/editorial-stance copy, `curatoriaText`)
+      and a slimmed-down `/privacidad` (just data handling + contact). The
+      menu's "Curatoría" item now points at `/curatoria` directly instead
+      of a page whose title led with "Privacidad." `/privacidad`'s data
+      section also now mentions the Filtros/geolocation cookies added
+      since it was last written (previously only listed city + family
+      mode). The operational detail in
+      [curation-policy.md](curation-policy.md) (the axis-by-axis table)
+      stays internal — the public page only carries the same
+      already-approved value-prop paragraph it always did.
   - Retomar el newsletter (weekly digest, opt-in per comuna, double
     opt-in via Resend — full flow already designed in an earlier planning
     session, deliberately deferred 2026-07-21 until post-image-fix data

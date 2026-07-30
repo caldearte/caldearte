@@ -8,12 +8,12 @@ interface MenuDrawerProps {
 }
 
 // Opens from both the mobile hamburger AND the desktop "☰ Menú" trigger —
-// same drawer, same content on every screen size. Curatoria links out to
-// /privacidad rather than duplicating that page's content in a second
-// place — this drawer used to have its own "curatoria" view with the same
-// text as /privacidad's "Cómo curamos" section. No Modo familiar row here
-// anymore — that toggle lives in FiltersSection now, visible on every
-// screen size without opening this drawer.
+// same drawer, same content on every screen size. Curatoría links out to
+// its own /curatoria page (split from /privacidad 2026-07-30 — the merged
+// page's title used to lead with "Privacidad" before "curatoría", a real
+// UX-audit finding). No Modo familiar row here anymore — that toggle lives
+// in FiltersSection now, visible on every screen size without opening this
+// drawer.
 export default function MenuDrawer({ open, archiveHref, onClose }: MenuDrawerProps) {
   return (
     <>
@@ -34,7 +34,7 @@ export default function MenuDrawer({ open, archiveHref, onClose }: MenuDrawerPro
             ✕
           </button>
         </div>
-        <Link href="/privacidad" onClick={onClose} className="w-full text-left text-sm text-heading-gray py-2.5 border-b border-stone-200 flex items-center justify-between">
+        <Link href="/curatoria" onClick={onClose} className="w-full text-left text-sm text-heading-gray py-2.5 border-b border-stone-200 flex items-center justify-between">
           <span>{esCL.curatoria}</span>
           <span className="text-stone-300">›</span>
         </Link>
