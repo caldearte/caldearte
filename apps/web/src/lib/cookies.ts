@@ -13,6 +13,16 @@ export const MAX_RECENT_CITIES = 3;
 // getCurrentPosition error — once answered, never ask again, regardless
 // of which way they answered.
 export const GEO_CONSENT_COOKIE = "caldearte_geo_consent";
+// The comuna id resolved from a real, granted geolocation reading (GPS/
+// wifi via the browser, or the one-time banner grant) — durable, unlike
+// page.tsx's own actualCityId computation from Vercel's per-request IP
+// headers. Real bug found 2026-07-30: without this, "Tu ubicación actual"
+// kept reverting to the coarse IP-based city (e.g. Santiago) after any
+// navigation, even after the visitor had already granted a precise
+// reading — this is the value that should win once it exists. Set by
+// BOTH GeoConsentBanner (first-visit prompt) and CityPickerPanel's "Usar
+// mi ubicación exacta" button — same durable signal either way.
+export const PRECISE_CITY_COOKIE = "caldearte_precise_city";
 
 // Client-side only (writes document.cookie directly) — matches the
 // 1-year expiry every preference cookie above already uses. Previously

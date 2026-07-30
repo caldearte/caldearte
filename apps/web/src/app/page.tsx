@@ -15,7 +15,7 @@ import {
 } from "@/lib/events";
 import { DEFAULT_CITY_ID, buildRegionMetaByCityId, resolveDefaultCityId, resolveGeoCityId, nearestCityIdByCoords } from "@/lib/cities";
 import { todayInSantiago, currentWeekInSantiago, isCurrentOrUpcoming } from "@/lib/date";
-import { CITY_COOKIE, FAMILY_MODE_COOKIE, WINDOW_MODE_COOKIE, GEO_CONSENT_COOKIE } from "@/lib/cookies";
+import { CITY_COOKIE, FAMILY_MODE_COOKIE, WINDOW_MODE_COOKIE, GEO_CONSENT_COOKIE, PRECISE_CITY_COOKIE } from "@/lib/cookies";
 import CalendarView from "@/components/CalendarView";
 
 export default async function HomePage() {
@@ -110,7 +110,17 @@ export default async function HomePage() {
   const geoLat = geoLatHeader ? Number(geoLatHeader) : NaN;
   const geoLng = geoLngHeader ? Number(geoLngHeader) : NaN;
   const hasGeoCoords = Number.isFinite(geoLat) && Number.isFinite(geoLng);
+  // PRECISE_CITY_COOKIE (a real, granted geolocation reading — banner or
+  // the picker's own button) always outranks both of the above: it's
+  // durable and strictly more precise than any per-request IP estimate.
+  // Real bug found 2026-07-30: without this short-circuit, "Tu ubicación
+  // actual" kept reverting to the coarse IP-based city on every new
+  // render/navigation even after the visitor had already granted a
+  // precise reading once.
+  const preciseCityCookie = cookieStore.get(PRECISE_CITY_COOKIE)?.value;
+  const hasPreciseLocation = preciseCityCookie !== undefined;
   const actualCityId =
+    preciseCityCookie ??
     (hasGeoCoords ? nearestCityIdByCoords(geoLat, geoLng, regions) : null) ??
     resolveGeoCityId(geoCity, geoCountry, buildRegionMetaByCityId(regions));
 
@@ -144,6 +154,7 @@ export default async function HomePage() {
         exposActuales={exposActuales}
         cityId={cityId}
         actualCityId={actualCityId}
+        hasPreciseLocation={hasPreciseLocation}
         showGeoConsentPrompt={showGeoConsentPrompt}
         cityNames={cityNames}
         familyMode={familyMode}
