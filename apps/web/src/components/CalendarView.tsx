@@ -146,6 +146,14 @@ export default function CalendarView({
         onToggleVigentesFilter={toggleVigentesFilter}
       />
 
+      {/* Value-prop tagline — previously only lived in <meta description>
+          and the footer, nothing stated it above the fold (2026-07-28 UX
+          audit finding). Placed here, not its own banner: this is the gap
+          between Filtros and the first section heading, mobile's largest
+          unused stretch of whitespace, so it also tightens that up instead
+          of adding a new one. */}
+      <p className="mt-2 text-xs text-muted-gray">{esCL.footer.tagline}</p>
+
       {isEmpty ? (
         <div className="py-10">
           {nextEvent ? (
@@ -168,7 +176,7 @@ export default function CalendarView({
       ) : (
         <>
           {inauguraciones.length > 0 && (
-            <section className="mt-10">
+            <section className="mt-6">
               <h2 className="text-3xl md:text-[41px] font-black tracking-wide text-heading-gray mb-6">{esCL.sectionInauguraciones}</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-[118px]">
                 {inauguraciones.map((e) => (

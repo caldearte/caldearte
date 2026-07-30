@@ -100,13 +100,21 @@ Closed out the initial project brief, moved into a dedicated repo.
   - Running a real manual audit of the curation policy against the
     production data that's now accumulated (flagged in
     [risks.md](risks.md)).
-  - UX fixes found auditing the live site: the value-prop tagline ("Calendario
-    de arte curado por inteligencia humana potenciada por IA") only lives in
-    the `<meta description>` and the footer — nothing states it above the
-    fold; the mobile header drops the vigente date-range entirely (`Header.tsx`'s
-    `headerSummaryMobile` vs. desktop's `headerSummary` — desktop shows "27 de
-    JULIO al 2 de AGOSTO," mobile shows neither); the "Curatoria" menu item
-    lands on a page whose title leads with "Privacidad" before "curatoría."
+  - UX fixes found auditing the live site:
+    - **Fixed 2026-07-30**: the value-prop tagline ("Calendario de arte
+      curado por inteligencia humana potenciada por IA") now also renders
+      in `CalendarView.tsx`, right below the Filtros row — it previously
+      only lived in `<meta description>` and the footer, nothing stated it
+      above the fold. Placed in what was mobile's largest stretch of
+      unused whitespace (between Filtros and the first section heading),
+      tightening that gap instead of adding a new one.
+    - **Decided 2026-07-30, won't fix**: the mobile header still omits the
+      week's date range (`Header.tsx`'s `headerSummaryMobile` vs.
+      desktop's `headerSummary` — desktop shows "27 de JULIO al 2 de
+      AGOSTO," mobile shows neither) — adding it would make the mobile
+      header too tall; the current mobile layout reads well as-is.
+    - Still open: the "Curatoria" menu item lands on a page whose title
+      leads with "Privacidad" before "curatoría."
   - Retomar el newsletter (weekly digest, opt-in per comuna, double
     opt-in via Resend — full flow already designed in an earlier planning
     session, deliberately deferred 2026-07-21 until post-image-fix data
