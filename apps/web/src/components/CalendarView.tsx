@@ -22,6 +22,7 @@ interface CalendarViewProps {
   exposActuales: EventRecord[];
   cityId: string;
   actualCityId: string | null; // IP-geolocated comuna, recomputed every render regardless of cityId — CityPickerPanel's "Tu ubicación actual" row; null when there's no real signal (outside Chile, no geo header)
+  hasPreciseLocation: boolean; // true once a real geolocation reading (banner or picker button) has been granted — hides the picker's redundant "Usar mi ubicación exacta" button
   showGeoConsentPrompt: boolean; // true only when the visitor has never answered GeoConsentBanner's prompt
   cityNames: Record<string, string>; // real observed comuna names, id -> name — see cities.ts
   familyMode: boolean;
@@ -44,6 +45,7 @@ export default function CalendarView({
   exposActuales,
   cityId,
   actualCityId,
+  hasPreciseLocation,
   showGeoConsentPrompt,
   cityNames,
   familyMode,
@@ -105,6 +107,8 @@ export default function CalendarView({
 
   return (
     <div className="w-full relative">
+      <GeoConsentBanner show={showGeoConsentPrompt} regions={regions} />
+
       <Header
         city={city}
         familyMode={familyMode}
@@ -181,6 +185,7 @@ export default function CalendarView({
         open={locationOpen}
         cityId={cityId}
         actualCityId={actualCityId}
+        hasPreciseLocation={hasPreciseLocation}
         cityCountsDay={cityCountsDay}
         cityCountsWeek={cityCountsWeek}
         cityNames={cityNames}
@@ -202,8 +207,6 @@ export default function CalendarView({
       />
 
       <SearchPanel open={searchOpen} events={searchableEvents} onClose={() => setSearchOpen(false)} />
-
-      <GeoConsentBanner show={showGeoConsentPrompt} regions={regions} />
     </div>
   );
 }

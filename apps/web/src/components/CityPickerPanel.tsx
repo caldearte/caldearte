@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
+import { useRouter } from "next/navigation";
 import { esCL } from "@/i18n/es-CL";
 import {
   buildRegionMetaByCityId,
@@ -13,13 +14,14 @@ import {
   type City,
   type CountryGroup,
 } from "@/lib/cities";
-import { getRecentCityIds } from "@/lib/cookies";
+import { getRecentCityIds, setCookie, PRECISE_CITY_COOKIE } from "@/lib/cookies";
 import { sumCounts, type CityCounts, type RegionMeta, type WindowMode } from "@/lib/events";
 
 interface CityPickerPanelProps {
   open: boolean;
   cityId: string; // the CONFIRMED city — seeds pendingCityId whenever the panel opens
-  actualCityId: string | null; // IP-geolocated comuna (page.tsx) — feeds the "Tu ubicación actual" quick-pick row; null when there's no real geo signal
+  actualCityId: string | null; // geolocated comuna (page.tsx, already prefers a real granted reading over the coarse IP estimate) — feeds the "Tu ubicación actual" quick-pick row; null when there's no real geo signal
+  hasPreciseLocation: boolean; // true once a real geolocation reading is already known — hides "Usar mi ubicación exacta" (redundant to ask again)
   cityCountsDay: Record<string, CityCounts>;
   cityCountsWeek: Record<string, CityCounts>;
   cityNames: Record<string, string>;
@@ -222,6 +224,7 @@ export default function CityPickerPanel({
   open,
   cityId,
   actualCityId,
+  hasPreciseLocation,
   cityCountsDay,
   cityCountsWeek,
   cityNames,
@@ -237,14 +240,8 @@ export default function CityPickerPanel({
   const [pendingCityId, setPendingCityId] = useState(cityId);
   const [pendingWindowMode, setPendingWindowMode] = useState(windowMode);
   const [recentCityIds, setRecentCityIds] = useState<string[]>([]);
-  // Opt-in browser-Geolocation upgrade over the automatic IP-based
-  // `actualCityId` (page.tsx) — null until the visitor explicitly clicks
-  // "Usar mi ubicación exacta" and grants permission. Takes over from
-  // `actualCityId` once set (see currentLocationCity below); never set
-  // automatically, since a location permission prompt firing without a
-  // click is both bad UX and blocked by some browsers.
-  const [preciseCityId, setPreciseCityId] = useState<string | null>(null);
   const [locatingState, setLocatingState] = useState<"idle" | "locating" | "error">("idle");
+  const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const exploreButtonRef = useRef<HTMLButtonElement>(null);
@@ -280,7 +277,6 @@ export default function CityPickerPanel({
       setActiveIndex(0);
       setPendingCityId(cityId);
       setPendingWindowMode(windowMode);
-      setPreciseCityId(null);
       setLocatingState("idle");
       // Read fresh each open, not just once on mount — a visit recorded
       // since the last time this panel was open (e.g. via CityCarousel,
@@ -364,14 +360,8 @@ export default function CityPickerPanel({
   // alphabetical spot in the full región list — that's fine, same
   // "shortcut + still browsable normally" pattern ride-hailing/delivery
   // apps already use for exactly this).
-  // preciseCityId (opt-in browser Geolocation, see handleUseExactLocation
-  // below) takes over from actualCityId (automatic, IP-based) once the
-  // visitor has one — a strictly-more-precise reading always wins.
-  const effectiveLocationCityId = preciseCityId ?? actualCityId;
   const currentLocationCity: City | null =
-    !isSearching && effectiveLocationCityId && effectiveLocationCityId !== cityId && effectiveLocationCityId !== OTHER_CITY.id
-      ? cityById(effectiveLocationCityId, cityNames)
-      : null;
+    !isSearching && actualCityId && actualCityId !== cityId && actualCityId !== OTHER_CITY.id ? cityById(actualCityId, cityNames) : null;
   const recentCities: City[] = useMemo(
     () =>
       isSearching
@@ -475,8 +465,14 @@ export default function CityPickerPanel({
       (position) => {
         const id = nearestCityIdByCoords(position.coords.latitude, position.coords.longitude, regions);
         if (id) {
-          setPreciseCityId(id);
+          // Durable, not local-only state — real bug found 2026-07-30: a
+          // local-only override was lost the moment the visitor navigated
+          // to a different city and came back. Persisting it here means
+          // page.tsx's own actualCityId already reflects this on the next
+          // render, so no separate override/state is needed on this side.
+          setCookie(PRECISE_CITY_COOKIE, id);
           setLocatingState("idle");
+          router.refresh();
         } else {
           setLocatingState("error");
         }
@@ -594,15 +590,19 @@ export default function CityPickerPanel({
             placeholder={esCL.citySearchPlaceholder}
             className="w-full text-[15px] px-4 py-3 rounded-xl bg-picker-subtle border border-picker-border text-heading-gray placeholder:text-picker-placeholder focus:outline-none"
           />
-          <button
-            onClick={handleUseExactLocation}
-            disabled={locatingState === "locating"}
-            className="mt-2 inline-flex items-center gap-1.5 text-[12px] text-muted-gray hover:text-heading-gray disabled:opacity-60"
-          >
-            <LocationPinIcon />
-            {locatingState === "locating" ? esCL.cityPickerLocatingExact : esCL.cityPickerUseExactLocation}
-          </button>
-          {locatingState === "error" && <p className="mt-1 text-[11px] text-red-600">{esCL.cityPickerExactLocationError}</p>}
+          {!hasPreciseLocation && (
+            <>
+              <button
+                onClick={handleUseExactLocation}
+                disabled={locatingState === "locating"}
+                className="mt-2 inline-flex items-center gap-1.5 text-[12px] text-muted-gray hover:text-heading-gray disabled:opacity-60"
+              >
+                <LocationPinIcon />
+                {locatingState === "locating" ? esCL.cityPickerLocatingExact : esCL.cityPickerUseExactLocation}
+              </button>
+              {locatingState === "error" && <p className="mt-1 text-[11px] text-red-600">{esCL.cityPickerExactLocationError}</p>}
+            </>
+          )}
         </div>
       </div>
 
