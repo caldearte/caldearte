@@ -22,12 +22,12 @@ test("headerSummaryMobile shows a single total, pluralized, falls back to a coun
   assert.equal(esCL.headerSummaryMobile(0), "Descubre el arte que hay en");
 });
 
-test("todaySuffix/thisWeekSuffix — Header's Día/Semana dropdown copy", () => {
+test("todaySuffix/thisWeekSuffix — Filtros 'Hoy' pill vs. the default full-week view", () => {
   assert.equal(esCL.todaySuffix, "hoy");
   assert.equal(esCL.thisWeekSuffix, "esta semana");
 });
 
-test("emptyWithNextEvent takes the mode's suffix as a parameter, so one function serves both Día and Semana", () => {
+test("emptyWithNextEvent takes a suffix parameter, so one function serves both the Hoy filter and the default week view", () => {
   assert.equal(
     esCL.emptyWithNextEvent("Santiago", esCL.todaySuffix, "14 jul", "Muestra X"),
     "No hay nada que mostrar hoy en Santiago. La próxima es el 14 jul — Muestra X.",

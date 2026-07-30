@@ -5,6 +5,7 @@ import {
   filterFamilyMode,
   filterByCity,
   splitInauguracionesYExpos,
+  filterUpcomingInauguraciones,
   countByCity,
   thumbnailsByCity,
   cityNamesFromEvents,
@@ -46,14 +47,14 @@ const TODAY = "2026-07-11"; // a Saturday
 const WEEK_START = "2026-07-06";
 const WEEK_END = "2026-07-12";
 
-test("filterActiveInRange (Día mode: start === end === today) keeps only events whose run covers that single day", () => {
+test("filterActiveInRange (single-day range: start === end === today) keeps only events whose run covers that single day", () => {
   const notStarted = event({ runStartDate: "2026-07-15", runEndDate: "2026-07-20" });
   const ended = event({ runStartDate: "2026-06-01", runEndDate: "2026-07-10" });
   const active = event({ runStartDate: "2026-07-01", runEndDate: "2026-07-20" });
   assert.deepEqual(filterActiveInRange([notStarted, ended, active], TODAY, TODAY), [active]);
 });
 
-test("filterActiveInRange (Semana mode) keeps events overlapping the Mon-Sun window, including ones ending/starting exactly on its edges", () => {
+test("filterActiveInRange (the current Mon-Sun week) keeps events overlapping the window, including ones ending/starting exactly on its edges", () => {
   const endsOnMonday = event({ id: "a", runStartDate: "2026-06-20", runEndDate: WEEK_START });
   const startsOnSunday = event({ id: "b", runStartDate: WEEK_END, runEndDate: "2026-08-01" });
   const entirelyBefore = event({ id: "c", runStartDate: "2026-06-01", runEndDate: "2026-07-05" });
@@ -61,6 +62,19 @@ test("filterActiveInRange (Semana mode) keeps events overlapping the Mon-Sun win
 
   const result = filterActiveInRange([endsOnMonday, startsOnSunday, entirelyBefore, entirelyAfter], WEEK_START, WEEK_END);
   assert.deepEqual(result.map((e) => e.id).sort(), ["a", "b"]);
+});
+
+test("filterUpcomingInauguraciones ('Vigentes' filter) keeps only inauguraciones opening today or later, dropping ones already passed this week", () => {
+  const passedMonday = event({ id: "mon", openingDatetime: "2026-07-06T22:00:00+00:00" });
+  const today = event({ id: "today", openingDatetime: "2026-07-11T22:00:00+00:00" });
+  const upcomingSunday = event({ id: "sun", openingDatetime: "2026-07-12T22:00:00+00:00" });
+  const result = filterUpcomingInauguraciones([passedMonday, today, upcomingSunday], TODAY);
+  assert.deepEqual(result.map((e) => e.id).sort(), ["sun", "today"]);
+});
+
+test("filterUpcomingInauguraciones drops an event with no confirmed opening date at all", () => {
+  const noOpening = event({ id: "no-opening", openingDatetime: null });
+  assert.deepEqual(filterUpcomingInauguraciones([noOpening], TODAY), []);
 });
 
 test("filterFamilyMode excludes sensitivity-tagged events only when on", () => {
@@ -83,7 +97,7 @@ test("filterByCity prefers regionName over a freeform_location that would otherw
   assert.deepEqual(filterByCity([backendResolved], "valparaiso"), [backendResolved]);
 });
 
-test("splitInauguracionesYExpos: an opening within the window appears in BOTH sections (Día mode)", () => {
+test("splitInauguracionesYExpos: an opening within the window appears in BOTH sections (single-day range)", () => {
   const opening = event({ id: "opening", openingDatetime: "2026-07-11T22:00:00+00:00" });
   const ongoing = event({ id: "ongoing", runStartDate: "2026-06-01", runEndDate: "2026-07-20" });
   const openedYesterday = event({ id: "opened-yesterday", openingDatetime: "2026-07-10T22:00:00+00:00", runEndDate: "2026-07-20" });
@@ -96,7 +110,7 @@ test("splitInauguracionesYExpos: an opening within the window appears in BOTH se
   assert.ok(inauguraciones.every((e) => exposIds.has(e.id)));
 });
 
-test("splitInauguracionesYExpos: an opening anywhere within the Mon-Sun window appears in BOTH sections (Semana mode)", () => {
+test("splitInauguracionesYExpos: an opening anywhere within the Mon-Sun window appears in BOTH sections", () => {
   // Opens on the Wednesday of the week, well before "today" (the Saturday).
   const openedEarlierThisWeek = event({ id: "opened-wed", openingDatetime: "2026-07-08T22:00:00+00:00", runEndDate: "2026-07-20" });
   const noConfirmedOpening = event({ id: "no-opening", runStartDate: "2026-06-01", runEndDate: "2026-07-20" });

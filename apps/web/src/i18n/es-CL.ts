@@ -85,7 +85,6 @@ export const esCL = {
   curatoria: "Curatoria",
   familyMode: "Modo familiar",
   otherCity: "Otro",
-  explorar: "Explorar",
 
   // Global search panel — scope is every active/upcoming event in every
   // comuna, not just what's currently on screen (see SearchPanel.tsx).
@@ -111,15 +110,26 @@ export const esCL = {
   // double-count it.
   headerSummaryMobile: (totalCount: number) =>
     totalCount > 0 ? `${totalCount} ${pluralize(totalCount, "evento", "eventos")} en` : "Descubre el arte que hay en",
-  // Appended after the city-pill button in the header's summary line —
-  // "hoy" for Día mode, "esta semana" for Semana mode.
+  // Used by the empty-state fallback message — "hoy" when the Hoy filter
+  // pill is on, "esta semana" otherwise (the always-on default).
   todaySuffix: "hoy",
   thisWeekSuffix: "esta semana",
-  // The Hoy/Semanal toggle INSIDE the city picker panel — capitalized,
-  // distinct from the lowercase inline suffixes above (which read as part
-  // of a sentence: "...en Santiago hoy").
-  windowModeDay: "Hoy",
-  windowModeWeek: "Semanal",
+  // Leads the header's summary line ("Esta semana 1 inauguración y 32
+  // exposiciones que visitar en [Santiago]") — capitalized, since the week
+  // is always the default now (no more Hoy/Semana toggle to distinguish).
+  thisWeekPrefix: "Esta semana",
+
+  // Filtros section (FiltersSection.tsx) — collapsible, pill-style toggles
+  // right below the Header. Replaces the old Hoy/Semana window-mode
+  // toggle: everything always operates on the current week now, these
+  // pills just narrow what's shown from it.
+  filtersTitle: "Filtros",
+  filterToday: "Hoy",
+  filterVigentes: "Vigentes",
+  // "HOY" badge on an event card (top-right of the image) — shown when
+  // that specific event is active today, useful for spotting at a glance
+  // which of the week's items are happening right now.
+  todayBadge: "HOY",
 
   sectionInauguraciones: "INAUGURACIONES",
   sectionExposActuales: "EXPOS ACTUALES",
