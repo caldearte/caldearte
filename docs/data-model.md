@@ -146,8 +146,15 @@ rejected_candidates (added 20260728010000_add_rejected_candidates.sql —
 newsletter_subscribers (added 20260730180000_add_newsletter_subscribers.sql
     — weekly digest, double opt-in, see docs/roadmap.md's Phase 1a
     newsletter item)
-  id, email (unique), city_id (fk to regions — the subscriber's chosen
-    comuna, NOT necessarily their geolocated one),
+  id, email (unique), admin_region_name (text, NOT a fk — the subscriber's
+    chosen macro-región, e.g. "Región Metropolitana de Santiago", matching
+    regions.admin_region_name; not necessarily their geolocated one.
+    Originally comuna-scoped via a city_id fk to regions(id), changed to
+    región-scoped in 20260730190000_newsletter_subscribers_region_scope.sql
+    — picking 1 of 16 macro-regions in the entry modal is a lighter ask
+    than 1 of 346 comunas, and macro-regions aren't a separate table, just
+    this text column already on every regions row, so no new table was
+    needed),
   confirm_token (unique, opaque — doubles as the unsubscribe token too,
     one value per subscriber is enough),
   confirmed_at (nullable; null = still pending double opt-in),

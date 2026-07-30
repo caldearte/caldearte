@@ -4,14 +4,15 @@ import type { Tables } from "@caldearte/shared-types";
 import { buildDigestSections, run } from "./run.js";
 
 type EventRow = Tables<"events">;
+type EventWithRegion = EventRow & { adminRegionName: string | null };
 
 const WEEK = { start: "2026-08-03", end: "2026-08-09" }; // a Mon..Sun
 
-const CITY_A = "11111111-1111-1111-1111-111111111111";
-const CITY_B = "22222222-2222-2222-2222-222222222222";
+const REGION_A = "Región Metropolitana de Santiago";
+const REGION_B = "Región de Valparaíso";
 
 let idCounter = 0;
-function makeEvent(overrides: Partial<EventRow> = {}): EventRow {
+function makeEvent(overrides: Partial<EventWithRegion> = {}): EventWithRegion {
   idCounter++;
   return {
     id: `event-${idCounter}`,
@@ -20,7 +21,8 @@ function makeEvent(overrides: Partial<EventRow> = {}): EventRow {
     description: null,
     freeform_location: "Santiago",
     place_name: "Galería de prueba",
-    region_id: CITY_A,
+    region_id: "11111111-1111-1111-1111-111111111111",
+    adminRegionName: REGION_A,
     opening_datetime: null,
     opening_date_confidence: "alta",
     opening_time_confirmed: true,
@@ -42,7 +44,7 @@ function makeEvent(overrides: Partial<EventRow> = {}): EventRow {
 
 test("buildDigestSections: an event opening inside the week goes in 'Inauguraciones de esta semana', not also elsewhere", () => {
   const event = makeEvent({ opening_datetime: "2026-08-05T20:00:00.000Z", created_at: "2026-07-01T00:00:00.000Z" });
-  const sections = buildDigestSections([event], CITY_A, WEEK);
+  const sections = buildDigestSections([event], REGION_A, WEEK);
   assert.equal(sections.length, 1);
   assert.equal(sections[0].label, "Inauguraciones de esta semana");
   assert.equal(sections[0].events.length, 1);
@@ -50,7 +52,7 @@ test("buildDigestSections: an event opening inside the week goes in 'Inauguracio
 
 test("buildDigestSections: an event created (curated) this week but opening later/never goes in 'Expos nuevas esta semana'", () => {
   const event = makeEvent({ created_at: "2026-08-04T00:00:00.000Z", opening_datetime: null });
-  const sections = buildDigestSections([event], CITY_A, WEEK);
+  const sections = buildDigestSections([event], REGION_A, WEEK);
   assert.equal(sections.length, 1);
   assert.equal(sections[0].label, "Expos nuevas esta semana");
 });
@@ -62,7 +64,7 @@ test("buildDigestSections: an older, already-running event neither opening nor n
     makeEvent({ run_end_date: "2026-09-01" }),
     makeEvent({ run_end_date: "2026-08-12" }),
   ];
-  const sections = buildDigestSections(events, CITY_A, WEEK);
+  const sections = buildDigestSections(events, REGION_A, WEEK);
   assert.equal(sections.length, 1);
   assert.equal(sections[0].label, "No te las pierdas");
   assert.equal(sections[0].events.length, 3);
@@ -74,20 +76,25 @@ test("buildDigestSections: an older, already-running event neither opening nor n
 
 test("buildDigestSections: an event that already closed before the week's end is excluded entirely", () => {
   const event = makeEvent({ run_end_date: "2026-07-20" });
-  const sections = buildDigestSections([event], CITY_A, WEEK);
+  const sections = buildDigestSections([event], REGION_A, WEEK);
   assert.equal(sections.length, 0);
 });
 
-test("buildDigestSections: an event in a different comuna appears only in 'En otras comunas', capped at 3", () => {
-  const events = [makeEvent({ region_id: CITY_B }), makeEvent({ region_id: CITY_B }), makeEvent({ region_id: CITY_B }), makeEvent({ region_id: CITY_B })];
-  const sections = buildDigestSections(events, CITY_A, WEEK);
+test("buildDigestSections: an event in a different región appears only in 'En otras regiones', capped at 3", () => {
+  const events = [
+    makeEvent({ adminRegionName: REGION_B }),
+    makeEvent({ adminRegionName: REGION_B }),
+    makeEvent({ adminRegionName: REGION_B }),
+    makeEvent({ adminRegionName: REGION_B }),
+  ];
+  const sections = buildDigestSections(events, REGION_A, WEEK);
   assert.equal(sections.length, 1);
-  assert.equal(sections[0].label, "En otras comunas");
+  assert.equal(sections[0].label, "En otras regiones");
   assert.equal(sections[0].events.length, 3);
 });
 
 test("buildDigestSections: an empty event pool yields zero sections (subscriber gets skipped, not an empty email)", () => {
-  assert.deepEqual(buildDigestSections([], CITY_A, WEEK), []);
+  assert.deepEqual(buildDigestSections([], REGION_A, WEEK), []);
 });
 
 // Integration test against local Supabase. Run `supabase start`, then export
@@ -97,6 +104,7 @@ test("buildDigestSections: an empty event pool yields zero sections (subscriber 
 const hasLocalSupabase = Boolean(process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY);
 
 const TEST_REGION = "__test_newsletter_region__";
+const TEST_ADMIN_REGION = "__test_admin_region__";
 
 test(
   "run(): sends a digest only to confirmed, active subscribers with at least one eligible section, skips the rest",
@@ -107,7 +115,7 @@ test(
 
     const { data: region, error: regionError } = await client
       .from("regions")
-      .insert({ name: TEST_REGION, country: "Testland", language: "es", status: "active" })
+      .insert({ name: TEST_REGION, country: "Testland", language: "es", status: "active", admin_region_name: TEST_ADMIN_REGION })
       .select("id")
       .single();
     if (regionError) throw new Error(`Failed to seed test region: ${regionError.message}`);
@@ -127,19 +135,19 @@ test(
       const { error: subscribersError } = await client.from("newsletter_subscribers").insert([
         {
           email: "confirmado-con-eventos@example.com",
-          city_id: regionId,
+          admin_region_name: TEST_ADMIN_REGION,
           confirm_token: "tok-with-events",
           confirmed_at: new Date().toISOString(),
         },
         {
           email: "no-confirmado@example.com",
-          city_id: regionId,
+          admin_region_name: TEST_ADMIN_REGION,
           confirm_token: "tok-unconfirmed",
           confirmed_at: null,
         },
         {
           email: "dado-de-baja@example.com",
-          city_id: regionId,
+          admin_region_name: TEST_ADMIN_REGION,
           confirm_token: "tok-unsubscribed",
           confirmed_at: new Date().toISOString(),
           unsubscribed_at: new Date().toISOString(),
@@ -158,7 +166,7 @@ test(
 
       assert.deepEqual(sentTo, ["confirmado-con-eventos@example.com"]);
     } finally {
-      await client.from("newsletter_subscribers").delete().eq("city_id", regionId);
+      await client.from("newsletter_subscribers").delete().eq("admin_region_name", TEST_ADMIN_REGION);
       await client.from("events").delete().eq("region_id", regionId);
       await client.from("regions").delete().eq("id", regionId);
     }
