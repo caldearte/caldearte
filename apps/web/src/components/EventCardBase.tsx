@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import CardImage from "./CardImage";
-import { anchorDateOnly, buildGoogleCalendarUrl, fmtInauguracionDate, fmtOpeningHour, fmtPeriod } from "@/lib/date";
+import { anchorDateOnly, buildGoogleCalendarUrl, fmtInauguracionDate, fmtOpeningHour, fmtPeriod, isActiveOn, todayInSantiago } from "@/lib/date";
 import { deriveComuna } from "@/lib/comuna";
 import { esCL } from "@/i18n/es-CL";
 import type { EventRecord } from "@/lib/events";
@@ -159,6 +159,10 @@ interface EventCardBaseProps {
   // llegar/Agregar a mi calendario/Compartir) as visible buttons below the
   // card instead of one click away.
   standalone?: boolean;
+  // Suppresses the "HOY" badge even when the event qualifies — used only by
+  // the home grid when the Hoy filter pill is already on (everything
+  // visible is already today, so the badge would be redundant there).
+  hideTodayBadge?: boolean;
 }
 
 export default function EventCardBase({
@@ -170,8 +174,10 @@ export default function EventCardBase({
   periodClass,
   contentPaddingClass,
   standalone = false,
+  hideTodayBadge = false,
 }: EventCardBaseProps) {
   const anchor = anchorDateOnly(event);
+  const showTodayBadge = !hideTodayBadge && isActiveOn(event, todayInSantiago());
   const dateLine =
     variant === "inauguracion" && event.openingDatetime
       ? `${fmtInauguracionDate(event.openingDatetime)} - ${
@@ -299,8 +305,13 @@ export default function EventCardBase({
       {!standalone && (
         <Link href={`/eventos/${event.id}`} aria-label={esCL.eventCardAriaLabel(event.title)} className="absolute inset-0 z-10" />
       )}
-      <div className={standalone ? "shrink-0" : `shrink-0 h-[185.53px] ${imageAspectClass}`}>
+      <div className={`relative ${standalone ? "shrink-0" : `shrink-0 h-[185.53px] ${imageAspectClass}`}`}>
         <CardImage imageUrl={event.imageUrl} sourceUrl={event.sourceUrl} sensitivityTags={event.sensitivityTags} fullSize={standalone} />
+        {showTodayBadge && (
+          <span className="absolute top-2 right-2 z-[5] text-[11px] font-bold uppercase tracking-wide bg-white text-heading-gray rounded-full px-2.5 py-1">
+            {esCL.todayBadge}
+          </span>
+        )}
       </div>
       <div className={`flex flex-col gap-1.5 ${contentPaddingClass}`}>
         <p className={`${venueClass} text-venue-gray truncate`}>{venueLine}</p>

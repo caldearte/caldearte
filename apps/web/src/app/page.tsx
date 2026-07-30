@@ -6,16 +6,16 @@ import {
   filterByCity,
   filterActiveInRange,
   splitInauguracionesYExpos,
+  filterUpcomingInauguraciones,
   countByCity,
   cityNamesFromEvents,
   thumbnailsByCity,
   findNextEvent,
   listArchiveMonths,
-  type WindowMode,
 } from "@/lib/events";
 import { DEFAULT_CITY_ID, buildRegionMetaByCityId, resolveDefaultCityId, resolveGeoCityId, nearestCityIdByCoords } from "@/lib/cities";
 import { todayInSantiago, currentWeekInSantiago, isCurrentOrUpcoming } from "@/lib/date";
-import { CITY_COOKIE, FAMILY_MODE_COOKIE, WINDOW_MODE_COOKIE, GEO_CONSENT_COOKIE, PRECISE_CITY_COOKIE } from "@/lib/cookies";
+import { CITY_COOKIE, FAMILY_MODE_COOKIE, TODAY_FILTER_COOKIE, VIGENTES_FILTER_COOKIE, GEO_CONSENT_COOKIE, PRECISE_CITY_COOKIE } from "@/lib/cookies";
 import CalendarView from "@/components/CalendarView";
 
 export default async function HomePage() {
@@ -27,14 +27,14 @@ export default async function HomePage() {
   // way to see everything.
   const familyModeCookie = cookieStore.get(FAMILY_MODE_COOKIE)?.value;
   const familyMode = familyModeCookie === undefined ? true : Boolean(familyModeCookie);
+  // Filtros pills — both absent-cookie-means-off, same pattern as
+  // FAMILY_MODE_COOKIE's inverse. Everything always operates on the
+  // current Monday-Sunday week; these two only narrow what's DISPLAYED
+  // for the currently-selected city, never the week/carousel counts below.
+  const todayFilterOn = Boolean(cookieStore.get(TODAY_FILTER_COOKIE)?.value);
+  const vigentesFilterOn = Boolean(cookieStore.get(VIGENTES_FILTER_COOKIE)?.value);
   const today = todayInSantiago();
-  const { start: weekStart, end: weekEnd } = currentWeekInSantiago();
-  // Absent cookie -> "week": the whole point of the Semana mode is
-  // planning ahead, so it's the default; Día is one click away via the
-  // city picker's Hoy/Semanal toggle.
-  const windowModeCookie = cookieStore.get(WINDOW_MODE_COOKIE)?.value;
-  const windowMode: WindowMode = windowModeCookie === "day" ? "day" : "week";
-  const { start: rangeStart, end: rangeEnd } = windowMode === "day" ? { start: today, end: today } : { start: weekStart, end: weekEnd };
+  const { start: rangeStart, end: rangeEnd } = currentWeekInSantiago();
 
   const { events: allEvents, regions } = await fetchApprovedEvents(getSupabaseClient());
   // Family-mode filtering happens here, server-side, before anything is
@@ -49,17 +49,15 @@ export default async function HomePage() {
   // active events right now.
   const cityNames = cityNamesFromEvents(allEvents);
 
-  // Home shows only what's visitable within the current window (a single
-  // day or the current Mon-Sun week, per windowMode) — nothing not yet
-  // started, nothing already ended.
+  // Home shows only what's visitable within the current week — nothing not
+  // yet started, nothing already ended. The Filtros pills (Hoy, Vigentes)
+  // never change this — they only narrow the SELECTED CITY's own lists
+  // further down, not this citywide set.
   const activeInRange = filterActiveInRange(visible, rangeStart, rangeEnd);
-  // Computed for BOTH windows (not just the confirmed one) so the city
-  // picker can preview Hoy/Semanal counts live while its own toggle is
-  // still pending/unconfirmed — see CityPickerPanel's "Explorar" flow,
-  // which only commits a mode change (cookie + refresh) once clicked.
-  const cityCountsDay = countByCity(filterActiveInRange(visible, today, today), today, today);
-  const cityCountsWeek = countByCity(filterActiveInRange(visible, weekStart, weekEnd), weekStart, weekEnd);
-  const cityCounts = windowMode === "day" ? cityCountsDay : cityCountsWeek;
+  // Always full-week — CityCarousel/city picker counts are deliberately
+  // unaffected by the Hoy/Vigentes pills (confirmed scope: those only
+  // narrow the currently-viewed city's own lists).
+  const cityCounts = countByCity(activeInRange, rangeStart, rangeEnd);
   // Preview thumbnails for the "Arte en todas partes" carousel — computed
   // over the same all-comunas activeInRange set countByCity already uses,
   // not the selected city's own narrowed event list.
@@ -131,11 +129,20 @@ export default async function HomePage() {
   const showGeoConsentPrompt = cookieStore.get(GEO_CONSENT_COOKIE) === undefined;
 
   const cityEventsInRange = filterByCity(activeInRange, cityId);
-  const { inauguraciones, exposActuales } = splitInauguracionesYExpos(cityEventsInRange, rangeStart, rangeEnd);
+  const split = splitInauguracionesYExpos(cityEventsInRange, rangeStart, rangeEnd);
+  // "Hoy" filter: narrows THIS city's lists down to only today's active
+  // events — applied after the split, scoped to the selected city only
+  // (never the carousel/citywide counts above).
+  const inauguracionesForCity = todayFilterOn ? filterActiveInRange(split.inauguraciones, today, today) : split.inauguraciones;
+  const exposActualesForCity = todayFilterOn ? filterActiveInRange(split.exposActuales, today, today) : split.exposActuales;
+  // "Vigentes" filter: hides inauguraciones whose opening date already
+  // passed this week — inauguraciones only, never exposActuales (an
+  // exhibition's run is still "vigente" regardless of when it opened).
+  const inauguraciones = vigentesFilterOn ? filterUpcomingInauguraciones(inauguracionesForCity, today) : inauguracionesForCity;
+  const exposActuales = exposActualesForCity;
 
-  // Empty-state fallback looks beyond the current window within the
-  // selected city, so it can say "the next one is on X" instead of just
-  // "nothing."
+  // Empty-state fallback looks beyond the current week within the selected
+  // city, so it can say "the next one is on X" instead of just "nothing."
   const nextEvent = findNextEvent(filterByCity(visible, cityId), today, rangeEnd);
 
   // "Revisá expos anteriores" link next to EXPOS ACTUALES — points at the
@@ -158,13 +165,12 @@ export default async function HomePage() {
         showGeoConsentPrompt={showGeoConsentPrompt}
         cityNames={cityNames}
         familyMode={familyMode}
+        todayFilterOn={todayFilterOn}
+        vigentesFilterOn={vigentesFilterOn}
         today={today}
-        windowMode={windowMode}
         rangeStart={rangeStart}
         rangeEnd={rangeEnd}
         cityCounts={cityCounts}
-        cityCountsDay={cityCountsDay}
-        cityCountsWeek={cityCountsWeek}
         cityThumbnails={cityThumbnails}
         searchableEvents={searchableEvents}
         nextEvent={nextEvent}

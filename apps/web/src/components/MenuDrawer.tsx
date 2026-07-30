@@ -3,20 +3,18 @@ import { esCL } from "@/i18n/es-CL";
 
 interface MenuDrawerProps {
   open: boolean;
-  familyMode: boolean;
   archiveHref: string | null; // "Expos anteriores" row — omitted when no month is archived yet
   onClose: () => void;
-  onToggleFamilyMode: () => void;
 }
 
 // Opens from both the mobile hamburger AND the desktop "☰ Menú" trigger —
-// same drawer, same content, EXCEPT the Modo familiar row (md:hidden):
-// desktop shows that toggle inline in the header itself (real estate
-// mobile doesn't have), so it would be redundant here on desktop. Curatoria
-// links out to /privacidad rather than duplicating that page's content in
-// a second place — this drawer used to have its own "curatoria" view with
-// the same text as /privacidad's "Cómo curamos" section.
-export default function MenuDrawer({ open, familyMode, archiveHref, onClose, onToggleFamilyMode }: MenuDrawerProps) {
+// same drawer, same content on every screen size. Curatoria links out to
+// /privacidad rather than duplicating that page's content in a second
+// place — this drawer used to have its own "curatoria" view with the same
+// text as /privacidad's "Cómo curamos" section. No Modo familiar row here
+// anymore — that toggle lives in FiltersSection now, visible on every
+// screen size without opening this drawer.
+export default function MenuDrawer({ open, archiveHref, onClose }: MenuDrawerProps) {
   return (
     <>
       <div
@@ -50,17 +48,6 @@ export default function MenuDrawer({ open, familyMode, archiveHref, onClose, onT
           <span>{esCL.footer.contacto}</span>
           <span className="text-stone-300">›</span>
         </Link>
-        <div className="md:hidden flex items-center justify-between py-2.5 border-t border-stone-200">
-          <span className="text-sm text-heading-gray">{esCL.familyMode}</span>
-          <button
-            onClick={onToggleFamilyMode}
-            className={`appearance-none flex items-center shrink-0 w-10 h-6 p-0.5 rounded-full transition-colors border-2 ${
-              familyMode ? "justify-end bg-city-pill-bg border-city-pill-bg" : "justify-start bg-white border-stone-300"
-            }`}
-          >
-            <span className={`w-5 h-5 rounded-full ${familyMode ? "bg-white" : "bg-stone-300"}`} />
-          </button>
-        </div>
       </div>
     </>
   );

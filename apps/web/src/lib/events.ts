@@ -4,11 +4,6 @@ import { cityIdFromRegionName, deriveCityId, OTHER_CITY } from "./cities";
 import { activeRange, anchorDateOnly, dateOnlyFromIso, isArchivableMonth, isCurrentOrUpcoming, rangesOverlap, type EventDates } from "./date";
 import { matchesQuery } from "./cities";
 
-// Which time window the visitor is viewing (Header's Día/Semana toggle) —
-// a single day, or the current Monday-Sunday week. Shared type so
-// page.tsx/CalendarView.tsx/Header.tsx all agree on the same two values.
-export type WindowMode = "day" | "week";
-
 export interface EventRecord extends EventDates {
   id: string;
   title: string;
@@ -194,11 +189,11 @@ export function eventsActiveInRange(events: EventRecord[], start: string, end: s
 // The home page shows only what's visitable within the current window —
 // nothing not yet started, nothing already ended (stricter than
 // isCurrentOrUpcoming's month-level retention check, which is still used
-// by findNextEvent's lookahead below). The window itself is either a
-// single day (Día mode: start === end === today) or a Monday-Sunday week
-// (Semana mode) — chosen by the Header's toggle, computed once in
-// page.tsx. This is a thin wrapper because eventsActiveInRange is already
-// generic over arbitrary ranges.
+// by findNextEvent's lookahead below). The window is always the current
+// Monday-Sunday week, computed once in page.tsx — the Filtros pills (Hoy,
+// Vigentes) narrow what's DISPLAYED from that week, they don't change the
+// window itself. This is a thin wrapper because eventsActiveInRange is
+// already generic over arbitrary ranges.
 export function filterActiveInRange(events: EventRecord[], start: string, end: string): EventRecord[] {
   return eventsActiveInRange(events, start, end);
 }
@@ -237,6 +232,16 @@ export function splitInauguracionesYExpos(events: EventRecord[], start: string, 
     inauguraciones: sortByAnchorDesc(inauguraciones),
     exposActuales: sortByAnchorDesc(events),
   };
+}
+
+// "Vigentes" filter (FiltersSection pill): hides inauguraciones whose
+// opening date has already passed within the current week — e.g. viewing
+// on Wednesday hides Monday/Tuesday's inauguraciones, keeps
+// Wednesday-onward. Only ever applied to the currently-viewed city's own
+// inauguraciones list (page.tsx) — never to the citywide/carousel counts
+// (countByCity), which stay showing the full week's unfiltered numbers.
+export function filterUpcomingInauguraciones(inauguraciones: EventRecord[], todayStr: string): EventRecord[] {
+  return inauguraciones.filter((e) => e.openingDatetime !== null && dateOnlyFromIso(e.openingDatetime) >= todayStr);
 }
 
 export interface CityCounts {
@@ -297,10 +302,9 @@ export function thumbnailsByCity(events: EventRecord[], maxPerCity = 4): Record<
 // Cascading empty-state support: the earliest current-or-upcoming event
 // (month-level, not window-exact) that falls AFTER the current window ends
 // — so an empty section/page can say "the next one is on X" instead of
-// just "nothing." Threshold is `> windowEnd` (today in Día mode, the
-// week's Sunday in Semana mode), not `>= todayStr` — this is the
-// empty-window fallback, so "next" must mean "after what we already tried
-// to show," whichever window that was.
+// just "nothing." Threshold is `> windowEnd` (always the current week's
+// Sunday), not `>= todayStr` — this is the empty-window fallback, so
+// "next" must mean "after what we already tried to show."
 export function findNextEvent(events: EventRecord[], todayStr: string, windowEnd: string): EventRecord | null {
   const upcoming = events
     .filter((e) => isCurrentOrUpcoming(e, todayStr))

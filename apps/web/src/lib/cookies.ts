@@ -1,8 +1,11 @@
 export const CITY_COOKIE = "caldearte_city";
 export const FAMILY_MODE_COOKIE = "caldearte_family_mode";
-// "day" | "week" — which time window the visitor is viewing (Header's
-// Día/Semana toggle). Absent cookie defaults to "week" — see page.tsx.
-export const WINDOW_MODE_COOKIE = "caldearte_window_mode";
+// Filtros pills (FiltersSection) — both simple on/off, empty-string vs "1",
+// same pattern as FAMILY_MODE_COOKIE. Everything always operates on the
+// current Monday-Sunday week (see events.ts); these two just narrow what's
+// shown within it — see page.tsx.
+export const TODAY_FILTER_COOKIE = "caldearte_filter_today";
+export const VIGENTES_FILTER_COOKIE = "caldearte_filter_vigentes";
 // City picker "Últimas visitadas" row (CityPickerPanel) — JSON array of
 // city ids, most-recent-first. See pushRecentCityId below.
 export const RECENT_CITIES_COOKIE = "caldearte_recent_cities";

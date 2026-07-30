@@ -4,10 +4,11 @@ import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { esCL } from "@/i18n/es-CL";
 import { cityById, OTHER_CITY } from "@/lib/cities";
-import { CITY_COOKIE, FAMILY_MODE_COOKIE, WINDOW_MODE_COOKIE, setCookie, pushRecentCityId } from "@/lib/cookies";
+import { CITY_COOKIE, FAMILY_MODE_COOKIE, TODAY_FILTER_COOKIE, VIGENTES_FILTER_COOKIE, setCookie, pushRecentCityId } from "@/lib/cookies";
 import { fmtShort } from "@/lib/date";
-import type { CityCounts, EventRecord, RegionMeta, WindowMode } from "@/lib/events";
+import type { CityCounts, EventRecord, RegionMeta } from "@/lib/events";
 import Header from "./Header";
+import FiltersSection from "./FiltersSection";
 import InauguracionCard from "./InauguracionCard";
 import ExpoCard from "./ExpoCard";
 import CityCarousel from "./CityCarousel";
@@ -27,16 +28,15 @@ interface CalendarViewProps {
   showGeoConsentPrompt: boolean; // true only when the visitor has never answered GeoConsentBanner's prompt
   cityNames: Record<string, string>; // real observed comuna names, id -> name — see cities.ts
   familyMode: boolean;
+  todayFilterOn: boolean; // Filtros "Hoy" pill — narrows this city's lists to only today's active events
+  vigentesFilterOn: boolean; // Filtros "Vigentes" pill — hides inauguraciones whose opening date already passed this week
   today: string; // YYYY-MM-DD, computed server-side for SSR/CSR consistency
-  windowMode: WindowMode;
-  rangeStart: string; // YYYY-MM-DD — today in Día mode, the week's Monday in Semana mode
-  rangeEnd: string; // YYYY-MM-DD — today in Día mode, the week's Sunday in Semana mode
-  cityCounts: Record<string, CityCounts>; // the CONFIRMED window's counts — CityCarousel/Header
-  cityCountsDay: Record<string, CityCounts>; // both variants, for the picker's live Hoy/Semanal preview
-  cityCountsWeek: Record<string, CityCounts>;
+  rangeStart: string; // YYYY-MM-DD — the current week's Monday
+  rangeEnd: string; // YYYY-MM-DD — the current week's Sunday
+  cityCounts: Record<string, CityCounts>; // full-week counts, unaffected by Hoy/Vigentes — CityCarousel/city picker
   cityThumbnails: Record<string, EventRecord[]>; // up to 4 preview events per comuna — CityCarousel
   searchableEvents: EventRecord[]; // active/upcoming, every comuna — SearchPanel's own scope
-  nextEvent: EventRecord | null; // empty-state fallback, beyond "today"
+  nextEvent: EventRecord | null; // empty-state fallback, beyond the current week
   regions: RegionMeta[]; // for the city picker's región grouping
   archiveHref: string | null; // "Expos anteriores" row target in MenuDrawer — null when no month is archived yet
 }
@@ -50,13 +50,12 @@ export default function CalendarView({
   showGeoConsentPrompt,
   cityNames,
   familyMode,
+  todayFilterOn,
+  vigentesFilterOn,
   today,
-  windowMode,
   rangeStart,
   rangeEnd,
   cityCounts,
-  cityCountsDay,
-  cityCountsWeek,
   cityThumbnails,
   searchableEvents,
   nextEvent,
@@ -78,6 +77,10 @@ export default function CalendarView({
     if (nextCityId !== cityId && cityId !== OTHER_CITY.id) pushRecentCityId(cityId);
   }
 
+  // Commits + navigates immediately — used by both the carousel and the
+  // city picker (clicking a row, or pressing Enter on one), mirroring
+  // CityCarousel's own instant-navigate pattern. No more pending-selection
+  // + separate "Explorar" confirm step.
   function goToCity(nextCityId: string) {
     recordDeparture(nextCityId);
     setCookie(CITY_COOKIE, nextCityId);
@@ -91,16 +94,21 @@ export default function CalendarView({
     router.refresh();
   }
 
-  // Only the picker's "Explorar" button reaches this — picking a city or
-  // toggling Hoy/Semanal inside the panel is purely local/pending state
-  // until then (see CityPickerPanel). Closing via the X or Escape calls
-  // onClose only, never this — so unconfirmed picks are simply discarded.
-  function explore(nextCityId: string, nextWindowMode: WindowMode) {
-    recordDeparture(nextCityId);
-    setCookie(CITY_COOKIE, nextCityId);
-    setCookie(WINDOW_MODE_COOKIE, nextWindowMode);
-    setLocationOpen(false);
-    window.scrollTo(0, 0);
+  // Hoy and Vigentes are mutually exclusive — turning Hoy on already
+  // narrows everything to today, which makes Vigentes' "hide already-passed
+  // openings this week" redundant (today's openings are never in the
+  // past), so enabling either one clears the other.
+  function toggleTodayFilter() {
+    const turningOn = !todayFilterOn;
+    setCookie(TODAY_FILTER_COOKIE, turningOn ? "1" : "");
+    if (turningOn) setCookie(VIGENTES_FILTER_COOKIE, "");
+    router.refresh();
+  }
+
+  function toggleVigentesFilter() {
+    const turningOn = !vigentesFilterOn;
+    setCookie(VIGENTES_FILTER_COOKIE, turningOn ? "1" : "");
+    if (turningOn) setCookie(TODAY_FILTER_COOKIE, "");
     router.refresh();
   }
 
@@ -118,18 +126,24 @@ export default function CalendarView({
 
       <Header
         city={city}
-        familyMode={familyMode}
-        today={today}
-        windowMode={windowMode}
         rangeStart={rangeStart}
         rangeEnd={rangeEnd}
+        todayFilterOn={todayFilterOn}
         inauguracionesCount={inauguraciones.length}
         exposCount={exposActuales.length}
         onOpenCityPicker={() => setLocationOpen(true)}
         cityPickerTriggerRef={cityPickerTriggerRef}
         onOpenSearch={() => setSearchOpen(true)}
         onOpenMenu={() => setDrawerOpen(true)}
+      />
+
+      <FiltersSection
+        familyMode={familyMode}
+        todayFilterOn={todayFilterOn}
+        vigentesFilterOn={vigentesFilterOn}
         onToggleFamilyMode={toggleFamilyMode}
+        onToggleTodayFilter={toggleTodayFilter}
+        onToggleVigentesFilter={toggleVigentesFilter}
       />
 
       {isEmpty ? (
@@ -138,7 +152,7 @@ export default function CalendarView({
             <p className="text-sm text-heading-gray">
               {esCL.emptyWithNextEvent(
                 city.name,
-                windowMode === "day" ? esCL.todaySuffix : esCL.thisWeekSuffix,
+                todayFilterOn ? esCL.todaySuffix : esCL.thisWeekSuffix,
                 nextEvent.openingDatetime ? fmtShort(nextEvent.openingDatetime.slice(0, 10)) : fmtShort(nextEvent.runStartDate ?? today),
                 nextEvent.title,
               )}
@@ -158,7 +172,7 @@ export default function CalendarView({
               <h2 className="text-3xl md:text-[41px] font-black tracking-wide text-heading-gray mb-6">{esCL.sectionInauguraciones}</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-[118px]">
                 {inauguraciones.map((e) => (
-                  <InauguracionCard key={e.id} event={e} />
+                  <InauguracionCard key={e.id} event={e} hideTodayBadge={todayFilterOn} />
                 ))}
               </div>
             </section>
@@ -169,7 +183,7 @@ export default function CalendarView({
               <h2 className="text-3xl md:text-[41px] font-semibold tracking-wide text-heading-gray mb-6">{esCL.sectionExposActuales}</h2>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 {exposActuales.map((e) => (
-                  <ExpoCard key={e.id} event={e} />
+                  <ExpoCard key={e.id} event={e} hideTodayBadge={todayFilterOn} />
                 ))}
               </div>
             </section>
@@ -193,25 +207,17 @@ export default function CalendarView({
         cityId={cityId}
         actualCityId={actualCityId}
         hasPreciseLocation={hasPreciseLocation}
-        cityCountsDay={cityCountsDay}
-        cityCountsWeek={cityCountsWeek}
+        cityCounts={cityCounts}
         cityNames={cityNames}
         regions={regions}
-        windowMode={windowMode}
         onClose={() => {
           setLocationOpen(false);
           cityPickerTriggerRef.current?.focus();
         }}
-        onExplore={explore}
+        onSelectCity={goToCity}
       />
 
-      <MenuDrawer
-        open={drawerOpen}
-        familyMode={familyMode}
-        archiveHref={archiveHref}
-        onClose={() => setDrawerOpen(false)}
-        onToggleFamilyMode={toggleFamilyMode}
-      />
+      <MenuDrawer open={drawerOpen} archiveHref={archiveHref} onClose={() => setDrawerOpen(false)} />
 
       <SearchPanel open={searchOpen} events={searchableEvents} onClose={() => setSearchOpen(false)} />
     </div>

@@ -32,12 +32,6 @@ export function fmtShort(dateStr: string): string {
   return `${date.getDate()} ${MONTHS_SHORT[date.getMonth()]}`;
 }
 
-// Header wordmark date, e.g. "14 JULIO" — day + month, uppercase, no year.
-export function fmtHeaderDate(dateStr: string): string {
-  const date = parseDateOnly(dateStr);
-  return `${date.getDate()} ${MONTHS[date.getMonth()].toUpperCase()}`;
-}
-
 // Card period text, e.g. "12 al 28 de Julio" or, spanning two months,
 // "28 de julio al 3 de agosto". Collapses to a single date when the run is
 // one day (or there's no run at all, just an anchor).
@@ -236,13 +230,20 @@ export function rangesOverlap(aStart: string, aEnd: string, bStart: string, bEnd
   return aStart <= bEnd && bStart <= aEnd;
 }
 
+// Whether an event's run (or single anchor date) covers dateStr — used by
+// the "HOY" card badge to flag which of the week's events are active on
+// this exact day, independent of any range the caller narrowed to.
+export function isActiveOn(e: EventDates, dateStr: string): boolean {
+  const range = activeRange(e);
+  return range !== null && rangesOverlap(range.start, range.end, dateStr, dateStr);
+}
+
 // Mirrors apps/curator/src/event-discovery/discover.ts's isCurrentOrUpcoming:
 // month-level, not day-level — an event is stale only once its run (or
 // anchor) ended in a month before the current one. Used only by
 // findNextEvent's empty-state lookahead; the home page's own "active"
 // filter is exact to the current window (see events.ts's
-// filterActiveInRange — a single day or a Mon-Sun week, depending on the
-// Día/Semana toggle).
+// filterActiveInRange — always the current Mon-Sun week).
 export function isCurrentOrUpcoming(e: EventDates, todayStr: string): boolean {
   const range = activeRange(e);
   if (!range) return false;

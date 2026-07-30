@@ -7,6 +7,7 @@ import {
   anchorDateOnly,
   activeRange,
   rangesOverlap,
+  isActiveOn,
   isCurrentOrUpcoming,
   dateOnlyFromIso,
   weekBoundsInSantiago,
@@ -54,6 +55,17 @@ test("activeRange collapses to a single day when there's only an anchor", () => 
 test("rangesOverlap", () => {
   assert.equal(rangesOverlap("2026-07-01", "2026-07-10", "2026-07-10", "2026-07-20"), true);
   assert.equal(rangesOverlap("2026-07-01", "2026-07-10", "2026-07-11", "2026-07-20"), false);
+});
+
+test("isActiveOn: true when the date falls within the event's run", () => {
+  const event = { openingDatetime: null, runStartDate: "2026-07-05", runEndDate: "2026-07-20" };
+  assert.equal(isActiveOn(event, "2026-07-11"), true);
+  assert.equal(isActiveOn(event, "2026-07-04"), false);
+  assert.equal(isActiveOn(event, "2026-07-21"), false);
+});
+
+test("isActiveOn: false for an event with no resolvable anchor at all", () => {
+  assert.equal(isActiveOn({ openingDatetime: null, runStartDate: null, runEndDate: null }, "2026-07-11"), false);
 });
 
 test("fmtPeriod: same-month run", () => {
