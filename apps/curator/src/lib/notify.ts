@@ -538,11 +538,18 @@ export async function sendEscalationEmail(
 // one, matching the product decision that empty sections are dropped
 // upstream, not hidden here.
 export interface DigestEvent {
+  id: string;
   title: string;
   placeName: string;
+  comunaName: string | null;
   openingDatetime: string | null;
+  // A source can confirm an opening DATE without confirming a specific
+  // HOUR (see docs/data-model.md's opening_time_confirmed) — the digest
+  // must never print a fabricated hour, same rule the site's own
+  // EventCardBase already follows.
+  openingTimeConfirmed: boolean;
   runEndDate: string | null;
-  sourceUrl: string | null;
+  imageUrl: string | null;
 }
 
 export interface DigestSection {
@@ -550,10 +557,32 @@ export interface DigestSection {
   events: DigestEvent[];
 }
 
+// Same wall-clock formatting as apps/web/src/lib/date.ts's fmtOpeningHour
+// — duplicated rather than imported since apps/curator and apps/web are
+// separate packages with no shared runtime lib for this.
+function fmtHourSantiago(openingDatetimeIso: string): string {
+  const parts = new Intl.DateTimeFormat("es-CL", {
+    timeZone: "America/Santiago",
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: false,
+  }).formatToParts(new Date(openingDatetimeIso));
+  const hour = parts.find((p) => p.type === "hour")?.value ?? "";
+  const minute = parts.find((p) => p.type === "minute")?.value ?? "00";
+  return minute === "00" ? `${hour} hr` : `${hour}:${minute} hr`;
+}
+
 function fmtDigestDate(e: DigestEvent): string {
-  if (e.openingDatetime) return `Inauguración: ${e.openingDatetime.slice(0, 10)}`;
+  if (e.openingDatetime) {
+    const dateStr = e.openingDatetime.slice(0, 10);
+    return e.openingTimeConfirmed ? `Inauguración: ${dateStr} · ${fmtHourSantiago(e.openingDatetime)}` : `Inauguración: ${dateStr}`;
+  }
   if (e.runEndDate) return `Hasta el ${e.runEndDate}`;
   return "";
+}
+
+function eventUrl(id: string): string {
+  return `https://www.caldearte.com/eventos/${id}`;
 }
 
 // Points at our own /newsletter/baja page, not the Edge Function's URL
@@ -566,6 +595,23 @@ function unsubscribeUrl(unsubscribeToken: string): string {
   return `https://www.caldearte.com/newsletter/baja?token=${encodeURIComponent(unsubscribeToken)}`;
 }
 
+// Groups a section's events by comuna (place_name's own comuna, via
+// DigestEvent.comunaName) — real feedback from the first send: a flat
+// list across a whole región reads as noise, comuna sub-groups make it
+// scannable. "Otras comunas" catches the rare event with no resolved
+// region_id (see docs/data-model.md). Insertion-order-stable within each
+// comuna, comuna groups themselves sorted alphabetically for a
+// deterministic, scannable read.
+function groupByComuna(events: DigestEvent[]): Array<[string, DigestEvent[]]> {
+  const groups = new Map<string, DigestEvent[]>();
+  for (const e of events) {
+    const key = e.comunaName ?? "Otras comunas";
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key)!.push(e);
+  }
+  return Array.from(groups.entries()).sort(([a], [b]) => a.localeCompare(b));
+}
+
 export function buildDigestSubject(sections: DigestSection[]): string {
   const totalEvents = sections.reduce((sum, s) => sum + s.events.length, 0);
   return `Caldearte — tu semana en arte (${totalEvents} expo${totalEvents === 1 ? "" : "s"})`;
@@ -575,10 +621,13 @@ export function buildDigestBody(sections: DigestSection[], unsubscribeToken: str
   const lines: string[] = [];
   for (const section of sections) {
     lines.push(`-- ${section.label} --`);
-    for (const e of section.events) {
-      const date = fmtDigestDate(e);
-      lines.push(`${e.title} — ${e.placeName}${date ? ` — ${date}` : ""}`);
-      if (e.sourceUrl) lines.push(`  ${e.sourceUrl}`);
+    for (const [comuna, events] of groupByComuna(section.events)) {
+      lines.push(`[${comuna}]`);
+      for (const e of events) {
+        const date = fmtDigestDate(e);
+        lines.push(`${e.title} — ${e.placeName}${date ? ` — ${date}` : ""}`);
+        lines.push(`  ${eventUrl(e.id)}`);
+      }
     }
     lines.push("");
   }
@@ -586,26 +635,51 @@ export function buildDigestBody(sections: DigestSection[], unsubscribeToken: str
   return lines.join("\n");
 }
 
+// Horizontal thumbnail card — a <table> layout rather than flex/grid,
+// since email clients (Gmail, Outlook chief among them) don't reliably
+// support either; <table> is the one layout primitive that survives every
+// major client's HTML sanitizer.
+function eventCardHtml(e: DigestEvent): string {
+  const date = fmtDigestDate(e);
+  const thumb = e.imageUrl
+    ? `<img src="${escapeHtml(e.imageUrl)}" width="72" height="72" alt="" style="display:block;width:72px;height:72px;border-radius:8px;object-fit:cover;" />`
+    : `<div style="width:72px;height:72px;border-radius:8px;background:#eee;"></div>`;
+  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 14px;">
+    <tr>
+      <td width="72" valign="top" style="padding-right:12px;">
+        <a href="${eventUrl(e.id)}">${thumb}</a>
+      </td>
+      <td valign="top">
+        <a href="${eventUrl(e.id)}" style="color:#1c1c1c;text-decoration:none;font-weight:700;font-size:14px;">${escapeHtml(e.title)}</a><br/>
+        <span style="color:#555;font-size:13px;">${escapeHtml(e.placeName)}</span><br/>
+        ${date ? `<span style="color:#888;font-size:12px;">${escapeHtml(date)}</span>` : ""}
+      </td>
+    </tr>
+  </table>`;
+}
+
 export function buildDigestHtmlBody(sections: DigestSection[], unsubscribeToken: string): string {
   const sectionsHtml = sections
     .map((section) => {
-      const items = section.events
-        .map((e) => {
-          const date = fmtDigestDate(e);
-          const title = e.sourceUrl
-            ? `<a href="${escapeHtml(e.sourceUrl)}" style="color:inherit;">${escapeHtml(e.title)}</a>`
-            : escapeHtml(e.title);
-          return `<li style="margin:0 0 10px;"><strong>${title}</strong><br/><span style="color:#555;font-size:13px;">${escapeHtml(e.placeName)}${date ? ` — ${escapeHtml(date)}` : ""}</span></li>`;
-        })
+      const comunaGroupsHtml = groupByComuna(section.events)
+        .map(
+          ([comuna, events]) =>
+            `<p style="margin:16px 0 8px;font-size:12px;font-weight:700;color:#1c1c1c;">${escapeHtml(comuna)}</p>${events.map(eventCardHtml).join("")}`,
+        )
         .join("");
-      return `<h2 style="font-size:14px;text-transform:uppercase;letter-spacing:0.04em;color:#888;margin:24px 0 10px;border-bottom:1px solid #e2e0da;padding-bottom:6px;">${escapeHtml(section.label)}</h2>
-      <ul style="list-style:none;padding:0;margin:0;">${items}</ul>`;
+      return `<h2 style="font-size:14px;text-transform:uppercase;letter-spacing:0.04em;color:#888;margin:24px 0 0;border-bottom:1px solid #e2e0da;padding-bottom:6px;">${escapeHtml(section.label)}</h2>
+      ${comunaGroupsHtml}`;
     })
     .join("");
 
-  return `<div style="font-family:sans-serif;max-width:640px;">
-    ${sectionsHtml}
-    <p style="margin:28px 0 0;font-size:12px;color:#888;"><a href="${unsubscribeUrl(unsubscribeToken)}" style="color:#888;">Darse de baja</a></p>
+  return `<div style="font-family:'Helvetica Neue',Arial,sans-serif;max-width:640px;margin:0 auto;">
+    <div style="background:#1c1c1c;padding:24px 28px;border-radius:12px 12px 0 0;">
+      <p style="margin:0;color:#fff;font-size:20px;font-weight:800;letter-spacing:0.02em;">CALDEARTE</p>
+    </div>
+    <div style="background:#fdf6e3;padding:24px 28px 8px;">
+      ${sectionsHtml}
+      <p style="margin:28px 0 0;font-size:12px;color:#888;"><a href="${unsubscribeUrl(unsubscribeToken)}" style="color:#888;">Darse de baja</a></p>
+    </div>
   </div>`;
 }
 

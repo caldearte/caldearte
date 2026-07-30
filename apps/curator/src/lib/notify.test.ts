@@ -317,23 +317,29 @@ const fixtureDigestSections: DigestSection[] = [
     label: "Inauguraciones de esta semana",
     events: [
       {
+        id: "event-estrella-distante",
         title: "Estrella distante",
         placeName: "MAC Quinta Normal",
+        comunaName: "Quinta Normal",
         openingDatetime: "2026-08-03T20:00:00.000Z",
+        openingTimeConfirmed: true,
         runEndDate: "2026-09-01",
-        sourceUrl: "https://centronacionaldearte.cultura.gob.cl/estrella-distante",
+        imageUrl: "https://example.com/estrella.jpg",
       },
     ],
   },
   {
-    label: "En otras comunas",
+    label: "En otras regiones",
     events: [
       {
+        id: "event-salafem",
         title: "SalaFEM2026",
         placeName: "Sala FEM",
+        comunaName: null,
         openingDatetime: null,
+        openingTimeConfirmed: true,
         runEndDate: "2026-08-15",
-        sourceUrl: null,
+        imageUrl: null,
       },
     ],
   },
@@ -347,21 +353,50 @@ test("buildDigestSubject uses singular for exactly one event", () => {
   assert.equal(buildDigestSubject([fixtureDigestSections[0]]), "Caldearte — tu semana en arte (1 expo)");
 });
 
-test("buildDigestBody lists every section's events and includes the unsubscribe link", () => {
+test("buildDigestBody lists every section's events grouped by comuna, links to caldearte.com's own event page, and includes the unsubscribe link", () => {
   const body = buildDigestBody(fixtureDigestSections, "unsub-token");
   assert.match(body, /Inauguraciones de esta semana/);
+  assert.match(body, /\[Quinta Normal\]/);
   assert.match(body, /Estrella distante — MAC Quinta Normal/);
-  assert.match(body, /En otras comunas/);
+  assert.match(body, /Inauguración: 2026-08-03 · \d{1,2}(:\d{2})? hr/);
+  assert.match(body, /https:\/\/www\.caldearte\.com\/eventos\/event-estrella-distante/);
+  assert.match(body, /En otras regiones/);
+  assert.match(body, /\[Otras comunas\]/);
   assert.match(body, /SalaFEM2026 — Sala FEM/);
   assert.match(body, /newsletter\/baja\?token=unsub-token/);
 });
 
-test("buildDigestHtmlBody renders every section and links titles with a sourceUrl", () => {
+test("buildDigestHtmlBody renders every section grouped by comuna as thumbnail cards linking to caldearte.com, includes the branded header, and the unsubscribe link", () => {
   const html = buildDigestHtmlBody(fixtureDigestSections, "unsub-token");
+  assert.match(html, />CALDEARTE</);
   assert.match(html, /Inauguraciones de esta semana/);
-  assert.match(html, /href="https:\/\/centronacionaldearte\.cultura\.gob\.cl\/estrella-distante"/);
+  assert.match(html, />Quinta Normal</);
+  assert.match(html, /href="https:\/\/www\.caldearte\.com\/eventos\/event-estrella-distante"/);
+  assert.match(html, /src="https:\/\/example\.com\/estrella\.jpg"/);
   assert.match(html, /SalaFEM2026/);
   assert.match(html, /newsletter\/baja\?token=unsub-token/);
+});
+
+test("buildDigestBody omits the hour for an opening whose time isn't confirmed", () => {
+  const sections: DigestSection[] = [
+    {
+      label: "Inauguraciones de esta semana",
+      events: [
+        {
+          id: "event-sin-hora",
+          title: "Sín-tesis",
+          placeName: "Galería NAC",
+          comunaName: "Providencia",
+          openingDatetime: "2026-08-05T00:00:00.000Z",
+          openingTimeConfirmed: false,
+          runEndDate: null,
+          imageUrl: null,
+        },
+      ],
+    },
+  ];
+  const body = buildDigestBody(sections, "unsub-token");
+  assert.match(body, /Sín-tesis — Galería NAC — Inauguración: 2026-08-05$/m);
 });
 
 test("sendDigestEmail: no-ops with a warning when RESEND_API_KEY is unset", async () => {
