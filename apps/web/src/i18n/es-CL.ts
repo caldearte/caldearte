@@ -46,14 +46,19 @@ export const esCL = {
   cityPickerCurrentLocation: "Tu ubicación actual",
   cityPickerRecentlyVisited: "Últimas visitadas",
   // Opt-in browser Geolocation upgrade — the automatic IP-based location
-  // above is a coarse estimate; this asks the visitor's permission for a
-  // much more precise reading. Rendered as a sober inline banner (full
-  // picker width), not a small easy-to-miss link — real feedback
-  // 2026-07-30: "ese link pasa muy desapercibido". Never shown as an
+  // shown below (as a CityRow) is a coarse estimate; this note + button
+  // pair asks the visitor's permission for a much more precise reading.
+  // Nested INSIDE the "Tu ubicación actual" section, directly above the
+  // coarse city it's offering to improve — real feedback 2026-07-30: "que
+  // se vea el banner solo donde corresponde" (only shows where the coarse
+  // location itself is already showing, not as a generic standalone
+  // prompt) and a distinct button so it reads as informational text +
+  // action, not "the whole row is vaguely clickable". Never shown as an
   // error toast — errorText renders inline, small, non-blocking
   // (denial/no-support are expected, normal outcomes, not failures).
-  cityPickerUseExactLocation: "Comparte tu ubicación para ver siempre tu comuna real aquí",
-  cityPickerLocatingExact: "Buscando tu ubicación...",
+  cityPickerUseExactLocation: "Esta ubicación es aproximada. Comparte tu ubicación real para verla siempre correcta aquí.",
+  cityPickerShareLocationButton: "Compartir ubicación",
+  cityPickerLocatingExact: "Buscando...",
   cityPickerExactLocationError: "No pudimos obtener tu ubicación.",
   cityPickerHints: {
     navigate: "↑↓ navegar",
