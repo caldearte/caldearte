@@ -241,6 +241,21 @@ export const esCL = {
     sending: "Enviando…",
     success: "Revisa tu correo para confirmar la suscripción.",
     error: "No pudimos suscribirte. Intenta de nuevo.",
+    confirmar: {
+      title: "Confirmar suscripción",
+      confirmed: "Tu suscripción al newsletter de Caldearte quedó confirmada.",
+      alreadyConfirmed: "Tu suscripción ya estaba confirmada.",
+      unsubscribed: "Esta suscripción ya fue dada de baja.",
+      invalid: "Este link de confirmación no es válido.",
+      error: "Ocurrió un error al confirmar. Intenta de nuevo desde el correo.",
+    },
+    baja: {
+      title: "Darse de baja",
+      unsubscribed: "Te diste de baja del newsletter de Caldearte. No recibirás más correos.",
+      alreadyUnsubscribed: "Ya estabas dado de baja.",
+      invalid: "Este link no es válido.",
+      error: "Ocurrió un error al dar de baja. Intenta de nuevo desde el correo.",
+    },
   },
 
   curatoriaPage: {

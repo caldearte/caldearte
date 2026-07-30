@@ -31,9 +31,8 @@ export async function POST(request: Request) {
   }
 
   const apiKey = process.env.RESEND_API_KEY;
-  const functionsUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  if (!apiKey || !functionsUrl) {
-    console.error("[newsletter/subscribe] RESEND_API_KEY or NEXT_PUBLIC_SUPABASE_URL not set");
+  if (!apiKey) {
+    console.error("[newsletter/subscribe] RESEND_API_KEY not set");
     return NextResponse.json({ error: "not_configured" }, { status: 500 });
   }
 
@@ -57,7 +56,11 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "insert_failed" }, { status: 500 });
   }
 
-  const confirmUrl = `${functionsUrl}/functions/v1/newsletter-confirm?token=${encodeURIComponent(confirmToken)}`;
+  // Points at our own page, not the Edge Function's URL directly — Supabase
+  // Edge Functions can't serve real HTML (see newsletter-confirm's own file
+  // comment), so /newsletter/confirmar calls the function server-side and
+  // renders a proper page instead.
+  const confirmUrl = `https://www.caldearte.com/newsletter/confirmar?token=${encodeURIComponent(confirmToken)}`;
 
   const resend = new Resend(apiKey);
   const { error: sendError } = await resend.emails.send({

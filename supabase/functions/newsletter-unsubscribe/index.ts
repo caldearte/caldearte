@@ -1,25 +1,27 @@
-// Newsletter unsubscribe endpoint. Reused: the subscriber's own
-// confirm_token doubles as the unsubscribe token (one opaque value per
-// subscriber is enough) — reached from every weekly digest's
+// Newsletter unsubscribe endpoint. Reached indirectly: apps/web's
+// /newsletter/baja page (server-side) calls this function and renders the
+// result as real HTML — this function itself returns JSON, never HTML,
+// same reasoning as newsletter-confirm/index.ts (Supabase Edge Functions
+// rewrite a text/html GET response's content-type to text/plain). Reuses
+// the subscriber's own confirm_token as the unsubscribe token (one opaque
+// value per subscriber is enough) — reached from every weekly digest's
 // List-Unsubscribe link, built by apps/curator's lib/notify.ts
-// (sendDigestEmail). See docs/data-model.md's newsletter_subscribers
-// entry for the full design.
+// (sendDigestEmail), which now also points at /newsletter/baja.
 import { createClient } from "npm:@supabase/supabase-js@2";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
-function htmlResponse(body: string, status = 200): Response {
-  return new Response(
-    `<!doctype html><html><head><meta charset="utf-8"></head><body style="font-family:sans-serif;max-width:480px;margin:80px auto;text-align:center;">${body}</body></html>`,
-    { status, headers: { "content-type": "text/html; charset=utf-8" } },
-  );
+type Result = { status: "unsubscribed" | "already_unsubscribed" | "invalid" | "error" };
+
+function jsonResponse(result: Result, httpStatus = 200): Response {
+  return new Response(JSON.stringify(result), { status: httpStatus, headers: { "content-type": "application/json" } });
 }
 
 Deno.serve(async (req) => {
   const url = new URL(req.url);
   const token = url.searchParams.get("token");
-  if (!token) return htmlResponse("<p>Falta el token.</p>", 400);
+  if (!token) return jsonResponse({ status: "invalid" }, 400);
 
   const client = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
 
@@ -31,14 +33,10 @@ Deno.serve(async (req) => {
 
   if (fetchError) {
     console.error("newsletter-unsubscribe: lookup failed", fetchError);
-    return htmlResponse("<p>Ocurrió un error. Revisa los logs de la función.</p>", 500);
+    return jsonResponse({ status: "error" }, 500);
   }
-  if (!subscriber) {
-    return htmlResponse("<p>Este link no es válido.</p>", 404);
-  }
-  if (subscriber.unsubscribed_at) {
-    return htmlResponse("<h1>✅ Listo</h1><p>Ya estabas dado de baja.</p>");
-  }
+  if (!subscriber) return jsonResponse({ status: "invalid" }, 404);
+  if (subscriber.unsubscribed_at) return jsonResponse({ status: "already_unsubscribed" });
 
   const { error: updateError } = await client
     .from("newsletter_subscribers")
@@ -47,8 +45,8 @@ Deno.serve(async (req) => {
 
   if (updateError) {
     console.error("newsletter-unsubscribe: update failed", updateError);
-    return htmlResponse("<p>Ocurrió un error al dar de baja. Revisa los logs de la función.</p>", 500);
+    return jsonResponse({ status: "error" }, 500);
   }
 
-  return htmlResponse("<h1>✅ Listo</h1><p>Te diste de baja del newsletter de Caldearte. No recibirás más correos.</p>");
+  return jsonResponse({ status: "unsubscribed" });
 });
