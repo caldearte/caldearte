@@ -15,7 +15,7 @@ import {
 } from "@/lib/events";
 import { DEFAULT_CITY_ID, buildRegionMetaByCityId, resolveDefaultCityId, resolveGeoCityId, nearestCityIdByCoords } from "@/lib/cities";
 import { todayInSantiago, currentWeekInSantiago, isCurrentOrUpcoming } from "@/lib/date";
-import { CITY_COOKIE, FAMILY_MODE_COOKIE, WINDOW_MODE_COOKIE } from "@/lib/cookies";
+import { CITY_COOKIE, FAMILY_MODE_COOKIE, WINDOW_MODE_COOKIE, GEO_CONSENT_COOKIE } from "@/lib/cookies";
 import CalendarView from "@/components/CalendarView";
 
 export default async function HomePage() {
@@ -114,6 +114,12 @@ export default async function HomePage() {
     (hasGeoCoords ? nearestCityIdByCoords(geoLat, geoLng, regions) : null) ??
     resolveGeoCityId(geoCity, geoCountry, buildRegionMetaByCityId(regions));
 
+  // GeoConsentBanner.tsx: shown at most once ever, the very first time a
+  // visitor hasn't yet answered — every subsequent render (including
+  // after they answer, since answering sets this cookie and refreshes)
+  // has it hidden.
+  const showGeoConsentPrompt = cookieStore.get(GEO_CONSENT_COOKIE) === undefined;
+
   const cityEventsInRange = filterByCity(activeInRange, cityId);
   const { inauguraciones, exposActuales } = splitInauguracionesYExpos(cityEventsInRange, rangeStart, rangeEnd);
 
@@ -138,6 +144,7 @@ export default async function HomePage() {
         exposActuales={exposActuales}
         cityId={cityId}
         actualCityId={actualCityId}
+        showGeoConsentPrompt={showGeoConsentPrompt}
         cityNames={cityNames}
         familyMode={familyMode}
         today={today}
