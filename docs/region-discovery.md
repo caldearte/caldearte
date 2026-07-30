@@ -1427,7 +1427,7 @@ to add `caldearte.com` as a sending domain) is gone — `caldearte.com` is
 verified in Resend as of the production launch (2026-07-17/18), used by the
 `/contacto` form. But that no longer matters in practice: Event Discovery's
 curation call is binary (`approved`/`rejected` only, see
-curation-policy.md#human-escalation-not-currently-implemented) — nothing in
+curation-policy.md#human-escalation-for-general-ambiguity-not-currently-implemented) — nothing in
 production sets `pending_review` today, and real data (271 events as of
 2026-07-18, 0 genuine escalations) shows Haiku's binary call isn't leaving
 anything genuinely ambiguous. Parked, not an active line item — see
@@ -2545,6 +2545,81 @@ via the existing tier-1 rule (confirmed opening wins) — all 8
 arteinformado.com copies had one, none of the 8 uchile.cl copies did, so
 the 8 uchile.cl rows were deleted directly (not a code path, a one-time
 manual SQL cleanup after the audit).
+
+## Cross-source curation conflict escalation (2026-07-30)
+
+A **different** kind of gap than the dedup fixes above — found by a
+user-requested manual audit specifically testing the five sensitivity
+axes (`docs/curation-policy.md`) against real production data, not the
+scope/format axis the earlier audits covered. The same real exhibition
+("Existen otros mundos, pero están en este", MAC Quinta Normal) was
+simultaneously **approved** (via arteinformado.com's vague description)
+and correctly **rejected** under the Religion axis (via uchile.cl's more
+detailed one, which mentioned explicit religious/mythological imagery
+arteinformado.com's copy never surfaced). Not a classifier bug — Haiku
+applied the axis correctly whenever it actually saw the disqualifying
+text — but a structural gap: nothing ever compared a new candidate
+against an EXISTING decision on likely the same real event from a
+different `source_url`.
+
+**Design, decided with the user**: when `insertCandidates` is about to
+record a decision that conflicts with an existing one on a likely-same
+real event (similar title + same `region_id` + anchor dates within
+**±30 days**, different `source_url`), hold both and email the site owner
+instead of silently applying either. The existing/older decision stays
+untouched until resolved.
+
+**Schema** (migration `20260730150000_add_curation_escalations.sql`):
+- `rejected_candidates` gained `location`/`region_id`/`anchor_date`
+  (nullable, best-effort — same defensive posture as the rest of that
+  table, see its own migration comment on the 2026-07-22 null-location
+  crash) — it never carried a location/date signal before this, needed
+  here specifically so a rejected candidate can be matched against a
+  later approved event, or vice versa.
+- New table `curation_escalations` — one row per detected conflict,
+  denormalized (both sides' title/source/reasoning snapshotted as plain
+  text, plus the new candidate's full insertable payload as JSONB) so the
+  email and eventual decision don't depend on either referenced row
+  surviving unchanged. Two opaque random tokens per row (`accept_token`/
+  `reject_token`), each single-use.
+
+**Detection** (`event-discovery/run.ts`, new `findConflictingApprovedEvent`/
+`findConflictingRejectedCandidate`, `isWithinAnchorWindow` in
+`lib/event-filters.ts`): runs at the top of `insertCandidates`'s loop, for
+every candidate with a real `sourceUrl`, checking only the OPPOSITE
+existing status (an approved candidate is checked against rejected
+candidates, and vice versa — same-status "conflicts" aren't conflicts,
+today's ordinary dedup already handles those). A candidate about to be
+approved that would need image rehosting gets it done immediately when
+escalated too, not deferred until a human clicks Accept — a signed
+Instagram/Facebook CDN link can rot within hours, and resolution may take
+days.
+
+**Notification** (`lib/notify.ts`'s `sendEscalationEmail`, same
+ancillary/never-throws posture as the run-summary emails) — both
+versions' title, source link, and full reasoning, plus Accept ("usar la
+versión nueva") and Reject ("mantener la anterior") links.
+
+**Resolution**: `supabase/functions/curation-escalation-decide` — the
+project's first Edge Function, reached directly from the email (no
+inbound email parsing, no webhook — just two GET links, same "link to our
+own endpoint" pattern already used elsewhere, much simpler than Phase
+1b's original inbound-mail design). Runs with the service_role key
+(Supabase's own platform-provided env for every Edge Function — never
+touches Vercel/apps/web, which explicitly never holds this key, see
+`apps/web/src/lib/supabase-client.ts`'s `assertAnonRole` guard). The
+action is determined by WHICH token matched (`accept_token` vs.
+`reject_token`), never by a client-supplied query param, so a tampered
+URL can't flip the decision. Accept applies the new candidate's decision
+(inserts into `events` if approved; flips the existing `events` row to
+`rejected` if not). Reject keeps the old decision and just records the
+new candidate into `rejected_candidates` so it stops re-triggering the
+same escalation on a future run.
+
+**Production fix applied by hand** (2026-07-30, before this pipeline fix
+existed): the "Existen otros mundos" row's `curation_status` was manually
+flipped to `rejected` directly via SQL — not deleted, reasoning field
+kept with an appended correction note.
 
 ## Cost governance
 

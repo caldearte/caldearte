@@ -140,14 +140,45 @@ documentation consistency; the actual Event Discovery prompt
 Claude handles Spanish-language event descriptions equally well either
 way.*
 
-## Human escalation: not currently implemented
+## Cross-source conflict escalation — implemented 2026-07-30, narrower than general ambiguity below
+
+Found via a user-requested manual audit testing the five sensitivity axes
+against real production data: the same real exhibition ("Existen otros
+mundos, pero están en este") was simultaneously **approved** (one
+source's vague description) and correctly **rejected** under the
+Religion axis (a different source's more detailed one, which mentioned
+explicit religious/mythological imagery the first source's copy never
+surfaced). Not a classifier error — Haiku applied the axis correctly
+whenever it actually saw the disqualifying text — a structural gap:
+nothing compared a new candidate against an EXISTING decision on likely
+the same real event from a different source.
+
+When Event Discovery is about to record a decision that conflicts with
+an existing one on a likely-same real event (similar title + same comuna
++ anchor dates within ±30 days, different source URL), it no longer
+applies either decision silently. Both versions (title, source link, full
+reasoning) get emailed to the site owner with Accept ("use the new
+version")/Reject ("keep the existing one") links — the existing decision
+stays untouched until one is clicked. See
+[region-discovery.md](region-discovery.md#cross-source-curation-conflict-escalation-2026-07-30)
+for the full technical design (schema, detection, the resolution Edge
+Function).
+
+This is deliberately narrow — it only fires on a genuine conflict between
+two source's differing decisions on the same real event, not on
+Haiku's own uncertainty about a single candidate. It doesn't replace or
+resolve the general ambiguous-classification question below, which
+remains undecided.
+
+## Human escalation for general ambiguity: not currently implemented
 
 Event Discovery (the only pipeline in production) uses a binary
 `approved`/`rejected` decision — there's no `pending_review` tier today.
 Ambiguous cases currently fall through to ordinary curation rather than
-escalating to a human. Whether to add an escalation tier is an open
-question, not decided either way yet. Candidate signals for it, if it's
-ever built:
+escalating to a human. Whether to add a broader escalation tier for
+Haiku's own uncertainty (distinct from the cross-source conflict case
+above, which is now handled) is an open question, not decided either way
+yet. Candidate signals for it, if it's ever built:
 
 - The event appears to meet the exception (explicit critical stance) but the
   text isn't clear enough to confirm the rejection is unambiguous and not

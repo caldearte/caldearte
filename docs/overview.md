@@ -67,7 +67,7 @@ no `pending_review` output), so an ambiguous case today just gets an
 ordinary curation decision like any other, same as everything else Claude
 Haiku evaluates. Real production data shows this isn't leaving anything
 genuinely stuck in the middle — see
-[curation-policy.md](curation-policy.md#human-escalation-not-currently-implemented)
+[curation-policy.md](curation-policy.md#human-escalation-for-general-ambiguity-not-currently-implemented)
 and [roadmap.md](roadmap.md)'s Phase 1a for why it's now parked rather than
 an active line item.
 
