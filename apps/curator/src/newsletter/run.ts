@@ -15,9 +15,10 @@ type Subscriber = Pick<Tables<"newsletter_subscribers">, "id" | "email" | "admin
 type EventRow = Tables<"events">;
 // Subscription scope is the macro-región (Región Metropolitana, Valparaíso,
 // etc — regions.admin_region_name), not the comuna — see the migration
-// comment (20260730190000). Each event's own admin_region_name is resolved
-// once in run() via its region_id, since events itself has no such column.
-type EventWithRegion = EventRow & { adminRegionName: string | null };
+// comment (20260730190000). Each event's own admin_region_name/comunaName
+// is resolved once in run() via its region_id, since events itself only
+// carries region_id, not either name directly.
+type EventWithRegion = EventRow & { adminRegionName: string | null; comunaName: string | null };
 
 const REMINDER_CAP = 3;
 const OTHER_COMUNAS_CAP = 3;
@@ -51,13 +52,16 @@ function isRunningOn(event: EventRow, dateStr: string): boolean {
   return true;
 }
 
-function toDigestEvent(event: EventRow): DigestEvent {
+function toDigestEvent(event: EventWithRegion): DigestEvent {
   return {
+    id: event.id,
     title: event.title,
     placeName: event.place_name ?? event.freeform_location,
+    comunaName: event.comunaName,
     openingDatetime: event.opening_datetime,
+    openingTimeConfirmed: event.opening_time_confirmed,
     runEndDate: event.run_end_date,
-    sourceUrl: event.source_url,
+    imageUrl: event.image_url,
   };
 }
 
@@ -86,12 +90,21 @@ export function buildDigestSections(
   );
   const openingIds = new Set(openings.map((e) => e.id));
 
+  // "New" means the exhibition's own run actually STARTS this week
+  // (run_start_date), not when Haiku happened to curate it (created_at) —
+  // real feedback after the first send: the pipeline's own curation
+  // timing isn't what a reader means by "new," the exhibition's real
+  // start date is.
   const newThisWeek = runningThisWeek.filter(
-    (e) => !openingIds.has(e.id) && e.created_at.slice(0, 10) >= week.start && e.created_at.slice(0, 10) <= week.end,
+    (e) => !openingIds.has(e.id) && e.run_start_date && e.run_start_date >= week.start && e.run_start_date <= week.end,
   );
   const newIds = new Set(newThisWeek.map((e) => e.id));
 
-  const reminders = runningThisWeek
+  // Everything else already running (started before this week, still
+  // open) — a plain "browse what's still on" list, capped and sorted
+  // ending-soonest-first so it doubles as a nudge to catch it before it
+  // closes.
+  const alsoVisit = runningThisWeek
     .filter((e) => !openingIds.has(e.id) && !newIds.has(e.id))
     .sort((a, b) => (a.run_end_date ?? "9999-12-31").localeCompare(b.run_end_date ?? "9999-12-31"))
     .slice(0, REMINDER_CAP);
@@ -104,7 +117,7 @@ export function buildDigestSections(
   const sections: DigestSection[] = [];
   if (openings.length > 0) sections.push({ label: "Inauguraciones de esta semana", events: openings.map(toDigestEvent) });
   if (newThisWeek.length > 0) sections.push({ label: "Expos nuevas esta semana", events: newThisWeek.map(toDigestEvent) });
-  if (reminders.length > 0) sections.push({ label: "No te las pierdas", events: reminders.map(toDigestEvent) });
+  if (alsoVisit.length > 0) sections.push({ label: "También puedes visitar", events: alsoVisit.map(toDigestEvent) });
   if (otherRegions.length > 0) sections.push({ label: "En otras regiones", events: otherRegions.map(toDigestEvent) });
   return sections;
 }
@@ -121,7 +134,7 @@ export async function run(deps: RunDeps = {}): Promise<void> {
       .not("confirmed_at", "is", null)
       .is("unsubscribed_at", null),
     supabase.from("events").select("*").eq("curation_status", "approved"),
-    supabase.from("regions").select("id, admin_region_name"),
+    supabase.from("regions").select("id, name, admin_region_name"),
   ]);
 
   if (subscribersRes.error) throw new Error(`Failed to load newsletter_subscribers: ${subscribersRes.error.message}`);
@@ -129,10 +142,13 @@ export async function run(deps: RunDeps = {}): Promise<void> {
   if (regionsRes.error) throw new Error(`Failed to load regions: ${regionsRes.error.message}`);
 
   const subscribers = (subscribersRes.data ?? []) as Subscriber[];
-  const regionNameById = new Map((regionsRes.data ?? []).map((r) => [r.id, r.admin_region_name]));
+  const regionById = new Map((regionsRes.data ?? []).map((r) => [r.id, r]));
   const events: EventWithRegion[] = ((eventsRes.data ?? []) as EventRow[])
     .filter((e) => e.sensitivity_tags.length === 0)
-    .map((e) => ({ ...e, adminRegionName: e.region_id ? (regionNameById.get(e.region_id) ?? null) : null }));
+    .map((e) => {
+      const region = e.region_id ? regionById.get(e.region_id) : undefined;
+      return { ...e, adminRegionName: region?.admin_region_name ?? null, comunaName: region?.name ?? null };
+    });
 
   console.log(`[newsletter] ${subscribers.length} confirmed subscriber(s), ${events.length} eligible approved event(s), week ${week.start}..${week.end}`);
 

@@ -4,7 +4,7 @@ import type { Tables } from "@caldearte/shared-types";
 import { buildDigestSections, run } from "./run.js";
 
 type EventRow = Tables<"events">;
-type EventWithRegion = EventRow & { adminRegionName: string | null };
+type EventWithRegion = EventRow & { adminRegionName: string | null; comunaName: string | null };
 
 const WEEK = { start: "2026-08-03", end: "2026-08-09" }; // a Mon..Sun
 
@@ -23,6 +23,7 @@ function makeEvent(overrides: Partial<EventWithRegion> = {}): EventWithRegion {
     place_name: "Galería de prueba",
     region_id: "11111111-1111-1111-1111-111111111111",
     adminRegionName: REGION_A,
+    comunaName: "Santiago",
     opening_datetime: null,
     opening_date_confidence: "alta",
     opening_time_confirmed: true,
@@ -50,14 +51,21 @@ test("buildDigestSections: an event opening inside the week goes in 'Inauguracio
   assert.equal(sections[0].events.length, 1);
 });
 
-test("buildDigestSections: an event created (curated) this week but opening later/never goes in 'Expos nuevas esta semana'", () => {
-  const event = makeEvent({ created_at: "2026-08-04T00:00:00.000Z", opening_datetime: null });
+test("buildDigestSections: an event whose run actually STARTS this week (run_start_date) goes in 'Expos nuevas esta semana' — curation timing (created_at) is irrelevant", () => {
+  const event = makeEvent({ created_at: "2026-06-01T00:00:00.000Z", run_start_date: "2026-08-04", opening_datetime: null });
   const sections = buildDigestSections([event], REGION_A, WEEK);
   assert.equal(sections.length, 1);
   assert.equal(sections[0].label, "Expos nuevas esta semana");
 });
 
-test("buildDigestSections: an older, already-running event neither opening nor new this week is a reminder, capped at 3, ending-soonest first", () => {
+test("buildDigestSections: an event merely curated (created_at) this week but whose run started earlier does NOT count as 'new' — it's a plain visit reminder instead", () => {
+  const event = makeEvent({ created_at: "2026-08-04T00:00:00.000Z", run_start_date: "2026-07-01", opening_datetime: null });
+  const sections = buildDigestSections([event], REGION_A, WEEK);
+  assert.equal(sections.length, 1);
+  assert.equal(sections[0].label, "También puedes visitar");
+});
+
+test("buildDigestSections: an older, already-running event neither opening nor new this week goes in 'También puedes visitar', capped at 3, ending-soonest first", () => {
   const events = [
     makeEvent({ run_end_date: "2026-08-20" }),
     makeEvent({ run_end_date: "2026-08-10" }),
@@ -66,7 +74,7 @@ test("buildDigestSections: an older, already-running event neither opening nor n
   ];
   const sections = buildDigestSections(events, REGION_A, WEEK);
   assert.equal(sections.length, 1);
-  assert.equal(sections[0].label, "No te las pierdas");
+  assert.equal(sections[0].label, "También puedes visitar");
   assert.equal(sections[0].events.length, 3);
   assert.deepEqual(
     sections[0].events.map((e) => e.runEndDate),
@@ -95,6 +103,21 @@ test("buildDigestSections: an event in a different región appears only in 'En o
 
 test("buildDigestSections: an empty event pool yields zero sections (subscriber gets skipped, not an empty email)", () => {
   assert.deepEqual(buildDigestSections([], REGION_A, WEEK), []);
+});
+
+test("buildDigestSections: toDigestEvent carries comuna, image, and opening_time_confirmed through for the email builders", () => {
+  const event = makeEvent({
+    opening_datetime: "2026-08-05T20:00:00.000Z",
+    opening_time_confirmed: false,
+    comunaName: "Providencia",
+    image_url: "https://example.com/img.jpg",
+  });
+  const sections = buildDigestSections([event], REGION_A, WEEK);
+  const [e] = sections[0].events;
+  assert.equal(e.comunaName, "Providencia");
+  assert.equal(e.imageUrl, "https://example.com/img.jpg");
+  assert.equal(e.openingTimeConfirmed, false);
+  assert.equal(e.id, event.id);
 });
 
 // Integration test against local Supabase. Run `supabase start`, then export
