@@ -106,6 +106,88 @@ export type Database = {
         }
         Relationships: []
       }
+      curation_escalations: {
+        Row: {
+          accept_token: string
+          created_at: string
+          existing_event_id: string | null
+          existing_kind: string
+          existing_reasoning: string
+          existing_rejected_id: string | null
+          existing_source_url: string
+          existing_title: string
+          id: string
+          new_candidate_payload: Json
+          new_reasoning: string
+          new_source_url: string
+          new_status: string
+          new_title: string
+          reject_token: string
+          resolution: string | null
+          resolved_at: string | null
+        }
+        Insert: {
+          accept_token: string
+          created_at?: string
+          existing_event_id?: string | null
+          existing_kind: string
+          existing_reasoning: string
+          existing_rejected_id?: string | null
+          existing_source_url: string
+          existing_title: string
+          id?: string
+          new_candidate_payload: Json
+          new_reasoning: string
+          new_source_url: string
+          new_status: string
+          new_title: string
+          reject_token: string
+          resolution?: string | null
+          resolved_at?: string | null
+        }
+        Update: {
+          accept_token?: string
+          created_at?: string
+          existing_event_id?: string | null
+          existing_kind?: string
+          existing_reasoning?: string
+          existing_rejected_id?: string | null
+          existing_source_url?: string
+          existing_title?: string
+          id?: string
+          new_candidate_payload?: Json
+          new_reasoning?: string
+          new_source_url?: string
+          new_status?: string
+          new_title?: string
+          reject_token?: string
+          resolution?: string | null
+          resolved_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "curation_escalations_existing_event_id_fkey"
+            columns: ["existing_event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "curation_escalations_existing_event_id_fkey"
+            columns: ["existing_event_id"]
+            isOneToOne: false
+            referencedRelation: "events_public"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "curation_escalations_existing_rejected_id_fkey"
+            columns: ["existing_rejected_id"]
+            isOneToOne: false
+            referencedRelation: "rejected_candidates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       detected_sources: {
         Row: {
           created_at: string
@@ -315,27 +397,51 @@ export type Database = {
       }
       rejected_candidates: {
         Row: {
+          anchor_date: string | null
           created_at: string
           id: string
+          location: string | null
           reason: string
+          region_id: string | null
           source_url: string
           title: string
         }
         Insert: {
+          anchor_date?: string | null
           created_at?: string
           id?: string
+          location?: string | null
           reason: string
+          region_id?: string | null
           source_url: string
           title: string
         }
         Update: {
+          anchor_date?: string | null
           created_at?: string
           id?: string
+          location?: string | null
           reason?: string
+          region_id?: string | null
           source_url?: string
           title?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "rejected_candidates_region_id_fkey"
+            columns: ["region_id"]
+            isOneToOne: false
+            referencedRelation: "regions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rejected_candidates_region_id_fkey"
+            columns: ["region_id"]
+            isOneToOne: false
+            referencedRelation: "regions_public"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       system_config: {
         Row: {

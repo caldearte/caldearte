@@ -17,6 +17,7 @@
 // forever with no special "reset" needed: a comuna that just ran becomes
 // the newest, falls out of the "due" pool for RUN_INTERVAL_MS, and
 // re-enters it once that elapses, same as always.
+import crypto from "node:crypto";
 import Anthropic from "@anthropic-ai/sdk";
 import type { Tables } from "@caldearte/shared-types";
 import { getSupabaseClient } from "../lib/supabase-client.js";
@@ -25,10 +26,10 @@ import { estimateCostUsd } from "../lib/pricing.js";
 import { knownSourceDomain, isAggregatorSource } from "../lib/known-sources.js";
 import { KNOWN_LOW_QUALITY_SOURCE_DOMAINS } from "../lib/known-exclusions.js";
 import { matchRegionId, type RegionLike } from "../lib/locations.js";
-import { normalizeLocation, isLikelySameTitle, placeNamesLikelySame } from "../lib/event-filters.js";
+import { normalizeLocation, isLikelySameTitle, placeNamesLikelySame, isWithinAnchorWindow } from "../lib/event-filters.js";
 import { enrichCandidates, enrichBrightSourceItemDetails, isSocialMediaUrl, type FetchLike as PageFetchLike } from "../lib/page-fetch.js";
 import { rehostImage, type RehostImageFn } from "../lib/image-rehost.js";
-import { sendRunSummaryEmail, type RunSummary, type CandidateSummary } from "../lib/notify.js";
+import { sendRunSummaryEmail, sendEscalationEmail, type RunSummary, type CandidateSummary } from "../lib/notify.js";
 import {
   buildBlock,
   buildSystemPrompt,
@@ -393,6 +394,154 @@ function shouldReplaceExisting(candidate: EventCandidate, existing: ExistingEven
   return false;
 }
 
+// --- Cross-source curation conflict escalation (2026-07-30) -----------
+// Found via a manual curation audit: the same real exhibition can be
+// simultaneously approved (one source's vague description) and correctly
+// rejected under a sensitivity axis (a different source's more detailed
+// one) — Haiku applies the axis correctly whenever it sees the
+// disqualifying text, but nothing compared a new candidate against an
+// EXISTING decision on likely the same real event from a different
+// source_url. See docs/curation-policy.md's "Cross-source conflict
+// escalation" section for the full design and the real case that
+// prompted this.
+
+// Best-effort single anchor date for a candidate/existing row — same
+// priority order locationDateOnlyKey already uses (a run's own start
+// date is the more stable signal than a single opening moment).
+function anchorDateOf(c: { openingDatetime: string | null; runStartDate: string | null; runEndDate: string | null }): string | null {
+  return c.runStartDate ?? c.openingDatetime?.slice(0, 10) ?? c.runEndDate ?? null;
+}
+
+interface ConflictMatch {
+  kind: "approved_event" | "rejected_candidate";
+  id: string;
+  title: string;
+  sourceUrl: string;
+  reasoning: string;
+}
+
+// Looks for an already-APPROVED event describing what's likely the same
+// real thing as a candidate that's about to be REJECTED, from a
+// different source_url, within isWithinAnchorWindow's ±30-day default.
+// Scoped to the candidate's own region_id — cheap and precise, same value
+// insertCandidates already computes for its own insert/update payload.
+// Known simplification: this re-queries the full region every call
+// rather than caching per-region results across a batch — fine at this
+// project's scale (a run's candidates rarely exceed a few dozen), worth
+// revisiting only if it's ever measured to matter.
+async function findConflictingApprovedEvent(
+  client: ReturnType<typeof getSupabaseClient>,
+  candidate: Pick<EventCandidate, "title" | "placeName" | "sourceUrl" | "openingDatetime" | "runStartDate" | "runEndDate">,
+  regionId: string | null,
+  anchorDate: string | null,
+): Promise<ConflictMatch | null> {
+  if (!regionId || !anchorDate) return null;
+
+  const { data, error } = await client
+    .from("events")
+    .select("id, title, place_name, source_url, curation_reasoning, opening_datetime, run_start_date, run_end_date")
+    .eq("curation_status", "approved")
+    .eq("region_id", regionId);
+
+  if (error) {
+    console.error(`[event-discovery] conflict check (approved events) failed: ${error.message}`);
+    return null;
+  }
+
+  for (const row of data ?? []) {
+    if (!row.source_url || row.source_url === candidate.sourceUrl) continue;
+    const rowAnchor = anchorDateOf({ openingDatetime: row.opening_datetime, runStartDate: row.run_start_date, runEndDate: row.run_end_date });
+    if (!rowAnchor || !isWithinAnchorWindow(anchorDate, rowAnchor)) continue;
+    if (!isLikelySameTitle(row.title, candidate.title)) continue;
+    if (!placeNamesLikelySame(row.place_name, candidate.placeName)) continue;
+    return { kind: "approved_event", id: row.id, title: row.title, sourceUrl: row.source_url, reasoning: row.curation_reasoning ?? "" };
+  }
+  return null;
+}
+
+// Same idea, the other direction: looks for an already-REJECTED candidate
+// that likely describes the same real thing as a candidate that's about
+// to be APPROVED. rejected_candidates only carries region_id/anchor_date
+// since the migration that added this feature — older rows simply won't
+// match, which is fine, they age out via the existing 90-day prune
+// anyway. No placeName check here (rejected_candidates never stored it,
+// deliberately minimal — see that table's own migration comment) — title
+// + region + date window is still a 3-signal check.
+async function findConflictingRejectedCandidate(
+  client: ReturnType<typeof getSupabaseClient>,
+  candidate: Pick<EventCandidate, "title" | "sourceUrl">,
+  regionId: string | null,
+  anchorDate: string | null,
+): Promise<ConflictMatch | null> {
+  if (!regionId || !anchorDate) return null;
+
+  const { data, error } = await client
+    .from("rejected_candidates")
+    .select("id, title, source_url, reason, anchor_date")
+    .eq("region_id", regionId)
+    .not("anchor_date", "is", null);
+
+  if (error) {
+    console.error(`[event-discovery] conflict check (rejected candidates) failed: ${error.message}`);
+    return null;
+  }
+
+  for (const row of data ?? []) {
+    if (row.source_url === candidate.sourceUrl) continue;
+    if (!row.anchor_date || !isWithinAnchorWindow(anchorDate, row.anchor_date)) continue;
+    if (!isLikelySameTitle(row.title, candidate.title)) continue;
+    return { kind: "rejected_candidate", id: row.id, title: row.title, sourceUrl: row.source_url, reasoning: row.reason };
+  }
+  return null;
+}
+
+// Records the conflict and notifies the site owner — never throws, same
+// "ancillary, must not break the run" posture as this file's other
+// notification side effects. The conflict itself is ALWAYS logged via
+// console.log regardless of whether the DB insert or the email succeeds,
+// so it's still visible in the run's own logs even in the worst case.
+async function recordEscalation(
+  client: ReturnType<typeof getSupabaseClient>,
+  existing: ConflictMatch,
+  candidate: EventCandidate,
+  candidatePayload: Record<string, unknown>,
+): Promise<void> {
+  console.log(
+    `[event-discovery] conflict detected: "${candidate.title}" (${candidate.status}) vs existing "${existing.title}" (${existing.kind}) — escalated, not inserted`,
+  );
+
+  const acceptToken = crypto.randomBytes(32).toString("hex");
+  const rejectToken = crypto.randomBytes(32).toString("hex");
+
+  const { error } = await client.from("curation_escalations").insert({
+    existing_kind: existing.kind,
+    existing_event_id: existing.kind === "approved_event" ? existing.id : null,
+    existing_rejected_id: existing.kind === "rejected_candidate" ? existing.id : null,
+    existing_title: existing.title,
+    existing_source_url: existing.sourceUrl,
+    existing_reasoning: existing.reasoning,
+    new_title: candidate.title,
+    new_source_url: candidate.sourceUrl ?? "",
+    new_status: candidate.status,
+    new_reasoning: candidate.curationReasoning,
+    new_candidate_payload: candidatePayload,
+    accept_token: acceptToken,
+    reject_token: rejectToken,
+  });
+
+  if (error) {
+    console.error(`[event-discovery] failed to record escalation for "${candidate.title}": ${error.message}`);
+    return;
+  }
+
+  await sendEscalationEmail(
+    { title: existing.title, sourceUrl: existing.sourceUrl, reasoning: existing.reasoning },
+    { title: candidate.title, sourceUrl: candidate.sourceUrl ?? "", reasoning: candidate.curationReasoning },
+    acceptToken,
+    rejectToken,
+  );
+}
+
 export async function insertCandidates(
   candidates: EventCandidate[],
   regions: RegionLike[],
@@ -404,30 +553,90 @@ export async function insertCandidates(
   let inserted = 0;
 
   for (const c of candidates) {
-    // Rejected candidates are no longer stored — was originally kept for
-    // audit (spotting false negatives, a real event wrongly rejected), but
-    // that auditing never actually happened in practice, while storing
-    // rejected rows was the direct cause of a real crash (2026-07-22, see
-    // lib/event-filters.ts/lib/locations.ts's null-safety fixes):
-    // processing every candidate, not just approved ones, through the
-    // dedup/region-match code let a rejected candidate's null `location`
-    // reach a code path that assumed it was always a string. A log line is
-    // enough for now — full curationReasoning stays visible in the run's
-    // own logs without the DB write or the crash surface that came with it.
+    const regionId = matchRegionId(c.location, regions);
+    const anchorDate = anchorDateOf(c);
+
+    // Cross-source conflict escalation — checked BEFORE either branch
+    // below, for both approved- and rejected-bound candidates, but only
+    // ever against the OPPOSITE existing status (same-status "conflicts"
+    // aren't conflicts at all — today's ordinary dedup logic already
+    // handles those). Only meaningful with a real sourceUrl, needed both
+    // for the cross-source comparison itself and for a useful email — an
+    // approved candidate always has one (see the INVARIANT enforced
+    // elsewhere), a rejected one without one just can't be checked.
+    if (c.sourceUrl) {
+      const conflict =
+        c.status === "approved"
+          ? await findConflictingRejectedCandidate(client, c, regionId, anchorDate)
+          : await findConflictingApprovedEvent(client, c, regionId, anchorDate);
+
+      if (conflict) {
+        // Rehosted NOW, not if/when a human clicks "Aceptar" later — a
+        // signed Instagram/Facebook CDN link can rot within hours, and
+        // this candidate's decision may not be resolved for days.
+        let imageUrl = c.imageUrl;
+        if (c.status === "approved" && imageUrl && isSocialMediaUrl(c.sourceUrl)) {
+          imageUrl = await rehostImageFn(imageUrl, client);
+        }
+        const candidatePayload = {
+          freeform_location: c.location,
+          place_name: c.placeName,
+          region_id: regionId,
+          title: c.title,
+          description: c.description,
+          artist: c.artist,
+          opening_datetime: c.openingDatetime,
+          opening_time_confirmed: c.openingTimeConfirmed,
+          run_start_date: c.runStartDate,
+          run_end_date: c.runEndDate,
+          medium_type: c.mediumType,
+          sensitivity_tags: c.sensitivityTags,
+          source: "discovered",
+          source_url: c.sourceUrl,
+          image_url: imageUrl,
+          curation_status: c.status,
+          curation_reasoning: c.curationReasoning,
+        };
+        await recordEscalation(client, conflict, c, candidatePayload);
+        continue;
+      }
+    }
+
+    // Rejected candidates are no longer stored in `events` — was
+    // originally kept for audit (spotting false negatives, a real event
+    // wrongly rejected), but that auditing never actually happened in
+    // practice, while storing rejected rows was the direct cause of a
+    // real crash (2026-07-22, see lib/event-filters.ts/lib/locations.ts's
+    // null-safety fixes): processing every candidate, not just approved
+    // ones, through the dedup/region-match code let a rejected
+    // candidate's null `location` reach a code path that assumed it was
+    // always a string. A log line is enough for now — full
+    // curationReasoning stays visible in the run's own logs without the
+    // DB write or the crash surface that came with it.
     if (c.status !== "approved") {
       console.log(`[event-discovery] rejected: "${c.title}" — ${c.curationReasoning}`);
-      // Recorded by source_url only — never touches `location` (routinely
-      // null on a rejected candidate), the exact field whose null-ness
-      // caused the 2026-07-22 crash that removed rejected-candidate
-      // storage from `events` in the first place. Lets a future run skip
-      // re-curating this same item (see loadRecentlyRejectedSourceUrls,
-      // above) instead of re-spending Haiku tokens on the same verdict
-      // every fetch cycle. Ancillary — a failure here must never break
-      // the actual run.
+      // Recorded by source_url only — never touches `location` in the
+      // fields that caused the 2026-07-22 crash (location/region_id/
+      // anchor_date below are all nullable and best-effort, same
+      // defensive posture the 2026-07-30 migration that added them used).
+      // Lets a future run skip re-curating this same item (see
+      // loadRecentlyRejectedSourceUrls, above) instead of re-spending
+      // Haiku tokens on the same verdict every fetch cycle, and lets a
+      // LATER candidate's conflict check (above) find this one. Ancillary
+      // — a failure here must never break the actual run.
       if (c.sourceUrl) {
-        const { error: rejectError } = await client
-          .from("rejected_candidates")
-          .upsert({ source_url: c.sourceUrl, title: c.title, reason: c.curationReasoning, created_at: now.toISOString() }, { onConflict: "source_url" });
+        const { error: rejectError } = await client.from("rejected_candidates").upsert(
+          {
+            source_url: c.sourceUrl,
+            title: c.title,
+            reason: c.curationReasoning,
+            created_at: now.toISOString(),
+            location: c.location,
+            region_id: regionId,
+            anchor_date: anchorDate,
+          },
+          { onConflict: "source_url" },
+        );
         if (rejectError) {
           console.error(`[event-discovery] failed to record rejected candidate "${c.title}": ${rejectError.message}`);
         }
@@ -484,7 +693,7 @@ export async function insertCandidates(
         .update({
           freeform_location: c.location,
           place_name: c.placeName,
-          region_id: matchRegionId(c.location, regions),
+          region_id: regionId,
           title: c.title,
           description: c.description,
           artist: c.artist,
@@ -535,7 +744,7 @@ export async function insertCandidates(
       .insert({
         freeform_location: c.location,
         place_name: c.placeName,
-        region_id: matchRegionId(c.location, regions),
+        region_id: regionId,
         title: c.title,
         description: c.description,
         artist: c.artist,

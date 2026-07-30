@@ -10,8 +10,13 @@ import {
   buildHeadlessSubject,
   buildHeadlessBody,
   buildHeadlessHtmlBody,
+  sendEscalationEmail,
+  buildEscalationSubject,
+  buildEscalationBody,
+  buildEscalationHtmlBody,
   type RunSummary,
   type HeadlessRunSummary,
+  type EscalationSide,
 } from "./notify.js";
 
 test("flagBudgetExceeded: no-ops when GITHUB_TOKEN/GITHUB_REPOSITORY are unset", async () => {
@@ -227,4 +232,77 @@ test("buildHeadlessHtmlBody renders the MAVI event table with source link and ve
   assert.match(html, /✅ Aprobado/);
   assert.match(html, /Muestra en el MAVI/);
   assert.match(html, /Museo de Artes Visuales MAVI UC/);
+});
+
+const fixtureExisting: EscalationSide = {
+  title: "Existen otros mundos, pero están en este",
+  sourceUrl: "https://www.arteinformado.com/agenda/f/existen-otros-mundos-pero-estan-en-este-243857",
+  reasoning: "Exposición de arte visual en MAC. Vigente durante julio 2026. Ubicación clara, imagen disponible.",
+};
+
+const fixtureNewCandidate: EscalationSide = {
+  title: "Muestra \"Existen otros mundos, pero están en este\"",
+  sourceUrl: "https://uchile.cl/agenda/239614/muestra-existen-otros-mundos-pero-estan-en-este-en-mac-quinta-normal",
+  reasoning: "Muestra de pintura que incluye figuras con temática religiosa/mítica explícita. Cae bajo eje de exclusión por religión.",
+};
+
+test("sendEscalationEmail: no-ops with a warning when RESEND_API_KEY is unset", async () => {
+  const original = process.env.RESEND_API_KEY;
+  delete process.env.RESEND_API_KEY;
+
+  try {
+    await sendEscalationEmail(fixtureExisting, fixtureNewCandidate, "accept-token", "reject-token");
+  } finally {
+    if (original !== undefined) process.env.RESEND_API_KEY = original;
+  }
+
+  assert.ok(true);
+});
+
+test("sendEscalationEmail: no-ops with a warning when SUPABASE_URL is unset — can't build decision links", async () => {
+  const originalKey = process.env.RESEND_API_KEY;
+  const originalUrl = process.env.SUPABASE_URL;
+  process.env.RESEND_API_KEY = "test-key";
+  delete process.env.SUPABASE_URL;
+
+  try {
+    await sendEscalationEmail(fixtureExisting, fixtureNewCandidate, "accept-token", "reject-token");
+  } finally {
+    if (originalKey !== undefined) process.env.RESEND_API_KEY = originalKey;
+    else delete process.env.RESEND_API_KEY;
+    if (originalUrl !== undefined) process.env.SUPABASE_URL = originalUrl;
+  }
+
+  assert.ok(true);
+});
+
+test("buildEscalationSubject includes both titles", () => {
+  assert.equal(
+    buildEscalationSubject(fixtureExisting, fixtureNewCandidate),
+    '⚠️ Conflicto de curatoría: "Existen otros mundos, pero están en este" vs "Muestra "Existen otros mundos, pero están en este""',
+  );
+});
+
+const fixtureFunctionBaseUrl = "https://xyzproject.functions.supabase.co/curation-escalation-decide";
+
+test("buildEscalationBody includes both versions' title, source, and reasoning, plus both decision links", () => {
+  const body = buildEscalationBody(fixtureExisting, fixtureNewCandidate, fixtureFunctionBaseUrl, "accept-token", "reject-token");
+  assert.match(body, /Versión ya existente/);
+  assert.match(body, /arteinformado\.com/);
+  assert.match(body, /Ubicación clara, imagen disponible/);
+  assert.match(body, /Versión nueva de esta corrida/);
+  assert.match(body, /uchile\.cl/);
+  assert.match(body, /eje de exclusión por religión/);
+  assert.match(body, /token=accept-token&action=accept/);
+  assert.match(body, /token=reject-token&action=reject/);
+});
+
+test("buildEscalationHtmlBody renders both versions with source links and both action buttons", () => {
+  const html = buildEscalationHtmlBody(fixtureExisting, fixtureNewCandidate, fixtureFunctionBaseUrl, "accept-token", "reject-token");
+  assert.match(html, /Versión ya existente/);
+  assert.match(html, /Versión nueva de esta corrida/);
+  assert.match(html, /href="https:\/\/www\.arteinformado\.com/);
+  assert.match(html, /href="https:\/\/uchile\.cl/);
+  assert.match(html, /token=accept-token&action=accept/);
+  assert.match(html, /token=reject-token&action=reject/);
 });

@@ -130,6 +130,39 @@ events_public, regions_public (views, not tables — created in
   -- not the base tables.
 
 curation_policy (versioned in the repo, not in the DB)
+
+rejected_candidates (added 20260728010000_add_rejected_candidates.sql —
+    see region-discovery.md's "Pre-curation dedup for bright sources"
+    section for the full rationale)
+  id, created_at, source_url (unique), title, reason,
+  location, region_id (fk, nullable), anchor_date (nullable — added
+    20260730150000_add_curation_escalations.sql specifically so a
+    rejected candidate can be matched against a later approved event
+    describing the same real thing, or vice versa; kept nullable/
+    best-effort, same defensive posture as the rest of this table, see
+    its own migration comment on the 2026-07-22 null-location crash)
+  -- Rolling ~90-day window, pruned on Event Discovery's own cadence.
+
+curation_escalations (added 20260730150000_add_curation_escalations.sql
+    — see region-discovery.md's "Cross-source curation conflict
+    escalation" section)
+  id, created_at, resolved_at (nullable), resolution (accepted | rejected,
+    nullable until resolved),
+  existing_kind (approved_event | rejected_candidate),
+  existing_event_id, existing_rejected_id (fk, nullable — exactly one set,
+    matching existing_kind),
+  existing_title, existing_source_url, existing_reasoning (snapshotted as
+    plain text — the email/decision shouldn't depend on the referenced
+    row surviving unchanged),
+  new_title, new_source_url, new_status (approved | rejected),
+  new_reasoning, new_candidate_payload (jsonb — the new candidate's full
+    insertable field set, used only if accepted and new_status is
+    approved),
+  accept_token, reject_token (unique, opaque random values — not signed,
+    looked up by exact match; each single-use, see the Edge Function that
+    resolves them)
+  -- One row per detected cross-source conflict, held until a human picks
+  -- a side via the email's Accept/Reject links.
 ```
 
 Field types and constraints (exact `CHECK`s, defaults, nullability) live in
@@ -170,9 +203,9 @@ Fixed in the cost-governance migration for all tables that existed then.
 | `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Vercel project env var | the only keys that go to the frontend; browser-safe by design (anon key, RLS-gated) |
 | `SUPABASE_ACCESS_TOKEN` | GitHub Actions secret | already in use — authenticates the Supabase CLI in `deploy-migrations.yml` |
 | `SUPABASE_DB_PASSWORD` | GitHub Actions secret | already in use — lets `deploy-migrations.yml` run `supabase db push` against production |
-| `RESEND_API_KEY` | Vercel project env var (server-only, never `NEXT_PUBLIC_*`) | in use since 2026-07-17 — `apps/web/src/app/api/contact/route.ts`'s outbound-only contact-form relay, sending from `contacto@caldearte.com`. Will also be needed as a Supabase Edge Function secret if/when Phase 1b's approval-email flow gets built — same key, different consumer. |
-| `APPROVAL_TOKEN_SECRET` | GitHub Actions / Edge Function secret | signs the one-time links behind the email approval buttons |
-| `RESEND_WEBHOOK_SECRET` | Supabase Edge Function secret | verifies inbound-email webhooks (date inquiry, public mailbox) really come from Resend |
+| `RESEND_API_KEY` | Vercel project env var (server-only, never `NEXT_PUBLIC_*`) AND GitHub Actions secret | in use since 2026-07-17 for `apps/web/src/app/api/contact/route.ts`'s outbound-only contact-form relay; also in use since 2026-07-30 for `apps/curator`'s run-summary and cross-source-conflict-escalation emails (`lib/notify.ts`), sending from `contacto@caldearte.com` in both cases. |
+| ~~`APPROVAL_TOKEN_SECRET`~~ | not needed | originally planned to sign the one-time links behind email approval buttons — the cross-source conflict escalation feature that shipped 2026-07-30 (see region-discovery.md) uses opaque random tokens stored in `curation_escalations` and looked up by exact value instead, same trust model as everything else behind `service_role`-only RLS in this schema. No signing needed. |
+| `RESEND_WEBHOOK_SECRET` | Supabase Edge Function secret | verifies inbound-email webhooks (date inquiry, public mailbox) really come from Resend — still Phase 1b, not built |
 | `META_APP_ID` / `META_APP_SECRET` | Phase 4, GitHub Actions secret | not needed until Phase 4 |
 | `TIKTOK_CLIENT_KEY` / `TIKTOK_CLIENT_SECRET` | Phase 4, GitHub Actions secret | not needed until Phase 4 |
 

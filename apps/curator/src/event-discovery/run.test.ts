@@ -650,6 +650,210 @@ test(
         await client.from("events").delete().ilike("title", "__test__%Vestiario%");
       });
 
+      // Cross-source conflict escalation (2026-07-30) — see
+      // docs/curation-policy.md's "Cross-source conflict escalation"
+      // section. Found via a real manual audit: the same exhibition
+      // simultaneously approved (one source's vague description) and
+      // correctly rejected under the Religion axis (a different source's
+      // more detailed one).
+      await t.test("an approved candidate conflicting with an already-rejected candidate (different source, similar title, anchor dates within 30 days) is escalated, not inserted", async () => {
+        const { insertCandidates, loadExistingKeys, loadAllRegions } = await import("./run.js");
+
+        const regions = await loadAllRegions();
+        const regionId = regions.find((r) => r.name === "Santiago")?.id ?? null;
+        assert.ok(regionId, "Santiago must already be seeded for this test to mean anything");
+
+        const oldSourceUrl = "https://old-source.cl/__test__escalacion-conflicto";
+        await client.from("rejected_candidates").delete().eq("source_url", oldSourceUrl);
+        await client.from("rejected_candidates").insert({
+          source_url: oldSourceUrl,
+          title: "__test__ Escalación Conflicto",
+          reason: "Contiene temática religiosa explícita — eje de exclusión por religión.",
+          location: "Santiago",
+          region_id: regionId,
+          anchor_date: "2026-07-01",
+        });
+
+        const candidate = {
+          title: "__test__ Escalación Conflicto",
+          description: null,
+          artist: null,
+          runStartDate: "2026-07-10",
+          runEndDate: "2026-07-20",
+          openingDatetime: null,
+          openingTimeConfirmed: false,
+          mediumType: "tradicional" as const,
+          sensitivityTags: [],
+          curationReasoning: "Exposición de arte visual legítima, sin elementos problemáticos evidentes en esta fuente.",
+          imageUrl: null,
+          status: "approved" as const,
+          location: "Santiago",
+          placeName: null,
+          dateQuote: null,
+          locationQuote: null,
+          runStartDateQuote: null,
+          runEndDateQuote: null,
+          sourceUrl: "https://new-source.cl/__test__escalacion-conflicto",
+        };
+
+        try {
+          const seen = await loadExistingKeys();
+          const inserted = await insertCandidates([candidate], regions, seen, new Date(2026, 6, 10));
+          assert.equal(inserted, 0, "escalated, not inserted");
+
+          const { data: eventRows } = await client.from("events").select("id").ilike("title", "__test__ Escalación Conflicto");
+          assert.equal(eventRows?.length ?? 0, 0, "never written to events — held for human review instead");
+
+          const { data: escalation } = await client
+            .from("curation_escalations")
+            .select("*")
+            .eq("new_source_url", candidate.sourceUrl)
+            .maybeSingle();
+          assert.ok(escalation, "an escalation row was recorded");
+          assert.equal(escalation!.existing_kind, "rejected_candidate");
+          assert.equal(escalation!.existing_source_url, oldSourceUrl);
+          assert.equal(escalation!.new_status, "approved");
+          assert.equal(escalation!.resolved_at, null, "unresolved until a human clicks a link");
+          assert.ok(escalation!.accept_token && escalation!.reject_token, "both one-time tokens were generated");
+          assert.notEqual(escalation!.accept_token, escalation!.reject_token);
+        } finally {
+          await client.from("rejected_candidates").delete().eq("source_url", oldSourceUrl);
+          await client.from("curation_escalations").delete().eq("new_source_url", candidate.sourceUrl);
+        }
+      });
+
+      await t.test("a rejected candidate conflicting with an already-approved event (different source, similar title, anchor dates within 30 days) is escalated — the existing approved row is left untouched", async () => {
+        const { insertCandidates, loadExistingKeys, loadAllRegions } = await import("./run.js");
+
+        const santiagoRegionId = (await client.from("regions").select("id").eq("name", "Santiago").single()).data?.id;
+        assert.ok(santiagoRegionId, "Santiago must already be seeded for this test to mean anything");
+
+        const oldSourceUrl = "https://old-approved.cl/__test__escalacion-reversa";
+        await client.from("events").delete().eq("source_url", oldSourceUrl);
+        const { data: seeded } = await client
+          .from("events")
+          .insert({
+            title: "__test__ Escalación Reversa",
+            freeform_location: "Santiago",
+            place_name: null,
+            region_id: santiagoRegionId,
+            run_start_date: "2026-07-01",
+            run_end_date: "2026-07-30",
+            medium_type: "tradicional",
+            sensitivity_tags: [],
+            source: "discovered",
+            source_url: oldSourceUrl,
+            curation_status: "approved",
+            curation_reasoning: "Exposición de arte visual en espacio legítimo.",
+          })
+          .select("id")
+          .single();
+
+        const newSourceUrl = "https://new-rejected.cl/__test__escalacion-reversa";
+        const candidate = {
+          title: "__test__ Escalación Reversa",
+          description: null,
+          artist: null,
+          runStartDate: "2026-07-05",
+          runEndDate: "2026-07-25",
+          openingDatetime: null,
+          openingTimeConfirmed: false,
+          mediumType: "tradicional" as const,
+          sensitivityTags: [],
+          curationReasoning: "Contiene figuras de temática religiosa explícita — cae bajo eje de exclusión por religión.",
+          imageUrl: null,
+          status: "rejected" as const,
+          location: "Santiago",
+          placeName: null,
+          dateQuote: null,
+          locationQuote: null,
+          runStartDateQuote: null,
+          runEndDateQuote: null,
+          sourceUrl: newSourceUrl,
+        };
+
+        try {
+          const regions = await loadAllRegions();
+          const seen = await loadExistingKeys();
+          const inserted = await insertCandidates([candidate], regions, seen, new Date(2026, 6, 10));
+          assert.equal(inserted, 0);
+
+          const { data: stillApproved } = await client
+            .from("events")
+            .select("curation_status, curation_reasoning")
+            .eq("id", seeded!.id)
+            .single();
+          assert.equal(stillApproved?.curation_status, "approved", "the existing decision stays untouched until a human resolves the escalation");
+          assert.equal(stillApproved?.curation_reasoning, "Exposición de arte visual en espacio legítimo.");
+
+          const { data: rejectedRows } = await client.from("rejected_candidates").select("id").eq("source_url", newSourceUrl);
+          assert.equal(rejectedRows?.length ?? 0, 0, "NOT recorded via the ordinary reject-upsert path — held as an escalation instead");
+
+          const { data: escalation } = await client
+            .from("curation_escalations")
+            .select("*")
+            .eq("new_source_url", newSourceUrl)
+            .maybeSingle();
+          assert.ok(escalation, "an escalation row was recorded");
+          assert.equal(escalation!.existing_kind, "approved_event");
+          assert.equal(escalation!.existing_event_id, seeded!.id);
+          assert.equal(escalation!.new_status, "rejected");
+        } finally {
+          await client.from("events").delete().eq("source_url", oldSourceUrl);
+          await client.from("curation_escalations").delete().eq("new_source_url", newSourceUrl);
+        }
+      });
+
+      await t.test("candidates with genuinely different titles in the same region/date window are NOT escalated — ordinary dedup/insert proceeds as usual", async () => {
+        const { insertCandidates, loadExistingKeys, loadAllRegions } = await import("./run.js");
+
+        const oldSourceUrl = "https://unrelated-source.cl/__test__no-conflicto";
+        await client.from("rejected_candidates").delete().eq("source_url", oldSourceUrl);
+        await client.from("rejected_candidates").insert({
+          source_url: oldSourceUrl,
+          title: "__test__ Taller de Cerámica Comunitario",
+          reason: "Es un taller, no una exposición.",
+          location: "Santiago",
+          region_id: (await client.from("regions").select("id").eq("name", "Santiago").single()).data?.id,
+          anchor_date: "2026-07-01",
+        });
+
+        const candidate = {
+          title: "__test__ Muestra Fotográfica Independiente",
+          description: null,
+          artist: null,
+          runStartDate: "2026-07-10",
+          runEndDate: "2026-07-20",
+          openingDatetime: null,
+          openingTimeConfirmed: false,
+          mediumType: "tradicional" as const,
+          sensitivityTags: [],
+          curationReasoning: "Exposición fotográfica legítima.",
+          imageUrl: null,
+          status: "approved" as const,
+          location: "Santiago",
+          placeName: null,
+          dateQuote: null,
+          locationQuote: null,
+          runStartDateQuote: null,
+          runEndDateQuote: null,
+          sourceUrl: "https://new-source.cl/__test__no-conflicto",
+        };
+
+        try {
+          const regions = await loadAllRegions();
+          const seen = await loadExistingKeys();
+          const inserted = await insertCandidates([candidate], regions, seen, new Date(2026, 6, 10));
+          assert.equal(inserted, 1, "no title match against the unrelated rejected candidate — inserted normally");
+
+          const { data: escalation } = await client.from("curation_escalations").select("id").eq("new_source_url", candidate.sourceUrl).maybeSingle();
+          assert.equal(escalation, null, "no escalation for genuinely different events");
+        } finally {
+          await client.from("rejected_candidates").delete().eq("source_url", oldSourceUrl);
+          await client.from("events").delete().ilike("title", "__test__ Muestra Fotográfica Independiente");
+        }
+      });
+
       // 2026-07-28: a duplicate isn't always a wash — explicit rule from
       // the project owner. Two tiers, tested independently here (the test
       // above already covers tier 2 — original source over aggregator —

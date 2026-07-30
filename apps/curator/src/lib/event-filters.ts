@@ -129,3 +129,17 @@ export function placeNamesLikelySame(a: string | null, b: string | null): boolea
   if (wordsA.size === 0 || wordsB.size === 0) return true;
   return [...wordsA].some((w) => wordsB.has(w));
 }
+
+// Used by run.ts's cross-source conflict escalation (2026-07-30, found via
+// a manual curation audit — see docs/curation-policy.md's "Cross-source
+// conflict escalation" section) to decide whether two anchor dates are
+// close enough that the events they belong to might be the same real
+// exhibition described by two different sources. Plain calendar-day
+// difference, not calendar-aware (no month-length edge cases to worry
+// about at this granularity) — both args are "YYYY-MM-DD" strings, same
+// format used everywhere else in this codebase for date-only values.
+export function isWithinAnchorWindow(a: string, b: string, windowDays = 30): boolean {
+  const msPerDay = 24 * 60 * 60 * 1000;
+  const diffDays = Math.abs(Date.parse(a) - Date.parse(b)) / msPerDay;
+  return diffDays <= windowDays;
+}

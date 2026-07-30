@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { normalizeLocation, isLikelySameTitle, placeNamesLikelySame } from "./event-filters.js";
+import { normalizeLocation, isLikelySameTitle, placeNamesLikelySame, isWithinAnchorWindow } from "./event-filters.js";
 
 test("normalizeLocation collapses a trailing ', Chile'/region suffix — real bug, found 2026-07-20: the same festival got inserted 3x in one run because 'Valparaíso, Chile' vs 'Valparaíso' produced different dedup fingerprints", () => {
   assert.equal(normalizeLocation("Valparaíso, Chile"), normalizeLocation("Valparaíso"));
@@ -94,4 +94,22 @@ test("placeNamesLikelySame treats a null/empty placeName on either side as 'no s
 
 test("placeNamesLikelySame: identical placeName strings trivially match", () => {
   assert.equal(placeNamesLikelySame("Balmaceda Arte Joven", "Balmaceda Arte Joven"), true);
+});
+
+test("isWithinAnchorWindow: dates exactly at the window boundary count as within it", () => {
+  assert.equal(isWithinAnchorWindow("2026-07-01", "2026-07-31", 30), true);
+  assert.equal(isWithinAnchorWindow("2026-07-01", "2026-08-01", 30), false);
+});
+
+test("isWithinAnchorWindow is symmetric regardless of argument order", () => {
+  assert.equal(isWithinAnchorWindow("2026-07-30", "2026-07-01"), isWithinAnchorWindow("2026-07-01", "2026-07-30"));
+});
+
+test("isWithinAnchorWindow: the same date is always within any window", () => {
+  assert.equal(isWithinAnchorWindow("2026-07-30", "2026-07-30", 0), true);
+});
+
+test("isWithinAnchorWindow defaults to a 30-day window", () => {
+  assert.equal(isWithinAnchorWindow("2026-07-01", "2026-07-29"), true);
+  assert.equal(isWithinAnchorWindow("2026-07-01", "2026-08-05"), false);
 });
