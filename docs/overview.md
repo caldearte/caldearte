@@ -52,12 +52,22 @@ rather than an "opening night" in the exhibition sense).
 
 **Explicitly excluded, regardless of venue prestige or setting**:
 conventional theater plays (in their usual theater format), concerts, gigs
-("tocatas"), and dance performances in their traditional format/venue —
-even at a legitimate cultural center that also hosts real exhibitions. The
-test is the format, not the medium or the venue: is this a genuine artistic
-intervention or a visual-art exhibition, or is it a conventional
-performing-arts show being staged as usual? The latter is out of scope even
-when it shares elements (body, music, dance) with what *is* accepted.
+("tocatas"), dance performances in their traditional format/venue, and
+poetry recitals or spoken-word readings ("recital poético") — even at a
+legitimate cultural center that also hosts real exhibitions, and even when
+described with language like "expresión artística." **Real bug (found
+2026-07-30, via a user-requested manual audit):** "3° Recital Poético
+Regional" was approved despite Haiku's own reasoning admitting the doubt
+("un recital poético es más cercano a una performance/intervención
+artística que a una exhibición visual tradicional") — a literary reading
+isn't a visual-art exhibition or a performance staged as an artistic
+gesture, so it's out of scope regardless of how "artistic" the framing
+sounds; see `apps/curator/src/lib/curation-policy.ts`'s `ART_SCOPE_POLICY`
+for the actual prompt fix. The test is the format, not the medium or the
+venue: is this a genuine artistic intervention or a visual-art exhibition,
+or is it a conventional performing-arts/literary show being staged as
+usual? The latter is out of scope even when it shares elements (body,
+music, dance, "art") with what *is* accepted.
 
 Ambiguous cases (is this a genuine artistic intervention, or essentially a
 themed concert/show with visual elements?) were originally designed to
