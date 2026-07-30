@@ -15,19 +15,27 @@ import {
 } from "@/lib/events";
 import { DEFAULT_CITY_ID, buildRegionMetaByCityId, resolveDefaultCityId, resolveGeoCityId, nearestCityIdByCoords } from "@/lib/cities";
 import { todayInSantiago, currentWeekInSantiago, isCurrentOrUpcoming } from "@/lib/date";
-import { CITY_COOKIE, FAMILY_MODE_COOKIE, TODAY_FILTER_COOKIE, VIGENTES_FILTER_COOKIE, GEO_CONSENT_COOKIE, PRECISE_CITY_COOKIE } from "@/lib/cookies";
+import {
+  CITY_COOKIE,
+  FAMILY_MODE_COOKIE,
+  TODAY_FILTER_COOKIE,
+  VIGENTES_FILTER_COOKIE,
+  GEO_CONSENT_COOKIE,
+  PRECISE_CITY_COOKIE,
+  NEWSLETTER_PROMPT_COOKIE,
+} from "@/lib/cookies";
 import CalendarView from "@/components/CalendarView";
 import type { NewsletterStatus } from "@/components/NewsletterStatusModal";
 
 const NEWSLETTER_STATUSES: NewsletterStatus[] = ["confirmed", "already_confirmed", "unsubscribed", "already_unsubscribed", "invalid", "error"];
 
-export default async function HomePage({ searchParams }: { searchParams: Promise<{ newsletter?: string }> }) {
+export default async function HomePage({ searchParams }: { searchParams: Promise<{ newsletter?: string; suscribir?: string }> }) {
   const cookieStore = await cookies();
   const headerStore = await headers();
   // Landed here from /newsletter/confirmar or /newsletter/baja (both
   // redirect to `/?newsletter=<status>` after calling their Edge Function
   // server-side) — see NewsletterStatusModal.tsx.
-  const { newsletter } = await searchParams;
+  const { newsletter, suscribir } = await searchParams;
   const newsletterStatus: NewsletterStatus | null = NEWSLETTER_STATUSES.includes(newsletter as NewsletterStatus)
     ? (newsletter as NewsletterStatus)
     : null;
@@ -138,6 +146,13 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
   // has it hidden.
   const showGeoConsentPrompt = cookieStore.get(GEO_CONSENT_COOKIE) === undefined;
 
+  // NewsletterEntryModal: same "ask at most once, ever" pattern — but only
+  // as an unprompted auto-open. The Footer's own "Suscríbete" link can
+  // still open the same modal any time, regardless of this cookie — from
+  // a page that doesn't render the modal itself (eventos/[id]), that link
+  // navigates here with ?suscribir=1 instead, which forces it open too.
+  const showNewsletterPrompt = cookieStore.get(NEWSLETTER_PROMPT_COOKIE) === undefined || suscribir === "1";
+
   const cityEventsInRange = filterByCity(activeInRange, cityId);
   const split = splitInauguracionesYExpos(cityEventsInRange, rangeStart, rangeEnd);
   // "Hoy" filter: narrows THIS city's lists down to only today's active
@@ -173,6 +188,7 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
         actualCityId={actualCityId}
         hasPreciseLocation={hasPreciseLocation}
         showGeoConsentPrompt={showGeoConsentPrompt}
+        showNewsletterPrompt={showNewsletterPrompt}
         cityNames={cityNames}
         familyMode={familyMode}
         todayFilterOn={todayFilterOn}

@@ -11,8 +11,13 @@ import type { Database, Tables } from "@caldearte/shared-types";
 import { getSupabaseClient } from "../lib/supabase-client.js";
 import { sendDigestEmail, type DigestEvent, type DigestSection } from "../lib/notify.js";
 
-type Subscriber = Pick<Tables<"newsletter_subscribers">, "id" | "email" | "city_id" | "confirm_token">;
+type Subscriber = Pick<Tables<"newsletter_subscribers">, "id" | "email" | "admin_region_name" | "confirm_token">;
 type EventRow = Tables<"events">;
+// Subscription scope is the macro-región (Región Metropolitana, Valparaíso,
+// etc — regions.admin_region_name), not the comuna — see the migration
+// comment (20260730190000). Each event's own admin_region_name is resolved
+// once in run() via its region_id, since events itself has no such column.
+type EventWithRegion = EventRow & { adminRegionName: string | null };
 
 const REMINDER_CAP = 3;
 const OTHER_COMUNAS_CAP = 3;
@@ -65,16 +70,16 @@ function shuffle<T>(items: T[]): T[] {
   return copy;
 }
 
-// Builds the four sections for one subscriber's comuna out of the full
+// Builds the four sections for one subscriber's región out of the full
 // approved/non-sensitive event pool already loaded for the run (avoids a
 // per-subscriber query — the pool is small enough, see docs/data-model.md).
 export function buildDigestSections(
-  events: EventRow[],
-  cityId: string,
+  events: EventWithRegion[],
+  adminRegionName: string,
   week: { start: string; end: string },
 ): DigestSection[] {
-  const inCity = events.filter((e) => e.region_id === cityId);
-  const runningThisWeek = inCity.filter((e) => isRunningOn(e, week.end));
+  const inRegion = events.filter((e) => e.adminRegionName === adminRegionName);
+  const runningThisWeek = inRegion.filter((e) => isRunningOn(e, week.end));
 
   const openings = runningThisWeek.filter(
     (e) => e.opening_datetime && e.opening_datetime.slice(0, 10) >= week.start && e.opening_datetime.slice(0, 10) <= week.end,
@@ -91,13 +96,16 @@ export function buildDigestSections(
     .sort((a, b) => (a.run_end_date ?? "9999-12-31").localeCompare(b.run_end_date ?? "9999-12-31"))
     .slice(0, REMINDER_CAP);
 
-  const otherComunas = shuffle(events.filter((e) => e.region_id !== cityId && isRunningOn(e, week.end))).slice(0, OTHER_COMUNAS_CAP);
+  const otherRegions = shuffle(events.filter((e) => e.adminRegionName !== adminRegionName && isRunningOn(e, week.end))).slice(
+    0,
+    OTHER_COMUNAS_CAP,
+  );
 
   const sections: DigestSection[] = [];
   if (openings.length > 0) sections.push({ label: "Inauguraciones de esta semana", events: openings.map(toDigestEvent) });
   if (newThisWeek.length > 0) sections.push({ label: "Expos nuevas esta semana", events: newThisWeek.map(toDigestEvent) });
   if (reminders.length > 0) sections.push({ label: "No te las pierdas", events: reminders.map(toDigestEvent) });
-  if (otherComunas.length > 0) sections.push({ label: "En otras comunas", events: otherComunas.map(toDigestEvent) });
+  if (otherRegions.length > 0) sections.push({ label: "En otras regiones", events: otherRegions.map(toDigestEvent) });
   return sections;
 }
 
@@ -106,27 +114,32 @@ export async function run(deps: RunDeps = {}): Promise<void> {
   const now = deps.now ?? new Date();
   const week = weekBoundsInSantiago(now);
 
-  const [subscribersRes, eventsRes] = await Promise.all([
+  const [subscribersRes, eventsRes, regionsRes] = await Promise.all([
     supabase
       .from("newsletter_subscribers")
-      .select("id, email, city_id, confirm_token")
+      .select("id, email, admin_region_name, confirm_token")
       .not("confirmed_at", "is", null)
       .is("unsubscribed_at", null),
     supabase.from("events").select("*").eq("curation_status", "approved"),
+    supabase.from("regions").select("id, admin_region_name"),
   ]);
 
   if (subscribersRes.error) throw new Error(`Failed to load newsletter_subscribers: ${subscribersRes.error.message}`);
   if (eventsRes.error) throw new Error(`Failed to load events: ${eventsRes.error.message}`);
+  if (regionsRes.error) throw new Error(`Failed to load regions: ${regionsRes.error.message}`);
 
   const subscribers = (subscribersRes.data ?? []) as Subscriber[];
-  const events = ((eventsRes.data ?? []) as EventRow[]).filter((e) => e.sensitivity_tags.length === 0);
+  const regionNameById = new Map((regionsRes.data ?? []).map((r) => [r.id, r.admin_region_name]));
+  const events: EventWithRegion[] = ((eventsRes.data ?? []) as EventRow[])
+    .filter((e) => e.sensitivity_tags.length === 0)
+    .map((e) => ({ ...e, adminRegionName: e.region_id ? (regionNameById.get(e.region_id) ?? null) : null }));
 
   console.log(`[newsletter] ${subscribers.length} confirmed subscriber(s), ${events.length} eligible approved event(s), week ${week.start}..${week.end}`);
 
   let sent = 0;
   let skipped = 0;
   for (const subscriber of subscribers) {
-    const sections = buildDigestSections(events, subscriber.city_id, week);
+    const sections = buildDigestSections(events, subscriber.admin_region_name, week);
     if (sections.length === 0) {
       skipped++;
       continue;

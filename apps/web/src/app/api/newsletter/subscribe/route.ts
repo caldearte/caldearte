@@ -6,7 +6,19 @@ const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 interface SubscribePayload {
   email?: string;
-  cityId?: string;
+  adminRegionName?: string;
+}
+
+function emailShell(bodyHtml: string): string {
+  return `<div style="font-family:'Helvetica Neue',Arial,sans-serif;max-width:520px;margin:0 auto;">
+    <div style="background:#1c1c1c;padding:28px 32px;border-radius:12px 12px 0 0;">
+      <p style="margin:0;color:#fff;font-size:22px;font-weight:800;letter-spacing:0.02em;">CALDEARTE</p>
+    </div>
+    <div style="background:#fdf6e3;padding:32px;border-radius:0 0 12px 12px;">
+      ${bodyHtml}
+    </div>
+    <p style="text-align:center;color:#999;font-size:12px;margin-top:20px;">Calendario de arte curado por inteligencia humana potenciada por IA</p>
+  </div>`;
 }
 
 // Writes the pending row with the anon key (never service_role — see
@@ -24,9 +36,9 @@ export async function POST(request: Request) {
   }
 
   const email = payload.email?.trim() ?? "";
-  const cityId = payload.cityId?.trim() ?? "";
+  const adminRegionName = payload.adminRegionName?.trim() ?? "";
 
-  if (!EMAIL_PATTERN.test(email) || cityId.length === 0) {
+  if (!EMAIL_PATTERN.test(email) || adminRegionName.length === 0) {
     return NextResponse.json({ error: "invalid_payload" }, { status: 400 });
   }
 
@@ -40,17 +52,18 @@ export async function POST(request: Request) {
 
   const { error: insertError } = await getSupabaseClient()
     .from("newsletter_subscribers")
-    .insert({ email, city_id: cityId, confirm_token: confirmToken });
+    .insert({ email, admin_region_name: adminRegionName, confirm_token: confirmToken });
 
   if (insertError) {
     // A unique-email conflict means this address already has a row (and
     // its own, different confirm_token) — the anon key only has INSERT on
     // this table (see the migration), so there's no way to look up or
-    // resend that original token here. Respond as if it worked (same
-    // success copy either way, no confirmation email this time) rather
-    // than erroring or leaking whether the email is already subscribed.
+    // resend that original token here. Product decision: tell the visitor
+    // directly ("ya estás suscrito") rather than the generic success copy
+    // — clearer than pretending it worked, and this endpoint already only
+    // ever confirms an email's EXISTENCE, never anything more sensitive.
     if (insertError.code === "23505") {
-      return NextResponse.json({ ok: true });
+      return NextResponse.json({ status: "already_subscribed" });
     }
     console.error("[newsletter/subscribe] insert failed", insertError);
     return NextResponse.json({ error: "insert_failed" }, { status: 500 });
@@ -68,7 +81,12 @@ export async function POST(request: Request) {
     to: email,
     subject: "Confirma tu suscripción a Caldearte",
     text: `Para recibir el newsletter semanal de Caldearte, confirma tu suscripción:\n\n${confirmUrl}\n\nSi no fuiste tú, ignora este correo.`,
-    html: `<p>Para recibir el newsletter semanal de Caldearte, confirma tu suscripción:</p><p><a href="${confirmUrl}">${confirmUrl}</a></p><p>Si no fuiste tú, ignora este correo.</p>`,
+    html: emailShell(`
+      <h1 style="margin:0 0 12px;font-size:20px;color:#1c1c1c;">Un paso más</h1>
+      <p style="margin:0 0 20px;font-size:14px;color:#555;line-height:1.5;">Confirma tu suscripción para empezar a recibir la semana en arte, cada lunes.</p>
+      <a href="${confirmUrl}" style="display:inline-block;background:#1c1c1c;color:#fff;padding:12px 22px;border-radius:999px;text-decoration:none;font-weight:700;font-size:14px;">Confirmar suscripción</a>
+      <p style="margin:24px 0 0;font-size:12px;color:#999;">Si no fuiste tú, ignora este correo.</p>
+    `),
   });
 
   if (sendError) {
@@ -76,5 +94,5 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "send_failed" }, { status: 502 });
   }
 
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({ status: "pending_confirmation" });
 }

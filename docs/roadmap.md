@@ -125,13 +125,14 @@ Closed out the initial project brief, moved into a dedicated repo.
       stays internal — the public page only carries the same
       already-approved value-prop paragraph it always did.
   - **Shipped 2026-07-30**: the newsletter (weekly digest, opt-in per
-    comuna, double opt-in via Resend) — `newsletter_subscribers` table,
-    Footer subscribe form (`apps/web/src/components/NewsletterSignup.tsx`),
-    `/api/newsletter/subscribe` (apps/web, anon-key insert-only), two
-    Supabase Edge Functions (`newsletter-confirm`, `newsletter-unsubscribe`,
-    service-role), a new `apps/curator/src/newsletter/` module
-    (`send-newsletter` script) sending four sections per subscriber
-    (inauguraciones/nuevas/recordatorios/otras comunas, omitting any
+    macro-región, double opt-in via Resend) — `newsletter_subscribers`
+    table, `/api/newsletter/subscribe` (apps/web, anon-key insert-only),
+    two Supabase Edge Functions (`newsletter-confirm`,
+    `newsletter-unsubscribe`, service-role, return JSON — Edge Functions
+    can't serve HTML, see their own file comments), a new
+    `apps/curator/src/newsletter/` module (`send-newsletter` script)
+    sending four sections per subscriber
+    (inauguraciones/nuevas/recordatorios/otras regiones, omitting any
     that's empty), and its own weekly cron
     (`.github/workflows/weekly-newsletter.yml`, Monday 08:00 UTC).
     Deliberately does NOT depend on event-discovery.yml's discovery
@@ -140,8 +141,20 @@ Closed out the initial project brief, moved into a dedicated repo.
     stays weekly; the digest just summarizes whatever's currently
     approved and running each week, which stays worthwhile thanks to
     multi-week exhibition runs plus the weekly bright-source trickle.
-    PR held for manual review (touches `supabase/migrations/` and
-    `.github/workflows/`).
+    **Revised same day**: subscription flow rebuilt around
+    `NewsletterEntryModal.tsx` (ad-style hero, auto-opens once on first
+    visit via `NEWSLETTER_PROMPT_COOKIE`, also reachable anytime via the
+    Footer's "Suscríbete al boletín" link) instead of an always-visible
+    inline Footer form; scope changed from comuna to macro-región
+    (`admin_region_name`, migration
+    `20260730190000_newsletter_subscribers_region_scope.sql`) since
+    picking 1 of 16 regions is a lighter ask than 1 of 346 comunas;
+    `NewsletterStatusModal`'s "confirmed" case reuses the same hero for a
+    celebratory first-activation state; added an explicit
+    "already_subscribed" outcome (own copy, not folded into generic
+    success) since the anon key can't otherwise distinguish a duplicate
+    signup from a new one. PRs held for manual review (touches
+    `supabase/migrations/` and `.github/workflows/`).
 
 ## Phase 1b — Inbound-mail flows
 

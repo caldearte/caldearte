@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { esCL } from "@/i18n/es-CL";
+import { Hero } from "./NewsletterEntryModal";
 
 export type NewsletterStatus = "confirmed" | "already_confirmed" | "unsubscribed" | "already_unsubscribed" | "invalid" | "error";
 
@@ -20,7 +21,16 @@ export default function NewsletterStatusModal({ status }: NewsletterStatusModalP
   if (!status) return null;
 
   const isUnsubscribeFlow = status === "unsubscribed" || status === "already_unsubscribed";
-  const title = isUnsubscribeFlow ? esCL.newsletter.baja.title : esCL.newsletter.confirmar.title;
+  // "confirmed" is the one genuinely celebratory outcome (a brand-new
+  // subscriber just activated) — every other status (already confirmed,
+  // invalid, error, unsubscribed) is informational, so it gets the plain
+  // layout NewsletterEntryModal also uses for those cases.
+  const isFreshConfirmation = status === "confirmed";
+  const title = isFreshConfirmation
+    ? esCL.newsletter.confirmar.confirmedTitle
+    : isUnsubscribeFlow
+      ? esCL.newsletter.baja.title
+      : esCL.newsletter.confirmar.title;
   const message =
     status === "confirmed"
       ? esCL.newsletter.confirmar.confirmed
@@ -46,15 +56,15 @@ export default function NewsletterStatusModal({ status }: NewsletterStatusModalP
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
       onClick={close}
     >
-      <div
-        className="w-full max-w-sm rounded-xl bg-white p-6 text-center shadow-xl"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <h2 className="text-lg font-bold text-heading-gray mb-2">{title}</h2>
-        <p className="text-sm text-muted-gray mb-5">{message}</p>
-        <button onClick={close} className="text-sm font-semibold bg-heading-gray text-white rounded-full px-5 py-2">
-          {esCL.newsletter.close}
-        </button>
+      <div className="w-full max-w-sm rounded-xl bg-white shadow-xl overflow-hidden text-center" onClick={(e) => e.stopPropagation()}>
+        {isFreshConfirmation && <Hero />}
+        <div className="p-6">
+          <h2 className="text-lg font-bold text-heading-gray mb-2">{title}</h2>
+          <p className="text-sm text-muted-gray mb-5">{message}</p>
+          <button onClick={close} className="text-sm font-semibold bg-heading-gray text-white rounded-full px-5 py-2">
+            {esCL.newsletter.close}
+          </button>
+        </div>
       </div>
     </div>
   );
