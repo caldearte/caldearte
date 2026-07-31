@@ -10,6 +10,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database, Tables } from "@caldearte/shared-types";
 import { getSupabaseClient } from "../lib/supabase-client.js";
 import { sendDigestEmail, type DigestEvent, type DigestSection } from "../lib/notify.js";
+import { generateRegionIntro } from "./intro.js";
 
 type Subscriber = Pick<Tables<"newsletter_subscribers">, "id" | "email" | "admin_region_name" | "confirm_token">;
 type EventRow = Tables<"events">;
@@ -27,6 +28,7 @@ export interface RunDeps {
   supabase?: SupabaseClient<Database>;
   now?: Date;
   sendDigestEmailFn?: typeof sendDigestEmail;
+  generateRegionIntroFn?: typeof generateRegionIntro;
 }
 
 // Same "fixed Monday-Sunday week" convention as apps/web/src/lib/date.ts's
@@ -152,6 +154,13 @@ export async function run(deps: RunDeps = {}): Promise<void> {
 
   console.log(`[newsletter] ${subscribers.length} confirmed subscriber(s), ${events.length} eligible approved event(s), week ${week.start}..${week.end}`);
 
+  // One intro per región, shared across every subscriber in it — not
+  // per-subscriber, since buildDigestSections' own content (aside from
+  // the randomized "En otras regiones" sample, which the intro never
+  // reads anyway) is identical for every subscriber of the same región.
+  // Keeps the real Haiku cost to "once per active región per week."
+  const introByRegion = new Map<string, string | null>();
+
   let sent = 0;
   let skipped = 0;
   for (const subscriber of subscribers) {
@@ -160,10 +169,17 @@ export async function run(deps: RunDeps = {}): Promise<void> {
       skipped++;
       continue;
     }
+
+    if (!introByRegion.has(subscriber.admin_region_name)) {
+      const intro = await (deps.generateRegionIntroFn ?? generateRegionIntro)(sections);
+      introByRegion.set(subscriber.admin_region_name, intro);
+    }
+    const intro = introByRegion.get(subscriber.admin_region_name) ?? null;
+
     // Reuses the subscriber's own confirm_token as the unsubscribe token
     // too — one opaque value per subscriber is enough, see the migration
     // comment.
-    await (deps.sendDigestEmailFn ?? sendDigestEmail)(subscriber.email, subscriber.confirm_token, sections);
+    await (deps.sendDigestEmailFn ?? sendDigestEmail)(subscriber.email, subscriber.confirm_token, sections, intro, week);
     sent++;
   }
 
