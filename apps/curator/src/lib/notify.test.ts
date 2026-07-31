@@ -355,6 +355,13 @@ test("buildDigestSubject uses singular for exactly one event", () => {
   assert.equal(buildDigestSubject([fixtureDigestSections[0]]), "Caldearte — tu semana en arte (1 expo)");
 });
 
+test("buildDigestSubject includes the week's date range when provided, making the subject unique week to week — real feedback: Gmail threads emails with an identical subject sent close together", () => {
+  assert.equal(
+    buildDigestSubject(fixtureDigestSections, { start: "2026-07-27", end: "2026-08-02" }),
+    "Caldearte — tu semana en arte, 27 de julio al 2 de agosto 2026 (2 expos)",
+  );
+});
+
 // Pinned so date-format assertions ("3 de agosto" vs. "3 de agosto de
 // 2026") don't depend on the wall-clock year the suite happens to run in.
 const WEEK = { start: "2026-08-03", end: "2026-08-09" };

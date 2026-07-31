@@ -664,9 +664,14 @@ function groupByComuna(events: DigestEvent[]): Array<[string, DigestEvent[]]> {
   return Array.from(groups.entries()).sort(([a], [b]) => a.localeCompare(b));
 }
 
-export function buildDigestSubject(sections: DigestSection[]): string {
+// Includes the week's date range so the subject is unique week to week —
+// real feedback: Gmail (and most webmail) threads messages that share an
+// identical subject line sent close together, and the event count alone
+// can coincidentally repeat between two consecutive weeks.
+export function buildDigestSubject(sections: DigestSection[], week?: { start: string; end: string }): string {
   const totalEvents = sections.reduce((sum, s) => sum + s.events.length, 0);
-  return `Caldearte — tu semana en arte (${totalEvents} expo${totalEvents === 1 ? "" : "s"})`;
+  const weekLabel = week ? `, ${fmtWeekHeaderEs(week.start, week.end)}` : "";
+  return `Caldearte — tu semana en arte${weekLabel} (${totalEvents} expo${totalEvents === 1 ? "" : "s"})`;
 }
 
 // Anchors "same year → no year suffix" to the digest's own send week
@@ -843,7 +848,7 @@ export async function sendDigestEmail(
   const { error } = await resend.emails.send({
     from: "Caldearte <contacto@caldearte.com>",
     to: email,
-    subject: buildDigestSubject(sections),
+    subject: buildDigestSubject(sections, week),
     text: buildDigestBody(sections, unsubscribeToken, intro, week),
     html: buildDigestHtmlBody(sections, unsubscribeToken, intro, week),
     headers: {
