@@ -24,6 +24,26 @@ function jsonResponse(result: Result, httpStatus = 200): Response {
   return new Response(JSON.stringify(result), { status: httpStatus, headers: { "content-type": "application/json" } });
 }
 
+// Real gap found + fixed 2026-07-31 (same live pentest as
+// curation-escalation-decide's filter-injection fix): the rate limiting
+// added to apps/web's /api/newsletter/subscribe route (migration
+// 20260731160000) only lived in that Next.js wrapper. This function has
+// its own public URL — this repo's own source, so not actually secret —
+// and calling it directly bypasses that limit entirely, on top of
+// letting anyone check whether an arbitrary email is a subscriber
+// (already_subscribed vs resubscribed) with no limit either. Same
+// check_rate_limit function the Next.js route uses; anon/authenticated
+// already has EXECUTE on it, and this function's own service-role client
+// can call it too.
+async function isWithinRateLimit(client: ReturnType<typeof createClient>, bucketKey: string, maxCount: number, windowSeconds: number): Promise<boolean> {
+  const { data, error } = await client.rpc("check_rate_limit", { p_bucket_key: bucketKey, p_max_count: maxCount, p_window_seconds: windowSeconds });
+  if (error) {
+    console.error("newsletter-resubscribe: check_rate_limit failed — failing open", error);
+    return true;
+  }
+  return data as boolean;
+}
+
 Deno.serve(async (req) => {
   if (req.method !== "POST") return jsonResponse({ status: "error" }, 405);
 
@@ -38,6 +58,16 @@ Deno.serve(async (req) => {
   if (!email || !adminRegionName) return jsonResponse({ status: "error" }, 400);
 
   const client = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
+
+  // Same two limits as /api/newsletter/subscribe: per-IP catches a script
+  // hammering this endpoint directly, per-email bounds how often any one
+  // target's subscription can be reset/enumerated regardless of which IP
+  // asks.
+  const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+  const ipAllowed = await isWithinRateLimit(client, `resubscribe-ip:${ip}`, 5, 3600);
+  if (!ipAllowed) return jsonResponse({ status: "error" }, 429);
+  const emailAllowed = await isWithinRateLimit(client, `resubscribe-email:${email.toLowerCase()}`, 3, 86400);
+  if (!emailAllowed) return jsonResponse({ status: "error" }, 429);
 
   const { data: existing, error: fetchError } = await client
     .from("newsletter_subscribers")

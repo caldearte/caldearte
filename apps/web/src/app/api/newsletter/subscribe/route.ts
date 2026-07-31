@@ -1,8 +1,19 @@
 import { NextResponse } from "next/server";
 import { Resend } from "resend";
 import { getSupabaseClient } from "@/lib/supabase-client";
+import { clientIp, isWithinRateLimit } from "@/lib/rate-limit";
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+// Two separate limits: per-IP catches a script hammering this endpoint;
+// per-email specifically stops this route being used to email-bomb a
+// third party's inbox with repeated "confirm your subscription" emails
+// (the actual real risk this closes off — see the security audit finding
+// this fixes). Per-email is looser (legitimate re-subscribes/resends do
+// happen) but still bounds it well below "keep emailing someone all day."
+const IP_RATE_LIMIT_MAX = 5;
+const IP_RATE_LIMIT_WINDOW_SECONDS = 3600;
+const EMAIL_RATE_LIMIT_MAX = 3;
+const EMAIL_RATE_LIMIT_WINDOW_SECONDS = 86400;
 
 interface SubscribePayload {
   email?: string;
@@ -52,6 +63,11 @@ async function tryResubscribe(email: string, adminRegionName: string): Promise<{
 // double opt-in confirmation email itself, same outbound-only Resend
 // pattern as apps/web/src/app/api/contact/route.ts.
 export async function POST(request: Request) {
+  const ipAllowed = await isWithinRateLimit(`subscribe-ip:${clientIp(request)}`, IP_RATE_LIMIT_MAX, IP_RATE_LIMIT_WINDOW_SECONDS);
+  if (!ipAllowed) {
+    return NextResponse.json({ error: "rate_limited" }, { status: 429 });
+  }
+
   let payload: SubscribePayload;
   try {
     payload = await request.json();
@@ -64,6 +80,16 @@ export async function POST(request: Request) {
 
   if (!EMAIL_PATTERN.test(email) || adminRegionName.length === 0) {
     return NextResponse.json({ error: "invalid_payload" }, { status: 400 });
+  }
+
+  // Checked AFTER the format validation above (no point burning a rate-limit
+  // slot on garbage input) but BEFORE any DB write or email send — this is
+  // the check that actually stops the "email-bomb an arbitrary third party"
+  // abuse case, since it's keyed on the target address itself, not the
+  // caller's IP.
+  const emailAllowed = await isWithinRateLimit(`subscribe-email:${email.toLowerCase()}`, EMAIL_RATE_LIMIT_MAX, EMAIL_RATE_LIMIT_WINDOW_SECONDS);
+  if (!emailAllowed) {
+    return NextResponse.json({ error: "rate_limited" }, { status: 429 });
   }
 
   const apiKey = process.env.RESEND_API_KEY;
