@@ -555,6 +555,15 @@ export interface DigestEvent {
 export interface DigestSection {
   label: string;
   events: DigestEvent[];
+  // Shown instead of a card list when events is empty but the section
+  // still renders — real feedback: a silently-omitted section reads as a
+  // bug ("did this break?"), an explicit "nothing yet" reads as honest.
+  emptyMessage?: string;
+  // "Ver todas las N exposiciones en <región>" / "explorar las N…a lo
+  // largo de Chile" — shown under the section's cards regardless of
+  // whether the section itself was capped, since "En otras regiones"
+  // always offers it alongside its sample.
+  moreLink?: { label: string; url: string };
 }
 
 // Same wall-clock formatting as apps/web/src/lib/date.ts's fmtOpeningHour
@@ -598,8 +607,10 @@ function fmtWeekHeaderEs(weekStart: string, weekEnd: string): string {
   return `${range} ${ey}`;
 }
 
+const SITE_URL = "https://www.caldearte.com";
+
 function eventUrl(id: string): string {
-  return `https://www.caldearte.com/eventos/${id}`;
+  return `${SITE_URL}/eventos/${id}`;
 }
 
 // Points at our own /newsletter/baja page, not the Edge Function's URL
@@ -648,16 +659,27 @@ export function buildDigestBody(
   }
   for (const section of sections) {
     lines.push(`-- ${section.label} --`);
-    for (const [comuna, events] of groupByComuna(section.events)) {
-      lines.push(`[${comuna}]`);
-      for (const e of events) {
-        const date = fmtDigestDate(e);
-        lines.push(`${e.title} — ${e.placeName}${date ? ` — ${date}` : ""}`);
-        lines.push(`  ${eventUrl(e.id)}`);
+    if (section.events.length === 0 && section.emptyMessage) {
+      lines.push(section.emptyMessage);
+    } else {
+      for (const [comuna, events] of groupByComuna(section.events)) {
+        lines.push(`[${comuna}]`);
+        for (const e of events) {
+          const date = fmtDigestDate(e);
+          lines.push(`${e.title} — ${e.placeName}${date ? ` — ${date}` : ""}`);
+          lines.push(`  ${eventUrl(e.id)}`);
+        }
       }
+    }
+    if (section.moreLink) {
+      lines.push(`${section.moreLink.label}: ${section.moreLink.url}`);
     }
     lines.push("");
   }
+  lines.push("");
+  lines.push(
+    "Este es el boletín semanal de Caldearte, un calendario de arte curado por inteligencia humana potenciada por IA. Te lo enviamos porque te suscribiste para recibir la agenda de tu región cada semana.",
+  );
   lines.push(`Darse de baja: ${unsubscribeUrl(unsubscribeToken)}`);
   return lines.join("\n");
 }
@@ -672,7 +694,7 @@ function eventCardHtml(e: DigestEvent): string {
   const thumb = e.imageUrl
     ? `<img src="${escapeHtml(e.imageUrl)}" width="110" height="132" alt="" style="display:block;width:110px;height:132px;object-fit:cover;" />`
     : `<div style="width:110px;height:132px;background:#3a3a3a;"></div>`;
-  return `<a href="${eventUrl(e.id)}" style="display:block;text-decoration:none;margin:0 0 12px;">
+  return `<a href="${eventUrl(e.id)}" style="display:block;text-decoration:none;margin:0 0 16px;">
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-radius:16px;overflow:hidden;">
       <tr>
         <td width="110" valign="top" style="line-height:0;">${thumb}</td>
@@ -703,14 +725,26 @@ export function buildDigestHtmlBody(
 ): string {
   const sectionsHtml = sections
     .map((section) => {
-      const comunaGroupsHtml = groupByComuna(section.events)
-        .map(
-          ([comuna, events]) =>
-            `<p style="margin:16px 0 8px;font-size:12px;font-weight:700;color:#1c1c1c;">${escapeHtml(comuna)}</p>${events.map(eventCardHtml).join("")}`,
-        )
-        .join("");
-      return `<h2 style="font-size:14px;text-transform:uppercase;letter-spacing:0.04em;color:#888;margin:24px 0 0;border-bottom:1px solid #e2e0da;padding-bottom:6px;">${escapeHtml(section.label)}</h2>
-      ${comunaGroupsHtml}`;
+      const bodyHtml =
+        section.events.length === 0 && section.emptyMessage
+          ? `<p style="margin:14px 0 0;font-size:13px;color:#888;font-style:italic;">${escapeHtml(section.emptyMessage)}</p>`
+          : groupByComuna(section.events)
+              .map(
+                ([comuna, events]) =>
+                  `<p style="margin:20px 0 10px;font-size:12px;font-weight:700;color:#1c1c1c;">${escapeHtml(comuna)}</p>${events.map(eventCardHtml).join("")}`,
+              )
+              .join("");
+      const moreLinkHtml = section.moreLink
+        ? `<p style="margin:12px 0 0;"><a href="${escapeHtml(section.moreLink.url)}" style="color:#1c1c1c;font-weight:700;font-size:13px;text-decoration:underline;">${escapeHtml(section.moreLink.label)}</a></p>`
+        : "";
+      // Generous top margin (not just the h2's own padding) — real
+      // feedback: sections read as cramped/jammed together without real
+      // air between them, especially after a card grid.
+      return `<div style="margin:48px 0 0;">
+      <h2 style="font-size:14px;text-transform:uppercase;letter-spacing:0.04em;color:#888;margin:0;border-bottom:1px solid #e2e0da;padding-bottom:6px;">${escapeHtml(section.label)}</h2>
+      ${bodyHtml}
+      ${moreLinkHtml}
+      </div>`;
     })
     .join("");
 
@@ -721,7 +755,7 @@ export function buildDigestHtmlBody(
         .split(/\n\s*\n/)
         .map((p) => p.trim())
         .filter(Boolean)
-        .map((p) => `<p style="margin:0 0 12px;font-size:15px;color:#333;line-height:1.6;">${escapeHtml(p)}</p>`)
+        .map((p) => `<p style="margin:0 0 14px;font-size:15px;color:#333;line-height:1.6;">${escapeHtml(p)}</p>`)
         .join("")
     : "";
   const weekLabel = week ? escapeHtml(fmtWeekHeaderEs(week.start, week.end)) : "";
@@ -737,7 +771,7 @@ export function buildDigestHtmlBody(
     <div style="background:#1c1c1c;padding:24px 28px;border-radius:12px 12px 0 0;">
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
         <tr>
-          <td valign="middle"><p style="margin:0;color:#fff;font-size:20px;font-weight:800;letter-spacing:0.02em;">CALDEARTE</p></td>
+          <td valign="middle"><a href="${SITE_URL}" style="color:#fff;text-decoration:none;font-size:20px;font-weight:800;letter-spacing:0.02em;">CALDEARTE</a></td>
           ${weekLabel ? `<td valign="middle" align="right"><p style="margin:0;color:#9a9a9a;font-size:13px;">${weekLabel}</p></td>` : ""}
         </tr>
       </table>
@@ -745,7 +779,10 @@ export function buildDigestHtmlBody(
     <div style="background:#fff;padding:24px 28px 8px;">
       ${introHtml}
       ${sectionsHtml}
-      <p style="margin:28px 0 0;font-size:12px;color:#888;"><a href="${unsubscribeUrl(unsubscribeToken)}" style="color:#888;">Darse de baja</a></p>
+      <p style="margin:80px 0 0;padding-top:20px;border-top:1px solid #e2e0da;font-size:12px;color:#999;line-height:1.6;">
+        Este es el boletín semanal de Caldearte, un calendario de arte curado por inteligencia humana potenciada por IA. Te lo enviamos porque te suscribiste para recibir la agenda de tu región cada semana.
+        <a href="${unsubscribeUrl(unsubscribeToken)}" style="color:#999;">Darse de baja</a>.
+      </p>
     </div>
     </div>
   </body>
