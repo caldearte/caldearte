@@ -57,6 +57,10 @@ export default function NewsletterStatusModal({ status }: NewsletterStatusModalP
       onClick={close}
     >
       <div className="w-full max-w-sm rounded-xl bg-white shadow-xl overflow-hidden text-center" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-baseline justify-between px-6 pt-4 pb-2">
+          <span className="text-xl font-normal text-heading-gray">{esCL.appName}</span>
+          <span className="text-sm text-muted-gray">{esCL.newsletter.headerLabel}</span>
+        </div>
         {isFreshConfirmation && <Hero />}
         <div className="p-6">
           <h2 className="text-lg font-bold text-heading-gray mb-2">{title}</h2>

@@ -130,6 +130,10 @@ export default function NewsletterEntryModal({ open, onClose }: NewsletterEntryM
       onClick={onClose}
     >
       <div className="w-full max-w-sm rounded-xl bg-white shadow-xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-baseline justify-between px-6 pt-4 pb-2">
+          <span className="text-xl font-normal text-heading-gray">{esCL.appName}</span>
+          <span className="text-sm text-muted-gray">{esCL.newsletter.headerLabel}</span>
+        </div>
         <Hero />
         <div className="p-6">
           {status === "success" ? (

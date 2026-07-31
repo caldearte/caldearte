@@ -235,6 +235,7 @@ export const esCL = {
 
   newsletter: {
     title: "Recibe la semana en arte",
+    headerLabel: "Boletín semanal",
     entryTitle: "No te pierdas ninguna inauguración",
     entrySubtitle: "Cada lunes, un resumen de lo mejor del arte en tu región — directo a tu correo.",
     emailPlaceholder: "tu@correo.cl",
