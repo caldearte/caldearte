@@ -14,6 +14,10 @@
     "typescript": "^7.0.2"
   },
   "pnpm": {
-    "onlyBuiltDependencies": ["esbuild"]
+    "onlyBuiltDependencies": ["esbuild"],
+    "overrides": {
+      "postcss": "^8.5.19",
+      "sharp": "^0.35.3"
+    }
   }
 }
