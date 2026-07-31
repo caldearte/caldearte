@@ -128,7 +128,7 @@ export default function NewsletterEntryModal({ open, onClose }: NewsletterEntryM
         <div className="p-6">
           {status === "success" ? (
             <>
-              <h2 className="text-lg font-bold text-heading-gray mb-2">{esCL.newsletter.entryTitle}</h2>
+              <h2 className="text-lg font-bold text-heading-gray mb-2">{esCL.newsletter.successTitle}</h2>
               <p className="text-sm text-muted-gray mb-5">{esCL.newsletter.success}</p>
               <button onClick={onClose} className="text-sm font-semibold bg-heading-gray text-white rounded-full px-5 py-2">
                 {esCL.newsletter.close}
