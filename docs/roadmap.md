@@ -94,12 +94,13 @@ Closed out the initial project brief, moved into a dedicated repo.
   `/privacidad` page, RLS tightened to column-restricted views
   (`events_public`/`regions_public`), and IP-geolocation-based default city
   detection (own comuna → same región → Santiago if outside Chile).
-- Still open within Phase 1a — the punch list before pushing real
-  distribution/marketing, decided 2026-07-28 after a UX audit of the live
-  site plus a PO/BA read on promotion-readiness:
-  - Running a real manual audit of the curation policy against the
-    production data that's now accumulated (flagged in
-    [risks.md](risks.md)).
+- Punch list before pushing real distribution/marketing, decided
+  2026-07-28 after a UX audit of the live site plus a PO/BA read on
+  promotion-readiness — **all items now closed**:
+  - **Done 2026-07-30**: ran a real manual audit of the curation policy
+    against production data (95 approved events, 28 rejected candidates)
+    — found and manually fixed one real cross-source consistency gap, see
+    [risks.md](risks.md) item 4 for the full finding.
   - UX fixes found auditing the live site:
     - **Fixed 2026-07-30**: the value-prop tagline ("Calendario de arte
       curado por inteligencia humana potenciada por IA") now also renders
@@ -155,6 +156,25 @@ Closed out the initial project brief, moved into a dedicated repo.
     success) since the anon key can't otherwise distinguish a duplicate
     signup from a new one. PRs held for manual review (touches
     `supabase/migrations/` and `.github/workflows/`).
+    **Refined 2026-07-31, after reviewing real sends** (PRs #163-172):
+    event links now go to caldearte.com's own event page (not the
+    original source), grouped by comuna, redesigned as horizontal cards
+    matching the site's own card style; added a grounded, per-región
+    AI-generated intro (Haiku, cached once per región per send, degrades
+    to no intro on any budget/API failure — see
+    [curation-policy.md](curation-policy.md)'s fabrication-risk posture,
+    same discipline applied here); fixed two real fabrication/consistency
+    bugs found in production output (a false "opens this week" claim, and
+    two disagreeing exhibition-count figures in the same email — root-
+    caused to an ungrounded flat event list and a capped-vs-total count
+    mismatch, both fixed deterministically, not by prompt-tuning alone);
+    "Expos para visitar" capped at 10 with a "ver todas" link when a
+    región has more; explicit empty-state copy instead of silently
+    omitting a section; friendlier "5 de agosto" date format instead of
+    ISO; unique subject line per week (prevents Gmail conversation-
+    threading); and several modal UX fixes (clearer double-opt-in copy,
+    lighter mobile backdrop, branded header) from real subscriber
+    feedback.
 
 ## Phase 1b — Inbound-mail flows
 
