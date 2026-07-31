@@ -53,7 +53,7 @@ export default function NewsletterStatusModal({ status }: NewsletterStatusModalP
       role="dialog"
       aria-modal="true"
       aria-label={title}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-[#ffffffe3] px-4"
       onClick={close}
     >
       <div className="w-full max-w-sm rounded-xl bg-white shadow-xl overflow-hidden text-center" onClick={(e) => e.stopPropagation()}>

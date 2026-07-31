@@ -122,7 +122,13 @@ export default function NewsletterEntryModal({ open, onClose }: NewsletterEntryM
   }
 
   return (
-    <div role="dialog" aria-modal="true" aria-label={esCL.newsletter.entryTitle} className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4" onClick={onClose}>
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label={esCL.newsletter.entryTitle}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-[#ffffffe3] px-4"
+      onClick={onClose}
+    >
       <div className="w-full max-w-sm rounded-xl bg-white shadow-xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
         <Hero />
         <div className="p-6">
