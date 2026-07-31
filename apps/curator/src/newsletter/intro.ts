@@ -32,10 +32,19 @@ export interface MessagesClient {
 // Only titles + venue + comuna, deliberately no dates/hours/descriptions
 // — the less the model has to work with, the less it can embellish.
 // Excludes "En otras regiones" (not this subscriber's own región's news).
+//
+// Grouped under each section's own label (real bug found 2026-07-31: a
+// flat, uncategorized list let Haiku call an already-running show an
+// "inauguración" just because its title echoed one that really was
+// opening this week — it had no way to tell the two apart). Only
+// "Inauguraciones de esta semana" may ever be described as opening;
+// everything else is already on display.
 function buildEventList(sections: DigestSection[]): string {
   const lines: string[] = [];
   for (const section of sections) {
     if (section.label === "En otras regiones") continue;
+    if (section.events.length === 0) continue;
+    lines.push(`${section.label}:`);
     for (const e of section.events) {
       lines.push(`- ${e.title} (${e.placeName}${e.comunaName ? `, ${e.comunaName}` : ""})`);
     }
@@ -53,15 +62,17 @@ function buildEventList(sections: DigestSection[]): string {
 // (the title and venue/comuna) — never inventing a description, medium, or
 // theme the list doesn't state.
 const SYSTEM_PROMPT = `Eres el redactor editorial de Caldearte, un boletín semanal que reúne exposiciones de arte visual en Chile.
-Te entregan una lista de exposiciones reales, ya verificadas, que hay esta semana en una región.
+Te entregan el número real de exposiciones activas esta semana en una región, y una lista de esas exposiciones agrupada bajo los mismos encabezados que usa el boletín.
 Escribe la introducción del boletín de esa región: dos párrafos breves, en español, con voz curatorial — precisa y algo evocadora, nunca publicitaria ni de listicle.
 
 Estructura:
-- Párrafo 1: panorama general de la semana en la región (cuántas exposiciones hay, qué variedad de comunas o espacios reúne), sin inventar un hilo temático que la lista no sugiere.
+- Párrafo 1: panorama general de la semana en la región (qué variedad de comunas o espacios reúne), sin inventar un hilo temático que la lista no sugiere.
 - Párrafo 2: detente en una o dos exposiciones puntuales de la lista — nómbralas tal como aparecen, junto a su espacio — y dales un poco de contexto o gancho basado solo en el título y el lugar (no en una sinopsis inventada).
 
 Reglas estrictas:
-- Usa ÚNICAMENTE la información de la lista entregada. No inventes fechas, horas, artistas, técnicas, temáticas ni descripciones de obra que no estén en la lista.
+- Usa ÚNICAMENTE la información entregada. No inventes fechas, horas, artistas, técnicas, temáticas ni descripciones de obra que no estén en la lista.
+- Solo puedes decir que una exposición "inaugura" o "abre" esta semana si aparece bajo el encabezado "Inauguraciones de esta semana". Cualquier exposición bajo otro encabezado (por ejemplo "Expos para visitar esta semana") ya está en exhibición — descríbela como tal ("sigue en exhibición", "se puede visitar"), nunca como algo que inaugura o abre, aunque su título lo sugiera.
+- Si mencionas una cifra de cuántas exposiciones hay en la región, usa EXACTAMENTE el número entregado al inicio del mensaje — nunca cuentes tú mismo los ítems de la lista, que puede estar incompleta respecto del total real.
 - No repitas la lista completa ni cites más de dos o tres títulos en total entre ambos párrafos, escritos tal como aparecen.
 - No prometas nada que la lista no respalde (nada de "y mucho más").
 - Evita signos de exclamación, superlativos ("imperdible", "increíble") y lenguaje publicitario.
@@ -72,9 +83,14 @@ export interface GenerateIntroDeps {
   messagesClient?: MessagesClient;
 }
 
-export async function generateRegionIntro(sections: DigestSection[], deps: GenerateIntroDeps = {}): Promise<string | null> {
+export async function generateRegionIntro(
+  sections: DigestSection[],
+  regionTotalThisWeek: number,
+  deps: GenerateIntroDeps = {},
+): Promise<string | null> {
   const eventList = buildEventList(sections);
   if (!eventList) return null;
+  const userContent = `Número real de exposiciones activas esta semana en la región: ${regionTotalThisWeek}.\n\n${eventList}`;
 
   // Cost governance: same ceiling that gates new-region activation
   // (docs/region-discovery.md#cost-governance) — if the month's already
@@ -102,7 +118,7 @@ export async function generateRegionIntro(sections: DigestSection[], deps: Gener
       model: MODEL,
       max_tokens: 400,
       system: SYSTEM_PROMPT,
-      messages: [{ role: "user", content: eventList }],
+      messages: [{ role: "user", content: userContent }],
     });
 
     await recordUsage({

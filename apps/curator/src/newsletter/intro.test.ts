@@ -18,6 +18,23 @@ const fixtureSections: DigestSection[] = [
         openingTimeConfirmed: true,
         runEndDate: "2026-09-01",
         imageUrl: null,
+        isOpeningThisWeek: true,
+      },
+    ],
+  },
+  {
+    label: "Expos para visitar esta semana",
+    events: [
+      {
+        id: "e3",
+        title: "En el Tiempo a Distancia",
+        placeName: "D21 Proyectos de Arte",
+        comunaName: "Santiago",
+        openingDatetime: "2026-07-02T19:00:00.000Z",
+        openingTimeConfirmed: true,
+        runEndDate: "2026-08-20",
+        imageUrl: null,
+        isOpeningThisWeek: false,
       },
     ],
   },
@@ -33,6 +50,7 @@ const fixtureSections: DigestSection[] = [
         openingTimeConfirmed: true,
         runEndDate: null,
         imageUrl: null,
+        isOpeningThisWeek: false,
       },
     ],
   },
@@ -50,7 +68,7 @@ function stubClient(text: string): MessagesClient {
 }
 
 test("generateRegionIntro: returns null immediately when there are no events to summarize (nothing running this region this week)", async () => {
-  const intro = await generateRegionIntro([], {});
+  const intro = await generateRegionIntro([], 0, {});
   assert.equal(intro, null);
 });
 
@@ -63,7 +81,7 @@ test(
     const { getCurrentMonthSpend } = await import("../lib/usage-tracking.js");
 
     const spendBefore = await getCurrentMonthSpend();
-    const intro = await generateRegionIntro(fixtureSections, { messagesClient: stubClient("Esta semana hay una inauguración imperdible.") });
+    const intro = await generateRegionIntro(fixtureSections, 2, { messagesClient: stubClient("Esta semana hay una inauguración imperdible.") });
     assert.equal(intro, "Esta semana hay una inauguración imperdible.");
 
     const spendAfter = await getCurrentMonthSpend();
@@ -74,7 +92,7 @@ test(
   },
 );
 
-// Both remaining tests need real events to summarize, which means
+// Remaining tests need real events to summarize, which means
 // generateRegionIntro reaches its budget check (getCurrentMonthSpend/
 // getConfigNumber) before ever touching the stub client — that needs
 // local Supabase, same as the usage-recording test above.
@@ -94,9 +112,37 @@ test(
         },
       },
     };
-    await generateRegionIntro(fixtureSections, { messagesClient: client });
+    await generateRegionIntro(fixtureSections, 2, { messagesClient: client });
     assert.match(capturedPrompt, /Estrella distante/);
     assert.doesNotMatch(capturedPrompt, /Evento de otra región/);
+  },
+);
+
+// Real bug found 2026-07-31: a flat, uncategorized event list let Haiku
+// call an already-running show an "inauguración" just because its title
+// echoed a real one. The prompt now groups events under their own
+// section label and passes the true total explicitly — this test
+// verifies both pieces actually reach the model.
+test(
+  "generateRegionIntro: groups events under their own section label and states the real regionTotalThisWeek explicitly, rather than a flat undifferentiated list",
+  { skip: !hasLocalSupabase },
+  async () => {
+    let capturedPrompt = "";
+    const client: MessagesClient = {
+      messages: {
+        create: async (params) => {
+          capturedPrompt = String((params.messages as Array<{ content: string }>)[0].content);
+          return {
+            content: [{ type: "text", text: "ok" }],
+            usage: { input_tokens: 1, output_tokens: 1, cache_creation_input_tokens: 0, cache_read_input_tokens: 0 },
+          };
+        },
+      },
+    };
+    await generateRegionIntro(fixtureSections, 36, { messagesClient: client });
+    assert.match(capturedPrompt, /Número real de exposiciones activas esta semana en la región: 36/);
+    assert.match(capturedPrompt, /Inauguraciones de esta semana:\n- Estrella distante/);
+    assert.match(capturedPrompt, /Expos para visitar esta semana:\n- En el Tiempo a Distancia/);
   },
 );
 
@@ -111,7 +157,7 @@ test(
         },
       },
     };
-    const intro = await generateRegionIntro(fixtureSections, { messagesClient: client });
+    const intro = await generateRegionIntro(fixtureSections, 2, { messagesClient: client });
     assert.equal(intro, null);
   },
 );
