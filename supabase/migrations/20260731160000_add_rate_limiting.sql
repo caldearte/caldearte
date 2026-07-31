@@ -56,4 +56,9 @@ end;
 $$;
 
 revoke all on function check_rate_limit(text, integer, integer) from public;
-grant execute on function check_rate_limit(text, integer, integer) to anon, authenticated;
+-- service_role also needs EXECUTE explicitly — `revoke ... from public`
+-- revokes from every role including service_role (it's not exempt just
+-- for having RLS-bypass), and this function is also called directly from
+-- the newsletter-resubscribe Edge Function (service-role), not only from
+-- apps/web's anon-key route.
+grant execute on function check_rate_limit(text, integer, integer) to anon, authenticated, service_role;
