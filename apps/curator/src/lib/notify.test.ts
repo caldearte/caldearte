@@ -355,12 +355,16 @@ test("buildDigestSubject uses singular for exactly one event", () => {
   assert.equal(buildDigestSubject([fixtureDigestSections[0]]), "Caldearte — tu semana en arte (1 expo)");
 });
 
+// Pinned so date-format assertions ("3 de agosto" vs. "3 de agosto de
+// 2026") don't depend on the wall-clock year the suite happens to run in.
+const WEEK = { start: "2026-08-03", end: "2026-08-09" };
+
 test("buildDigestBody lists every section's events grouped by comuna, links to caldearte.com's own event page, and includes the unsubscribe link", () => {
-  const body = buildDigestBody(fixtureDigestSections, "unsub-token");
+  const body = buildDigestBody(fixtureDigestSections, "unsub-token", null, WEEK);
   assert.match(body, /Inauguraciones de esta semana/);
   assert.match(body, /\[Quinta Normal\]/);
   assert.match(body, /Estrella distante — MAC Quinta Normal/);
-  assert.match(body, /Inauguración: 2026-08-03 · \d{1,2}(:\d{2})? hr/);
+  assert.match(body, /Inauguración: 3 de agosto · \d{1,2}(:\d{2})? hr/);
   assert.match(body, /https:\/\/www\.caldearte\.com\/eventos\/event-estrella-distante/);
   assert.match(body, /En otras regiones/);
   assert.match(body, /\[Otras comunas\]/);
@@ -432,8 +436,8 @@ test("buildDigestBody omits the hour for an opening whose time isn't confirmed",
       ],
     },
   ];
-  const body = buildDigestBody(sections, "unsub-token");
-  assert.match(body, /Sín-tesis — Galería NAC — Inauguración: 2026-08-05$/m);
+  const body = buildDigestBody(sections, "unsub-token", null, WEEK);
+  assert.match(body, /Sín-tesis — Galería NAC — Inauguración: 5 de agosto$/m);
 });
 
 test("fmtDigestDate: an event whose opening was weeks ago (still running, isOpeningThisWeek: false) renders 'Hasta el <fecha>', never 'Inauguración:' — real bug found 2026-07-31 where a past opening date read as if it were opening soon", () => {
@@ -455,13 +459,58 @@ test("fmtDigestDate: an event whose opening was weeks ago (still running, isOpen
       ],
     },
   ];
-  const body = buildDigestBody(sections, "unsub-token");
+  const body = buildDigestBody(sections, "unsub-token", null, WEEK);
   assert.doesNotMatch(body, /Inauguración/);
-  assert.match(body, /Hasta el 2026-08-20/);
+  assert.match(body, /Hasta el 20 de agosto/);
 
-  const html = buildDigestHtmlBody(sections, "unsub-token");
+  const html = buildDigestHtmlBody(sections, "unsub-token", null, WEEK);
   assert.doesNotMatch(html, /Inauguración/);
-  assert.match(html, /Hasta el 2026-08-20/);
+  assert.match(html, /Hasta el 20 de agosto/);
+});
+
+test("fmtDigestDate: dates render as 'día de mes', with the year appended only when it differs from the digest's own send year", () => {
+  const sameYear: DigestSection[] = [
+    {
+      label: "Expos para visitar esta semana",
+      events: [
+        {
+          id: "e-same-year",
+          title: "Cierra este año",
+          placeName: "Sala X",
+          comunaName: "Santiago",
+          openingDatetime: null,
+          openingTimeConfirmed: true,
+          runEndDate: "2026-08-20",
+          imageUrl: null,
+          isOpeningThisWeek: false,
+        },
+      ],
+    },
+  ];
+  const bodySameYear = buildDigestBody(sameYear, "unsub-token", null, WEEK);
+  assert.match(bodySameYear, /Hasta el 20 de agosto$/m);
+  assert.doesNotMatch(bodySameYear, /de 2026/);
+
+  const nextYear: DigestSection[] = [
+    {
+      label: "Expos para visitar esta semana",
+      events: [
+        {
+          id: "e-next-year",
+          title: "Cierra el próximo año",
+          placeName: "Sala Y",
+          comunaName: "Santiago",
+          openingDatetime: null,
+          openingTimeConfirmed: true,
+          runEndDate: "2027-01-15",
+          imageUrl: null,
+          isOpeningThisWeek: false,
+        },
+      ],
+    },
+  ];
+  const bodyNextYear = buildDigestBody(nextYear, "unsub-token", null, WEEK);
+  assert.match(bodyNextYear, /Hasta el 15 de enero de 2027$/m);
 });
 
 test("buildDigestBody includes the AI-generated intro as the first line when present", () => {
