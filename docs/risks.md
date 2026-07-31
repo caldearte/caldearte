@@ -20,13 +20,17 @@
    [architecture.md](architecture.md#free-tier-posture-upgrade-reactively-not-preemptively).
 3. **Phase 4 (social media) depends on having real content running first** —
    there's no point submitting for app review with an empty demo.
-4. **The curation policy is defined with examples and an operational prompt,
-   but hasn't been tested against real cases yet** — worth running a manual
-   test batch before trusting the automatic classification. More relevant
-   now than when this was first written: real production data has been
-   running since the weekly-batch rollout (2026-07-17), so a real batch to
-   audit against actually exists now, not just the original hypothetical
-   examples.
+4. **First manual audit against real cases — done 2026-07-30**: read all 95
+   approved `events` rows and all 28 `rejected_candidates` rows against the
+   five sensitivity axes. Found and manually corrected one real gap — the
+   same real exhibition was simultaneously approved (via one source's vague
+   description) and correctly rejected under the Religion axis (via a
+   different source's more detailed one) — a cross-source consistency gap,
+   not a classifier bug: nothing reconciles two different sources
+   describing the same real-world event when they disagree. Not yet fixed
+   in the pipeline itself. Far-right, pseudoscience, and
+   institutional-exclusion axes have had zero real triggers so far — still
+   genuinely untested by real cases, not confirmed either way.
 5. **Curated event images are hotlinked from arbitrary external domains,
    with no re-hosting or CSP** (`apps/web/next.config.ts`'s
    `images.unoptimized: true`, re-hosting is Phase 3, see
