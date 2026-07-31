@@ -1,8 +1,13 @@
 import { NextResponse } from "next/server";
 import { Resend } from "resend";
+import { clientIp, isWithinRateLimit } from "@/lib/rate-limit";
 
 const CONTACT_RECIPIENT = "daniel@probablespa.cl";
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+// 5 messages/hour/IP — generous for a real visitor, tight enough to stop
+// a script from flooding the inbox. See docs on check_rate_limit.
+const RATE_LIMIT_MAX = 5;
+const RATE_LIMIT_WINDOW_SECONDS = 3600;
 
 interface ContactPayload {
   name?: string;
@@ -15,6 +20,11 @@ interface ContactPayload {
 // mailbox (token-correlated replies, inbound webhook parsing) that's still
 // correctly deferred to Phase 1b — see docs/roadmap.md. Nothing is stored.
 export async function POST(request: Request) {
+  const allowed = await isWithinRateLimit(`contact:${clientIp(request)}`, RATE_LIMIT_MAX, RATE_LIMIT_WINDOW_SECONDS);
+  if (!allowed) {
+    return NextResponse.json({ error: "rate_limited" }, { status: 429 });
+  }
+
   let payload: ContactPayload;
   try {
     payload = await request.json();

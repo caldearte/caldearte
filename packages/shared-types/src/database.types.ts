@@ -335,6 +335,24 @@ export type Database = {
         }
         Relationships: []
       }
+      rate_limit_counters: {
+        Row: {
+          bucket_key: string
+          count: number
+          window_start: string
+        }
+        Insert: {
+          bucket_key: string
+          count?: number
+          window_start: string
+        }
+        Update: {
+          bucket_key?: string
+          count?: number
+          window_start?: string
+        }
+        Relationships: []
+      }
       raw_search_results: {
         Row: {
           created_at: string
@@ -597,6 +615,14 @@ export type Database = {
       }
     }
     Functions: {
+      check_rate_limit: {
+        Args: {
+          p_bucket_key: string
+          p_max_count: number
+          p_window_seconds: number
+        }
+        Returns: boolean
+      }
       prune_expired_events: {
         Args: { cutoff_date: string }
         Returns: undefined
