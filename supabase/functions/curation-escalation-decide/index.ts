@@ -31,7 +31,7 @@ function htmlResponse(body: string, status = 200): Response {
 
 Deno.serve(async (req) => {
   const url = new URL(req.url);
-  const token = url.searchParams.get("token");
+  const token = req.method === "POST" ? (await req.formData()).get("token")?.toString() : url.searchParams.get("token");
   if (!token) return htmlResponse("<p>Falta el token.</p>", 400);
 
   const client = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
@@ -55,6 +55,28 @@ Deno.serve(async (req) => {
   // client-supplied query param — a tampered ?action= in the URL can't
   // flip the decision the secret token itself represents.
   const action: "accept" | "reject" = escalation.accept_token === token ? "accept" : "reject";
+
+  // GET only ever shows a confirmation page — it must never itself mutate
+  // anything. Real risk this closes off: email link-scanners/prefetchers
+  // (Outlook Safe Links, corporate mail gateways) commonly pre-fetch every
+  // link in an incoming email via GET before a human ever sees it, which
+  // would otherwise silently make this decision — the one place in the
+  // whole system a human is specifically meant to weigh in on a real
+  // conflict — without a human involved at all. The actual write only
+  // happens below, on POST, triggered by the confirmation page's own
+  // button click (which a link-prefetcher never does).
+  if (req.method !== "POST") {
+    const preview =
+      action === "accept" ? `usar la versión nueva: "${escapeHtml(escalation.new_title)}"` : `mantener la versión anterior: "${escapeHtml(escalation.existing_title)}"`;
+    return htmlResponse(`
+      <h1>Confirmar decisión</h1>
+      <p>Estás por ${preview}.</p>
+      <form method="POST">
+        <input type="hidden" name="token" value="${escapeHtml(token)}" />
+        <button type="submit" style="font-size:16px;padding:10px 20px;cursor:pointer;">Confirmar</button>
+      </form>
+    `);
+  }
 
   if (action === "accept") {
     // Apply the NEW candidate's decision.
