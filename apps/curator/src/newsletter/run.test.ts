@@ -182,7 +182,12 @@ test("buildDigestSections: toDigestEvent carries comuna, image, and opening_time
 const hasLocalSupabase = Boolean(process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY);
 
 const TEST_REGION = "__test_newsletter_region__";
-const TEST_ADMIN_REGION = "__test_admin_region__";
+// Must be one of the 16 real admin_region_name values — newsletter_subscribers
+// now has a CHECK constraint against that exact list (security audit,
+// 2026-07-31), so a synthetic placeholder like "__test_admin_region__" would
+// fail the insert. Picked a rarely-used real región to keep collision risk
+// with other fixtures low.
+const TEST_ADMIN_REGION = "Región de Magallanes y de la Antártica Chilena";
 
 test(
   "run(): sends a digest only to confirmed, active subscribers with at least one eligible section, skips the rest",
