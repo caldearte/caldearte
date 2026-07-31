@@ -325,6 +325,7 @@ const fixtureDigestSections: DigestSection[] = [
         openingTimeConfirmed: true,
         runEndDate: "2026-09-01",
         imageUrl: "https://example.com/estrella.jpg",
+        isOpeningThisWeek: true,
       },
     ],
   },
@@ -340,6 +341,7 @@ const fixtureDigestSections: DigestSection[] = [
         openingTimeConfirmed: true,
         runEndDate: "2026-08-15",
         imageUrl: null,
+        isOpeningThisWeek: false,
       },
     ],
   },
@@ -425,12 +427,41 @@ test("buildDigestBody omits the hour for an opening whose time isn't confirmed",
           openingTimeConfirmed: false,
           runEndDate: null,
           imageUrl: null,
+          isOpeningThisWeek: true,
         },
       ],
     },
   ];
   const body = buildDigestBody(sections, "unsub-token");
   assert.match(body, /Sín-tesis — Galería NAC — Inauguración: 2026-08-05$/m);
+});
+
+test("fmtDigestDate: an event whose opening was weeks ago (still running, isOpeningThisWeek: false) renders 'Hasta el <fecha>', never 'Inauguración:' — real bug found 2026-07-31 where a past opening date read as if it were opening soon", () => {
+  const sections: DigestSection[] = [
+    {
+      label: "Expos para visitar esta semana",
+      events: [
+        {
+          id: "event-ya-abierto",
+          title: "En el Tiempo a Distancia",
+          placeName: "D21 Proyectos de Arte",
+          comunaName: "Santiago",
+          openingDatetime: "2026-07-02T19:00:00.000Z",
+          openingTimeConfirmed: true,
+          runEndDate: "2026-08-20",
+          imageUrl: null,
+          isOpeningThisWeek: false,
+        },
+      ],
+    },
+  ];
+  const body = buildDigestBody(sections, "unsub-token");
+  assert.doesNotMatch(body, /Inauguración/);
+  assert.match(body, /Hasta el 2026-08-20/);
+
+  const html = buildDigestHtmlBody(sections, "unsub-token");
+  assert.doesNotMatch(html, /Inauguración/);
+  assert.match(html, /Hasta el 2026-08-20/);
 });
 
 test("buildDigestBody includes the AI-generated intro as the first line when present", () => {

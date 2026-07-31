@@ -55,7 +55,11 @@ function isRunningOn(event: EventRow, dateStr: string): boolean {
   return true;
 }
 
-function toDigestEvent(event: EventWithRegion): DigestEvent {
+function isOpeningInWeek(event: EventRow, week: { start: string; end: string }): boolean {
+  return Boolean(event.opening_datetime && event.opening_datetime.slice(0, 10) >= week.start && event.opening_datetime.slice(0, 10) <= week.end);
+}
+
+function toDigestEvent(event: EventWithRegion, week: { start: string; end: string }): DigestEvent {
   return {
     id: event.id,
     title: event.title,
@@ -65,6 +69,7 @@ function toDigestEvent(event: EventWithRegion): DigestEvent {
     openingTimeConfirmed: event.opening_time_confirmed,
     runEndDate: event.run_end_date,
     imageUrl: event.image_url,
+    isOpeningThisWeek: isOpeningInWeek(event, week),
   };
 }
 
@@ -77,6 +82,17 @@ function shuffle<T>(items: T[]): T[] {
   return copy;
 }
 
+export interface DigestSectionsResult {
+  sections: DigestSection[];
+  // True total for the región this week — openings + new + every
+  // "también visitar" candidate, NOT just what's capped/rendered. Fed to
+  // generateRegionIntro so it can cite a real number instead of counting
+  // the (possibly truncated) list it was handed, and used for the "ver
+  // todas" link's own count — real bug found 2026-07-31: the link and the
+  // AI intro each quoted a different, both-wrong count.
+  regionTotalThisWeek: number;
+}
+
 // Builds the four sections for one subscriber's región out of the full
 // approved/non-sensitive event pool already loaded for the run (avoids a
 // per-subscriber query — the pool is small enough, see docs/data-model.md).
@@ -84,13 +100,11 @@ export function buildDigestSections(
   events: EventWithRegion[],
   adminRegionName: string,
   week: { start: string; end: string },
-): DigestSection[] {
+): DigestSectionsResult {
   const inRegion = events.filter((e) => e.adminRegionName === adminRegionName);
   const runningThisWeek = inRegion.filter((e) => isRunningOn(e, week.end));
 
-  const openings = runningThisWeek.filter(
-    (e) => e.opening_datetime && e.opening_datetime.slice(0, 10) >= week.start && e.opening_datetime.slice(0, 10) <= week.end,
-  );
+  const openings = runningThisWeek.filter((e) => isOpeningInWeek(e, week));
   const openingIds = new Set(openings.map((e) => e.id));
 
   // "New" means the exhibition's own run actually STARTS this week
@@ -124,41 +138,42 @@ export function buildDigestSections(
   // rather than just omitting a section and leaving the reader guessing
   // whether that's a bug or genuinely nothing this week.
   const hasAnyContent = openings.length > 0 || newThisWeek.length > 0 || alsoVisitAll.length > 0 || otherRegionsAll.length > 0;
-  if (!hasAnyContent) return [];
+  if (!hasAnyContent) return { sections: [], regionTotalThisWeek: 0 };
 
   // Total across the whole country, not just the sample shown in "En
   // otras regiones" — the reader-facing count next to that section's
   // "explore everything" link.
   const nationwideActiveCount = events.filter((e) => isRunningOn(e, week.end)).length;
+  const regionTotalThisWeek = openings.length + newThisWeek.length + alsoVisitAll.length;
 
   const sections: DigestSection[] = [];
 
   sections.push({
     label: "Inauguraciones de esta semana",
-    events: openings.map(toDigestEvent),
+    events: openings.map((e) => toDigestEvent(e, week)),
     emptyMessage:
       openings.length === 0 ? "No hemos encontrado ninguna inauguración para esta semana aún. Si sabes de una, avísanos." : undefined,
   });
 
   if (newThisWeek.length > 0) {
-    sections.push({ label: "Expos nuevas esta semana", events: newThisWeek.map(toDigestEvent) });
+    sections.push({ label: "Expos nuevas esta semana", events: newThisWeek.map((e) => toDigestEvent(e, week)) });
   }
 
   sections.push({
     label: "Expos para visitar esta semana",
-    events: alsoVisit.map(toDigestEvent),
+    events: alsoVisit.map((e) => toDigestEvent(e, week)),
     emptyMessage:
       alsoVisitAll.length === 0 ? "No hemos encontrado exposiciones para visitar esta semana aún. Si sabes de una, avísanos." : undefined,
     moreLink:
       alsoVisitAll.length > VISIT_CAP
-        ? { label: `Ver todas las ${alsoVisitAll.length} exposiciones en ${adminRegionName}`, url: SITE_URL }
+        ? { label: `Ver todas las ${regionTotalThisWeek} exposiciones en ${adminRegionName}`, url: SITE_URL }
         : undefined,
   });
 
   if (otherRegionsSample.length > 0) {
     sections.push({
       label: "En otras regiones",
-      events: otherRegionsSample.map(toDigestEvent),
+      events: otherRegionsSample.map((e) => toDigestEvent(e, week)),
       moreLink: {
         label: `Si deseas puedes explorar las ${nationwideActiveCount} exposiciones activas esta semana a lo largo de Chile`,
         url: SITE_URL,
@@ -166,7 +181,7 @@ export function buildDigestSections(
     });
   }
 
-  return sections;
+  return { sections, regionTotalThisWeek };
 }
 
 export async function run(deps: RunDeps = {}): Promise<void> {
@@ -209,14 +224,14 @@ export async function run(deps: RunDeps = {}): Promise<void> {
   let sent = 0;
   let skipped = 0;
   for (const subscriber of subscribers) {
-    const sections = buildDigestSections(events, subscriber.admin_region_name, week);
+    const { sections, regionTotalThisWeek } = buildDigestSections(events, subscriber.admin_region_name, week);
     if (sections.length === 0) {
       skipped++;
       continue;
     }
 
     if (!introByRegion.has(subscriber.admin_region_name)) {
-      const intro = await (deps.generateRegionIntroFn ?? generateRegionIntro)(sections);
+      const intro = await (deps.generateRegionIntroFn ?? generateRegionIntro)(sections, regionTotalThisWeek);
       introByRegion.set(subscriber.admin_region_name, intro);
     }
     const intro = introByRegion.get(subscriber.admin_region_name) ?? null;

@@ -550,6 +550,14 @@ export interface DigestEvent {
   openingTimeConfirmed: boolean;
   runEndDate: string | null;
   imageUrl: string | null;
+  // Whether openingDatetime falls inside THIS digest's week — real bug
+  // found 2026-07-31: an event whose opening was weeks ago but is still
+  // running was labeled "Inauguración: <fecha pasada>" everywhere it
+  // appeared (including "Expos para visitar" and "En otras regiones"),
+  // reading as if it were opening soon. Only this flag, not the mere
+  // presence of openingDatetime, may trigger that wording — see
+  // fmtDigestDate below.
+  isOpeningThisWeek: boolean;
 }
 
 export interface DigestSection {
@@ -582,7 +590,11 @@ function fmtHourSantiago(openingDatetimeIso: string): string {
 }
 
 function fmtDigestDate(e: DigestEvent): string {
-  if (e.openingDatetime) {
+  // Only an opening happening THIS week reads as "Inauguración:" — an
+  // event that opened weeks ago (even with openingDatetime set) is just
+  // still running, and should read "Hasta el <fecha>" like any other
+  // ongoing show, not as if it were opening soon.
+  if (e.isOpeningThisWeek && e.openingDatetime) {
     const dateStr = e.openingDatetime.slice(0, 10);
     return e.openingTimeConfirmed ? `Inauguración: ${dateStr} · ${fmtHourSantiago(e.openingDatetime)}` : `Inauguración: ${dateStr}`;
   }
