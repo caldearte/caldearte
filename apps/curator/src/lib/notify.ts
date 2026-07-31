@@ -714,10 +714,26 @@ export function buildDigestHtmlBody(
     })
     .join("");
 
-  const introHtml = intro ? `<p style="margin:0 0 20px;font-size:14px;color:#333;line-height:1.5;">${escapeHtml(intro)}</p>` : "";
+  // Rendered as one <p> per paragraph (split on blank lines) — the intro is
+  // now 2 short paragraphs (see intro.ts's prompt), not a single line.
+  const introHtml = intro
+    ? intro
+        .split(/\n\s*\n/)
+        .map((p) => p.trim())
+        .filter(Boolean)
+        .map((p) => `<p style="margin:0 0 12px;font-size:15px;color:#333;line-height:1.6;">${escapeHtml(p)}</p>`)
+        .join("")
+    : "";
   const weekLabel = week ? escapeHtml(fmtWeekHeaderEs(week.start, week.end)) : "";
 
-  return `<div style="font-family:'Helvetica Neue',Arial,sans-serif;max-width:640px;margin:0 auto;">
+  return `<!doctype html>
+<html lang="es-CL">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+  </head>
+  <body style="margin:0;padding:0;">
+    <div style="font-family:'Helvetica Neue',Arial,sans-serif;max-width:640px;margin:0 auto;">
     <div style="background:#1c1c1c;padding:24px 28px;border-radius:12px 12px 0 0;">
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
         <tr>
@@ -731,7 +747,9 @@ export function buildDigestHtmlBody(
       ${sectionsHtml}
       <p style="margin:28px 0 0;font-size:12px;color:#888;"><a href="${unsubscribeUrl(unsubscribeToken)}" style="color:#888;">Darse de baja</a></p>
     </div>
-  </div>`;
+    </div>
+  </body>
+</html>`;
 }
 
 // Ancillary, same posture as sendEscalationEmail: a failed/skipped send

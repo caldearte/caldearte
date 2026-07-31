@@ -43,16 +43,30 @@ function buildEventList(sections: DigestSection[]): string {
   return lines.join("\n");
 }
 
-const SYSTEM_PROMPT = `Eres el redactor de un newsletter semanal de arte en Chile (Caldearte).
+// Style modeled on how independent art-world editorial newsletters (e-flux
+// announcements, gallery weeklies) actually write their intros: understated,
+// specific, curatorial rather than promotional — never listicle-y ad copy
+// ("¡no te lo pierdas!"). Two short paragraphs: the first sets the scene for
+// the week in that región in general terms (how many shows, what kind of
+// range/character), the second zooms into one or two specific titles from
+// the list with a light curatorial framing tied strictly to what's given
+// (the title and venue/comuna) — never inventing a description, medium, or
+// theme the list doesn't state.
+const SYSTEM_PROMPT = `Eres el redactor editorial de Caldearte, un boletín semanal que reúne exposiciones de arte visual en Chile.
 Te entregan una lista de exposiciones reales, ya verificadas, que hay esta semana en una región.
-Escribe una introducción breve (máximo 2 frases, en español, tono cálido pero directo) invitando a revisar el boletín.
+Escribe la introducción del boletín de esa región: dos párrafos breves, en español, con voz curatorial — precisa y algo evocadora, nunca publicitaria ni de listicle.
+
+Estructura:
+- Párrafo 1: panorama general de la semana en la región (cuántas exposiciones hay, qué variedad de comunas o espacios reúne), sin inventar un hilo temático que la lista no sugiere.
+- Párrafo 2: detente en una o dos exposiciones puntuales de la lista — nómbralas tal como aparecen, junto a su espacio — y dales un poco de contexto o gancho basado solo en el título y el lugar (no en una sinopsis inventada).
 
 Reglas estrictas:
-- Usa ÚNICAMENTE la información de la lista entregada. No inventes fechas, horas, artistas ni exposiciones que no estén en la lista.
-- Puedes mencionar el número de exposiciones y, como máximo, dos títulos de la lista, escritos tal como aparecen.
-- No prometas nada que no esté en la lista (por ejemplo, no digas "y mucho más" si la lista no da para eso).
-- No uses signos de exclamación en exceso ni lenguaje publicitario exagerado.
-- Responde solo con el texto de la introducción, sin comillas ni explicaciones adicionales.`;
+- Usa ÚNICAMENTE la información de la lista entregada. No inventes fechas, horas, artistas, técnicas, temáticas ni descripciones de obra que no estén en la lista.
+- No repitas la lista completa ni cites más de dos o tres títulos en total entre ambos párrafos, escritos tal como aparecen.
+- No prometas nada que la lista no respalde (nada de "y mucho más").
+- Evita signos de exclamación, superlativos ("imperdible", "increíble") y lenguaje publicitario.
+- Cada párrafo debe tener entre 2 y 3 frases.
+- Responde solo con el texto de los dos párrafos, separados por una línea en blanco — sin títulos, comillas ni explicaciones adicionales.`;
 
 export interface GenerateIntroDeps {
   messagesClient?: MessagesClient;
@@ -86,7 +100,7 @@ export async function generateRegionIntro(sections: DigestSection[], deps: Gener
   try {
     const response = await client.messages.create({
       model: MODEL,
-      max_tokens: 200,
+      max_tokens: 400,
       system: SYSTEM_PROMPT,
       messages: [{ role: "user", content: eventList }],
     });
