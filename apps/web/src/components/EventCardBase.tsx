@@ -177,7 +177,14 @@ export default function EventCardBase({
   hideTodayBadge = false,
 }: EventCardBaseProps) {
   const anchor = anchorDateOnly(event);
-  const showTodayBadge = !hideTodayBadge && isActiveOn(event, todayInSantiago());
+  // An inauguración is a single-day happening (the opening night itself),
+  // never a range — real bug, found 2026-07-31: this used isActiveOn's
+  // full run range (openingDatetime..runEndDate) for BOTH variants, so an
+  // inauguración card kept showing "HOY" for the entire multi-week run
+  // that followed its actual (already-past) opening date. An "expo" card
+  // genuinely does span a range, so it keeps using isActiveOn as-is.
+  const showTodayBadge =
+    !hideTodayBadge && (variant === "inauguracion" ? anchor === todayInSantiago() : isActiveOn(event, todayInSantiago()));
   const dateLine =
     variant === "inauguracion" && event.openingDatetime
       ? `${fmtInauguracionDate(event.openingDatetime)} - ${
