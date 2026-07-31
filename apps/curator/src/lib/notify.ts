@@ -589,23 +589,35 @@ function fmtHourSantiago(openingDatetimeIso: string): string {
   return minute === "00" ? `${hour} hr` : `${hour}:${minute} hr`;
 }
 
-function fmtDigestDate(e: DigestEvent): string {
+const MONTHS_ES = [
+  "enero", "febrero", "marzo", "abril", "mayo", "junio",
+  "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre",
+];
+
+// "5 de agosto" normally, "5 de agosto de 2027" only when the date's own
+// year differs from referenceYear — real feedback: bare ISO (2026-08-05)
+// read as cold/technical. Year is dropped in the common case (almost
+// every event falls in the digest's own send year) but kept whenever it
+// wouldn't otherwise be inferable, since this text also lives on in an
+// inbox read weeks or months later.
+function fmtDateEs(dateStr: string, referenceYear: number): string {
+  const [y, m, d] = dateStr.split("-").map(Number);
+  const base = `${d} de ${MONTHS_ES[m - 1]}`;
+  return y === referenceYear ? base : `${base} de ${y}`;
+}
+
+function fmtDigestDate(e: DigestEvent, referenceYear: number): string {
   // Only an opening happening THIS week reads as "Inauguración:" — an
   // event that opened weeks ago (even with openingDatetime set) is just
   // still running, and should read "Hasta el <fecha>" like any other
   // ongoing show, not as if it were opening soon.
   if (e.isOpeningThisWeek && e.openingDatetime) {
-    const dateStr = e.openingDatetime.slice(0, 10);
-    return e.openingTimeConfirmed ? `Inauguración: ${dateStr} · ${fmtHourSantiago(e.openingDatetime)}` : `Inauguración: ${dateStr}`;
+    const dateLabel = fmtDateEs(e.openingDatetime.slice(0, 10), referenceYear);
+    return e.openingTimeConfirmed ? `Inauguración: ${dateLabel} · ${fmtHourSantiago(e.openingDatetime)}` : `Inauguración: ${dateLabel}`;
   }
-  if (e.runEndDate) return `Hasta el ${e.runEndDate}`;
+  if (e.runEndDate) return `Hasta el ${fmtDateEs(e.runEndDate, referenceYear)}`;
   return "";
 }
-
-const MONTHS_ES = [
-  "enero", "febrero", "marzo", "abril", "mayo", "junio",
-  "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre",
-];
 
 // "27 de julio al 2 de agosto 2026" — same "same month collapses" rule as
 // apps/web/src/lib/date.ts's fmtWeekHeader (duplicated, not imported —
@@ -657,12 +669,21 @@ export function buildDigestSubject(sections: DigestSection[]): string {
   return `Caldearte — tu semana en arte (${totalEvents} expo${totalEvents === 1 ? "" : "s"})`;
 }
 
+// Anchors "same year → no year suffix" to the digest's own send week
+// rather than the wall clock — deterministic for a given week param, and
+// falls back to the real current year only when no week is supplied
+// (e.g. an older/simplified caller).
+function referenceYearFor(week?: { start: string }): number {
+  return week ? Number(week.start.slice(0, 4)) : new Date().getFullYear();
+}
+
 export function buildDigestBody(
   sections: DigestSection[],
   unsubscribeToken: string,
   intro: string | null = null,
   week?: { start: string; end: string },
 ): string {
+  const referenceYear = referenceYearFor(week);
   const lines: string[] = [];
   if (week) lines.push(fmtWeekHeaderEs(week.start, week.end), "");
   if (intro) {
@@ -677,7 +698,7 @@ export function buildDigestBody(
       for (const [comuna, events] of groupByComuna(section.events)) {
         lines.push(`[${comuna}]`);
         for (const e of events) {
-          const date = fmtDigestDate(e);
+          const date = fmtDigestDate(e, referenceYear);
           lines.push(`${e.title} — ${e.placeName}${date ? ` — ${date}` : ""}`);
           lines.push(`  ${eventUrl(e.id)}`);
         }
@@ -701,8 +722,8 @@ export function buildDigestBody(
 // title, date, arrow), the whole card as one link — not a bare
 // thumbnail+text row. <table> layout (not flex/grid) since email clients
 // don't reliably support either.
-function eventCardHtml(e: DigestEvent): string {
-  const date = fmtDigestDate(e);
+function eventCardHtml(e: DigestEvent, referenceYear: number): string {
+  const date = fmtDigestDate(e, referenceYear);
   const thumb = e.imageUrl
     ? `<img src="${escapeHtml(e.imageUrl)}" width="110" height="132" alt="" style="display:block;width:110px;height:132px;object-fit:cover;" />`
     : `<div style="width:110px;height:132px;background:#3a3a3a;"></div>`;
@@ -735,6 +756,7 @@ export function buildDigestHtmlBody(
   intro: string | null = null,
   week?: { start: string; end: string },
 ): string {
+  const referenceYear = referenceYearFor(week);
   const sectionsHtml = sections
     .map((section) => {
       const bodyHtml =
@@ -743,7 +765,7 @@ export function buildDigestHtmlBody(
           : groupByComuna(section.events)
               .map(
                 ([comuna, events]) =>
-                  `<p style="margin:20px 0 10px;font-size:12px;font-weight:700;color:#1c1c1c;">${escapeHtml(comuna)}</p>${events.map(eventCardHtml).join("")}`,
+                  `<p style="margin:20px 0 10px;font-size:12px;font-weight:700;color:#1c1c1c;">${escapeHtml(comuna)}</p>${events.map((e) => eventCardHtml(e, referenceYear)).join("")}`,
               )
               .join("");
       const moreLinkHtml = section.moreLink
