@@ -21,8 +21,9 @@ type EventRow = Tables<"events">;
 // carries region_id, not either name directly.
 type EventWithRegion = EventRow & { adminRegionName: string | null; comunaName: string | null };
 
-const REMINDER_CAP = 3;
-const OTHER_COMUNAS_CAP = 3;
+const VISIT_CAP = 10;
+const OTHER_REGIONS_CAP = 5;
+const SITE_URL = "https://www.caldearte.com";
 
 export interface RunDeps {
   supabase?: SupabaseClient<Database>;
@@ -103,24 +104,68 @@ export function buildDigestSections(
   const newIds = new Set(newThisWeek.map((e) => e.id));
 
   // Everything else already running (started before this week, still
-  // open) — a plain "browse what's still on" list, capped and sorted
-  // ending-soonest-first so it doubles as a nudge to catch it before it
-  // closes.
-  const alsoVisit = runningThisWeek
+  // open) — a plain "browse what's still on" list, sorted ending-soonest
+  // first so it doubles as a nudge to catch it before it closes. Kept as
+  // two values: the full pool (for the "ver todas" count and the
+  // empty-state check) and the capped slice actually rendered as cards —
+  // a región like Región Metropolitana can easily have 40+ of these,
+  // showing all of them would bury everything else in the email.
+  const alsoVisitAll = runningThisWeek
     .filter((e) => !openingIds.has(e.id) && !newIds.has(e.id))
-    .sort((a, b) => (a.run_end_date ?? "9999-12-31").localeCompare(b.run_end_date ?? "9999-12-31"))
-    .slice(0, REMINDER_CAP);
+    .sort((a, b) => (a.run_end_date ?? "9999-12-31").localeCompare(b.run_end_date ?? "9999-12-31"));
+  const alsoVisit = alsoVisitAll.slice(0, VISIT_CAP);
 
-  const otherRegions = shuffle(events.filter((e) => e.adminRegionName !== adminRegionName && isRunningOn(e, week.end))).slice(
-    0,
-    OTHER_COMUNAS_CAP,
-  );
+  const otherRegionsAll = shuffle(events.filter((e) => e.adminRegionName !== adminRegionName && isRunningOn(e, week.end)));
+  const otherRegionsSample = otherRegionsAll.slice(0, OTHER_REGIONS_CAP);
+
+  // Only skip the subscriber entirely if there's truly nothing anywhere —
+  // not even something to point at in another región. Otherwise the
+  // digest always sends, using emptyMessage below to say so explicitly
+  // rather than just omitting a section and leaving the reader guessing
+  // whether that's a bug or genuinely nothing this week.
+  const hasAnyContent = openings.length > 0 || newThisWeek.length > 0 || alsoVisitAll.length > 0 || otherRegionsAll.length > 0;
+  if (!hasAnyContent) return [];
+
+  // Total across the whole country, not just the sample shown in "En
+  // otras regiones" — the reader-facing count next to that section's
+  // "explore everything" link.
+  const nationwideActiveCount = events.filter((e) => isRunningOn(e, week.end)).length;
 
   const sections: DigestSection[] = [];
-  if (openings.length > 0) sections.push({ label: "Inauguraciones de esta semana", events: openings.map(toDigestEvent) });
-  if (newThisWeek.length > 0) sections.push({ label: "Expos nuevas esta semana", events: newThisWeek.map(toDigestEvent) });
-  if (alsoVisit.length > 0) sections.push({ label: "También puedes visitar", events: alsoVisit.map(toDigestEvent) });
-  if (otherRegions.length > 0) sections.push({ label: "En otras regiones", events: otherRegions.map(toDigestEvent) });
+
+  sections.push({
+    label: "Inauguraciones de esta semana",
+    events: openings.map(toDigestEvent),
+    emptyMessage:
+      openings.length === 0 ? "No hemos encontrado ninguna inauguración para esta semana aún. Si sabes de una, avísanos." : undefined,
+  });
+
+  if (newThisWeek.length > 0) {
+    sections.push({ label: "Expos nuevas esta semana", events: newThisWeek.map(toDigestEvent) });
+  }
+
+  sections.push({
+    label: "Expos para visitar esta semana",
+    events: alsoVisit.map(toDigestEvent),
+    emptyMessage:
+      alsoVisitAll.length === 0 ? "No hemos encontrado exposiciones para visitar esta semana aún. Si sabes de una, avísanos." : undefined,
+    moreLink:
+      alsoVisitAll.length > VISIT_CAP
+        ? { label: `Ver todas las ${alsoVisitAll.length} exposiciones en ${adminRegionName}`, url: SITE_URL }
+        : undefined,
+  });
+
+  if (otherRegionsSample.length > 0) {
+    sections.push({
+      label: "En otras regiones",
+      events: otherRegionsSample.map(toDigestEvent),
+      moreLink: {
+        label: `Si deseas puedes explorar las ${nationwideActiveCount} exposiciones activas esta semana a lo largo de Chile`,
+        url: SITE_URL,
+      },
+    });
+  }
+
   return sections;
 }
 

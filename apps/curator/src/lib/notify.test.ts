@@ -377,6 +377,40 @@ test("buildDigestHtmlBody renders every section grouped by comuna as thumbnail c
   assert.match(html, /newsletter\/baja\?token=unsub-token/);
 });
 
+test("buildDigestHtmlBody: the CALDEARTE header is a link to the homepage, styled white and without an underline so it reads as a logo, not a link", () => {
+  const html = buildDigestHtmlBody(fixtureDigestSections, "unsub-token");
+  assert.match(html, /<a href="https:\/\/www\.caldearte\.com" style="[^"]*color:#fff[^"]*text-decoration:none[^"]*">CALDEARTE<\/a>/);
+});
+
+test("buildDigestBody and buildDigestHtmlBody render a section's emptyMessage instead of a card list when it has no events", () => {
+  const sections: DigestSection[] = [
+    {
+      label: "Inauguraciones de esta semana",
+      events: [],
+      emptyMessage: "No hemos encontrado ninguna inauguración para esta semana aún. Si sabes de una, avísanos.",
+    },
+  ];
+  const body = buildDigestBody(sections, "unsub-token");
+  assert.match(body, /No hemos encontrado ninguna inauguración para esta semana aún\. Si sabes de una, avísanos\./);
+
+  const html = buildDigestHtmlBody(sections, "unsub-token");
+  assert.match(html, /No hemos encontrado ninguna inauguración para esta semana aún\. Si sabes de una, avísanos\./);
+});
+
+test("buildDigestBody and buildDigestHtmlBody render a section's moreLink alongside its events", () => {
+  const sections: DigestSection[] = [
+    {
+      ...fixtureDigestSections[1],
+      moreLink: { label: "Si deseas puedes explorar las 75 exposiciones activas esta semana a lo largo de Chile", url: "https://www.caldearte.com" },
+    },
+  ];
+  const body = buildDigestBody(sections, "unsub-token");
+  assert.match(body, /Si deseas puedes explorar las 75 exposiciones activas esta semana a lo largo de Chile: https:\/\/www\.caldearte\.com/);
+
+  const html = buildDigestHtmlBody(sections, "unsub-token");
+  assert.match(html, /<a href="https:\/\/www\.caldearte\.com"[^>]*>Si deseas puedes explorar las 75 exposiciones activas esta semana a lo largo de Chile<\/a>/);
+});
+
 test("buildDigestBody omits the hour for an opening whose time isn't confirmed", () => {
   const sections: DigestSection[] = [
     {
