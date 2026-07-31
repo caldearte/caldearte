@@ -29,10 +29,31 @@ function htmlResponse(body: string, status = 200): Response {
   );
 }
 
+// Real vulnerability found + fixed 2026-07-31 (live pentest against
+// production, no static-analysis pass caught it): `token` used to go
+// straight into a hand-built `.or("accept_token.eq.X,reject_token.eq.X")`
+// filter STRING, not a parameterized value. PostgREST parses that string
+// as its own mini query language, so a token like
+// "x,new_status.eq.rejected" injected an extra OR condition — letting
+// anyone close ANY pending escalation (bypassing the human curator
+// review this feature exists for) without ever knowing a real token, by
+// guessing a condition on a low-cardinality column like new_status
+// (only 2 possible values). Verified live: created a decoy escalation,
+// resolved it via a crafted token that never matched either real token,
+// confirmed via direct DB read, cleaned up.
+//
+// Fixed by rejecting anything that isn't shaped like a real token BEFORE
+// it ever reaches a query — real tokens are always
+// crypto.randomBytes(32).toString("hex") (event-discovery/run.ts), i.e.
+// exactly 64 lowercase hex characters. Closes the class of bug
+// regardless of whichever PostgREST filter operator this ever uses next,
+// not just today's `.or()`.
+const TOKEN_PATTERN = /^[a-f0-9]{64}$/;
+
 Deno.serve(async (req) => {
   const url = new URL(req.url);
   const token = req.method === "POST" ? (await req.formData()).get("token")?.toString() : url.searchParams.get("token");
-  if (!token) return htmlResponse("<p>Falta el token.</p>", 400);
+  if (!token || !TOKEN_PATTERN.test(token)) return htmlResponse("<p>Falta el token, o no es válido.</p>", 400);
 
   const client = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
 
