@@ -4,7 +4,11 @@
    dark-mode-adaptive, so there's deliberately no prefers-color-scheme
    override here. */
 :root {
-  --background: #ffffff;
+  /* Rediseño 2.0.0 — el fondo de toda la web pasa a surface/sage
+     (confirmado con el usuario 2026-08-03, viendo el mockup real: no es
+     blanco). Cards/paneles individuales siguen usando surface/white
+     explícitamente donde corresponda — este es solo el fondo de página. */
+  --background: var(--color-surface-sage);
   --foreground: #111827;
 
   --color-venue-gray: #a0a0a0;
@@ -41,6 +45,11 @@
   --radius-button: 16px;
   --radius-badge: 2px;
 
+  /* Deliberately NOT registered under Tailwind's --spacing-* namespace
+     (that would silently override the default numeric scale — p-7, gap-4,
+     mt-8, etc. — used by ~27 other files that predate this redesign and
+     assume Tailwind's real 4px-multiple values). Reference these via
+     arbitrary-value utilities instead, e.g. px-[var(--space-13)]. */
   --space-2: 4px;
   --space-3: 6px;
   --space-4: 8px;
@@ -93,20 +102,6 @@
   --radius-input: var(--radius-input);
   --radius-button: var(--radius-button);
   --radius-badge: var(--radius-badge);
-
-  --spacing-2: var(--space-2);
-  --spacing-3: var(--space-3);
-  --spacing-4: var(--space-4);
-  --spacing-5: var(--space-5);
-  --spacing-6: var(--space-6);
-  --spacing-7: var(--space-7);
-  --spacing-8: var(--space-8);
-  --spacing-9: var(--space-9);
-  --spacing-10: var(--space-10);
-  --spacing-11: var(--space-11);
-  --spacing-12: var(--space-12);
-  --spacing-13: var(--space-13);
-  --spacing-14: var(--space-14);
 }
 
 body {

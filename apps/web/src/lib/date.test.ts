@@ -12,11 +12,14 @@ import {
   dateOnlyFromIso,
   weekBoundsInSantiago,
   fmtWeekHeader,
+  fmtWeekRange,
   fmtMonthYear,
   isArchivableMonth,
   monthBounds,
   fmtInauguracionDate,
   buildGoogleCalendarUrl,
+  addWeeks,
+  weekNumberSince,
 } from "./date";
 
 test("fmtShort formats a short date", () => {
@@ -160,6 +163,38 @@ test("fmtWeekHeader: same-month week", () => {
 
 test("fmtWeekHeader: week spanning a month boundary", () => {
   assert.equal(fmtWeekHeader("2026-07-27", "2026-08-02"), "27 de JULIO al 2 de AGOSTO");
+});
+
+test("fmtWeekRange: same-month week — full month name once, zero-padded days", () => {
+  assert.equal(fmtWeekRange("2026-08-03", "2026-08-09"), "03 al 09 de AGOSTO");
+});
+
+test("fmtWeekRange: cross-month week — abbreviated month on both sides, only the end date gets 'de'", () => {
+  assert.equal(fmtWeekRange("2026-07-27", "2026-08-02"), "27 JUL al 02 de AGO");
+});
+
+test("addWeeks: shifts a Monday forward and backward by whole weeks", () => {
+  assert.equal(addWeeks("2026-07-27", 1), "2026-08-03");
+  assert.equal(addWeeks("2026-07-27", -1), "2026-07-20");
+  assert.equal(addWeeks("2026-07-27", 0), "2026-07-27");
+});
+
+test("addWeeks: crosses a year boundary", () => {
+  assert.equal(addWeeks("2026-12-28", 1), "2027-01-04");
+});
+
+test("weekNumberSince: the epoch week itself is N°1", () => {
+  assert.equal(weekNumberSince("2026-07-27"), 1);
+});
+
+test("weekNumberSince: counts sequential weeks after the epoch", () => {
+  assert.equal(weekNumberSince("2026-08-03"), 2);
+  assert.equal(weekNumberSince("2026-08-10"), 3);
+});
+
+test("weekNumberSince: clamps to 1 for any week before the epoch", () => {
+  assert.equal(weekNumberSince("2026-07-20"), 1);
+  assert.equal(weekNumberSince("2020-01-06"), 1);
 });
 
 test("fmtMonthYear formats a capitalized month name and year", () => {

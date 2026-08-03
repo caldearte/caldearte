@@ -37,6 +37,22 @@ function countsPhrase(inauguracionesCount: number, exposCount: number, joiner: s
 export const esCL = {
   appName: "CALDEARTE",
   appDescription: "Calendario de inauguraciones de arte en Chile.",
+  // Rediseño 2.0.0 — wordmark de dos líneas ("CALDE" / "ARTE.") tal como
+  // está en Figma, distinto del appName de una sola línea usado en
+  // metadata/otros lugares.
+  wordmarkLine1: "CALDE",
+  wordmarkLine2: "ARTE.",
+  heroTagline: "GUÍA INDEPENDIENTE DE ARTE SEMANAL",
+  // Mobile forces this onto 3 explicit lines (design decision, not just
+  // natural text wrap) — desktop keeps heroTagline as one line.
+  heroTaglineMobileLines: ["GUÍA", "INDEPENDIENTE", "DE ARTE SEMANAL"],
+  weekNumberLabel: (n: number) => `SEMANA N°${n}`,
+  prevWeekAriaLabel: "Semana anterior",
+  nextWeekAriaLabel: "Semana siguiente",
+  // Header's location pill, e.g. "SANTIAGO, CHILE" — was hardcoded inline
+  // in Header.tsx (real gap found 2026-08-03), now routed through i18n
+  // like every other visible string.
+  locationPillSuffix: (cityName: string) => `${cityName.toUpperCase()}, CHILE`,
   chooseCity: "Elige tu ciudad",
   cityPickerAriaLabel: "Selector de ciudad",
   closeCityPicker: "Cerrar selector de ciudad",

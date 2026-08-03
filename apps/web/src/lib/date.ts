@@ -104,6 +104,33 @@ export function currentWeekInSantiago(): { start: string; end: string } {
   return weekBoundsInSantiago(todayInSantiago());
 }
 
+// Monday of the first week Caldearte published as a weekly guide —
+// confirmed with the user 2026-08-03, matches the redesign's own Figma
+// mockup ("SEMANA N°1" = 27 de julio – 02 de agosto). Sequential counter
+// from here, not the ISO calendar week number — this is an editorial
+// "issue number," not a calendar concept.
+const WEEK_ONE_MONDAY = "2026-07-27";
+
+// Shifts a Monday date string by `weeks` (positive = later, negative =
+// earlier), returning the new Monday — used for prev/next week
+// navigation. Any date works as input, not just a Monday, but callers
+// always pass a week's start.
+export function addWeeks(mondayStr: string, weeks: number): string {
+  const d = parseDateOnly(mondayStr);
+  d.setDate(d.getDate() + weeks * 7);
+  return toDateOnlyString(d);
+}
+
+// "SEMANA N°X" — 1-indexed count of weeks since WEEK_ONE_MONDAY. Clamped
+// to a minimum of 1 so a week before the epoch (e.g. while still testing
+// pre-launch) never renders a confusing zero/negative number.
+export function weekNumberSince(weekStart: string): number {
+  const start = parseDateOnly(WEEK_ONE_MONDAY);
+  const target = parseDateOnly(weekStart);
+  const diffDays = Math.round((target.getTime() - start.getTime()) / (24 * 60 * 60 * 1000));
+  return Math.max(1, Math.floor(diffDays / 7) + 1);
+}
+
 // "Julio 2026" — capitalized month, for the archive's page title/heading.
 export function fmtMonthYear(year: number, month: number): string {
   const name = MONTHS[month - 1];
@@ -152,6 +179,22 @@ export function fmtWeekHeader(weekStart: string, weekEnd: string): string {
     return `${s.getDate()} al ${e.getDate()} de ${MONTHS[s.getMonth()].toUpperCase()}`;
   }
   return `${s.getDate()} de ${MONTHS[s.getMonth()].toUpperCase()} al ${e.getDate()} de ${MONTHS[e.getMonth()].toUpperCase()}`;
+}
+
+// Rediseño 2.0.0 hero week range (selector). Day always zero-padded to 2
+// digits, "al" joiner (not an em dash). Same month: full month name once,
+// e.g. "03 al 09 de AGOSTO". Different months: abbreviated month on both
+// sides, only the end date gets "de", e.g. "27 JUL al 09 de AGO" — spec
+// confirmed with the user 2026-08-03. Distinct from fmtWeekHeader (used
+// elsewhere, unpadded day, "de MONTH" on the same-month case only).
+export function fmtWeekRange(weekStart: string, weekEnd: string): string {
+  const s = parseDateOnly(weekStart);
+  const e = parseDateOnly(weekEnd);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  if (s.getMonth() === e.getMonth()) {
+    return `${pad(s.getDate())} al ${pad(e.getDate())} de ${MONTHS[s.getMonth()].toUpperCase()}`;
+  }
+  return `${pad(s.getDate())} ${MONTHS_SHORT[s.getMonth()].toUpperCase()} al ${pad(e.getDate())} de ${MONTHS_SHORT[e.getMonth()].toUpperCase()}`;
 }
 
 // Google Calendar's compact UTC format for its event-creation link:
