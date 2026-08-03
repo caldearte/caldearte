@@ -19,6 +19,7 @@ import Header from "./Header";
 import FiltersSection from "./FiltersSection";
 import InauguracionCard from "./InauguracionCard";
 import ExpoCard from "./ExpoCard";
+import CuratoriaBanner from "./CuratoriaBanner";
 import CityCarousel from "./CityCarousel";
 import Footer from "./Footer";
 import CityPickerPanel from "./CityPickerPanel";
@@ -228,6 +229,8 @@ export default function CalendarView({
               </div>
             </section>
           )}
+
+          <CuratoriaBanner />
 
           {exposActuales.length > 0 && (
             <section className="mt-16">
