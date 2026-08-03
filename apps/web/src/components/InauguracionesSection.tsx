@@ -72,7 +72,14 @@ export default function InauguracionesSection({ events, hideTodayBadge = false }
       <p className="font-geist font-semibold text-[15px] text-text-secondary tracking-[2px] mb-1.5">{esCL.sectionInauguracionesLabel}</p>
       <h2 className="font-lato font-black text-[28px] md:text-[41px] text-text-primary mb-6">{esCL.sectionInauguraciones}</h2>
 
-      <div className="flex items-center justify-between mb-6">
+      {/* Sticky right under the fixed top nav (50px mobile/60px desktop,
+          measured directly off Header's own nav bar) while scrolling
+          through this section's cards — naturally stops sticking once the
+          section itself (this component's own bounding box) scrolls past,
+          since a sticky element can't render outside its containing
+          block. bg-surface-sage so content scrolling underneath doesn't
+          show through. */}
+      <div className="sticky top-[50px] md:top-[60px] z-10 bg-surface-sage flex items-center justify-between mb-6 py-2">
         {/* Grid/list toggle is desktop-only — Figma's mobile toolbar (178:76)
             has no view-toggles at all, just this label + pagination. */}
         <div className="hidden md:flex items-center gap-[12px]">
