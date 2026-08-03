@@ -147,9 +147,19 @@ export const esCL = {
   // which of the week's items are happening right now.
   todayBadge: "HOY",
 
-  sectionInauguraciones: "INAUGURACIONES",
+  sectionInauguraciones: "INAUGURACIONES DE LA SEMANA",
+  sectionInauguracionesLabel: "APERTURAS DESTACADAS",
+  sectionInauguracionesLabelMobile: "Inauguración destacada",
   sectionExposActuales: "EXPOS ACTUALES",
   sectionArteEnTodasPartes: "ARTE EN TODAS PARTES",
+
+  // Rediseño 2.0.0 — bento-card toolbar (Inauguraciones/Exposiciones):
+  // grid⇄list view toggle + pagination.
+  viewToggleGridAriaLabel: "Ver como cuadrícula",
+  viewToggleListAriaLabel: "Ver como lista",
+  prevPageAriaLabel: "Página anterior",
+  nextPageAriaLabel: "Página siguiente",
+  pageIndicator: (page: number, total: number) => `${page} / ${total}`,
 
   // Appended after the opening date on an InauguracionCard when the source
   // confirms a date but never an hour (see EventRecord.openingTimeConfirmed).
@@ -168,7 +178,12 @@ export const esCL = {
   cardMenuDirections: "Cómo llegar",
   cardMenuSource: "Ver fuente original",
   // Inauguraciones only — see EventCardBase's gating on variant + openingDatetime.
-  cardMenuAddToCalendar: "Agregar a mi calendario",
+  // Just "Agregar", not "Agregar a mi calendario" — every place this
+  // shows already has a calendar icon right next to it (kebab menu,
+  // standalone page, bento card), so the fuller phrase was redundant
+  // everywhere it appeared (confirmed 2026-08-03, also matches Figma's
+  // own "Agregar" label on the bento card).
+  cardMenuAddToCalendar: "Agregar",
   // "Compartir" is a row/button that reveals the targets below (with a
   // "← Volver" to go back), not all listed flat — explicit web intents,
   // not navigator.share (see EventCardBase's own doc comment: the

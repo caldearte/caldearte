@@ -7,8 +7,6 @@ import { cityById, OTHER_CITY } from "@/lib/cities";
 import {
   CITY_COOKIE,
   FAMILY_MODE_COOKIE,
-  TODAY_FILTER_COOKIE,
-  VIGENTES_FILTER_COOKIE,
   NEWSLETTER_PROMPT_COOKIE,
   setCookie,
   pushRecentCityId,
@@ -16,8 +14,7 @@ import {
 import { fmtShort } from "@/lib/date";
 import type { CityCounts, EventRecord, RegionMeta } from "@/lib/events";
 import Header from "./Header";
-import FiltersSection from "./FiltersSection";
-import InauguracionCard from "./InauguracionCard";
+import InauguracionesSection from "./InauguracionesSection";
 import ExpoCard from "./ExpoCard";
 import CuratoriaBanner from "./CuratoriaBanner";
 import CityCarousel from "./CityCarousel";
@@ -123,24 +120,6 @@ export default function CalendarView({
     router.refresh();
   }
 
-  // Hoy and Vigentes are mutually exclusive — turning Hoy on already
-  // narrows everything to today, which makes Vigentes' "hide already-passed
-  // openings this week" redundant (today's openings are never in the
-  // past), so enabling either one clears the other.
-  function toggleTodayFilter() {
-    const turningOn = !todayFilterOn;
-    setCookie(TODAY_FILTER_COOKIE, turningOn ? "1" : "");
-    if (turningOn) setCookie(VIGENTES_FILTER_COOKIE, "");
-    router.refresh();
-  }
-
-  function toggleVigentesFilter() {
-    const turningOn = !vigentesFilterOn;
-    setCookie(VIGENTES_FILTER_COOKIE, turningOn ? "1" : "");
-    if (turningOn) setCookie(TODAY_FILTER_COOKIE, "");
-    router.refresh();
-  }
-
   const isEmpty = inauguraciones.length === 0 && exposActuales.length === 0;
 
   // Same "answered = never ask again unprompted" semantics as
@@ -181,23 +160,6 @@ export default function CalendarView({
         onOpenMenu={() => setDrawerOpen(true)}
       />
 
-      <FiltersSection
-        familyMode={familyMode}
-        todayFilterOn={todayFilterOn}
-        vigentesFilterOn={vigentesFilterOn}
-        onToggleFamilyMode={toggleFamilyMode}
-        onToggleTodayFilter={toggleTodayFilter}
-        onToggleVigentesFilter={toggleVigentesFilter}
-      />
-
-      {/* Value-prop tagline — previously only lived in <meta description>
-          and the footer, nothing stated it above the fold (2026-07-28 UX
-          audit finding). Placed here, not its own banner: this is the gap
-          between Filtros and the first section heading, mobile's largest
-          unused stretch of whitespace, so it also tightens that up instead
-          of adding a new one. */}
-      <p className="mt-2 text-xs text-muted-gray">{esCL.footer.tagline}</p>
-
       {isEmpty ? (
         <div className="py-10">
           {nextEvent ? (
@@ -219,16 +181,7 @@ export default function CalendarView({
         </div>
       ) : (
         <>
-          {inauguraciones.length > 0 && (
-            <section className="mt-6">
-              <h2 className="text-3xl md:text-[41px] font-black tracking-wide text-heading-gray mb-6">{esCL.sectionInauguraciones}</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-[118px]">
-                {inauguraciones.map((e) => (
-                  <InauguracionCard key={e.id} event={e} hideTodayBadge={todayFilterOn} />
-                ))}
-              </div>
-            </section>
-          )}
+          <InauguracionesSection events={inauguraciones} hideTodayBadge={todayFilterOn} />
 
           <div className="w-full flex flex-wrap justify-center">
             <CuratoriaBanner />
@@ -273,7 +226,13 @@ export default function CalendarView({
         onSelectCity={goToCity}
       />
 
-      <MenuDrawer open={drawerOpen} archiveHref={archiveHref} onClose={() => setDrawerOpen(false)} />
+      <MenuDrawer
+        open={drawerOpen}
+        archiveHref={archiveHref}
+        familyMode={familyMode}
+        onToggleFamilyMode={toggleFamilyMode}
+        onClose={() => setDrawerOpen(false)}
+      />
 
       <SearchPanel open={searchOpen} events={searchableEvents} onClose={() => setSearchOpen(false)} />
     </div>
