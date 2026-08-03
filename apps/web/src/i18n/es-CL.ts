@@ -288,6 +288,13 @@ export const esCL = {
     title: "Curatoría",
   },
 
+  // Rediseño 2.0.0 — teaser corto del home que enlaza a /curatoria, no
+  // reemplaza curatoriaText (el manifiesto completo, más abajo) que sigue
+  // viviendo solo en esa página.
+  curatoriaWordmarkLines: ["CURA", "TOR", "IA."],
+  curatoriaTeaser: "LA ESTÉTICA NO ES NEUTRAL, Y NUESTRA SELECCIÓN TAMPOCO.",
+  verMas: "ver mas",
+
   contacto: {
     title: "Contacto",
     intro: "¿Viste algo mal curado, una inauguración que nos falta, o simplemente quieres escribirnos? Déjanos tu mensaje.",
