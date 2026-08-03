@@ -43,6 +43,9 @@ export const esCL = {
   wordmarkLine1: "CALDE",
   wordmarkLine2: "ARTE.",
   heroTagline: "GUÍA INDEPENDIENTE DE ARTE SEMANAL",
+  // Mobile forces this onto 3 explicit lines (design decision, not just
+  // natural text wrap) — desktop keeps heroTagline as one line.
+  heroTaglineMobileLines: ["GUÍA", "INDEPENDIENTE", "DE ARTE SEMANAL"],
   weekNumberLabel: (n: number) => `SEMANA N°${n}`,
   prevWeekAriaLabel: "Semana anterior",
   nextWeekAriaLabel: "Semana siguiente",

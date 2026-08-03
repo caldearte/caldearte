@@ -4,7 +4,11 @@
    dark-mode-adaptive, so there's deliberately no prefers-color-scheme
    override here. */
 :root {
-  --background: #ffffff;
+  /* Rediseño 2.0.0 — el fondo de toda la web pasa a surface/sage
+     (confirmado con el usuario 2026-08-03, viendo el mockup real: no es
+     blanco). Cards/paneles individuales siguen usando surface/white
+     explícitamente donde corresponda — este es solo el fondo de página. */
+  --background: var(--color-surface-sage);
   --foreground: #111827;
 
   --color-venue-gray: #a0a0a0;

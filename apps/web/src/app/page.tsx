@@ -198,7 +198,7 @@ export default async function HomePage({
     : null;
 
   return (
-    <main className="min-h-screen w-full bg-white px-4 py-8 md:px-[61px] max-w-[1280px] mx-auto">
+    <main className="min-h-screen w-full bg-surface-sage px-4 py-8 md:px-[61px] max-w-[1280px] mx-auto">
       <CalendarView
         inauguraciones={inauguraciones}
         exposActuales={exposActuales}
