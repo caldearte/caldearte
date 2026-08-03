@@ -156,7 +156,12 @@ export default function Header({
           </p>
         </div>
 
-        <div className="flex flex-col items-center gap-[11px]">
+        {/* self-center overrides the hero's own items-start (mobile) —
+            that alignment is about the wordmark column staying flush left,
+            not about this selector block, which should sit centered in
+            the available width regardless. Desktop already centers it via
+            items-end on the row, so self-auto there is a no-op. */}
+        <div className="self-center md:self-auto flex flex-col items-center gap-[11px]">
           {/* Wrapping div left as a plain flex-col (default
               align-items:stretch) so its width == the button's own
               content width, and the p (w-full, text-left) stretches to
