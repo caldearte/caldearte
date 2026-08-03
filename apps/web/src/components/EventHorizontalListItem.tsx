@@ -15,9 +15,11 @@ interface EventHorizontalListItemProps {
 
 // Compact "list view" card (toggle-list in the Inauguraciones/
 // Exposiciones toolbar) — a thumbnail + date/badge + title + venue in one
-// row, versus the full bento-split card's image-plus-text-panel. No
-// exact Figma node for this variant existed at build time; sized/spaced
-// to match the density of the reference screenshot the user provided.
+// row, versus the full bento-split card's image-plus-text-panel. Tiled 3
+// per row in a fixed-width grid column (InauguracionesSection), not a
+// full-width row. No exact Figma node for this variant existed at build
+// time; sized/spaced to match the density of the reference screenshot
+// the user provided.
 export default function EventHorizontalListItem({ event, variant }: EventHorizontalListItemProps) {
   const { dateLine, venueLine, mapsHref, calendarHref, shareSubmenuOpen, setShareSubmenuOpen, linkCopied, handleShareWhatsApp, handleShareTwitter, handleShareFacebook, handleCopyLink } =
     useEventCardActions(event, variant);
@@ -25,19 +27,21 @@ export default function EventHorizontalListItem({ event, variant }: EventHorizon
   const eventHref = `/eventos/${event.id}`;
 
   return (
-    <div className="relative flex items-center gap-[16px] bg-surface-white p-[12px]">
-      <Link href={eventHref} className="relative block shrink-0 w-[96px] h-[72px] overflow-hidden">
+    <div className="relative flex items-center gap-[12px] bg-surface-white p-[12px] cursor-pointer">
+      {/* Whole-card link — absolutely positioned overlay (not a wrapper)
+          so the kebab button/menu (explicitly z-20+) can sit as a SIBLING
+          and take click precedence, same pattern as EventCardBase. */}
+      <Link href={eventHref} aria-label={esCL.eventCardAriaLabel(event.title)} className="absolute inset-0 z-10 cursor-pointer" />
+      <div className="relative shrink-0 w-[72px] h-[56px] overflow-hidden">
         <CardImage imageUrl={event.imageUrl} sourceUrl={event.sourceUrl} sensitivityTags={event.sensitivityTags} />
-      </Link>
+      </div>
       <div className="flex-1 min-w-0 flex flex-col gap-[4px]">
-        {dateLine && <p className="font-geist font-extrabold text-[12px] text-brand-magenta whitespace-nowrap">{dateLine}</p>}
-        <Link href={eventHref} className="font-fragment-mono text-[15px] leading-[1.2] text-text-primary truncate">
-          {event.title}
-        </Link>
-        <p className="font-geist text-[12px] text-text-muted truncate">{venueLine}</p>
+        {dateLine && <p className="font-geist font-extrabold text-[11px] text-brand-magenta whitespace-nowrap">{dateLine}</p>}
+        <p className="font-fragment-mono text-[14px] leading-[1.2] text-text-primary truncate">{event.title}</p>
+        <p className="font-geist text-[11px] text-text-muted truncate">{venueLine}</p>
       </div>
 
-      <div className="relative shrink-0">
+      <div className="relative z-20 shrink-0">
         <button
           type="button"
           onClick={() => {
@@ -58,13 +62,13 @@ export default function EventHorizontalListItem({ event, variant }: EventHorizon
             <button
               type="button"
               aria-label={esCL.cardMoreOptionsAriaLabel}
-              className="fixed inset-0 z-10"
+              className="fixed inset-0 z-20"
               onClick={() => {
                 setMenuOpen(false);
                 setShareSubmenuOpen(false);
               }}
             />
-            <div role="menu" className="absolute top-full right-0 mt-2 z-20 min-w-[190px] overflow-hidden rounded-xl bg-white shadow-lg py-1">
+            <div role="menu" className="absolute top-full right-0 mt-2 z-30 min-w-[190px] overflow-hidden rounded-xl bg-white shadow-lg py-1">
               {!shareSubmenuOpen ? (
                 <>
                   {mapsHref && (
@@ -147,7 +151,7 @@ export default function EventHorizontalListItem({ event, variant }: EventHorizon
           </>
         )}
         {linkCopied && (
-          <div className="absolute top-full right-0 mt-2 z-20 whitespace-nowrap rounded-lg bg-black/80 text-white text-xs px-2.5 py-1.5">
+          <div className="absolute top-full right-0 mt-2 z-30 whitespace-nowrap rounded-lg bg-black/80 text-white text-xs px-2.5 py-1.5">
             {esCL.shareLinkCopied}
           </div>
         )}

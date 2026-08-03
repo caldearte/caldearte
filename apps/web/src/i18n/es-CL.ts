@@ -178,7 +178,12 @@ export const esCL = {
   cardMenuDirections: "Cómo llegar",
   cardMenuSource: "Ver fuente original",
   // Inauguraciones only — see EventCardBase's gating on variant + openingDatetime.
-  cardMenuAddToCalendar: "Agregar a mi calendario",
+  // Just "Agregar", not "Agregar a mi calendario" — every place this
+  // shows already has a calendar icon right next to it (kebab menu,
+  // standalone page, bento card), so the fuller phrase was redundant
+  // everywhere it appeared (confirmed 2026-08-03, also matches Figma's
+  // own "Agregar" label on the bento card).
+  cardMenuAddToCalendar: "Agregar",
   // "Compartir" is a row/button that reveals the targets below (with a
   // "← Volver" to go back), not all listed flat — explicit web intents,
   // not navigator.share (see EventCardBase's own doc comment: the

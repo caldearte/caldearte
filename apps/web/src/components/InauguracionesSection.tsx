@@ -13,24 +13,22 @@ interface InauguracionesSectionProps {
 
 type ViewMode = "grid" | "list";
 
-// 2 cards/page on desktop (md+), 1 on mobile — matches Figma's own two
-// toolbars (174:2834 desktop "1 / 3" over 2-card bento rows, 178:76
-// mobile "1 / 3" over a single stacked card). No CSS-only way to slice
-// an array by breakpoint, so this tracks window width client-side; the
-// brief mismatch between the SSR default (2) and a corrected mobile
-// value (1) right after mount is an accepted, standard tradeoff for a
-// JS-driven paginated layout like this.
-function useItemsPerPage(): number {
-  const [itemsPerPage, setItemsPerPage] = useState(2);
+// True from md (768px) up — no CSS-only way to slice an array by
+// breakpoint, so pagination size tracks window width client-side. The
+// brief mismatch between the SSR default (desktop) and a corrected
+// mobile value right after mount is an accepted, standard tradeoff for
+// a JS-driven paginated layout like this.
+function useIsDesktop(): boolean {
+  const [isDesktop, setIsDesktop] = useState(true);
   useEffect(() => {
     function update() {
-      setItemsPerPage(window.innerWidth >= 768 ? 2 : 1);
+      setIsDesktop(window.innerWidth >= 768);
     }
     update();
     window.addEventListener("resize", update);
     return () => window.removeEventListener("resize", update);
   }, []);
-  return itemsPerPage;
+  return isDesktop;
 }
 
 function ToggleButton({ active, onClick, ariaLabel, icon }: { active: boolean; onClick: () => void; ariaLabel: string; icon: string }) {
@@ -51,7 +49,16 @@ function ToggleButton({ active, onClick, ariaLabel, icon }: { active: boolean; o
 export default function InauguracionesSection({ events, hideTodayBadge = false }: InauguracionesSectionProps) {
   const [view, setView] = useState<ViewMode>("grid");
   const [page, setPage] = useState(0);
-  const itemsPerPage = useItemsPerPage();
+  const isDesktop = useIsDesktop();
+  // Mobile has no view-toggle (Figma's mobile toolbar, 178:76, is just
+  // the label + pagination) — force grid there even if `view` is still
+  // "list" from a resize down after switching on desktop.
+  const effectiveView: ViewMode = isDesktop ? view : "grid";
+  // 2 cards/page (bento grid) or 3 (list, one row of the 3-column grid)
+  // on desktop; 1 on mobile — matches Figma's own two toolbars (174:2834
+  // desktop "1 / 3" over 2-card bento rows, 178:76 mobile "1 / 3" over a
+  // single stacked card).
+  const itemsPerPage = !isDesktop ? 1 : effectiveView === "list" ? 3 : 2;
   const totalPages = Math.max(1, Math.ceil(events.length / itemsPerPage));
   // Clamp instead of reset-to-0 — keeps you on the same page after the
   // breakpoint changes the page size, unless that page no longer exists.
@@ -109,7 +116,7 @@ export default function InauguracionesSection({ events, hideTodayBadge = false }
         </div>
       </div>
 
-      {view === "grid" ? (
+      {effectiveView === "grid" ? (
         <div className="flex flex-col gap-[40px] md:gap-[60px]">
           {pageEvents.map((e, i) => (
             <InauguracionBentoCard
@@ -121,7 +128,10 @@ export default function InauguracionesSection({ events, hideTodayBadge = false }
           ))}
         </div>
       ) : (
-        <div className="flex flex-col gap-[12px]">
+        // 3 fixed-width columns — grid tracks (not flex) so a page with
+        // fewer than 3 items leaves empty cells instead of the last card
+        // stretching to fill the row.
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-[12px]">
           {pageEvents.map((e) => (
             <EventHorizontalListItem key={e.id} event={e} variant="inauguracion" />
           ))}

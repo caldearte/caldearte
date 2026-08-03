@@ -23,7 +23,7 @@ const DESCRIPTION_MAX_CHARS = 220;
 
 function ActionButton({ href, onClick, icon, label }: { href?: string; onClick?: () => void; icon: React.ReactNode; label: string }) {
   const className =
-    "flex items-center gap-[10px] border border-text-primary px-[8px] py-[4px] text-[12px] font-fragment-mono text-text-primary";
+    "relative z-20 flex items-center gap-[10px] border border-text-primary px-[8px] py-[4px] text-[12px] font-fragment-mono text-text-primary whitespace-nowrap shrink-0";
   if (href) {
     return (
       <a href={href} target="_blank" rel="noopener noreferrer" className={className}>
@@ -60,7 +60,7 @@ export default function InauguracionBentoCard({ event, reversed = false, hideTod
   const eventHref = `/eventos/${event.id}`;
 
   const imagePanel = (
-    <Link href={eventHref} className="relative block flex-1 h-[220px] md:h-[500px] shrink-0">
+    <div className="relative flex-1 h-[220px] md:h-[500px] shrink-0">
       {/* No fullSize — that flag is for the standalone page's natural,
           uncropped aspect ratio; this bento layout needs the image
           cropped (object-cover) to fill the fixed h-[220px]/h-[500px]
@@ -71,25 +71,21 @@ export default function InauguracionBentoCard({ event, reversed = false, hideTod
           {esCL.todayBadge}
         </span>
       )}
-    </Link>
+    </div>
   );
 
   const textPanel = (
     <div className="bg-surface-white flex flex-col gap-[20px] md:gap-[40px] items-start p-[20px] md:p-[48px] w-full md:w-[440px] shrink-0">
       <div className="flex flex-col gap-[12px] md:gap-[16px] items-start w-full">
         {dateLine && <p className="font-geist font-extrabold text-[13px] text-brand-magenta whitespace-nowrap">{dateLine}</p>}
-        <Link href={eventHref} className="font-fragment-mono leading-[1.1] md:leading-[1.1] text-[18px] md:text-[25px] text-text-primary w-full">
-          {event.title}
-        </Link>
+        <p className="font-fragment-mono leading-[1.1] text-[18px] md:text-[25px] text-text-primary w-full">{event.title}</p>
         <p className="font-geist text-[13px] text-text-muted md:text-text-primary w-full">{venueLine}</p>
       </div>
       {truncated && (
         <p className="font-geist text-[14px] md:text-[15px] leading-[1.5] md:leading-[1.6] text-text-primary w-full">
           {truncated}
           {wasCut && "… "}
-          <Link href={eventHref} className="font-bold underline text-brand-magenta">
-            {esCL.verMas}
-          </Link>
+          <span className="font-bold underline text-brand-magenta">{esCL.verMas}</span>
         </p>
       )}
       <div className="flex flex-wrap md:flex-nowrap gap-[8px] md:gap-[12px] items-center md:justify-end w-full">
@@ -102,10 +98,10 @@ export default function InauguracionBentoCard({ event, reversed = false, hideTod
               <button
                 type="button"
                 aria-label={esCL.cardMoreOptionsAriaLabel}
-                className="fixed inset-0 z-10"
+                className="fixed inset-0 z-20"
                 onClick={() => setShareSubmenuOpen(false)}
               />
-              <div className="absolute top-full left-0 mt-2 z-20 min-w-[190px] overflow-hidden rounded-xl bg-white border border-stone-200 shadow-lg py-1">
+              <div className="absolute top-full left-0 mt-2 z-30 min-w-[190px] overflow-hidden rounded-xl bg-white border border-stone-200 shadow-lg py-1">
                 <button
                   type="button"
                   className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-sm text-heading-gray"
@@ -142,7 +138,7 @@ export default function InauguracionBentoCard({ event, reversed = false, hideTod
             </>
           )}
           {linkCopied && (
-            <div className="absolute -top-8 left-0 z-20 whitespace-nowrap rounded-lg bg-black/80 text-white text-xs px-2.5 py-1.5">
+            <div className="absolute -top-8 left-0 z-30 whitespace-nowrap rounded-lg bg-black/80 text-white text-xs px-2.5 py-1.5">
               {esCL.shareLinkCopied}
             </div>
           )}
@@ -157,6 +153,11 @@ export default function InauguracionBentoCard({ event, reversed = false, hideTod
         reversed ? "md:flex-row-reverse" : "md:flex-row"
       }`}
     >
+      {/* Whole-card link — absolutely positioned overlay (not a wrapper)
+          so the action buttons below (each explicitly z-20+) can sit as
+          SIBLINGS and take click precedence, same pattern as
+          EventCardBase's kebab overlay. */}
+      <Link href={eventHref} aria-label={esCL.eventCardAriaLabel(event.title)} className="absolute inset-0 z-10 cursor-pointer" />
       {imagePanel}
       {textPanel}
     </div>
