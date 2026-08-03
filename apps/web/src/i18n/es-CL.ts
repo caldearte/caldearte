@@ -147,9 +147,19 @@ export const esCL = {
   // which of the week's items are happening right now.
   todayBadge: "HOY",
 
-  sectionInauguraciones: "INAUGURACIONES",
+  sectionInauguraciones: "INAUGURACIONES DE LA SEMANA",
+  sectionInauguracionesLabel: "APERTURAS DESTACADAS",
+  sectionInauguracionesLabelMobile: "Inauguración destacada",
   sectionExposActuales: "EXPOS ACTUALES",
   sectionArteEnTodasPartes: "ARTE EN TODAS PARTES",
+
+  // Rediseño 2.0.0 — bento-card toolbar (Inauguraciones/Exposiciones):
+  // grid⇄list view toggle + pagination.
+  viewToggleGridAriaLabel: "Ver como cuadrícula",
+  viewToggleListAriaLabel: "Ver como lista",
+  prevPageAriaLabel: "Página anterior",
+  nextPageAriaLabel: "Página siguiente",
+  pageIndicator: (page: number, total: number) => `${page} / ${total}`,
 
   // Appended after the opening date on an InauguracionCard when the source
   // confirms a date but never an hour (see EventRecord.openingTimeConfirmed).

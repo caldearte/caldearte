@@ -17,7 +17,7 @@ import { fmtShort } from "@/lib/date";
 import type { CityCounts, EventRecord, RegionMeta } from "@/lib/events";
 import Header from "./Header";
 import FiltersSection from "./FiltersSection";
-import InauguracionCard from "./InauguracionCard";
+import InauguracionesSection from "./InauguracionesSection";
 import ExpoCard from "./ExpoCard";
 import CuratoriaBanner from "./CuratoriaBanner";
 import CityCarousel from "./CityCarousel";
@@ -219,16 +219,7 @@ export default function CalendarView({
         </div>
       ) : (
         <>
-          {inauguraciones.length > 0 && (
-            <section className="mt-6">
-              <h2 className="text-3xl md:text-[41px] font-black tracking-wide text-heading-gray mb-6">{esCL.sectionInauguraciones}</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-[118px]">
-                {inauguraciones.map((e) => (
-                  <InauguracionCard key={e.id} event={e} hideTodayBadge={todayFilterOn} />
-                ))}
-              </div>
-            </section>
-          )}
+          <InauguracionesSection events={inauguraciones} hideTodayBadge={todayFilterOn} />
 
           <div className="w-full flex flex-wrap justify-center">
             <CuratoriaBanner />
