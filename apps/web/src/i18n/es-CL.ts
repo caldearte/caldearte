@@ -37,6 +37,15 @@ function countsPhrase(inauguracionesCount: number, exposCount: number, joiner: s
 export const esCL = {
   appName: "CALDEARTE",
   appDescription: "Calendario de inauguraciones de arte en Chile.",
+  // Rediseño 2.0.0 — wordmark de dos líneas ("CALDE" / "ARTE.") tal como
+  // está en Figma, distinto del appName de una sola línea usado en
+  // metadata/otros lugares.
+  wordmarkLine1: "CALDE",
+  wordmarkLine2: "ARTE.",
+  heroTagline: "GUÍA INDEPENDIENTE DE ARTE SEMANAL",
+  weekNumberLabel: (n: number) => `SEMANA N°${n}`,
+  prevWeekAriaLabel: "Semana anterior",
+  nextWeekAriaLabel: "Semana siguiente",
   chooseCity: "Elige tu ciudad",
   cityPickerAriaLabel: "Selector de ciudad",
   closeCityPicker: "Cerrar selector de ciudad",

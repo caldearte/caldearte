@@ -44,6 +44,9 @@ interface CalendarViewProps {
   today: string; // YYYY-MM-DD, computed server-side for SSR/CSR consistency
   rangeStart: string; // YYYY-MM-DD — the current week's Monday
   rangeEnd: string; // YYYY-MM-DD — the current week's Sunday
+  weekNumber: number; // "SEMANA N°X" — sequential since launch, see lib/date.ts
+  prevWeekHref: string; // "/?semana=..." — real navigation, not a cookie (see page.tsx)
+  nextWeekHref: string;
   cityCounts: Record<string, CityCounts>; // full-week counts, unaffected by Hoy/Vigentes — CityCarousel/city picker
   cityThumbnails: Record<string, EventRecord[]>; // up to 4 preview events per comuna — CityCarousel
   searchableEvents: EventRecord[]; // active/upcoming, every comuna — SearchPanel's own scope
@@ -68,6 +71,9 @@ export default function CalendarView({
   today,
   rangeStart,
   rangeEnd,
+  weekNumber,
+  prevWeekHref,
+  nextWeekHref,
   cityCounts,
   cityThumbnails,
   searchableEvents,
@@ -165,9 +171,9 @@ export default function CalendarView({
         city={city}
         rangeStart={rangeStart}
         rangeEnd={rangeEnd}
-        todayFilterOn={todayFilterOn}
-        inauguracionesCount={inauguraciones.length}
-        exposCount={exposActuales.length}
+        weekNumber={weekNumber}
+        prevWeekHref={prevWeekHref}
+        nextWeekHref={nextWeekHref}
         onOpenCityPicker={() => setLocationOpen(true)}
         cityPickerTriggerRef={cityPickerTriggerRef}
         onOpenSearch={() => setSearchOpen(true)}

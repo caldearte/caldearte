@@ -14,7 +14,7 @@ import {
   listArchiveMonths,
 } from "@/lib/events";
 import { DEFAULT_CITY_ID, buildRegionMetaByCityId, resolveDefaultCityId, resolveGeoCityId, nearestCityIdByCoords } from "@/lib/cities";
-import { todayInSantiago, currentWeekInSantiago, isCurrentOrUpcoming } from "@/lib/date";
+import { todayInSantiago, currentWeekInSantiago, weekBoundsInSantiago, addWeeks, weekNumberSince, isCurrentOrUpcoming } from "@/lib/date";
 import {
   CITY_COOKIE,
   FAMILY_MODE_COOKIE,
@@ -29,13 +29,17 @@ import type { NewsletterStatus } from "@/components/NewsletterStatusModal";
 
 const NEWSLETTER_STATUSES: NewsletterStatus[] = ["confirmed", "already_confirmed", "unsubscribed", "already_unsubscribed", "invalid", "error"];
 
-export default async function HomePage({ searchParams }: { searchParams: Promise<{ newsletter?: string; suscribir?: string }> }) {
+export default async function HomePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ newsletter?: string; suscribir?: string; semana?: string }>;
+}) {
   const cookieStore = await cookies();
   const headerStore = await headers();
   // Landed here from /newsletter/confirmar or /newsletter/baja (both
   // redirect to `/?newsletter=<status>` after calling their Edge Function
   // server-side) — see NewsletterStatusModal.tsx.
-  const { newsletter, suscribir } = await searchParams;
+  const { newsletter, suscribir, semana } = await searchParams;
   const newsletterStatus: NewsletterStatus | null = NEWSLETTER_STATUSES.includes(newsletter as NewsletterStatus)
     ? (newsletter as NewsletterStatus)
     : null;
@@ -52,7 +56,21 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
   const todayFilterOn = Boolean(cookieStore.get(TODAY_FILTER_COOKIE)?.value);
   const vigentesFilterOn = Boolean(cookieStore.get(VIGENTES_FILTER_COOKIE)?.value);
   const today = todayInSantiago();
-  const { start: rangeStart, end: rangeEnd } = currentWeekInSantiago();
+  // Week navigation lives in the URL (?semana=YYYY-MM-DD), not a cookie —
+  // unlike city/filters, "which week" is inherently a point-in-time value:
+  // a cookie would silently keep showing a past/future week on a visitor's
+  // NEXT, unrelated visit days later. A query param is also what makes a
+  // specific week shareable/bookmarkable, matching the archive's own
+  // date-in-URL precedent (/expos-anteriores/[year]/[month]). Any
+  // malformed or non-Monday value falls back to today's real week rather
+  // than erroring — weekBoundsInSantiago normalizes to that date's own
+  // Monday-Sunday bounds regardless of which weekday was passed in.
+  const { start: rangeStart, end: rangeEnd } = /^\d{4}-\d{2}-\d{2}$/.test(semana ?? "")
+    ? weekBoundsInSantiago(semana!)
+    : currentWeekInSantiago();
+  const weekNumber = weekNumberSince(rangeStart);
+  const prevWeekHref = `/?semana=${addWeeks(rangeStart, -1)}`;
+  const nextWeekHref = `/?semana=${addWeeks(rangeStart, 1)}`;
 
   const { events: allEvents, regions } = await fetchApprovedEvents(getSupabaseClient());
   // Family-mode filtering happens here, server-side, before anything is
@@ -196,6 +214,9 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
         today={today}
         rangeStart={rangeStart}
         rangeEnd={rangeEnd}
+        weekNumber={weekNumber}
+        prevWeekHref={prevWeekHref}
+        nextWeekHref={nextWeekHref}
         cityCounts={cityCounts}
         cityThumbnails={cityThumbnails}
         searchableEvents={searchableEvents}

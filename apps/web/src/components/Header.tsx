@@ -1,95 +1,90 @@
 "use client";
 
+import Link from "next/link";
 import type { RefObject } from "react";
 import { esCL } from "@/i18n/es-CL";
 import type { City } from "@/lib/cities";
-import { fmtWeekHeader } from "@/lib/date";
+import { fmtWeekRange } from "@/lib/date";
 
 interface HeaderProps {
   city: City;
   rangeStart: string; // YYYY-MM-DD — the current week's Monday
   rangeEnd: string; // YYYY-MM-DD — the current week's Sunday
-  todayFilterOn: boolean; // Filtros "Hoy" pill — swaps the summary line's "Esta semana" lead-in for "Hoy"
-  inauguracionesCount: number;
-  exposCount: number;
+  weekNumber: number; // "SEMANA N°X"
+  prevWeekHref: string; // real navigation (URL, not a cookie) — see page.tsx
+  nextWeekHref: string;
   onOpenCityPicker: () => void;
   cityPickerTriggerRef: RefObject<HTMLButtonElement | null>;
   onOpenSearch: () => void;
   onOpenMenu: () => void;
 }
 
-function SearchGlyph() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-      <circle cx="11" cy="11" r="7" stroke="currentColor" strokeWidth="2" />
-      <line x1="16.2" y1="16.2" x2="21" y2="21" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-    </svg>
-  );
-}
-
 export default function Header({
   city,
   rangeStart,
   rangeEnd,
-  todayFilterOn,
-  inauguracionesCount,
-  exposCount,
+  weekNumber,
+  prevWeekHref,
+  nextWeekHref,
   onOpenCityPicker,
   cityPickerTriggerRef,
   onOpenSearch,
   onOpenMenu,
 }: HeaderProps) {
-  const dateLabel = fmtWeekHeader(rangeStart, rangeEnd);
-  // "Hoy" pill on -> lead with "Hoy" instead of "Esta semana", matching
-  // what's actually shown (the lists are narrowed to today already).
-  const summaryPrefix = todayFilterOn ? esCL.filterToday : esCL.thisWeekPrefix;
+  const weekRangeLabel = fmtWeekRange(rangeStart, rangeEnd);
 
   return (
-    <header className="sticky top-0 z-20 bg-white pt-2 pb-3 -mt-2">
-      <div className="flex items-start justify-between gap-4">
-        <div className="flex items-baseline gap-3 flex-wrap">
-          <span className="text-2xl md:text-5xl font-normal text-heading-gray">{esCL.appName}</span>
-          <span className="hidden md:inline text-5xl font-extrabold text-heading-gray">{dateLabel}</span>
-        </div>
-
-        {/* Buscar + Menú only — Modo familiar moved into FiltersSection,
-            shown below the header on every screen size now. */}
-        <div className="hidden md:flex items-center gap-4 text-[15px] text-heading-gray shrink-0 pt-2">
-          <button onClick={onOpenSearch} aria-label={esCL.searchAriaLabel} className="text-heading-gray">
-            <SearchGlyph />
-          </button>
-          <button onClick={onOpenMenu} aria-label={esCL.menu} className="flex items-center gap-1.5 text-heading-gray">
-            <span className="text-xl leading-none">☰</span>
-            <span>{esCL.menu}</span>
-          </button>
-        </div>
-
-        <div className="md:hidden flex items-center gap-4 shrink-0">
-          <button onClick={onOpenSearch} aria-label={esCL.searchAriaLabel} className="text-heading-gray">
-            <SearchGlyph />
-          </button>
-          <button onClick={onOpenMenu} className="text-heading-gray text-2xl leading-none" aria-label={esCL.menu}>
-            ☰
-          </button>
-        </div>
+    <header className="sticky top-0 z-20 bg-surface-white">
+      {/* top nav — Buscar + Menú only, right-aligned. Modo familiar and the
+          city picker both live elsewhere now (FiltersSection / hero). */}
+      <div className="flex items-center justify-end gap-[10px] px-[15px] md:px-[60px] py-[15px] md:py-[30px]">
+        <button onClick={onOpenSearch} aria-label={esCL.searchAriaLabel}>
+          {/* eslint-disable-next-line @next/next/no-img-element -- Figma-exported asset, verbatim per design decision */}
+          <img src="/icons/search.svg" alt="" width={24} height={24} />
+        </button>
+        <button onClick={onOpenMenu} aria-label={esCL.menu}>
+          {/* eslint-disable-next-line @next/next/no-img-element -- Figma-exported asset, verbatim per design decision */}
+          <img src="/icons/hamburger.svg" alt="" width={24} height={24} />
+        </button>
       </div>
 
-      <div className="mt-3 md:mt-4 flex items-center gap-2 flex-wrap text-[15px] md:text-xl text-heading-gray">
-        <span className="md:hidden">
-          {summaryPrefix} {esCL.headerSummaryMobile(exposCount)}
-        </span>
-        <span className="hidden md:inline">
-          {summaryPrefix} {esCL.headerSummary(inauguracionesCount, exposCount)}
-        </span>
-        <button
-          ref={cityPickerTriggerRef}
-          onClick={onOpenCityPicker}
-          className="inline-flex items-center gap-1.5 bg-city-pill-bg text-city-pill-fg rounded-lg px-3 py-1.5 text-sm"
-        >
-          {city.name}
-          {/* eslint-disable-next-line @next/next/no-img-element -- provided icon asset, verbatim per design decision */}
-          <img src="/icons/chevron-down.svg" alt="" width={16} height={16} />
-        </button>
+      {/* hero — wordmark + tagline (left), location + week nav (right) */}
+      <div className="flex flex-col md:flex-row gap-8 md:gap-[120px] items-start md:items-end justify-center pb-8 md:pb-[110px] px-4 md:px-[80px]">
+        <div className="flex-1 flex flex-col gap-[10px]">
+          <h1 className="font-lato font-black leading-none text-brand-magenta text-[48px] md:text-[96px]">
+            <span className="block">{esCL.wordmarkLine1}</span>
+            <span className="block">{esCL.wordmarkLine2}</span>
+          </h1>
+          <p className="font-geist font-semibold text-[15px] text-text-secondary tracking-[2px]">{esCL.heroTagline}</p>
+        </div>
+
+        <div className="flex flex-col items-center gap-[11px]">
+          <p className="font-fragment-mono text-[20px] text-text-primary tracking-[-0.84px]">{esCL.weekNumberLabel(weekNumber)}</p>
+
+          <button
+            ref={cityPickerTriggerRef}
+            onClick={onOpenCityPicker}
+            className="flex items-center gap-[9px] border border-text-primary rounded-input px-[16px] py-[29px] text-text-primary"
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element -- Figma-exported asset, verbatim per design decision */}
+            <img src="/icons/location-pin.svg" alt="" width={22} height={22} className="shrink-0" />
+            <span className="font-fragment-mono text-[22px] whitespace-nowrap">{city.name.toUpperCase()}, CHILE</span>
+            {/* eslint-disable-next-line @next/next/no-img-element -- Figma-exported asset, verbatim per design decision */}
+            <img src="/icons/chevron-right.svg" alt="" width={20} height={20} className="rotate-90 shrink-0" />
+          </button>
+
+          <div className="flex items-center gap-[9px]">
+            <Link href={prevWeekHref} aria-label={esCL.prevWeekAriaLabel} scroll={false}>
+              {/* eslint-disable-next-line @next/next/no-img-element -- Figma-exported asset, verbatim per design decision */}
+              <img src="/icons/chevron-right.svg" alt="" width={20} height={20} className="rotate-180" />
+            </Link>
+            <span className="font-fragment-mono text-[20px] text-text-primary tracking-[-0.84px] whitespace-nowrap">{weekRangeLabel}</span>
+            <Link href={nextWeekHref} aria-label={esCL.nextWeekAriaLabel} scroll={false}>
+              {/* eslint-disable-next-line @next/next/no-img-element -- Figma-exported asset, verbatim per design decision */}
+              <img src="/icons/chevron-right.svg" alt="" width={20} height={20} />
+            </Link>
+          </div>
+        </div>
       </div>
     </header>
   );
