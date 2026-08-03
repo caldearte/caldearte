@@ -230,7 +230,9 @@ export default function CalendarView({
             </section>
           )}
 
-          <CuratoriaBanner />
+          <div className="w-full flex flex-wrap justify-center">
+            <CuratoriaBanner />
+          </div>
 
           {exposActuales.length > 0 && (
             <section className="mt-16">
