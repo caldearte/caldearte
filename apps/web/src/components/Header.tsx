@@ -124,7 +124,7 @@ export default function Header({
           icons/logo line up with everything else. A same-markup invisible
           clone directly above the hero reserves the identical amount of
           space in normal flow, so content doesn't jump when this appears. */}
-      <div className="fixed top-0 inset-x-0 z-20 bg-surface-sage">
+      <div className="fixed top-0 inset-x-0 z-40 bg-surface-sage">
         <div className="max-w-[1280px] mx-auto">
           <TopNavContent scrolledPastHero={scrolledPastHero} onOpenSearch={onOpenSearch} onOpenMenu={onOpenMenu} />
         </div>

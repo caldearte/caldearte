@@ -79,7 +79,7 @@ export default function InauguracionesSection({ events, hideTodayBadge = false }
           since a sticky element can't render outside its containing
           block. bg-surface-sage so content scrolling underneath doesn't
           show through. */}
-      <div className="sticky top-[50px] md:top-[60px] z-10 bg-surface-sage flex items-center justify-between mb-6 py-2">
+      <div className="sticky top-[50px] md:top-[60px] z-30 bg-surface-sage flex items-center justify-between mb-6 py-2">
         {/* Grid/list toggle is desktop-only — Figma's mobile toolbar (178:76)
             has no view-toggles at all, just this label + pagination. */}
         <div className="hidden md:flex items-center gap-[12px]">

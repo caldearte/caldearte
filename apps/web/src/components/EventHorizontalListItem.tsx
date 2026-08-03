@@ -28,10 +28,14 @@ export default function EventHorizontalListItem({ event, variant }: EventHorizon
 
   return (
     <div className="relative flex items-center gap-[12px] bg-surface-white p-[12px] cursor-pointer">
-      {/* Whole-card link — absolutely positioned overlay (not a wrapper)
-          so the kebab button/menu (explicitly z-20+) can sit as a SIBLING
-          and take click precedence, same pattern as EventCardBase. */}
-      <Link href={eventHref} aria-label={esCL.eventCardAriaLabel(event.title)} className="absolute inset-0 z-10 cursor-pointer" />
+      {/* Whole-card link — absolutely positioned overlay (not a wrapper),
+          z-0 so the kebab button/menu (z-10+) sit as a SIBLING and take
+          click precedence, same pattern as EventCardBase. Same z-index
+          stack as InauguracionBentoCard's own doc comment — card
+          overlay(0) < kebab(10) < popovers(20) < section sticky
+          toolbar(30) < fixed top nav(40); these used to collide with the
+          toolbar/nav on scroll (real bug, found 2026-08-03). */}
+      <Link href={eventHref} aria-label={esCL.eventCardAriaLabel(event.title)} className="absolute inset-0 z-0 cursor-pointer" />
       <div className="relative shrink-0 w-[72px] h-[56px] overflow-hidden">
         <CardImage imageUrl={event.imageUrl} sourceUrl={event.sourceUrl} sensitivityTags={event.sensitivityTags} />
       </div>
@@ -41,7 +45,7 @@ export default function EventHorizontalListItem({ event, variant }: EventHorizon
         <p className="font-geist text-[11px] text-text-muted truncate">{venueLine}</p>
       </div>
 
-      <div className="relative z-20 shrink-0">
+      <div className="relative z-10 shrink-0">
         <button
           type="button"
           onClick={() => {
@@ -62,13 +66,13 @@ export default function EventHorizontalListItem({ event, variant }: EventHorizon
             <button
               type="button"
               aria-label={esCL.cardMoreOptionsAriaLabel}
-              className="fixed inset-0 z-20"
+              className="fixed inset-0 z-10"
               onClick={() => {
                 setMenuOpen(false);
                 setShareSubmenuOpen(false);
               }}
             />
-            <div role="menu" className="absolute top-full right-0 mt-2 z-30 min-w-[190px] overflow-hidden rounded-xl bg-white shadow-lg py-1">
+            <div role="menu" className="absolute top-full right-0 mt-2 z-20 min-w-[190px] overflow-hidden rounded-xl bg-white shadow-lg py-1">
               {!shareSubmenuOpen ? (
                 <>
                   {mapsHref && (
@@ -151,7 +155,7 @@ export default function EventHorizontalListItem({ event, variant }: EventHorizon
           </>
         )}
         {linkCopied && (
-          <div className="absolute top-full right-0 mt-2 z-30 whitespace-nowrap rounded-lg bg-black/80 text-white text-xs px-2.5 py-1.5">
+          <div className="absolute top-full right-0 mt-2 z-20 whitespace-nowrap rounded-lg bg-black/80 text-white text-xs px-2.5 py-1.5">
             {esCL.shareLinkCopied}
           </div>
         )}

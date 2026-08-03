@@ -23,7 +23,7 @@ const DESCRIPTION_MAX_CHARS = 220;
 
 function ActionButton({ href, onClick, icon, label }: { href?: string; onClick?: () => void; icon: React.ReactNode; label: string }) {
   const className =
-    "relative z-20 flex items-center gap-[10px] border border-text-primary px-[8px] py-[4px] text-[12px] font-fragment-mono text-text-primary whitespace-nowrap shrink-0";
+    "relative z-10 flex items-center gap-[10px] border border-text-primary px-[8px] py-[4px] text-[12px] font-fragment-mono text-text-primary whitespace-nowrap shrink-0";
   if (href) {
     return (
       <a href={href} target="_blank" rel="noopener noreferrer" className={className}>
@@ -98,10 +98,10 @@ export default function InauguracionBentoCard({ event, reversed = false, hideTod
               <button
                 type="button"
                 aria-label={esCL.cardMoreOptionsAriaLabel}
-                className="fixed inset-0 z-20"
+                className="fixed inset-0 z-10"
                 onClick={() => setShareSubmenuOpen(false)}
               />
-              <div className="absolute top-full left-0 mt-2 z-30 min-w-[190px] overflow-hidden rounded-xl bg-white border border-stone-200 shadow-lg py-1">
+              <div className="absolute top-full left-0 mt-2 z-20 min-w-[190px] overflow-hidden rounded-xl bg-white border border-stone-200 shadow-lg py-1">
                 <button
                   type="button"
                   className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-sm text-heading-gray"
@@ -138,7 +138,7 @@ export default function InauguracionBentoCard({ event, reversed = false, hideTod
             </>
           )}
           {linkCopied && (
-            <div className="absolute -top-8 left-0 z-30 whitespace-nowrap rounded-lg bg-black/80 text-white text-xs px-2.5 py-1.5">
+            <div className="absolute -top-8 left-0 z-20 whitespace-nowrap rounded-lg bg-black/80 text-white text-xs px-2.5 py-1.5">
               {esCL.shareLinkCopied}
             </div>
           )}
@@ -153,11 +153,16 @@ export default function InauguracionBentoCard({ event, reversed = false, hideTod
         reversed ? "md:flex-row-reverse" : "md:flex-row"
       }`}
     >
-      {/* Whole-card link — absolutely positioned overlay (not a wrapper)
-          so the action buttons below (each explicitly z-20+) can sit as
-          SIBLINGS and take click precedence, same pattern as
-          EventCardBase's kebab overlay. */}
-      <Link href={eventHref} aria-label={esCL.eventCardAriaLabel(event.title)} className="absolute inset-0 z-10 cursor-pointer" />
+      {/* Whole-card link — absolutely positioned overlay (not a wrapper),
+          z-0 so the action buttons below (z-10+) sit as SIBLINGS and take
+          click precedence, same pattern as EventCardBase's kebab overlay.
+          Real bug found 2026-08-03: these buttons were z-20, same as the
+          section's own sticky toolbar and the fixed top nav, so on a
+          scrolled page whichever painted last (later in DOM = the cards)
+          won the tie and rendered ON TOP of both. Full stack, low to
+          high: card overlay(0) < card buttons(10) < card popovers(20) <
+          section sticky toolbar(30) < fixed top nav(40). */}
+      <Link href={eventHref} aria-label={esCL.eventCardAriaLabel(event.title)} className="absolute inset-0 z-0 cursor-pointer" />
       {imagePanel}
       {textPanel}
     </div>
