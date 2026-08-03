@@ -157,19 +157,28 @@ export default function Header({
         </div>
 
         <div className="flex flex-col items-center gap-[11px]">
-          <p className="font-fragment-mono text-[20px] text-text-primary tracking-[-0.84px]">{esCL.weekNumberLabel(weekNumber)}</p>
+          {/* Wrapping div left as a plain flex-col (default
+              align-items:stretch) so its width == the button's own
+              content width, and the p (w-full, text-left) stretches to
+              match — that's what pins "SEMANA N°X" to the button's own
+              left edge instead of floating centered above it. */}
+          <div className="flex flex-col gap-[11px]">
+            <p className="w-full text-left font-fragment-mono text-[20px] text-text-primary tracking-[-0.84px]">
+              {esCL.weekNumberLabel(weekNumber)}
+            </p>
 
-          <button
-            ref={cityPickerTriggerRef}
-            onClick={onOpenCityPicker}
-            className="flex items-center gap-[9px] border border-text-primary rounded-[9px] p-[29px] text-text-primary"
-          >
-            {/* eslint-disable-next-line @next/next/no-img-element -- Figma-exported asset, verbatim per design decision */}
-            <img src="/icons/location-pin.svg" alt="" width={14} height={18} className="shrink-0" />
-            <span className="font-fragment-mono text-[22px] whitespace-nowrap">{city.name.toUpperCase()}, CHILE</span>
-            {/* eslint-disable-next-line @next/next/no-img-element -- Figma-exported asset, verbatim per design decision */}
-            <img src="/icons/chevron-right.svg" alt="" width={7} height={14} className="rotate-90 shrink-0" />
-          </button>
+            <button
+              ref={cityPickerTriggerRef}
+              onClick={onOpenCityPicker}
+              className="flex items-center gap-[9px] border border-text-primary rounded-[9px] p-[29px] text-text-primary"
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element -- Figma-exported asset, verbatim per design decision */}
+              <img src="/icons/location-pin.svg" alt="" width={14} height={18} className="shrink-0" />
+              <span className="font-fragment-mono text-[22px] whitespace-nowrap">{city.name.toUpperCase()}, CHILE</span>
+              {/* eslint-disable-next-line @next/next/no-img-element -- Figma-exported asset, verbatim per design decision */}
+              <img src="/icons/chevron-right.svg" alt="" width={7} height={14} className="rotate-90 shrink-0" />
+            </button>
+          </div>
 
           <div className="flex items-center gap-[9px]">
             {/* inline-flex, not the <a> tag's own default — a plain <img>
