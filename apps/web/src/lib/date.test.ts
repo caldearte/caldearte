@@ -165,12 +165,12 @@ test("fmtWeekHeader: week spanning a month boundary", () => {
   assert.equal(fmtWeekHeader("2026-07-27", "2026-08-02"), "27 de JULIO al 2 de AGOSTO");
 });
 
-test("fmtWeekRange: hero format, zero-padded day, 'de MONTH' on both sides", () => {
-  assert.equal(fmtWeekRange("2026-07-27", "2026-08-02"), "27 de JULIO — 02 de AGOSTO");
+test("fmtWeekRange: same-month week — full month name once, zero-padded days", () => {
+  assert.equal(fmtWeekRange("2026-08-03", "2026-08-09"), "03 al 09 de AGOSTO");
 });
 
-test("fmtWeekRange: same-month week still repeats 'de MONTH' on both sides", () => {
-  assert.equal(fmtWeekRange("2026-07-13", "2026-07-19"), "13 de JULIO — 19 de JULIO");
+test("fmtWeekRange: cross-month week — abbreviated month on both sides, only the end date gets 'de'", () => {
+  assert.equal(fmtWeekRange("2026-07-27", "2026-08-02"), "27 JUL al 02 de AGO");
 });
 
 test("addWeeks: shifts a Monday forward and backward by whole weeks", () => {

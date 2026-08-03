@@ -49,6 +49,10 @@ export const esCL = {
   weekNumberLabel: (n: number) => `SEMANA N°${n}`,
   prevWeekAriaLabel: "Semana anterior",
   nextWeekAriaLabel: "Semana siguiente",
+  // Header's location pill, e.g. "SANTIAGO, CHILE" — was hardcoded inline
+  // in Header.tsx (real gap found 2026-08-03), now routed through i18n
+  // like every other visible string.
+  locationPillSuffix: (cityName: string) => `${cityName.toUpperCase()}, CHILE`,
   chooseCity: "Elige tu ciudad",
   cityPickerAriaLabel: "Selector de ciudad",
   closeCityPicker: "Cerrar selector de ciudad",

@@ -181,17 +181,20 @@ export function fmtWeekHeader(weekStart: string, weekEnd: string): string {
   return `${s.getDate()} de ${MONTHS[s.getMonth()].toUpperCase()} al ${e.getDate()} de ${MONTHS[e.getMonth()].toUpperCase()}`;
 }
 
-// Rediseño 2.0.0 hero week range, e.g. "27 de JULIO — 02 de AGOSTO" — day
-// always zero-padded to 2 digits, "de MONTH" repeated on both sides (even
-// within the same month), em dash separator. Distinct from fmtWeekHeader
-// (used elsewhere, unpadded day, collapses to one "de MONTH" when both
-// dates share a month) — this is a separate Figma-specified format, not a
-// replacement for it.
+// Rediseño 2.0.0 hero week range (selector). Day always zero-padded to 2
+// digits, "al" joiner (not an em dash). Same month: full month name once,
+// e.g. "03 al 09 de AGOSTO". Different months: abbreviated month on both
+// sides, only the end date gets "de", e.g. "27 JUL al 09 de AGO" — spec
+// confirmed with the user 2026-08-03. Distinct from fmtWeekHeader (used
+// elsewhere, unpadded day, "de MONTH" on the same-month case only).
 export function fmtWeekRange(weekStart: string, weekEnd: string): string {
   const s = parseDateOnly(weekStart);
   const e = parseDateOnly(weekEnd);
   const pad = (n: number) => String(n).padStart(2, "0");
-  return `${pad(s.getDate())} de ${MONTHS[s.getMonth()].toUpperCase()} — ${pad(e.getDate())} de ${MONTHS[e.getMonth()].toUpperCase()}`;
+  if (s.getMonth() === e.getMonth()) {
+    return `${pad(s.getDate())} al ${pad(e.getDate())} de ${MONTHS[s.getMonth()].toUpperCase()}`;
+  }
+  return `${pad(s.getDate())} ${MONTHS_SHORT[s.getMonth()].toUpperCase()} al ${pad(e.getDate())} de ${MONTHS_SHORT[e.getMonth()].toUpperCase()}`;
 }
 
 // Google Calendar's compact UTC format for its event-creation link:

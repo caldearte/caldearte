@@ -136,7 +136,7 @@ export default function Header({
       {/* hero — wordmark + tagline (left), location + week nav (right) */}
       <div
         ref={heroRef}
-        className="flex flex-col md:flex-row gap-8 md:gap-[120px] items-start md:items-end justify-center pb-8 md:pb-[110px] px-4 md:px-[80px]"
+        className="flex flex-col md:flex-row gap-20 md:gap-[120px] items-start md:items-end justify-center pb-8 md:pb-[110px] px-4 md:px-[80px]"
       >
         <div className="flex-1 flex flex-col gap-[10px]">
           <h1 className="font-lato font-black leading-none text-brand-magenta text-[48px] md:text-[96px]">
@@ -163,34 +163,50 @@ export default function Header({
               match — that's what pins "SEMANA N°X" to the button's own
               left edge instead of floating centered above it. */}
           <div className="flex flex-col gap-[11px]">
-            <p className="w-full text-left font-fragment-mono text-[20px] text-text-primary tracking-[-0.84px]">
+            <p className="w-full text-left font-fragment-mono text-[18px] text-border-default tracking-[-0.84px]">
               {esCL.weekNumberLabel(weekNumber)}
             </p>
 
             <button
               ref={cityPickerTriggerRef}
               onClick={onOpenCityPicker}
-              className="flex items-center gap-[9px] border border-text-primary rounded-[9px] p-[29px] text-text-primary"
+              className="flex items-center gap-[9px] border border-border-default rounded-[9px] px-[30px] py-[23px] text-border-default"
             >
               {/* eslint-disable-next-line @next/next/no-img-element -- Figma-exported asset, verbatim per design decision */}
               <img src="/icons/location-pin.svg" alt="" width={14} height={18} className="shrink-0" />
-              <span className="font-fragment-mono text-[22px] whitespace-nowrap">{city.name.toUpperCase()}, CHILE</span>
+              {/* Mobile drops ", CHILE" to save space — just the comuna
+                  name, truncated with an ellipsis past max-w so a long
+                  comuna name can't blow out the pill/viewport. `p` nested
+                  inside `span` is invalid HTML (block inside inline) and
+                  was why the whole button disappeared; ellipsis also needs
+                  a display other than plain inline plus an actual width to
+                  overflow against — text-ellipsis alone does nothing on a
+                  box that just grows to fit its content. Desktop keeps the
+                  full "COMUNA, CHILE" label, untruncated. */}
+              <span className="md:hidden inline-block max-w-[200px] overflow-hidden text-ellipsis font-fragment-mono text-[20px] whitespace-nowrap">
+                {city.name.toUpperCase()}
+              </span>
+              <span className="hidden md:inline font-fragment-mono text-[20px] whitespace-nowrap">{esCL.locationPillSuffix(city.name)}</span>
               {/* eslint-disable-next-line @next/next/no-img-element -- Figma-exported asset, verbatim per design decision */}
               <img src="/icons/chevron-right.svg" alt="" width={7} height={14} className="rotate-90 shrink-0" />
             </button>
           </div>
 
           <div className="flex items-center gap-[9px]">
-            {/* inline-flex, not the <a> tag's own default — a plain <img>
-                inside a bare Next.js Link <a> was measuring 0×0 on mobile
-                (verified: naturalWidth/naturalHeight were correct, but the
-                <a>'s own box collapsed) — forcing the anchor to size to its
-                content regardless of whatever default it'd otherwise get. */}
-            <Link href={prevWeekHref} aria-label={esCL.prevWeekAriaLabel} scroll={false} className="inline-flex shrink-0">
-              {/* eslint-disable-next-line @next/next/no-img-element -- Figma-exported asset, verbatim per design decision */}
-              <img src="/icons/chevron-right.svg" alt="" width={7} height={14} className="rotate-180" />
-            </Link>
-            <span className="font-fragment-mono text-[20px] text-text-primary tracking-[-0.84px] whitespace-nowrap">{weekRangeLabel}</span>
+            {/* Hidden at SEMANA N°1 — that's the epoch week (lunes 27 de
+                julio de 2026, ver weekNumberSince en lib/date.ts), Caldearte
+                no existía antes de esa semana, así que no hay adónde
+                retroceder. weekNumberSince ya clampea a 1 cualquier semana
+                anterior al epoch, así que esta condición también cubre
+                (aunque nunca debería alcanzarse, dado que el chevron ya
+                estaría oculto) cualquier semana previa. */}
+            {weekNumber > 1 && (
+              <Link href={prevWeekHref} aria-label={esCL.prevWeekAriaLabel} scroll={false} className="inline-flex shrink-0">
+                {/* eslint-disable-next-line @next/next/no-img-element -- Figma-exported asset, verbatim per design decision */}
+                <img src="/icons/chevron-right.svg" alt="" width={7} height={14} className="rotate-180" />
+              </Link>
+            )}
+            <span className="font-fragment-mono text-[18px] text-border-default tracking-[-0.84px] whitespace-nowrap">{weekRangeLabel}</span>
             <Link href={nextWeekHref} aria-label={esCL.nextWeekAriaLabel} scroll={false} className="inline-flex shrink-0">
               {/* eslint-disable-next-line @next/next/no-img-element -- Figma-exported asset, verbatim per design decision */}
               <img src="/icons/chevron-right.svg" alt="" width={7} height={14} />
