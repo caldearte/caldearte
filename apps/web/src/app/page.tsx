@@ -35,7 +35,6 @@ import {
   VIGENTES_FILTER_COOKIE,
   GEO_CONSENT_COOKIE,
   PRECISE_CITY_COOKIE,
-  NEWSLETTER_PROMPT_COOKIE,
 } from "@/lib/cookies";
 import CalendarView from "@/components/CalendarView";
 import type { NewsletterStatus } from "@/components/NewsletterStatusModal";
@@ -54,7 +53,6 @@ export default async function HomePage({
 }: {
   searchParams: Promise<{
     newsletter?: string;
-    suscribir?: string;
     semana?: string;
   }>;
 }) {
@@ -63,7 +61,7 @@ export default async function HomePage({
   // Landed here from /newsletter/confirmar or /newsletter/baja (both
   // redirect to `/?newsletter=<status>` after calling their Edge Function
   // server-side) — see NewsletterStatusModal.tsx.
-  const { newsletter, suscribir, semana } = await searchParams;
+  const { newsletter, semana } = await searchParams;
   const newsletterStatus: NewsletterStatus | null =
     NEWSLETTER_STATUSES.includes(newsletter as NewsletterStatus)
       ? (newsletter as NewsletterStatus)
@@ -201,15 +199,6 @@ export default async function HomePage({
   const showGeoConsentPrompt =
     cookieStore.get(GEO_CONSENT_COOKIE) === undefined;
 
-  // NewsletterEntryModal: same "ask at most once, ever" pattern — but only
-  // as an unprompted auto-open. The Footer's own "Suscríbete" link can
-  // still open the same modal any time, regardless of this cookie — from
-  // a page that doesn't render the modal itself (eventos/[id]), that link
-  // navigates here with ?suscribir=1 instead, which forces it open too.
-  const showNewsletterPrompt =
-    cookieStore.get(NEWSLETTER_PROMPT_COOKIE) === undefined ||
-    suscribir === "1";
-
   const cityEventsInRange = filterByCity(activeInRange, cityId);
   const split = splitInauguracionesYExpos(
     cityEventsInRange,
@@ -259,7 +248,6 @@ export default async function HomePage({
         actualCityId={actualCityId}
         hasPreciseLocation={hasPreciseLocation}
         showGeoConsentPrompt={showGeoConsentPrompt}
-        showNewsletterPrompt={showNewsletterPrompt}
         cityNames={cityNames}
         familyMode={familyMode}
         todayFilterOn={todayFilterOn}

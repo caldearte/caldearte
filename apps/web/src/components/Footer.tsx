@@ -1,35 +1,31 @@
 import Link from "next/link";
 import { esCL } from "@/i18n/es-CL";
 
-interface FooterProps {
-  // Opens NewsletterEntryModal in place (CalendarView.tsx owns the state).
-  // Omitted on pages that don't render that modal (eventos/[id]) — the
-  // link falls back to a real navigation that opens it on arrival, see
-  // page.tsx's `suscribir` search param.
-  onOpenNewsletter?: () => void;
-}
-
-export default function Footer({ onOpenNewsletter }: FooterProps) {
+// Rediseño 2.0.0 — footer (178:216), same design for desktop and mobile
+// (single Figma group, no separate breakpoint variant). The previous
+// "Suscríbete" link is dropped per design — the inline NewsletterSection
+// on the home page is now the primary subscribe entry point.
+export default function Footer() {
   return (
-    <footer className="mt-16 pt-6 border-t border-stone-200 flex flex-col gap-4">
-      {onOpenNewsletter ? (
-        <button onClick={onOpenNewsletter} className="self-start text-sm font-semibold text-heading-gray underline">
-          {esCL.newsletter.footerLink}
-        </button>
-      ) : (
-        <Link href="/?suscribir=1" className="self-start text-sm font-semibold text-heading-gray underline">
-          {esCL.newsletter.footerLink}
+    <footer className="bg-brand-magenta text-surface-sage flex flex-col md:flex-row gap-[24px] px-[60px] py-[80px] md:justify-between">
+      <div className="flex flex-col gap-[12px]">
+        <p className="font-lato font-black leading-none text-[76px]">
+          {esCL.wordmarkLine1}
+          <br />
+          {esCL.wordmarkLine2}
+        </p>
+        <p className="font-geist font-bold text-[12px] tracking-[2px] w-[139px] uppercase">
+          {esCL.heroTagline}
+        </p>
+      </div>
+      <div className="flex flex-wrap items-end gap-[20px] font-fragment-mono text-[14px] md:text-[16px]">
+        <Link href="/contacto" className="uppercase">
+          {esCL.footer.contacto}
         </Link>
-      )}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div>
-          <p className="text-base font-bold text-heading-gray">{esCL.appName}</p>
-          <p className="text-xs text-muted-gray mt-1">{esCL.footer.copyright(new Date().getFullYear())}</p>
-        </div>
-        <div className="flex gap-6 text-xs text-muted-gray">
-          <Link href="/contacto">{esCL.footer.contacto}</Link>
-          <Link href="/privacidad">{esCL.footer.privacidad}</Link>
-        </div>
+        <Link href="/privacidad" className="uppercase">
+          {esCL.footer.privacidad}
+        </Link>
+        <p>{new Date().getFullYear()}</p>
       </div>
     </footer>
   );

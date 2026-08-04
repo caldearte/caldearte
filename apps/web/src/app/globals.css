@@ -1,8 +1,5 @@
 @import "tailwindcss";
 
-/* Museum-white by design — the brand is white bg + black cards, not
-   dark-mode-adaptive, so there's deliberately no prefers-color-scheme
-   override here. */
 :root {
   /* Rediseño 2.0.0 — el fondo de toda la web pasa a surface/sage
      (confirmado con el usuario 2026-08-03, viendo el mockup real: no es
