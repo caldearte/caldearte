@@ -17,7 +17,7 @@ import Header from "./Header";
 import InauguracionesSection from "./InauguracionesSection";
 import ExposicionesSection from "./ExposicionesSection";
 import CuratoriaBanner from "./CuratoriaBanner";
-import CityCarousel from "./CityCarousel";
+import NewsletterSection from "./NewsletterSection";
 import Footer from "./Footer";
 import CityPickerPanel from "./CityPickerPanel";
 import MenuDrawer from "./MenuDrawer";
@@ -65,7 +65,6 @@ export default function CalendarView({
   cityNames,
   familyMode,
   todayFilterOn,
-  vigentesFilterOn,
   today,
   rangeStart,
   rangeEnd,
@@ -73,7 +72,6 @@ export default function CalendarView({
   prevWeekHref,
   nextWeekHref,
   cityCounts,
-  cityThumbnails,
   searchableEvents,
   nextEvent,
   regions,
@@ -191,14 +189,21 @@ export default function CalendarView({
         </>
       )}
 
-      <CityCarousel
-        cityCounts={cityCounts}
-        cityNames={cityNames}
-        cityThumbnails={cityThumbnails}
-        regions={regions}
-        excludeCityId={cityId}
-        onSelectCity={goToCity}
-      />
+      {/* "Arte en todas partes" (CityCarousel) removed from the home for
+          now, 2026-08-04 — "Explora todo Chile" (región/comuna table) is
+          slated to replace it per the redesign plan; not deleting
+          CityCarousel.tsx itself since that replacement is a near-term
+          next step, not an indefinite removal. cityCounts/cityThumbnails
+          stay wired through unchanged — CityPickerPanel below still
+          needs them regardless of whether this carousel renders. */}
+
+      {/* "texto AI" (174:2985) — its own short section between Exposiciones
+          and the newsletter form, not part of either. Large gap above
+          (echoing Exposiciones' own bottom spacing), tight against the
+          form below. */}
+      <p className="mt-[60px] md:mt-[120px] mb-4 text-center text-[1rem] font-fragment-mono text-text-primary">{esCL.aiDisclaimer}</p>
+
+      <NewsletterSection />
 
       <Footer onOpenNewsletter={openNewsletterEntry} />
 

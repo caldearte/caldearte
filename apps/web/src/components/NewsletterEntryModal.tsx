@@ -1,16 +1,10 @@
 "use client";
 
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useState } from "react";
 import Image from "next/image";
 import { esCL } from "@/i18n/es-CL";
-import { getSupabaseClient } from "@/lib/supabase-client";
-
-type Status = "idle" | "sending" | "success" | "already_subscribed" | "error";
-
-interface AdminRegionOption {
-  name: string;
-  order: number;
-}
+import { useNewsletterSubscribe } from "@/lib/useNewsletterSubscribe";
+import { shortRegionName } from "@/lib/regionNames";
 
 interface NewsletterEntryModalProps {
   open: boolean;
@@ -77,49 +71,9 @@ export function Hero() {
 }
 
 export default function NewsletterEntryModal({ open, onClose }: NewsletterEntryModalProps) {
-  const [status, setStatus] = useState<Status>("idle");
-  const [regions, setRegions] = useState<AdminRegionOption[]>([]);
-
-  useEffect(() => {
-    let cancelled = false;
-    getSupabaseClient()
-      .from("regions_public")
-      .select("admin_region_name, admin_region_order")
-      .then(({ data }) => {
-        if (cancelled || !data) return;
-        const seen = new Map<string, number>();
-        for (const r of data) {
-          if (r.admin_region_name && r.admin_region_order !== null && !seen.has(r.admin_region_name)) {
-            seen.set(r.admin_region_name, r.admin_region_order);
-          }
-        }
-        setRegions(Array.from(seen, ([name, order]) => ({ name, order })).sort((a, b) => a.order - b.order));
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  const { status, regions, handleSubmit } = useNewsletterSubscribe();
 
   if (!open) return null;
-
-  async function handleSubmit(e: FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    setStatus("sending");
-    const form = e.currentTarget;
-    const data = new FormData(form);
-    try {
-      const res = await fetch("/api/newsletter/subscribe", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: data.get("email"), adminRegionName: data.get("adminRegionName") }),
-      });
-      if (!res.ok) throw new Error("subscribe failed");
-      const body = (await res.json()) as { status?: string };
-      setStatus(body.status === "already_subscribed" ? "already_subscribed" : "success");
-    } catch {
-      setStatus("error");
-    }
-  }
 
   return (
     <div
@@ -170,7 +124,7 @@ export default function NewsletterEntryModal({ open, onClose }: NewsletterEntryM
                   </option>
                   {regions.map((r) => (
                     <option key={r.name} value={r.name}>
-                      {r.name}
+                      {shortRegionName(r.name)}
                     </option>
                   ))}
                 </select>
