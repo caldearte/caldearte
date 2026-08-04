@@ -56,11 +56,17 @@ export function fmtPeriod(runStartDate: string | null, runEndDate: string | null
 // Septiembre" (capitalized month, unlike fmtPeriod's lowercase — matches
 // Figma's own capitalization for this specific label). Falls back to the
 // anchor date when there's no real runEndDate (mirrors fmtPeriod's own
-// anchor fallback).
-export function fmtUntilDate(runEndDate: string | null, anchorDate: string): string {
+// anchor fallback). Appends a 2-digit year ("Hasta el 28 de Febrero '27")
+// only when the end date falls in a later calendar year than `todayStr` —
+// this year's own dates never show a year at all (user request
+// 2026-08-04: the year is only useful when it isn't the obvious one).
+export function fmtUntilDate(runEndDate: string | null, anchorDate: string, todayStr: string): string {
   const d = parseDateOnly(runEndDate ?? anchorDate);
   const month = MONTHS[d.getMonth()];
-  return `Hasta el ${d.getDate()} de ${month.charAt(0).toUpperCase()}${month.slice(1)}`;
+  const monthCap = `${month.charAt(0).toUpperCase()}${month.slice(1)}`;
+  const today = parseDateOnly(todayStr);
+  const yearSuffix = d.getFullYear() > today.getFullYear() ? ` '${String(d.getFullYear()).slice(-2)}` : "";
+  return `Hasta el ${d.getDate()} de ${monthCap}${yearSuffix}`;
 }
 
 // "Closing soon" — within `thresholdDays` (inclusive) of runEndDate,

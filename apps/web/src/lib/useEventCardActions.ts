@@ -47,7 +47,7 @@ export function useEventCardActions(event: EventRecord, variant: "inauguracion" 
   // "ÚLTIMOS DÍAS —" once the run is within a week of ending. Kept as a
   // separate field rather than changing `dateLine` itself, so the older
   // full-range display doesn't silently change underneath it.
-  const untilDateLine = variant === "expo" && anchor ? fmtUntilDate(event.runEndDate, anchor) : null;
+  const untilDateLine = variant === "expo" && anchor ? fmtUntilDate(event.runEndDate, anchor, todayInSantiago()) : null;
   const closingSoon = variant === "expo" && computeIsClosingSoon(event.runEndDate, todayInSantiago());
 
   const displayedVenue = event.placeName ?? event.freeformLocation;
