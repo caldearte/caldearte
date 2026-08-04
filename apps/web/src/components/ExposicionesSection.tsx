@@ -73,7 +73,7 @@ export default function ExposicionesSection({ events, hideTodayBadge = false }: 
   // slice+re-render — see useSliderPaging's own doc comment. `resetKey`
   // remounts the track (and re-zeroes scroll position) whenever the page
   // count changes for a reason other than paging itself.
-  const { trackRef, currentPage, goToPage, onTrackScroll } = useSliderPaging(totalPages);
+  const { trackRef, currentPage, goToPage, onTrackScroll, onTrackWheel } = useSliderPaging(totalPages);
   const resetKey = `${view}-${itemsPerPage}`;
 
   if (events.length === 0) return null;
@@ -136,6 +136,7 @@ export default function ExposicionesSection({ events, hideTodayBadge = false }: 
         key={resetKey}
         ref={trackRef}
         onScroll={onTrackScroll}
+        onWheel={onTrackWheel}
         className="flex overflow-x-auto snap-x snap-mandatory scroll-smooth [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
         {pages.map((pageEvents, pIdx) =>
