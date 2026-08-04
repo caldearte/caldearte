@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { esCL } from "@/i18n/es-CL";
-import { searchEvents, type EventRecord } from "@/lib/events";
+import { searchEvents, sortByRunEndAsc, displayNameForCity, type EventRecord } from "@/lib/events";
 import { dateOnlyFromIso, todayInSantiago } from "@/lib/date";
 import EventHorizontalListItem from "./EventHorizontalListItem";
 
@@ -79,7 +79,17 @@ export default function SearchPanel({ open, events, onClose }: SearchPanelProps)
   }, [open, onClose]);
 
   const trimmedQuery = filterQuery.trim();
-  const results = trimmedQuery ? searchEvents(events, trimmedQuery) : [];
+  const matches = trimmedQuery ? searchEvents(events, trimmedQuery) : [];
+  // Inauguraciones vigentes first (soonest opening from today onward —
+  // the OPPOSITE of Inauguraciones' own home-page order, which is newest
+  // first; per the user 2026-08-04, a search result should read like a
+  // forward-looking agenda), then Exposiciones in the same order the home
+  // page uses (soonest-closing first, sortByRunEndAsc).
+  const inauguracionResults = matches
+    .filter((e) => variantFor(e) === "inauguracion")
+    .sort((a, b) => (a.openingDatetime! < b.openingDatetime! ? -1 : a.openingDatetime! > b.openingDatetime! ? 1 : 0));
+  const expoResults = sortByRunEndAsc(matches.filter((e) => variantFor(e) === "expo"));
+  const results = [...inauguracionResults, ...expoResults];
 
   return (
     <div
@@ -126,7 +136,7 @@ export default function SearchPanel({ open, events, onClose }: SearchPanelProps)
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-[12px]">
               {results.map((e) => (
-                <EventHorizontalListItem key={e.id} event={e} variant={variantFor(e)} />
+                <EventHorizontalListItem key={e.id} event={e} variant={variantFor(e)} cityName={displayNameForCity(e)} />
               ))}
             </div>
           )}
