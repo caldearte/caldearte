@@ -209,6 +209,21 @@ export function sortByAnchorDesc(events: EventRecord[]): EventRecord[] {
   });
 }
 
+// Soonest-closing first — Expos Actuales' own order (per the user
+// 2026-08-04): what's about to close outranks what still has weeks left,
+// the opposite priority from Inauguraciones' "newest opening first".
+// Falls back to the anchor date when there's no confirmed runEndDate
+// (mirrors fmtUntilDate/isClosingSoon's own fallback); an event with
+// neither sorts last — an unknown end date is never "closing soonest".
+export function sortByRunEndAsc(events: EventRecord[]): EventRecord[] {
+  return [...events].sort((a, b) => {
+    const aEnd = a.runEndDate ?? anchorDateOnly(a) ?? "9999-12-31";
+    const bEnd = b.runEndDate ?? anchorDateOnly(b) ?? "9999-12-31";
+    if (aEnd === bEnd) return 0;
+    return aEnd < bEnd ? -1 : 1;
+  });
+}
+
 export interface InauguracionesYExpos {
   inauguraciones: EventRecord[];
   exposActuales: EventRecord[];
@@ -230,7 +245,7 @@ export function splitInauguracionesYExpos(events: EventRecord[], start: string, 
   });
   return {
     inauguraciones: sortByAnchorDesc(inauguraciones),
-    exposActuales: sortByAnchorDesc(events),
+    exposActuales: sortByRunEndAsc(events),
   };
 }
 
