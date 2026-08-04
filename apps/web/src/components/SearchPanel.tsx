@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useRef, useState, type KeyboardEvent } from "react";
+import { useEffect, useState } from "react";
 import { esCL } from "@/i18n/es-CL";
 import { searchEvents, type EventRecord } from "@/lib/events";
-import InauguracionCard from "./InauguracionCard";
-import ExpoCard from "./ExpoCard";
+import { dateOnlyFromIso, todayInSantiago } from "@/lib/date";
+import EventHorizontalListItem from "./EventHorizontalListItem";
 
 interface SearchPanelProps {
   open: boolean;
@@ -17,25 +17,28 @@ interface SearchPanelProps {
   onClose: () => void;
 }
 
-function SearchGlyph() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-      <circle cx="11" cy="11" r="7" stroke="currentColor" strokeWidth="2" />
-      <line x1="16.2" y1="16.2" x2="21" y2="21" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-    </svg>
-  );
-}
-
 const SEARCH_DEBOUNCE_MS = 200;
 
-// Full-screen modal, same chrome/behavior as CityPickerPanel (open/close
-// transition, inert while closed, body-scroll lock, focus-on-open,
-// Escape-to-close) — independent of it and of MenuDrawer, its own panel per
-// the product decision.
+// Same "hasn't happened yet" rule as EventDetailCard/splitInauguracionesYExpos
+// — a past-but-still-running exhibition is an "expo" row here, not an
+// "inauguración" one, regardless of whether it once had an opening date.
+// The old version of this panel just checked `openingDatetime` truthiness
+// (real bug, same class as the one fixed 2026-07-23 elsewhere).
+function variantFor(event: EventRecord): "inauguracion" | "expo" {
+  return event.openingDatetime && dateOnlyFromIso(event.openingDatetime) >= todayInSantiago() ? "inauguracion" : "expo";
+}
+
+// Rediseño 2.0.0 — full-screen modal, same chrome/behavior as
+// CityPickerPanel (open/close transition, inert while closed, body-scroll
+// lock, focus-on-open, Escape-to-close from anywhere in the panel — not
+// just the input, see CityPickerPanel's own fix 2026-08-04) — independent
+// of it and of MenuDrawer, its own panel per the product decision. Results
+// reuse EventHorizontalListItem (the home's own "list view" row) instead
+// of the old dark kebab-menu cards, so a search result looks like the
+// same event would look on the home page.
 export default function SearchPanel({ open, events, onClose }: SearchPanelProps) {
   const [query, setQuery] = useState("");
   const [filterQuery, setFilterQuery] = useState("");
-  const inputRef = useRef<HTMLInputElement>(null);
 
   // Same render-time reset pattern as CityPickerPanel: clears the query the
   // moment the panel transitions to open, not via an effect.
@@ -47,10 +50,6 @@ export default function SearchPanel({ open, events, onClose }: SearchPanelProps)
       setFilterQuery("");
     }
   }
-
-  useEffect(() => {
-    if (open) inputRef.current?.focus();
-  }, [open]);
 
   useEffect(() => {
     if (!open) return;
@@ -66,15 +65,21 @@ export default function SearchPanel({ open, events, onClose }: SearchPanelProps)
     return () => clearTimeout(timer);
   }, [query]);
 
+  // Document-level, not the input's own onKeyDown — Escape needs to close
+  // this regardless of which element has focus (real bug found and fixed
+  // the same way in CityPickerPanel 2026-08-04: an onKeyDown scoped to one
+  // element only fires for events that bubble up FROM that element).
+  useEffect(() => {
+    if (!open) return;
+    function onDocumentKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") onClose();
+    }
+    document.addEventListener("keydown", onDocumentKeyDown);
+    return () => document.removeEventListener("keydown", onDocumentKeyDown);
+  }, [open, onClose]);
+
   const trimmedQuery = filterQuery.trim();
   const results = trimmedQuery ? searchEvents(events, trimmedQuery) : [];
-
-  function handleInputKeyDown(e: KeyboardEvent<HTMLInputElement>) {
-    if (e.key === "Escape") {
-      e.preventDefault();
-      onClose();
-    }
-  }
 
   return (
     <div
@@ -82,44 +87,47 @@ export default function SearchPanel({ open, events, onClose }: SearchPanelProps)
       aria-modal="true"
       aria-label={esCL.searchTitle}
       inert={!open}
-      className={`fixed inset-0 z-40 bg-white flex flex-col transition-opacity duration-150 ${
+      className={`fixed inset-0 z-40 bg-surface-sage overflow-y-auto transition-opacity duration-150 ${
         open ? "opacity-100" : "opacity-0 pointer-events-none"
       }`}
     >
-      <div className="relative shrink-0 pt-12 pb-5 px-4">
-        <button onClick={onClose} aria-label={esCL.closeSearch} className="absolute top-6 right-6 text-[18px] text-muted-gray">
-          ✕
-        </button>
-        <div className="max-w-[680px] mx-auto mb-6">
-          <h2 className="text-[24px] md:text-[32px] font-bold text-heading-gray">{esCL.searchTitle}</h2>
+      <div className="max-w-[1160px] mx-auto px-5 md:px-0 py-[40px] md:py-[60px]">
+        {/* Same header chrome as CityPickerPanel — the back-arrow doubles
+            as this panel's only "close" affordance, big title on the
+            right — instead of a bespoke X glyph. */}
+        <div className="flex items-center justify-between mb-[40px] md:mb-[60px]">
+          <button type="button" onClick={onClose} aria-label={esCL.closeSearch} className="cursor-pointer">
+            {/* eslint-disable-next-line @next/next/no-img-element -- Figma-exported asset, verbatim per design decision */}
+            <img src="/icons/selector-back-arrow.svg" alt="" width={140} height={19} />
+          </button>
+          <p className="font-lato text-[40px] md:text-[64px] text-brand-magenta whitespace-nowrap">{esCL.searchTitle.toUpperCase()}</p>
         </div>
-        <div className="max-w-[680px] mx-auto relative">
-          <span className="absolute left-4 top-1/2 -translate-y-1/2 text-picker-placeholder">
-            <SearchGlyph />
-          </span>
+
+        <div className="relative max-w-[600px]">
           <input
-            ref={inputRef}
             type="text"
             role="searchbox"
             aria-label={esCL.searchAriaLabel}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            onKeyDown={handleInputKeyDown}
             placeholder={esCL.searchPlaceholder}
-            className="w-full text-[15px] pl-11 pr-4 py-3 rounded-xl bg-picker-subtle border border-picker-border text-heading-gray placeholder:text-picker-placeholder focus:outline-none"
+            autoFocus
+            className="w-full bg-surface-white rounded-input pl-[46px] pr-[16px] py-[16px] font-geist text-[16px] text-text-primary placeholder:text-icon-default focus:outline-none"
           />
+          {/* eslint-disable-next-line @next/next/no-img-element -- Figma-exported asset, verbatim per design decision */}
+          <img src="/icons/selector-search.svg" alt="" width={18} height={18} className="absolute left-[16px] top-1/2 -translate-y-1/2" />
         </div>
-      </div>
 
-      <div className="flex-grow overflow-y-auto px-4 pb-10">
-        <div className="max-w-[900px] mx-auto">
+        <div className="mt-[40px] md:mt-[60px]">
           {!trimmedQuery ? (
-            <p className="text-sm text-muted-gray text-center py-10">{esCL.searchHint}</p>
+            <p className="font-geist text-[15px] text-text-muted text-center py-10">{esCL.searchHint}</p>
           ) : results.length === 0 ? (
-            <p className="text-sm text-muted-gray text-center py-10">{esCL.noSearchResults}</p>
+            <p className="font-geist text-[15px] text-text-muted text-center py-10">{esCL.noSearchResults}</p>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {results.map((e) => (e.openingDatetime ? <InauguracionCard key={e.id} event={e} /> : <ExpoCard key={e.id} event={e} />))}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-[12px]">
+              {results.map((e) => (
+                <EventHorizontalListItem key={e.id} event={e} variant={variantFor(e)} />
+              ))}
             </div>
           )}
         </div>
