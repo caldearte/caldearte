@@ -228,8 +228,13 @@ test("monthBounds: February in a leap year", () => {
 });
 
 test("fmtUntilDate: capitalized month, falls back to the anchor when there's no runEndDate", () => {
-  assert.equal(fmtUntilDate("2026-09-02", "2026-07-01"), "Hasta el 2 de Septiembre");
-  assert.equal(fmtUntilDate(null, "2026-08-15"), "Hasta el 15 de Agosto");
+  assert.equal(fmtUntilDate("2026-09-02", "2026-07-01", "2026-08-01"), "Hasta el 2 de Septiembre");
+  assert.equal(fmtUntilDate(null, "2026-08-15", "2026-08-01"), "Hasta el 15 de Agosto");
+});
+
+test("fmtUntilDate: appends a 2-digit year only when the end date is in a later calendar year than today", () => {
+  assert.equal(fmtUntilDate("2027-02-28", "2026-07-01", "2026-08-01"), "Hasta el 28 de Febrero '27");
+  assert.equal(fmtUntilDate("2026-12-31", "2026-07-01", "2026-08-01"), "Hasta el 31 de Diciembre");
 });
 
 test("isClosingSoon: within the 7-day default threshold (inclusive)", () => {
