@@ -3,21 +3,18 @@
 import { useEffect, useState } from "react";
 import { esCL } from "@/i18n/es-CL";
 import type { EventRecord } from "@/lib/events";
-import InauguracionBentoCard from "./InauguracionBentoCard";
+import ExpoBentoCard from "./ExpoBentoCard";
 import EventHorizontalListItem from "./EventHorizontalListItem";
 
-interface InauguracionesSectionProps {
+interface ExposicionesSectionProps {
   events: EventRecord[];
   hideTodayBadge?: boolean;
 }
 
 type ViewMode = "grid" | "list";
 
-// True from md (768px) up — no CSS-only way to slice an array by
-// breakpoint, so pagination size tracks window width client-side. The
-// brief mismatch between the SSR default (desktop) and a corrected
-// mobile value right after mount is an accepted, standard tradeoff for
-// a JS-driven paginated layout like this.
+// Same breakpoint tracker as InauguracionesSection — see that file's own
+// comment for why this can't be CSS-only.
 function useIsDesktop(): boolean {
   const [isDesktop, setIsDesktop] = useState(true);
   useEffect(() => {
@@ -46,43 +43,44 @@ function ToggleButton({ active, onClick, ariaLabel, icon }: { active: boolean; o
   );
 }
 
-export default function InauguracionesSection({ events, hideTodayBadge = false }: InauguracionesSectionProps) {
+// Desktop-only image-height per grid slot (174:2917's own irregular
+// row-1/row-2 split: a big card, a medium one, two small ones, and a
+// tall one — not a repeating pattern, so this is a fixed 5-slot lookup,
+// not a formula). Slot 5 (index 4) is meant to visually overlap row-1 in
+// Figma (negative y-offset) — simplified here to just "tall", a robust
+// CSS Grid auto-flow (7+5=12, then 4+4+4=12) rather than a fragile
+// absolute-position collage that breaks with variable text length.
+const DESKTOP_IMAGE_HEIGHT: string[] = ["md:h-[320px]", "md:h-[200px]", "md:h-[200px]", "md:h-[200px]", "md:h-[322px]"];
+const DESKTOP_COL_SPAN: string[] = ["md:col-span-7", "md:col-span-5", "md:col-span-4", "md:col-span-4", "md:col-span-4"];
+
+export default function ExposicionesSection({ events, hideTodayBadge = false }: ExposicionesSectionProps) {
   const [view, setView] = useState<ViewMode>("grid");
   const [page, setPage] = useState(0);
   const isDesktop = useIsDesktop();
-  // Figma's mobile toolbar (178:76) has no view-toggle at all, just label
-  // + pagination — grid-only was the original spec, but the user
+  // Figma's mobile toolbar (178:119) had no view-toggle at all, just
+  // label + pagination — grid-only was the original spec, but the user
   // explicitly asked (2026-08-03) for list view on mobile too, so the
-  // toggle is now shown on every screen size and `view` applies as-is,
-  // no breakpoint override.
-  const itemsPerPage = view === "list" ? (isDesktop ? 3 : 6) : isDesktop ? 2 : 1;
+  // toggle is shown on every screen size now, `view` applies as-is.
+  // Grid: 5/page desktop (fixed asymmetric layout), 3/page mobile
+  // (Figma's own "Mostrando 3 de 15", 178:120). List: 12/page desktop
+  // (confirmed with the user, deliberately more than grid's 5 since the
+  // cards are much smaller), 6/page mobile (single column, same ratio).
+  const itemsPerPage = view === "list" ? (isDesktop ? 12 : 6) : isDesktop ? 5 : 3;
   const totalPages = Math.max(1, Math.ceil(events.length / itemsPerPage));
-  // Clamp instead of reset-to-0 — keeps you on the same page after the
-  // breakpoint changes the page size, unless that page no longer exists.
   const currentPage = Math.min(page, totalPages - 1);
   const pageEvents = events.slice(currentPage * itemsPerPage, currentPage * itemsPerPage + itemsPerPage);
 
   if (events.length === 0) return null;
 
   return (
-    <section className="mt-6">
-      <p className="font-geist font-semibold text-[15px] text-text-secondary tracking-[2px] mb-1.5">{esCL.sectionInauguracionesLabel}</p>
-      <h2 className="font-lato font-black text-[28px] md:text-[41px] text-text-primary mb-6">{esCL.sectionInauguraciones}</h2>
+    <section className="mt-16">
+      <p className="font-geist font-semibold text-[15px] text-text-secondary tracking-[2px] mb-1.5">{esCL.sectionExposActualesLabel}</p>
+      <h2 className="font-lato font-black text-[28px] md:text-[41px] text-text-primary mb-6">{esCL.sectionExposActuales}</h2>
 
-      {/* Sticky right under the fixed top nav (50px mobile/60px desktop,
-          measured directly off Header's own nav bar) while scrolling
-          through this section's cards — naturally stops sticking once the
-          section itself (this component's own bounding box) scrolls past,
-          since a sticky element can't render outside its containing
-          block. bg-surface-sage so content scrolling underneath doesn't
-          show through. */}
+      {/* Sticky under the fixed top nav, same as InauguracionesSection's
+          own toolbar — see that file's doc comment for the exact z-index
+          stack this depends on. */}
       <div className="sticky top-[50px] md:top-[60px] z-30 bg-surface-sage flex items-center justify-between mb-6 py-2">
-        {/* Grid/list toggle was desktop-only in Figma's mobile toolbar
-            (178:76, just label + pagination) — shown on every screen size
-            now per the user's explicit request (2026-08-03). The mobile
-            label text ("Inauguración destacada") was tried alongside it
-            but the user asked to drop it — just the controls now, same
-            on every breakpoint. */}
         <div className="flex items-center gap-[12px]">
           <ToggleButton
             active={view === "grid"}
@@ -124,23 +122,19 @@ export default function InauguracionesSection({ events, hideTodayBadge = false }
       </div>
 
       {view === "grid" ? (
-        <div className="flex flex-col gap-[40px] md:gap-[60px]">
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-[20px] md:gap-[27px]">
           {pageEvents.map((e, i) => (
-            <InauguracionBentoCard
-              key={e.id}
-              event={e}
-              reversed={(currentPage * itemsPerPage + i) % 2 === 1}
-              hideTodayBadge={hideTodayBadge}
-            />
+            <div key={e.id} className={DESKTOP_COL_SPAN[i]}>
+              <ExpoBentoCard event={e} hideTodayBadge={hideTodayBadge} desktopImageHeightClass={DESKTOP_IMAGE_HEIGHT[i]} />
+            </div>
           ))}
         </div>
       ) : (
-        // 3 fixed-width columns — grid tracks (not flex) so a page with
-        // fewer than 3 items leaves empty cells instead of the last card
-        // stretching to fill the row.
+        // Same 3-fixed-width-column pattern as Inauguraciones' list view —
+        // 5 items wrap naturally to 2 rows (3 + 2), no extra logic needed.
         <div className="grid grid-cols-1 md:grid-cols-3 gap-[12px]">
           {pageEvents.map((e) => (
-            <EventHorizontalListItem key={e.id} event={e} variant="inauguracion" />
+            <EventHorizontalListItem key={e.id} event={e} variant="expo" />
           ))}
         </div>
       )}

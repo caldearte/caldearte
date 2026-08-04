@@ -15,7 +15,7 @@ import { fmtShort } from "@/lib/date";
 import type { CityCounts, EventRecord, RegionMeta } from "@/lib/events";
 import Header from "./Header";
 import InauguracionesSection from "./InauguracionesSection";
-import ExpoCard from "./ExpoCard";
+import ExposicionesSection from "./ExposicionesSection";
 import CuratoriaBanner from "./CuratoriaBanner";
 import CityCarousel from "./CityCarousel";
 import Footer from "./Footer";
@@ -187,16 +187,7 @@ export default function CalendarView({
             <CuratoriaBanner />
           </div>
 
-          {exposActuales.length > 0 && (
-            <section className="mt-16">
-              <h2 className="text-3xl md:text-[41px] font-semibold tracking-wide text-heading-gray mb-6">{esCL.sectionExposActuales}</h2>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {exposActuales.map((e) => (
-                  <ExpoCard key={e.id} event={e} hideTodayBadge={todayFilterOn} />
-                ))}
-              </div>
-            </section>
-          )}
+          <ExposicionesSection events={exposActuales} hideTodayBadge={todayFilterOn} />
         </>
       )}
 

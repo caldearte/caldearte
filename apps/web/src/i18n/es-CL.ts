@@ -149,8 +149,9 @@ export const esCL = {
 
   sectionInauguraciones: "INAUGURACIONES DE LA SEMANA",
   sectionInauguracionesLabel: "APERTURAS DESTACADAS",
-  sectionInauguracionesLabelMobile: "Inauguración destacada",
-  sectionExposActuales: "EXPOS ACTUALES",
+  sectionExposActuales: "EXPOSICIONES ACTUALES",
+  sectionExposActualesLabel: "CATÁLOGO VIGENTE",
+  ultimosDias: "ÚLTIMOS DÍAS",
   sectionArteEnTodasPartes: "ARTE EN TODAS PARTES",
 
   // Rediseño 2.0.0 — bento-card toolbar (Inauguraciones/Exposiciones):
