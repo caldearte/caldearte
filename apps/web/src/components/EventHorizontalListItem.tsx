@@ -21,10 +21,28 @@ interface EventHorizontalListItemProps {
 // time; sized/spaced to match the density of the reference screenshot
 // the user provided.
 export default function EventHorizontalListItem({ event, variant }: EventHorizontalListItemProps) {
-  const { dateLine, venueLine, mapsHref, calendarHref, shareSubmenuOpen, setShareSubmenuOpen, linkCopied, handleShareWhatsApp, handleShareTwitter, handleShareFacebook, handleCopyLink } =
-    useEventCardActions(event, variant);
+  const {
+    dateLine,
+    untilDateLine,
+    closingSoon,
+    venueLine,
+    mapsHref,
+    calendarHref,
+    shareSubmenuOpen,
+    setShareSubmenuOpen,
+    linkCopied,
+    handleShareWhatsApp,
+    handleShareTwitter,
+    handleShareFacebook,
+    handleCopyLink,
+  } = useEventCardActions(event, variant);
   const [menuOpen, setMenuOpen] = useState(false);
   const eventHref = `/eventos/${event.id}`;
+  // Expo: "Hasta el X" (+ "ÚLTIMOS DÍAS —" prefix when closing soon),
+  // matching ExpoBentoCard/Figma — NOT the full run range `dateLine`
+  // still carries for the older kebab-menu-based ExpoCard. Inauguración
+  // keeps the existing single opening-date `dateLine` unchanged.
+  const badgeLine = variant === "expo" ? untilDateLine : dateLine;
 
   return (
     <div className="relative flex items-center gap-[12px] bg-surface-white p-[12px] cursor-pointer">
@@ -40,7 +58,12 @@ export default function EventHorizontalListItem({ event, variant }: EventHorizon
         <CardImage imageUrl={event.imageUrl} sourceUrl={event.sourceUrl} sensitivityTags={event.sensitivityTags} />
       </div>
       <div className="flex-1 min-w-0 flex flex-col gap-[4px]">
-        {dateLine && <p className="font-geist font-extrabold text-[11px] text-brand-magenta whitespace-nowrap">{dateLine}</p>}
+        {badgeLine && (
+          <p className="font-geist font-extrabold text-[11px] text-brand-magenta whitespace-nowrap">
+            {closingSoon && `${esCL.ultimosDias} — `}
+            {badgeLine}
+          </p>
+        )}
         <p className="font-fragment-mono text-[14px] leading-[1.2] text-text-primary truncate">{event.title}</p>
         <p className="font-geist text-[11px] text-text-muted truncate">{venueLine}</p>
       </div>

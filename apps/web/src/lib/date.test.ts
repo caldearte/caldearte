@@ -20,6 +20,8 @@ import {
   buildGoogleCalendarUrl,
   addWeeks,
   weekNumberSince,
+  fmtUntilDate,
+  isClosingSoon,
 } from "./date";
 
 test("fmtShort formats a short date", () => {
@@ -223,4 +225,28 @@ test("monthBounds: February in a non-leap year", () => {
 
 test("monthBounds: February in a leap year", () => {
   assert.deepEqual(monthBounds(2028, 2), { start: "2028-02-01", end: "2028-02-29" });
+});
+
+test("fmtUntilDate: capitalized month, falls back to the anchor when there's no runEndDate", () => {
+  assert.equal(fmtUntilDate("2026-09-02", "2026-07-01"), "Hasta el 2 de Septiembre");
+  assert.equal(fmtUntilDate(null, "2026-08-15"), "Hasta el 15 de Agosto");
+});
+
+test("isClosingSoon: within the 7-day default threshold (inclusive)", () => {
+  assert.equal(isClosingSoon("2026-08-10", "2026-08-03"), true);
+  assert.equal(isClosingSoon("2026-08-03", "2026-08-03"), true);
+});
+
+test("isClosingSoon: beyond the threshold, or already past, is not closing soon", () => {
+  assert.equal(isClosingSoon("2026-08-11", "2026-08-03"), false);
+  assert.equal(isClosingSoon("2026-08-01", "2026-08-03"), false);
+});
+
+test("isClosingSoon: no runEndDate at all is never closing soon", () => {
+  assert.equal(isClosingSoon(null, "2026-08-03"), false);
+});
+
+test("isClosingSoon: respects a custom threshold", () => {
+  assert.equal(isClosingSoon("2026-08-05", "2026-08-03", 2), true);
+  assert.equal(isClosingSoon("2026-08-06", "2026-08-03", 2), false);
 });

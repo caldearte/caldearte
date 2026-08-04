@@ -52,6 +52,30 @@ export function fmtPeriod(runStartDate: string | null, runEndDate: string | null
   return `${s.getDate()} de ${MONTHS[s.getMonth()]} al ${e.getDate()} de ${MONTHS[e.getMonth()]}`;
 }
 
+// Rediseño 2.0.0 — exposiciones bento/list cards, e.g. "Hasta el 2 de
+// Septiembre" (capitalized month, unlike fmtPeriod's lowercase — matches
+// Figma's own capitalization for this specific label). Falls back to the
+// anchor date when there's no real runEndDate (mirrors fmtPeriod's own
+// anchor fallback).
+export function fmtUntilDate(runEndDate: string | null, anchorDate: string): string {
+  const d = parseDateOnly(runEndDate ?? anchorDate);
+  const month = MONTHS[d.getMonth()];
+  return `Hasta el ${d.getDate()} de ${month.charAt(0).toUpperCase()}${month.slice(1)}`;
+}
+
+// "Closing soon" — within `thresholdDays` (inclusive) of runEndDate,
+// never in the past (an already-closed exhibition wouldn't be in
+// "Exposiciones actuales" at all, but this stays defensive rather than
+// assuming upstream filtering). No runEndDate at all (still-open,
+// undated run) is never "closing soon" — there's nothing to warn about.
+export function isClosingSoon(runEndDate: string | null, todayStr: string, thresholdDays = 7): boolean {
+  if (!runEndDate) return false;
+  const today = parseDateOnly(todayStr);
+  const end = parseDateOnly(runEndDate);
+  const diffDays = Math.round((end.getTime() - today.getTime()) / (24 * 60 * 60 * 1000));
+  return diffDays >= 0 && diffDays <= thresholdDays;
+}
+
 // Single opening date, e.g. "15 de julio" — reuses fmtPeriod's own
 // single-day collapse by passing the same date as start/end/anchor. An
 // inauguración is always exactly one day, never the exhibition's full run

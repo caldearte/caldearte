@@ -1,7 +1,17 @@
 "use client";
 
 import { useState } from "react";
-import { anchorDateOnly, buildGoogleCalendarUrl, fmtInauguracionDate, fmtOpeningHour, fmtPeriod, isActiveOn, todayInSantiago } from "@/lib/date";
+import {
+  anchorDateOnly,
+  buildGoogleCalendarUrl,
+  fmtInauguracionDate,
+  fmtOpeningHour,
+  fmtPeriod,
+  fmtUntilDate,
+  isActiveOn,
+  isClosingSoon as computeIsClosingSoon,
+  todayInSantiago,
+} from "@/lib/date";
 import { deriveComuna } from "@/lib/comuna";
 import { esCL } from "@/i18n/es-CL";
 import type { EventRecord } from "@/lib/events";
@@ -29,6 +39,16 @@ export function useEventCardActions(event: EventRecord, variant: "inauguracion" 
         // real bug, found 2026-07-20: this used to append the same hour
         // suffix as the inauguración variant.
         anchor && fmtPeriod(event.runStartDate, event.runEndDate, anchor);
+
+  // Rediseño 2.0.0 bento/list cards — expo variant only. NOT the same as
+  // `dateLine` above (which the older kebab-menu-based EventCardBase/
+  // ExpoCard still render as the full run range): Figma's new cards show
+  // just the closing date ("Hasta el 2 de Septiembre"), magenta + prefixed
+  // "ÚLTIMOS DÍAS —" once the run is within a week of ending. Kept as a
+  // separate field rather than changing `dateLine` itself, so the older
+  // full-range display doesn't silently change underneath it.
+  const untilDateLine = variant === "expo" && anchor ? fmtUntilDate(event.runEndDate, anchor) : null;
+  const closingSoon = variant === "expo" && computeIsClosingSoon(event.runEndDate, todayInSantiago());
 
   const displayedVenue = event.placeName ?? event.freeformLocation;
   const comuna = deriveComuna(event.freeformLocation, event.placeName);
@@ -100,6 +120,8 @@ export function useEventCardActions(event: EventRecord, variant: "inauguracion" 
   return {
     showTodayBadge,
     dateLine,
+    untilDateLine,
+    closingSoon,
     venueLine,
     mapsHref,
     calendarHref,
