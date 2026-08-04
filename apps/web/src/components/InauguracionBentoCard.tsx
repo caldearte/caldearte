@@ -154,15 +154,21 @@ export default function InauguracionBentoCard({ event, reversed = false, hideTod
       }`}
     >
       {/* Whole-card link — absolutely positioned overlay (not a wrapper),
-          z-0 so the action buttons below (z-10+) sit as SIBLINGS and take
+          z-[1] so the action buttons below (z-10+) sit as SIBLINGS and take
           click precedence, same pattern as EventCardBase's kebab overlay.
           Real bug found 2026-08-03: these buttons were z-20, same as the
           section's own sticky toolbar and the fixed top nav, so on a
           scrolled page whichever painted last (later in DOM = the cards)
           won the tie and rendered ON TOP of both. Full stack, low to
-          high: card overlay(0) < card buttons(10) < card popovers(20) <
-          section sticky toolbar(30) < fixed top nav(40). */}
-      <Link href={eventHref} aria-label={esCL.eventCardAriaLabel(event.title)} className="absolute inset-0 z-0 cursor-pointer" />
+          high: card overlay(1) < card buttons(10) < card popovers(20) <
+          section sticky toolbar(30) < fixed top nav(40). Plain z-0 (not
+          z-[1]) used to lose to imagePanel below: that div is itself
+          `position:relative` (for its own badges) with no z-index of its
+          own, so at equal "auto" stacking level DOM order broke the tie —
+          imagePanel comes later, so it painted on top and silently ate
+          clicks on the image specifically (real bug found 2026-08-04:
+          only the white text area was clickable, not the photo). */}
+      <Link href={eventHref} aria-label={esCL.eventCardAriaLabel(event.title)} className="absolute inset-0 z-[1] cursor-pointer" />
       {imagePanel}
       {textPanel}
     </div>
