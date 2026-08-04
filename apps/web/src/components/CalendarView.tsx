@@ -201,7 +201,7 @@ export default function CalendarView({
           and the newsletter form, not part of either. Large gap above
           (echoing Exposiciones' own bottom spacing), tight against the
           form below. */}
-      <p className="mt-[60px] md:mt-[120px] mb-4 text-center text-sm text-text-secondary">{esCL.aiDisclaimer}</p>
+      <p className="mt-[60px] md:mt-[120px] mb-4 text-center text-[1rem] font-fragment-mono text-text-primary">{esCL.aiDisclaimer}</p>
 
       <NewsletterSection />
 

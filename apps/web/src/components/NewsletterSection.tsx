@@ -5,6 +5,15 @@ import { esCL } from "@/i18n/es-CL";
 import { useNewsletterSubscribe } from "@/lib/useNewsletterSubscribe";
 import { shortRegionName } from "@/lib/regionNames";
 
+// Status messages (success/already_subscribed/error) share this box: same
+// border weight as the submit button but square corners and smaller
+// uppercase text (feedback: plain error text read as too small), with the
+// border color signaling the outcome — green for success, red otherwise.
+const STATUS_BOX_BASE =
+  "w-full text-left uppercase border-4 md:border-6 px-[16px] md:px-[21px] py-[16px] md:py-[20px] font-lato font-semibold text-[16px] md:text-[20px] text-text-primary";
+const STATUS_BOX_SUCCESS = `${STATUS_BOX_BASE} border-green-600`;
+const STATUS_BOX_ERROR = `${STATUS_BOX_BASE} border-red-600`;
+
 // Rediseño 2.0.0 — inline newsletter section on the home page (174:2987
 // web, 178:161 mobile), distinct from NewsletterEntryModal (the popup —
 // still used for the first-visit auto-prompt and the Footer's
@@ -26,9 +35,9 @@ export default function NewsletterSection() {
       </div>
 
       {status === "success" ? (
-        <p className="font-lato font-semibold text-[20px] text-text-primary">{esCL.newsletter.success}</p>
+        <p className={STATUS_BOX_SUCCESS}>{esCL.newsletter.success}</p>
       ) : status === "already_subscribed" ? (
-        <p className="font-lato font-semibold text-[20px] text-text-primary">{esCL.newsletter.alreadySubscribed}</p>
+        <p className={STATUS_BOX_SUCCESS}>{esCL.newsletter.alreadySubscribed}</p>
       ) : (
         <form onSubmit={handleSubmit} className="flex flex-col gap-[24px] md:gap-[40px]">
           <div className="w-full">
@@ -74,7 +83,7 @@ export default function NewsletterSection() {
               {status === "sending" ? esCL.newsletter.sending : esCL.newsletter.sectionSubmit}
             </button>
           </div>
-          {status === "error" && <p className="text-sm text-red-700">{esCL.newsletter.error}</p>}
+          {status === "error" && <p className={STATUS_BOX_ERROR}>{esCL.newsletter.error}</p>}
         </form>
       )}
 
