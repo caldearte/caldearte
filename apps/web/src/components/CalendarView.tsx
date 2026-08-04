@@ -42,7 +42,6 @@ interface CalendarViewProps {
   searchableEvents: EventRecord[]; // active/upcoming, every comuna — SearchPanel's own scope
   nextEvent: EventRecord | null; // empty-state fallback, beyond the current week
   regions: RegionMeta[]; // for the city picker's región grouping
-  archiveHref: string | null; // "Expos anteriores" row target in MenuDrawer — null when no month is archived yet
   newsletterStatus: NewsletterStatus | null; // from ?newsletter= — set by /newsletter/confirmar or /newsletter/baja's redirect
 }
 
@@ -66,7 +65,6 @@ export default function CalendarView({
   searchableEvents,
   nextEvent,
   regions,
-  archiveHref,
   newsletterStatus,
 }: CalendarViewProps) {
   const router = useRouter();
@@ -206,7 +204,6 @@ export default function CalendarView({
 
       <MenuDrawer
         open={drawerOpen}
-        archiveHref={archiveHref}
         familyMode={familyMode}
         onToggleFamilyMode={toggleFamilyMode}
         onClose={() => setDrawerOpen(false)}

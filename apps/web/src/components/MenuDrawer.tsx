@@ -1,77 +1,232 @@
+"use client";
+
+import { useState } from "react";
 import Link from "next/link";
 import { esCL } from "@/i18n/es-CL";
+import DrawerContactForm from "./DrawerContactForm";
 
 interface MenuDrawerProps {
   open: boolean;
-  archiveHref: string | null; // "Expos anteriores" row — omitted when no month is archived yet
   familyMode: boolean;
   onToggleFamilyMode: () => void;
   onClose: () => void;
 }
 
-// Opens from both the mobile hamburger AND the desktop "☰ Menú" trigger —
-// same drawer, same content on every screen size. Curatoría links out to
-// its own /curatoria page (split from /privacidad 2026-07-30 — the merged
-// page's title used to lead with "Privacidad" before "curatoría", a real
-// UX-audit finding).
-//
-// Modo familiar moved back in here 2026-08-03 — rediseño 2.0.0 dropped
-// FiltersSection (the old pill row) from the home page, and this drawer
-// is a temporary home for the toggle until the new design gives it a
-// permanent spot (Figma shows a real switch, "PARA IR EN FAMILIA",
-// somewhere in the new layout — not built yet).
-export default function MenuDrawer({ open, archiveHref, familyMode, onToggleFamilyMode, onClose }: MenuDrawerProps) {
+type DrawerView = "menu" | "contact";
+
+// Rediseño 2.0.0 — caldearte-web-menu-v2.0.0 / caldearte-mobile-menu-v2.0.0
+// (same layout both breakpoints, just full-width vs. half-width). Two
+// in-drawer views: "menu" (root) and "contact" (caldearte-web-contacto-
+// v2.0.0 / caldearte-mobile-contacto) — Contacto no longer navigates to
+// /contacto, it shows DrawerContactForm right here. Always resets to
+// "menu" on close so reopening never strands a visitor on the contact
+// view. The old "Revisa expos anteriores" archive link is dropped
+// entirely (confirmed with the user 2026-08-04) — week navigation +
+// search cover that need now.
+export default function MenuDrawer({
+  open,
+  familyMode,
+  onToggleFamilyMode,
+  onClose,
+}: MenuDrawerProps) {
+  const [view, setView] = useState<DrawerView>("menu");
+  // Resets to "menu" the moment `open` goes false — adjusting state
+  // during render (React's own recommended pattern for this, see "you
+  // might not need an effect") instead of an effect, so closing and
+  // reopening never strands a visitor on the contact view.
+  const [wasOpen, setWasOpen] = useState(open);
+  if (open !== wasOpen) {
+    setWasOpen(open);
+    if (!open) setView("menu");
+  }
+
+  // Closes the drawer first, then scrolls once the close transition has
+  // actually finished (300ms, matching the panel's own duration-300) —
+  // scrolling immediately would fight the drawer's own translate-x
+  // animation and read as an abrupt jump instead of one smooth motion.
+  function goToNewsletter() {
+    onClose();
+    setTimeout(() => {
+      document.getElementById("newsletter-section")?.scrollIntoView({ behavior: "smooth" });
+    }, 300);
+  }
+
   return (
     <>
-      {/* z-50 (both) — above Header's fixed top nav (z-40, rediseño 2.0.0)
-          so the backdrop actually dims it too, not just the page content.
-          Backdrop and panel share z-50; the panel still paints on top
-          because it comes later in this file's JSX (equal z-index ties
-          resolve by DOM order). */}
+      {/* Click-outside-to-close catcher — no dimming/opacity per redesign:
+          whatever the panel doesn't cover looks exactly like it normally
+          does. Sits behind the panel in DOM order, so a click ON the
+          panel never reaches this (browsers hit-test the topmost element
+          at a point, they don't fall through by z-index). On mobile the
+          panel is full-width so there's nothing outside it to click. */}
       <div
-        className={`fixed inset-0 z-50 bg-black/30 transition-opacity duration-300 ${
-          open ? "opacity-100" : "opacity-0 pointer-events-none"
-        }`}
+        className={`fixed inset-0 z-50 ${open ? "" : "pointer-events-none"}`}
         onClick={onClose}
       />
+
       <div
-        className={`fixed top-0 right-0 bottom-0 z-50 w-72 bg-white px-5 py-4 shadow-lg transition-transform duration-300 ease-out ${
+        className={`fixed top-0 right-0 bottom-0 z-50 w-full md:w-[60%] md:max-w-[640px] bg-text-primary text-surface-sage flex flex-col overflow-y-auto px-6 md:px-[60px] py-6 md:py-9 transition-transform duration-300 ease-out ${
           open ? "translate-x-0" : "translate-x-full"
         }`}
+        onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between mb-4">
-          <p className="text-sm font-bold text-heading-gray">{esCL.menu}</p>
-          <button onClick={onClose} className="text-muted-gray text-sm">
-            ✕
-          </button>
-        </div>
-        <button
-          type="button"
-          onClick={onToggleFamilyMode}
-          aria-pressed={familyMode}
-          className="w-full text-left text-sm text-heading-gray py-2.5 border-b border-stone-200 flex items-center justify-between"
-        >
-          <span>{esCL.familyMode}</span>
-          <span className={`w-9 h-5 rounded-full relative transition-colors ${familyMode ? "bg-heading-gray" : "bg-picker-subtle"}`}>
-            <span
-              className={`absolute top-0.5 size-4 rounded-full bg-white transition-transform ${familyMode ? "translate-x-[18px]" : "translate-x-0.5"}`}
-            />
-          </span>
-        </button>
-        <Link href="/curatoria" onClick={onClose} className="w-full text-left text-sm text-heading-gray py-2.5 border-b border-stone-200 flex items-center justify-between">
-          <span>{esCL.curatoria}</span>
-          <span className="text-stone-300">›</span>
-        </Link>
-        {archiveHref && (
-          <Link href={archiveHref} onClick={onClose} className="w-full text-left text-sm text-heading-gray py-2.5 border-b border-stone-200 flex items-center justify-between">
-            <span>{esCL.archiveLink}</span>
-            <span className="text-stone-300">›</span>
-          </Link>
+        {view === "contact" ? (
+          <>
+            <div className="flex items-center justify-between">
+              <button
+                type="button"
+                onClick={() => setView("menu")}
+                aria-label={esCL.menuDrawer.backToMenuAriaLabel}
+                className="shrink-0 cursor-pointer"
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element -- Figma-exported asset, verbatim per design decision */}
+                <img
+                  src="/icons/back-arrow-line.svg"
+                  alt=""
+                  width={160}
+                  height={20}
+                />
+              </button>
+              <button
+                type="button"
+                onClick={onClose}
+                aria-label={esCL.menuDrawer.closeAriaLabel}
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element -- hand-drawn: Figma's Code Connect mapping for this icon has no exportable web asset, only an Android Compose snippet */}
+                <img src="/icons/close-x.svg" alt="" width={50} height={50} />
+              </button>
+            </div>
+
+            <div className="flex flex-col gap-[8px] py-[24px]">
+              <p className="font-lato font-black leading-none text-[40px] text-brand-magenta">
+                {esCL.wordmarkLine1}
+                <br />
+                {esCL.wordmarkLine2}
+              </p>
+              <p className="font-geist text-[16px] text-surface-sage/80 max-w-[250px]">
+                {esCL.menuDrawer.contactSubtitle}
+              </p>
+            </div>
+
+            <div className="flex-1 flex flex-col py-[24px]">
+              <DrawerContactForm />
+            </div>
+
+            <p className="text-center pt-6">
+              <Link
+                href="/privacidad"
+                onClick={onClose}
+                className="font-fragment-mono text-[16px] text-surface-sage uppercase"
+              >
+                {esCL.footer.privacidad}
+              </Link>
+            </p>
+          </>
+        ) : (
+          <>
+            <div className="flex justify-end">
+              <button
+                type="button"
+                onClick={onClose}
+                aria-label={esCL.menuDrawer.closeAriaLabel}
+                className="cursor-pointer"
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element -- hand-drawn, see the contact view's own comment above */}
+                <img src="/icons/close-x.svg" alt="" width={50} height={50} />
+              </button>
+            </div>
+
+            <button
+              type="button"
+              onClick={onToggleFamilyMode}
+              aria-pressed={familyMode}
+              className="self-center flex items-center gap-[10px] py-[24px] md:pt-[50px] cursor-pointer"
+            >
+              <span className="font-fragment-mono text-[16px] uppercase">
+                {esCL.familyMode}
+              </span>
+              <span className="relative w-[52px] h-[32px] rounded-full border-2 border-surface-sage shrink-0">
+                <span
+                  className={`absolute top-1/2 -translate-y-1/2 size-[16px] rounded-full bg-surface-sage transition-all ${
+                    familyMode ? "left-[28px]" : "left-[6px]"
+                  }`}
+                />
+              </span>
+            </button>
+
+            {/* Exact desktop measurements from Figma (187:694, 520x386 row
+                at the 640px drawer width): CURATORIA 340x386, GUIA DE ARTE
+                170x237 top-aligned, CONTACTO 170x84 right under it — the
+                right column does NOT stretch to match CURATORIA's height,
+                it sits at the top with empty space below, same as Figma. */}
+            <div className="flex flex-col md:flex-row gap-[12px] md:gap-[10px] py-6">
+              <Link
+                href="/curatoria"
+                onClick={onClose}
+                className="relative w-full md:w-[340px] h-[218px] md:h-[420px] shrink-0 bg-brand-magenta overflow-hidden flex flex-row items-start justify-between md:flex-col md:justify-end p-[24px] md:p-[40px]"
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element -- Figma-exported asset, verbatim per design decision */}
+                <img
+                  src="/icons/curatoria-head.svg"
+                  alt=""
+                  width={112}
+                  className="mb-[16px] scale-x-[-1]"
+                />
+                <h3 className="font-lato font-black leading-[0.95] text-surface-sage text-[58px] md:text-[70px]">
+                  {esCL.curatoriaWordmarkLines.map((line) => (
+                    <span key={line} className="block">
+                      {line}
+                    </span>
+                  ))}
+                </h3>
+              </Link>
+
+              <div className="flex flex-row md:flex-col gap-[12px] md:gap-[10px] md:w-[170px]">
+                <button
+                  type="button"
+                  onClick={goToNewsletter}
+                  className="relative flex-1 md:flex-none md:w-[170px] h-[197px] md:h-[203px] bg-surface-sage overflow-hidden flex flex-col justify-start p-[16px] md:p-[20px] text-left cursor-pointer"
+                >
+                  <h3 className="font-lato font-black leading-[0.95] text-text-primary text-[59px] md:text-[53px]">
+                    {esCL.menuDrawer.guiaDeArteWordmarkLines.map((line) => (
+                      <span key={line} className="block">
+                        {line}
+                      </span>
+                    ))}
+                  </h3>
+                  {/* eslint-disable-next-line @next/next/no-img-element -- Figma-exported asset, verbatim per design decision */}
+                  <img
+                    src="/icons/curatoria-book.svg"
+                    alt=""
+                    className="md:w-[75px] w-[70px] absolute top-[59px] right-[21px] md:top-[52px] md:right-[8px]"
+                  />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setView("contact")}
+                  className="flex-1 md:flex-none md:w-[170px] h-[84px] flex flex-col items-left justify-center cursor-pointer"
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element -- Figma-exported asset, verbatim per design decision */}
+                  <img src="/icons/drawer-envelope.svg" alt="" width={100} />
+                  <span className="self-start ml-[5px] font-fragment-mono text-[16px] text-surface-sage">
+                    {esCL.menuDrawer.contactoLabel}
+                  </span>
+                </button>
+              </div>
+            </div>
+
+            <p className="text-center">
+              <Link
+                href="/privacidad"
+                onClick={onClose}
+                className="font-fragment-mono text-[16px] text-surface-sage uppercase"
+              >
+                {esCL.footer.privacidad}
+              </Link>
+            </p>
+          </>
         )}
-        <Link href="/contacto" onClick={onClose} className="w-full text-left text-sm text-heading-gray py-2.5 flex items-center justify-between">
-          <span>{esCL.footer.contacto}</span>
-          <span className="text-stone-300">›</span>
-        </Link>
       </div>
     </>
   );
