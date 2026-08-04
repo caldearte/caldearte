@@ -332,6 +332,28 @@ export const esCL = {
     error: "Algo falló al enviar tu mensaje. Prueba de nuevo en un rato.",
   },
 
+  // Rediseño 2.0.0 — MenuDrawer (caldearte-web-menu-v2.0.0 /
+  // caldearte-mobile-menu-v2.0.0) and its in-drawer contact form
+  // (caldearte-web-contacto-v2.0.0 / caldearte-mobile-contacto), replacing
+  // the old plain-link drawer. Distinct copy from esCL.contacto above —
+  // that's the standalone /contacto page, untouched by this redesign; the
+  // drawer's placeholder-style fields read differently ("Tu Nombre" vs.
+  // "Nombre (opcional)") and aren't meant to match it verbatim.
+  menuDrawer: {
+    closeAriaLabel: "Cerrar menú",
+    backToMenuAriaLabel: "Volver al menú",
+    guiaDeArteWordmarkLines: ["GUIA", "DE", "ARTE"],
+    contactoLabel: "CONTACTO",
+    contactSubtitle: "Escríbenos tu mensaje y te responderemos a la brevedad.",
+    namePlaceholder: "Tu Nombre",
+    emailPlaceholder: "Tu Correo electrómico",
+    messagePlaceholder: "Mensaje",
+    submit: "ENVIAR MENSAJE",
+    sending: "ENVIANDO...",
+    success: "Gracias por escribirnos. Te responderemos a la brevedad.",
+    error: "No pudimos enviar tu mensaje. Intenta de nuevo.",
+  },
+
   // Already-approved copy, not a placeholder.
   curatoriaText:
     "Caldearte no es un agregador neutral. Elegimos con criterio qué inauguraciones mostramos, guiados por un compromiso con el arte como espacio de encuentro, reflexión y comunidad — no como vehículo de proselitismo religioso, glorificación de la violencia o plataforma de discursos de odio. Priorizamos el arte que abre preguntas: memoria histórica, crítica social, denuncia, experimentación — sea en un museo consagrado o en una intervención callejera de barrio. Usamos inteligencia artificial para ayudarnos a rastrear y evaluar inauguraciones todos los días, siempre bajo revisión humana en los casos donde el criterio no es obvio. Si crees que nos equivocamos con un evento, o quieres contarnos de una inauguración que no encontramos, escríbenos — leemos cada mensaje.",

@@ -11,7 +11,6 @@ import {
   cityNamesFromEvents,
   thumbnailsByCity,
   findNextEvent,
-  listArchiveMonths,
 } from "@/lib/events";
 import {
   DEFAULT_CITY_ID,
@@ -230,15 +229,6 @@ export default async function HomePage({
     rangeEnd,
   );
 
-  // "Revisá expos anteriores" link next to EXPOS ACTUALES — points at the
-  // most recently archived month, computed from data already in memory
-  // (no extra fetch). Omitted (null) rather than guessed when there's no
-  // archived month yet, so it's never a link to a 404.
-  const [latestArchiveMonth] = listArchiveMonths(allEvents, today);
-  const archiveHref = latestArchiveMonth
-    ? `/expos-anteriores/${latestArchiveMonth.year}/${String(latestArchiveMonth.month).padStart(2, "0")}`
-    : null;
-
   return (
     <main className="min-h-screen w-full bg-surface-sage px-[20px] py-8 md:px-[61px] max-w-[1280px] mx-auto">
       <CalendarView
@@ -263,7 +253,6 @@ export default async function HomePage({
         searchableEvents={searchableEvents}
         nextEvent={nextEvent}
         regions={regions}
-        archiveHref={archiveHref}
         newsletterStatus={newsletterStatus}
       />
     </main>

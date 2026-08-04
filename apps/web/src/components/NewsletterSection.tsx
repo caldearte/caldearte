@@ -4,15 +4,10 @@ import Image from "next/image";
 import { esCL } from "@/i18n/es-CL";
 import { useNewsletterSubscribe } from "@/lib/useNewsletterSubscribe";
 import { shortRegionName } from "@/lib/regionNames";
+import { statusBoxClass } from "@/lib/formStatusBox";
 
-// Status messages (success/already_subscribed/error) share this box: same
-// border weight as the submit button but square corners and smaller
-// uppercase text (feedback: plain error text read as too small), with the
-// border color signaling the outcome — green for success, red otherwise.
-const STATUS_BOX_BASE =
-  "w-full text-left uppercase border-4 md:border-6 px-[16px] md:px-[21px] py-[16px] md:py-[20px] font-lato font-semibold text-[16px] md:text-[20px] text-text-primary";
-const STATUS_BOX_SUCCESS = `${STATUS_BOX_BASE} border-green-600`;
-const STATUS_BOX_ERROR = `${STATUS_BOX_BASE} border-red-600`;
+const STATUS_BOX_SUCCESS = statusBoxClass("success", "text-text-primary");
+const STATUS_BOX_ERROR = statusBoxClass("error", "text-text-primary");
 
 // Rediseño 2.0.0 — inline newsletter section on the home page (174:2987
 // web, 178:161 mobile), distinct from NewsletterEntryModal (the popup —
@@ -23,7 +18,10 @@ export default function NewsletterSection() {
   const { status, regions, handleSubmit } = useNewsletterSubscribe();
 
   return (
-    <section className="bg-text-placeholder px-5 md:px-[263px] py-12 md:py-[150px] flex flex-col gap-8 md:gap-[100px]">
+    <section
+      id="newsletter-section"
+      className="bg-text-placeholder px-5 md:px-[263px] py-12 md:py-[150px] flex flex-col gap-8 md:gap-[100px]"
+    >
       <div className="flex flex-col gap-[16px] md:gap-[20px]">
         {/* eslint-disable-next-line @next/next/no-img-element -- Figma-exported asset, verbatim per design decision */}
         <img src="/icons/mail.svg" alt="" width={120} height={120} />

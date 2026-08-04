@@ -52,7 +52,7 @@ export default function GeoConsentBanner({ show, regions }: GeoConsentBannerProp
   }
 
   return (
-    <div className="w-full bg-amber-400 px-4 py-5 md:px-6 mb-6 rounded-xl flex flex-col md:flex-row md:items-center gap-4">
+    <div className="w-full bg-amber-400 px-4 py-5 md:px-6 mt-[50px] md:mt-[60px] mb-6 rounded-xl flex flex-col md:flex-row md:items-center gap-4">
       <p className="flex-grow text-sm md:text-base font-medium text-heading-gray">{esCL.geoConsentPrompt}</p>
       <div className="flex items-center gap-2 shrink-0">
         <button onClick={decline} className="text-sm font-medium text-heading-gray px-4 py-2 rounded-full hover:bg-amber-300/70">
