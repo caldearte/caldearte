@@ -271,24 +271,16 @@ export const esCL = {
   aiDisclaimer: "Usamos IA para rastrear inauguraciones y exposiciones en todo Chile.",
 
   newsletter: {
-    title: "Recibe la semana en arte",
     headerLabel: "Boletín semanal",
-    entryTitle: "No te pierdas ninguna inauguración",
-    entrySubtitle: "Cada lunes, un resumen de lo mejor del arte en tu región — directo a tu correo.",
-    emailPlaceholder: "tu@correo.cl",
-    cityPlaceholder: "Tu comuna",
     regionPlaceholder: "Tu región",
-    submit: "Suscribirme",
     sending: "Enviando…",
-    successTitle: "Un paso más",
     success: "Te enviamos un correo con un link para confirmar tu suscripción. Si no lo ves en unos minutos, revisa la carpeta de spam.",
     alreadySubscribed: "Tu dirección de correo ya está suscrita a nuestro boletín semanal.",
     error: "No pudimos suscribirte. Intenta de nuevo.",
-    dismiss: "Ahora no",
     close: "Listo",
-    footerLink: "Suscríbete al boletín",
     // Rediseño 2.0.0 — inline home-page section (174:2987 web, 178:161
-    // mobile), distinct from the modal above: "GUIA DE ARTE" highlighted
+    // mobile), el único formulario de suscripción que queda (se retiró el
+    // modal NewsletterEntryModal, 2026-08-04): "GUIA DE ARTE" highlighted
     // in the middle of one headline, not two separate spans (a plain
     // space between two magenta words renders identically to a single
     // magenta span with a space in it — no visible difference, simpler

@@ -4,13 +4,7 @@ import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { esCL } from "@/i18n/es-CL";
 import { cityById, OTHER_CITY } from "@/lib/cities";
-import {
-  CITY_COOKIE,
-  FAMILY_MODE_COOKIE,
-  NEWSLETTER_PROMPT_COOKIE,
-  setCookie,
-  pushRecentCityId,
-} from "@/lib/cookies";
+import { CITY_COOKIE, FAMILY_MODE_COOKIE, setCookie, pushRecentCityId } from "@/lib/cookies";
 import { fmtShort } from "@/lib/date";
 import type { CityCounts, EventRecord, RegionMeta } from "@/lib/events";
 import Header from "./Header";
@@ -25,7 +19,6 @@ import SearchPanel from "./SearchPanel";
 import GeoConsentBanner from "./GeoConsentBanner";
 import GeoLocationChangedBanner from "./GeoLocationChangedBanner";
 import NewsletterStatusModal, { type NewsletterStatus } from "./NewsletterStatusModal";
-import NewsletterEntryModal from "./NewsletterEntryModal";
 
 interface CalendarViewProps {
   inauguraciones: EventRecord[];
@@ -34,7 +27,6 @@ interface CalendarViewProps {
   actualCityId: string | null; // IP-geolocated comuna, recomputed every render regardless of cityId — CityPickerPanel's "Tu ubicación actual" row; null when there's no real signal (outside Chile, no geo header)
   hasPreciseLocation: boolean; // true once a real geolocation reading (banner or picker button) has been granted — hides the picker's redundant "Usar mi ubicación exacta" button
   showGeoConsentPrompt: boolean; // true only when the visitor has never answered GeoConsentBanner's prompt
-  showNewsletterPrompt: boolean; // true only when the visitor has never seen NewsletterEntryModal's auto-prompt
   cityNames: Record<string, string>; // real observed comuna names, id -> name — see cities.ts
   familyMode: boolean;
   todayFilterOn: boolean; // Filtros "Hoy" pill — narrows this city's lists to only today's active events
@@ -61,7 +53,6 @@ export default function CalendarView({
   actualCityId,
   hasPreciseLocation,
   showGeoConsentPrompt,
-  showNewsletterPrompt,
   cityNames,
   familyMode,
   todayFilterOn,
@@ -83,14 +74,6 @@ export default function CalendarView({
   const [locationOpen, setLocationOpen] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
-  // Auto-opens once (showNewsletterPrompt, from the cookie check in
-  // page.tsx) but stays independently reachable afterward via the
-  // Footer's own "Suscríbete" link — see openNewsletterEntry/
-  // closeNewsletterEntry below. Never auto-opens on top of
-  // NewsletterStatusModal — a visitor arriving via a confirm/baja email
-  // link (newsletterStatus set) already gets that modal; stacking the
-  // entry prompt over it would bury the actual result.
-  const [newsletterEntryOpen, setNewsletterEntryOpen] = useState(showNewsletterPrompt && !newsletterStatus);
 
   const city = cityById(cityId, cityNames);
 
@@ -120,23 +103,9 @@ export default function CalendarView({
 
   const isEmpty = inauguraciones.length === 0 && exposActuales.length === 0;
 
-  // Same "answered = never ask again unprompted" semantics as
-  // GeoConsentBanner's decline() — closing (subscribed or not) sets the
-  // cookie either way. Reopening later via the Footer link never touches
-  // this cookie, so it doesn't re-arm the auto-prompt.
-  function closeNewsletterEntry() {
-    setCookie(NEWSLETTER_PROMPT_COOKIE, "seen");
-    setNewsletterEntryOpen(false);
-  }
-
-  function openNewsletterEntry() {
-    setNewsletterEntryOpen(true);
-  }
-
   return (
     <div className="w-full relative">
       <NewsletterStatusModal status={newsletterStatus} />
-      <NewsletterEntryModal open={newsletterEntryOpen} onClose={closeNewsletterEntry} />
       <GeoConsentBanner show={showGeoConsentPrompt} regions={regions} />
       <GeoLocationChangedBanner
         hasPreciseLocation={hasPreciseLocation}
@@ -205,7 +174,7 @@ export default function CalendarView({
 
       <NewsletterSection />
 
-      <Footer onOpenNewsletter={openNewsletterEntry} />
+      <Footer />
 
       <CityPickerPanel
         open={locationOpen}
