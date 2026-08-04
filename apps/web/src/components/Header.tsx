@@ -42,7 +42,9 @@ function MenuButton({ onClick }: { onClick: () => void }) {
 // just small enough to sit in the nav row.
 function CompactLogo({ size }: { size: "md" | "sm" }) {
   return (
-    <span className={`font-lato font-black leading-none text-brand-magenta ${size === "md" ? "text-[28px]" : "text-[20px]"}`}>
+    <span
+      className={`font-lato font-black leading-none text-brand-magenta ${size === "md" ? "text-[28px]" : "text-[20px]"}`}
+    >
       {esCL.appName}
     </span>
   );
@@ -109,7 +111,9 @@ export default function Header({
   useEffect(() => {
     const hero = heroRef.current;
     if (!hero) return;
-    const observer = new IntersectionObserver(([entry]) => setScrolledPastHero(!entry.isIntersecting));
+    const observer = new IntersectionObserver(([entry]) =>
+      setScrolledPastHero(!entry.isIntersecting),
+    );
     observer.observe(hero);
     return () => observer.disconnect();
   }, []);
@@ -126,11 +130,19 @@ export default function Header({
           space in normal flow, so content doesn't jump when this appears. */}
       <div className="fixed top-0 inset-x-0 z-40 bg-surface-sage">
         <div className="max-w-[1280px] mx-auto">
-          <TopNavContent scrolledPastHero={scrolledPastHero} onOpenSearch={onOpenSearch} onOpenMenu={onOpenMenu} />
+          <TopNavContent
+            scrolledPastHero={scrolledPastHero}
+            onOpenSearch={onOpenSearch}
+            onOpenMenu={onOpenMenu}
+          />
         </div>
       </div>
       <div className="invisible max-w-[1280px] mx-auto" aria-hidden="true">
-        <TopNavContent scrolledPastHero={scrolledPastHero} onOpenSearch={() => {}} onOpenMenu={() => {}} />
+        <TopNavContent
+          scrolledPastHero={scrolledPastHero}
+          onOpenSearch={() => {}}
+          onOpenMenu={() => {}}
+        />
       </div>
 
       {/* hero — wordmark + tagline (left), location + week nav (right) */}
@@ -146,7 +158,9 @@ export default function Header({
           {/* Desktop: one line. Mobile: forced onto 3 explicit lines
               (design decision, not natural wrap) — see
               heroTaglineMobileLines. */}
-          <p className="hidden md:block font-geist font-semibold text-[15px] text-text-secondary tracking-[2px]">{esCL.heroTagline}</p>
+          <p className="hidden md:block font-geist font-semibold text-[15px] text-text-secondary tracking-[2px] md:w-[168px]">
+            {esCL.heroTagline}
+          </p>
           <p className="md:hidden font-geist font-semibold text-[15px] text-text-secondary tracking-[2px]">
             {esCL.heroTaglineMobileLines.map((line) => (
               <span key={line} className="block">
@@ -178,7 +192,13 @@ export default function Header({
               className="flex items-center gap-[9px] border border-border-default rounded-[9px] px-[30px] py-[23px] text-border-default"
             >
               {/* eslint-disable-next-line @next/next/no-img-element -- Figma-exported asset, verbatim per design decision */}
-              <img src="/icons/location-pin.svg" alt="" width={14} height={18} className="shrink-0" />
+              <img
+                src="/icons/location-pin.svg"
+                alt=""
+                width={14}
+                height={18}
+                className="shrink-0"
+              />
               {/* Mobile drops ", CHILE" to save space — just the comuna
                   name, truncated with an ellipsis past max-w so a long
                   comuna name can't blow out the pill/viewport. `p` nested
@@ -191,9 +211,17 @@ export default function Header({
               <span className="md:hidden inline-block max-w-[200px] overflow-hidden text-ellipsis font-fragment-mono text-[20px] whitespace-nowrap">
                 {city.name.toUpperCase()}
               </span>
-              <span className="hidden md:inline font-fragment-mono text-[20px] whitespace-nowrap">{esCL.locationPillSuffix(city.name)}</span>
+              <span className="hidden md:inline font-fragment-mono text-[20px] whitespace-nowrap">
+                {esCL.locationPillSuffix(city.name)}
+              </span>
               {/* eslint-disable-next-line @next/next/no-img-element -- Figma-exported asset, verbatim per design decision */}
-              <img src="/icons/chevron-right.svg" alt="" width={7} height={14} className="rotate-90 shrink-0" />
+              <img
+                src="/icons/chevron-right.svg"
+                alt=""
+                width={7}
+                height={14}
+                className="rotate-90 shrink-0"
+              />
             </button>
           </div>
 
@@ -206,15 +234,38 @@ export default function Header({
                 (aunque nunca debería alcanzarse, dado que el chevron ya
                 estaría oculto) cualquier semana previa. */}
             {weekNumber > 1 && (
-              <Link href={prevWeekHref} aria-label={esCL.prevWeekAriaLabel} scroll={false} className="inline-flex shrink-0">
+              <Link
+                href={prevWeekHref}
+                aria-label={esCL.prevWeekAriaLabel}
+                scroll={false}
+                className="inline-flex shrink-0"
+              >
                 {/* eslint-disable-next-line @next/next/no-img-element -- Figma-exported asset, verbatim per design decision */}
-                <img src="/icons/chevron-right.svg" alt="" width={7} height={14} className="rotate-180" />
+                <img
+                  src="/icons/chevron-right.svg"
+                  alt=""
+                  width={7}
+                  height={14}
+                  className="rotate-180"
+                />
               </Link>
             )}
-            <span className="font-fragment-mono text-[18px] text-border-default tracking-[-0.84px] whitespace-nowrap">{weekRangeLabel}</span>
-            <Link href={nextWeekHref} aria-label={esCL.nextWeekAriaLabel} scroll={false} className="inline-flex shrink-0">
+            <span className="font-fragment-mono text-[18px] text-border-default tracking-[-0.84px] whitespace-nowrap">
+              {weekRangeLabel}
+            </span>
+            <Link
+              href={nextWeekHref}
+              aria-label={esCL.nextWeekAriaLabel}
+              scroll={false}
+              className="inline-flex shrink-0"
+            >
               {/* eslint-disable-next-line @next/next/no-img-element -- Figma-exported asset, verbatim per design decision */}
-              <img src="/icons/chevron-right.svg" alt="" width={7} height={14} />
+              <img
+                src="/icons/chevron-right.svg"
+                alt=""
+                width={7}
+                height={14}
+              />
             </Link>
           </div>
         </div>

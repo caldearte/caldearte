@@ -150,11 +150,24 @@ export default function CalendarView({
         <>
           <InauguracionesSection events={inauguraciones} hideTodayBadge={todayFilterOn} />
 
-          <div className="w-full flex flex-wrap justify-center">
-            <CuratoriaBanner />
-          </div>
+          {/* CuratoriaBanner sits between Inauguraciones and Exposiciones
+              only when Inauguraciones actually renders (it returns null
+              with zero events this week). Otherwise it moves down to sit
+              between Exposiciones and the "texto AI" line below, so it's
+              never floating right under the Header with nothing above it. */}
+          {inauguraciones.length > 0 && (
+            <div className="w-full flex flex-wrap justify-center">
+              <CuratoriaBanner />
+            </div>
+          )}
 
           <ExposicionesSection events={exposActuales} hideTodayBadge={todayFilterOn} />
+
+          {inauguraciones.length === 0 && (
+            <div className="w-full flex flex-wrap justify-center">
+              <CuratoriaBanner />
+            </div>
+          )}
         </>
       )}
 
