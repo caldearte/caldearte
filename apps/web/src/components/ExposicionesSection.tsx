@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { esCL } from "@/i18n/es-CL";
+import { chunk } from "@/lib/array";
+import { useSliderPaging } from "@/lib/useSliderPaging";
 import type { EventRecord } from "@/lib/events";
 import ExpoBentoCard from "./ExpoBentoCard";
 import EventHorizontalListItem from "./EventHorizontalListItem";
@@ -55,7 +57,6 @@ const DESKTOP_COL_SPAN: string[] = ["md:col-span-7", "md:col-span-5", "md:col-sp
 
 export default function ExposicionesSection({ events, hideTodayBadge = false }: ExposicionesSectionProps) {
   const [view, setView] = useState<ViewMode>("grid");
-  const [page, setPage] = useState(0);
   const isDesktop = useIsDesktop();
   // Figma's mobile toolbar (178:119) had no view-toggle at all, just
   // label + pagination — grid-only was the original spec, but the user
@@ -66,9 +67,14 @@ export default function ExposicionesSection({ events, hideTodayBadge = false }: 
   // (confirmed with the user, deliberately more than grid's 5 since the
   // cards are much smaller), 6/page mobile (single column, same ratio).
   const itemsPerPage = view === "list" ? (isDesktop ? 12 : 6) : isDesktop ? 5 : 3;
-  const totalPages = Math.max(1, Math.ceil(events.length / itemsPerPage));
-  const currentPage = Math.min(page, totalPages - 1);
-  const pageEvents = events.slice(currentPage * itemsPerPage, currentPage * itemsPerPage + itemsPerPage);
+  const pages = chunk(events, itemsPerPage);
+  const totalPages = Math.max(1, pages.length);
+  // Real horizontal-scroll track (swipe/trackpad/drag), not just a
+  // slice+re-render — see useSliderPaging's own doc comment. `resetKey`
+  // remounts the track (and re-zeroes scroll position) whenever the page
+  // count changes for a reason other than paging itself.
+  const { trackRef, currentPage, goToPage, onTrackScroll, onTrackWheel } = useSliderPaging(totalPages);
+  const resetKey = `${view}-${itemsPerPage}`;
 
   if (events.length === 0) return null;
 
@@ -99,7 +105,7 @@ export default function ExposicionesSection({ events, hideTodayBadge = false }: 
         <div className="flex items-center gap-[12px]">
           <button
             type="button"
-            onClick={() => setPage((p) => Math.max(0, p - 1))}
+            onClick={() => goToPage(currentPage - 1)}
             disabled={currentPage === 0}
             aria-label={esCL.prevPageAriaLabel}
             className="flex items-center justify-center size-[36px] rounded-[18px] border border-text-primary disabled:opacity-30"
@@ -110,7 +116,7 @@ export default function ExposicionesSection({ events, hideTodayBadge = false }: 
           <p className="font-geist text-[13px] text-text-primary whitespace-nowrap">{esCL.pageIndicator(currentPage + 1, totalPages)}</p>
           <button
             type="button"
-            onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+            onClick={() => goToPage(currentPage + 1)}
             disabled={currentPage === totalPages - 1}
             aria-label={esCL.nextPageAriaLabel}
             className="flex items-center justify-center size-[36px] rounded-[18px] border border-text-primary disabled:opacity-30"
@@ -121,28 +127,49 @@ export default function ExposicionesSection({ events, hideTodayBadge = false }: 
         </div>
       </div>
 
-      {view === "grid" ? (
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-[20px] md:gap-[27px]">
-          {pageEvents.map((e, i) => (
-            <div key={e.id} className={DESKTOP_COL_SPAN[i]}>
-              <ExpoBentoCard event={e} hideTodayBadge={hideTodayBadge} desktopImageHeightClass={DESKTOP_IMAGE_HEIGHT[i]} />
+      {/* Snap-paged horizontal scroll track — arrows/dots call goToPage,
+          but a visitor can also swipe/drag/trackpad-scroll directly.
+          Keyed by resetKey so a view toggle or breakpoint crossing
+          (itemsPerPage changing) remounts it at scrollLeft 0 instead of
+          leaving a stale offset from the previous layout. */}
+      <div
+        key={resetKey}
+        ref={trackRef}
+        onScroll={onTrackScroll}
+        onWheel={onTrackWheel}
+        className="flex overflow-x-auto snap-x snap-mandatory scroll-smooth [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+      >
+        {pages.map((pageEvents, pIdx) =>
+          view === "grid" ? (
+            <div key={pIdx} className="w-full shrink-0 snap-start grid grid-cols-1 md:grid-cols-12 gap-[20px] md:gap-[27px]">
+              {pageEvents.map((e, i) => (
+                <div key={e.id} className={DESKTOP_COL_SPAN[i]}>
+                  <ExpoBentoCard event={e} hideTodayBadge={hideTodayBadge} desktopImageHeightClass={DESKTOP_IMAGE_HEIGHT[i]} />
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
-      ) : (
-        // Same 3-fixed-width-column pattern as Inauguraciones' list view —
-        // 5 items wrap naturally to 2 rows (3 + 2), no extra logic needed.
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-[12px]">
-          {pageEvents.map((e) => (
-            <EventHorizontalListItem key={e.id} event={e} variant="expo" />
-          ))}
-        </div>
-      )}
+          ) : (
+            // Same 3-fixed-width-column pattern as Inauguraciones' list
+            // view — 5 items wrap naturally to 2 rows (3 + 2).
+            <div key={pIdx} className="w-full shrink-0 snap-start grid grid-cols-1 md:grid-cols-3 gap-[12px]">
+              {pageEvents.map((e) => (
+                <EventHorizontalListItem key={e.id} event={e} variant="expo" />
+              ))}
+            </div>
+          ),
+        )}
+      </div>
 
       {totalPages > 1 && (
         <div className="flex gap-[6px] justify-center pt-4">
-          {Array.from({ length: totalPages }).map((_, i) => (
-            <span key={i} className={`size-[8px] rounded-full ${i === currentPage ? "bg-brand-magenta" : "bg-border-default/40"}`} />
+          {pages.map((_, i) => (
+            <button
+              key={i}
+              type="button"
+              aria-label={esCL.pageIndicator(i + 1, totalPages)}
+              onClick={() => goToPage(i)}
+              className={`size-[8px] rounded-full ${i === currentPage ? "bg-brand-magenta" : "bg-border-default/40"}`}
+            />
           ))}
         </div>
       )}
