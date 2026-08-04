@@ -197,6 +197,12 @@ export default function CalendarView({
           stay wired through unchanged — CityPickerPanel below still
           needs them regardless of whether this carousel renders. */}
 
+      {/* "texto AI" (174:2985) — its own short section between Exposiciones
+          and the newsletter form, not part of either. Large gap above
+          (echoing Exposiciones' own bottom spacing), tight against the
+          form below. */}
+      <p className="mt-[60px] md:mt-[120px] mb-4 text-center text-sm text-text-secondary">{esCL.aiDisclaimer}</p>
+
       <NewsletterSection />
 
       <Footer onOpenNewsletter={openNewsletterEntry} />

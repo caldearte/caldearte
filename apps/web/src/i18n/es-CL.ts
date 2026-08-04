@@ -265,6 +265,11 @@ export const esCL = {
     contactLinkLabel: "formulario de contacto",
   },
 
+  // Rediseño 2.0.0 — "texto AI" (174:2985), su propia sección corta
+  // entre Exposiciones y el formulario de newsletter, no parte de
+  // ninguno de los dos.
+  aiDisclaimer: "Usamos IA para rastrear inauguraciones y exposiciones en todo Chile.",
+
   newsletter: {
     title: "Recibe la semana en arte",
     headerLabel: "Boletín semanal",
