@@ -89,7 +89,6 @@ export default function SearchPanel({ open, events, onClose }: SearchPanelProps)
     .filter((e) => variantFor(e) === "inauguracion")
     .sort((a, b) => (a.openingDatetime! < b.openingDatetime! ? -1 : a.openingDatetime! > b.openingDatetime! ? 1 : 0));
   const expoResults = sortByRunEndAsc(matches.filter((e) => variantFor(e) === "expo"));
-  const results = [...inauguracionResults, ...expoResults];
 
   return (
     <div
@@ -128,17 +127,41 @@ export default function SearchPanel({ open, events, onClose }: SearchPanelProps)
           <img src="/icons/selector-search.svg" alt="" width={18} height={18} className="absolute left-[16px] top-1/2 -translate-y-1/2" />
         </div>
 
-        <div className="mt-[40px] md:mt-[60px]">
+        <div className="mt-[40px] md:mt-[60px] flex flex-col gap-[32px] md:gap-[40px]">
           {!trimmedQuery ? (
             <p className="font-geist text-[15px] text-text-muted text-center py-10">{esCL.searchHint}</p>
-          ) : results.length === 0 ? (
+          ) : matches.length === 0 ? (
             <p className="font-geist text-[15px] text-text-muted text-center py-10">{esCL.noSearchResults}</p>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-[12px]">
-              {results.map((e) => (
-                <EventHorizontalListItem key={e.id} event={e} variant={variantFor(e)} cityName={displayNameForCity(e)} />
-              ))}
-            </div>
+            <>
+              {/* Split into the same two groups as the home page, per the
+                  user 2026-08-04: a flat mixed list made it hard to tell
+                  inauguraciones from expos at a glance. */}
+              {inauguracionResults.length > 0 && (
+                <div>
+                  <p className="font-fragment-mono font-bold text-[14px] uppercase text-text-primary mb-[16px]">
+                    {esCL.searchGroupInauguraciones}
+                  </p>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-[12px]">
+                    {inauguracionResults.map((e) => (
+                      <EventHorizontalListItem key={e.id} event={e} variant="inauguracion" cityName={displayNameForCity(e)} />
+                    ))}
+                  </div>
+                </div>
+              )}
+              {expoResults.length > 0 && (
+                <div>
+                  <p className="font-fragment-mono font-bold text-[14px] uppercase text-text-primary mb-[16px]">
+                    {esCL.searchGroupExposiciones}
+                  </p>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-[12px]">
+                    {expoResults.map((e) => (
+                      <EventHorizontalListItem key={e.id} event={e} variant="expo" cityName={displayNameForCity(e)} />
+                    ))}
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>
