@@ -13,6 +13,7 @@ import {
   type City,
   type CountryGroup,
 } from "@/lib/cities";
+import { shortRegionName } from "@/lib/regionNames";
 import { getRecentCityIds, setCookie, PRECISE_CITY_COOKIE } from "@/lib/cookies";
 import { requestPreciseCityId } from "@/lib/geolocation";
 import { sumCounts, type CityCounts, type RegionMeta } from "@/lib/events";
@@ -670,7 +671,7 @@ export default function CityPickerPanel({
                         return (
                           <div key={key} className="border-b border-picker-border/30">
                             <SectionRow
-                              title={region.adminRegionName}
+                              title={shortRegionName(region.adminRegionName)}
                               numeral={region.adminRegionNumeral}
                               navKey={key}
                               expanded={expanded}

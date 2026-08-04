@@ -282,6 +282,18 @@ export const esCL = {
     dismiss: "Ahora no",
     close: "Listo",
     footerLink: "Suscríbete al boletín",
+    // Rediseño 2.0.0 — inline home-page section (174:2987 web, 178:161
+    // mobile), distinct from the modal above: "GUIA DE ARTE" highlighted
+    // in the middle of one headline, not two separate spans (a plain
+    // space between two magenta words renders identically to a single
+    // magenta span with a space in it — no visible difference, simpler
+    // code).
+    sectionHeadlinePlainStart: "RECIBE NUESTRA ",
+    sectionHeadlineHighlight: "GUIA DE ARTE",
+    sectionHeadlinePlainEnd: " CADA LUNES.",
+    sectionEmailPlaceholder: "Pon tu mail aquí",
+    sectionSubmit: "¡LA QUIERO!",
+    sectionCaption: "¡No te pierdas ninguna inauguración!",
     confirmar: {
       title: "Confirmar suscripción",
       confirmedTitle: "¡Listo! Ya eres parte de Caldearte",
