@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, type KeyboardEvent } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { esCL } from "@/i18n/es-CL";
 import { buildRegionMetaByCityId, citiesWithEvents, groupCitiesByRegion, matchesQuery, cityById, OTHER_CITY, type City } from "@/lib/cities";
@@ -79,7 +79,7 @@ function OptionRow({
     <button
       type="button"
       onClick={onClick}
-      className={`w-full flex items-center justify-between gap-[12px] p-[16px] rounded-input text-left ${
+      className={`w-full flex items-center justify-between gap-[12px] p-[16px] rounded-input text-left cursor-pointer ${
         current ? "bg-text-primary" : "border border-border-default"
       }`}
     >
@@ -108,7 +108,7 @@ function ShortcutRow({ city, counts, onClick }: { city: City; counts: CityCounts
     <button
       type="button"
       onClick={onClick}
-      className="w-full flex items-center justify-between gap-[12px] border border-text-primary rounded-input px-[10px] py-[10px] text-left"
+      className="w-full flex items-center justify-between gap-[12px] border border-text-primary rounded-input px-[10px] py-[10px] text-left cursor-pointer"
     >
       <span className="font-lato text-[14px] text-text-primary whitespace-nowrap">{city.name.toUpperCase()}</span>
       <Badges counts={counts} />
@@ -181,6 +181,22 @@ export default function CityPickerPanel({
       document.body.style.overflow = previousOverflow;
     };
   }, [open]);
+
+  // A document-level listener, not the dialog's own onKeyDown — Escape
+  // needs to close this regardless of which element currently has DOM
+  // focus. React's onKeyDown only fires for events that bubble up FROM
+  // whatever's focused, and nothing here moves focus into the dialog on
+  // open, so a keydown fired while focus is still on the trigger button
+  // (outside the dialog) never reached the old per-element handler — real
+  // bug found 2026-08-04.
+  useEffect(() => {
+    if (!open) return;
+    function onDocumentKeyDown(e: globalThis.KeyboardEvent) {
+      if (e.key === "Escape") onClose();
+    }
+    document.addEventListener("keydown", onDocumentKeyDown);
+    return () => document.removeEventListener("keydown", onDocumentKeyDown);
+  }, [open, onClose]);
 
   useEffect(() => {
     const timer = setTimeout(() => setFilterQuery(query), SEARCH_DEBOUNCE_MS);
@@ -274,24 +290,16 @@ export default function CityPickerPanel({
     );
   }
 
-  function handlePanelKeyDown(e: KeyboardEvent<HTMLDivElement>) {
-    if (e.key === "Escape") onClose();
-  }
-
   const zoneLabel = selectedZoneKey ? zoneByKey(selectedZoneKey).label : "";
   const regionShortName = selectedRegionName ? shortRegionName(selectedRegionName) : "";
 
+  // Desktop only — mobile shows just the back arrow, no breadcrumb text
+  // (per the user 2026-08-04).
   const breadcrumbDesktop =
     step === "comuna" && selectedZoneKey
       ? esCL.citySelector.zonaRegionBreadcrumb(zoneLabel, regionShortName)
       : step === "region" && selectedZoneKey
         ? esCL.citySelector.zonaBreadcrumb(zoneLabel)
-        : null;
-  const breadcrumbMobile =
-    step === "comuna" && selectedZoneKey
-      ? esCL.citySelector.zonaRegionBreadcrumbMobile(zoneLabel, regionShortName)
-      : step === "region" && selectedZoneKey
-        ? esCL.citySelector.zonaBreadcrumbMobile(zoneLabel)
         : null;
 
   const headingLines =
@@ -317,7 +325,6 @@ export default function CityPickerPanel({
       // `inert` (not just visual hiding) pulls the whole modal out of the
       // tab order and accessibility tree while closed.
       inert={!open}
-      onKeyDown={handlePanelKeyDown}
       className={`fixed inset-0 z-40 bg-surface-sage overflow-y-auto transition-opacity duration-150 ${
         open ? "opacity-100" : "opacity-0 pointer-events-none"
       }`}
@@ -325,15 +332,25 @@ export default function CityPickerPanel({
       <div className="max-w-[1160px] mx-auto px-5 md:px-0 py-[40px] md:py-[60px] min-h-full flex flex-col">
         <div className="flex items-center justify-between mb-[40px] md:mb-[60px]">
           <div className="flex items-center gap-[20px]">
-            <button type="button" onClick={handleBack} aria-label={step === "zona" ? esCL.closeCityPicker : esCL.citySelector.back}>
+            <button
+              type="button"
+              onClick={handleBack}
+              aria-label={step === "zona" ? esCL.closeCityPicker : esCL.citySelector.back}
+              className="cursor-pointer"
+            >
               {/* eslint-disable-next-line @next/next/no-img-element -- Figma-exported asset, verbatim per design decision */}
               <img src="/icons/selector-back-arrow.svg" alt="" width={140} height={19} />
             </button>
-            {breadcrumbMobile && (
-              <p className="md:hidden font-lato font-semibold text-[16px] text-brand-magenta whitespace-nowrap">{breadcrumbMobile}</p>
-            )}
+            {/* Desktop only, per the user 2026-08-04: mobile shows just the
+                back arrow, no breadcrumb text. */}
             {breadcrumbDesktop && (
-              <p className="hidden md:block font-lato font-semibold text-[20px] text-brand-magenta whitespace-nowrap">{breadcrumbDesktop}</p>
+              <button
+                type="button"
+                onClick={handleBack}
+                className="hidden md:block font-lato font-semibold text-[20px] text-brand-magenta whitespace-nowrap cursor-pointer"
+              >
+                {breadcrumbDesktop}
+              </button>
             )}
           </div>
           <p className="font-lato text-[40px] md:text-[64px] text-brand-magenta whitespace-nowrap">{esCL.citySelector.country.toUpperCase()}</p>
@@ -454,7 +471,7 @@ export default function CityPickerPanel({
                       type="button"
                       onClick={handleUseExactLocation}
                       disabled={locatingState === "locating"}
-                      className="text-[10px] underline text-text-muted shrink-0 disabled:opacity-60"
+                      className="text-[10px] underline text-text-muted shrink-0 cursor-pointer disabled:cursor-default disabled:opacity-60"
                     >
                       {locatingState === "locating" ? esCL.cityPickerLocatingExact : esCL.cityPickerShareLocationButton}
                     </button>

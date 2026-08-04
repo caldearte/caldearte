@@ -99,10 +99,6 @@ export const esCL = {
     zonasLabel: "ZONAS",
     zonaBreadcrumb: (zoneLabel: string) => `ZONA ${zoneLabel.toUpperCase()}`,
     zonaRegionBreadcrumb: (zoneLabel: string, regionShortName: string) => `ZONA ${zoneLabel.toUpperCase()} / ${regionShortName.toUpperCase()}`,
-    // Mobile's own shorter breadcrumb format (caldearte-mobile-selector-
-    // paso-{2,3}-v2.0.0): no "ZONA" prefix, ">" instead of "/".
-    zonaBreadcrumbMobile: (zoneLabel: string) => zoneLabel.toUpperCase(),
-    zonaRegionBreadcrumbMobile: (zoneLabel: string, regionShortName: string) => `${zoneLabel.toUpperCase()} > ${regionShortName.toUpperCase()}`,
     regionesEnZona: (zoneLabel: string) => `REGIONES EN ZONA ${zoneLabel.toUpperCase()}`,
     comunasDe: (regionShortName: string) => `COMUNAS DE ${regionShortName.toUpperCase()}`,
     sabiasQue: "¿SABÍAS QUÉ?",
