@@ -1,19 +1,11 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { esCL } from "@/i18n/es-CL";
-import {
-  buildRegionMetaByCityId,
-  citiesWithEvents,
-  groupCitiesByRegion,
-  matchesQuery,
-  cityById,
-  OTHER_CITY,
-  type City,
-  type CountryGroup,
-} from "@/lib/cities";
+import { buildRegionMetaByCityId, citiesWithEvents, groupCitiesByRegion, matchesQuery, cityById, OTHER_CITY, type City } from "@/lib/cities";
 import { shortRegionName } from "@/lib/regionNames";
+import { ZONES, zoneKeyForRegion, zoneByKey, type ZoneKey } from "@/lib/zones";
 import { getRecentCityIds, setCookie, PRECISE_CITY_COOKIE } from "@/lib/cookies";
 import { requestPreciseCityId } from "@/lib/geolocation";
 import { sumCounts, type CityCounts, type RegionMeta } from "@/lib/events";
@@ -21,181 +13,117 @@ import { sumCounts, type CityCounts, type RegionMeta } from "@/lib/events";
 interface CityPickerPanelProps {
   open: boolean;
   cityId: string; // the currently CONFIRMED city
-  actualCityId: string | null; // geolocated comuna (page.tsx, already prefers a real granted reading over the coarse IP estimate) — feeds the "Tu ubicación actual" quick-pick row; null when there's no real geo signal
-  hasPreciseLocation: boolean; // true once a real geolocation reading is already known — hides "Usar mi ubicación exacta" (redundant to ask again)
+  actualCityId: string | null; // geolocated comuna — feeds "Tu ubicación actual"; null when there's no real geo signal
+  hasPreciseLocation: boolean; // true once a real geolocation reading is already known — hides the "usar ubicación exacta" prompt
   cityCounts: Record<string, CityCounts>;
   cityNames: Record<string, string>;
   regions: RegionMeta[];
   onClose: () => void;
-  // Clicking a city (or pressing Enter on one) commits and navigates
-  // immediately — same instant pattern as CityCarousel.tsx's onSelectCity,
-  // no more pending-selection + separate "Explorar" confirm step.
+  // Clicking a comuna (anywhere — step 3, search results, or a bottom
+  // shortcut) commits and navigates immediately, same instant pattern the
+  // rest of the app already uses — confirmed with the user 2026-08-04,
+  // no separate "confirm" step despite the Figma mock showing a
+  // CONFIRMAR SELECCIÓN button.
   onSelectCity: (cityId: string) => void;
 }
 
 const ZERO_COUNTS: CityCounts = { inauguraciones: 0, exposActuales: 0 };
 const SEARCH_DEBOUNCE_MS = 200;
+const MAX_RECENT_SHORTCUTS = 2;
+
+type Step = "zona" | "region" | "comuna";
 
 function countsFor(cities: City[], cityCounts: Record<string, CityCounts>): CityCounts {
   return sumCounts(cities.map((c) => cityCounts[c.id] ?? ZERO_COUNTS));
 }
 
-// Regions are grouped first by país (see cities.ts), so a región's key
-// needs the país in it too — otherwise a same-named región in a future
-// second country would collide with Chile's.
-function regionKey(country: string, adminRegionName: string): string {
-  return `${country}::${adminRegionName}`;
-}
-
-// The "Chile" country header is collapsible too, same chevron as a región
-// row — real gap found 2026-07-29: the user's original ask was "tu
-// ubicación, últimas visitadas, Chile como hermanas... todas con chevron
-// de colapsables", and the first pass only made the two quick-picks and
-// the individual regiones collapsible, missing the country level itself.
-function countryKey(country: string): string {
-  return `country::${country}`;
-}
-
-function cityOptionId(cityId: string): string {
-  return `city-option-${cityId}`;
-}
-
-function regionOptionId(key: string): string {
-  return `region-option-${key}`;
-}
-
-// Quick-pick sections (below) are collapsible siblings of the "Chile"
-// group, not a separate widget — same expand/collapse machinery
-// (expandedRegions/toggleRegion/isRegionExpanded) via these two keys, in
-// their own "quickpick::" namespace so they can never collide with a real
-// región's `regionKey`.
-const CURRENT_LOCATION_KEY = "quickpick::current-location";
-const RECENT_CITIES_KEY = "quickpick::recent";
-
-type NavEntry = { type: "region"; key: string } | { type: "city"; city: City };
-
-interface CityRowProps {
-  city: City;
-  counts: CityCounts;
-  selected: boolean;
-  active: boolean;
-  onSelect: (city: City) => void;
-  onHover: () => void;
-}
-
-function CityRow({ city, counts, selected, active, onSelect, onHover }: CityRowProps) {
+// Magenta "N inaug" + dark "N expos", each only shown when > 0 — same
+// badge pair used throughout the redesign's cards.
+function Badges({ counts }: { counts: CityCounts }) {
+  if (counts.inauguraciones === 0 && counts.exposActuales === 0) return null;
   return (
-    <button
-      id={cityOptionId(city.id)}
-      role="option"
-      aria-selected={selected}
-      onClick={() => onSelect(city)}
-      onMouseEnter={onHover}
-      className={`w-full flex items-center gap-2 pl-[52px] pr-3 py-2.5 rounded-lg text-left transition-colors ${
-        selected ? "bg-heading-gray" : active ? "bg-stone-100" : "hover:bg-stone-50"
-      }`}
-    >
-      <span className={`flex-grow text-sm ${selected ? "font-semibold text-white" : "text-heading-gray"}`}>{city.name}</span>
-      {counts.exposActuales > 0 && (
-        <span
-          className={`text-[11px] font-medium rounded px-2 py-0.5 shrink-0 ${
-            selected ? "bg-white/15 text-white" : "bg-picker-subtle text-muted-gray"
-          }`}
-        >
-          {counts.exposActuales} expos
-        </span>
-      )}
+    <div className="flex gap-[6px] items-center shrink-0">
       {counts.inauguraciones > 0 && (
-        <span
-          className={`text-[11px] font-medium rounded px-2 py-0.5 shrink-0 ${
-            selected ? "bg-white/15 text-white" : "bg-picker-badge-inaug-bg text-picker-badge-inaug-fg"
-          }`}
-        >
+        <span className="bg-brand-magenta text-white font-fragment-mono font-bold text-[10px] rounded-badge px-[8px] py-[4px] whitespace-nowrap">
           {counts.inauguraciones} inaug
         </span>
       )}
-    </button>
+      {counts.exposActuales > 0 && (
+        <span className="bg-text-primary text-surface-sage font-fragment-mono font-bold text-[10px] rounded-badge px-[8px] py-[4px] whitespace-nowrap">
+          {counts.exposActuales} expos
+        </span>
+      )}
+    </div>
   );
 }
 
-// Same stroke-based style as the existing card icons (EventCardBase.tsx's
-// DirectionsGlyph et al.): 16x16, viewBox 24, currentColor, round caps —
-// so these read as part of the same icon family, not a one-off import.
-function LocationPinIcon() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-      <path
-        d="M12 21s7-6.13 7-11.5A7 7 0 0 0 5 9.5C5 14.87 12 21 12 21Z"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <circle cx="12" cy="9.5" r="2.25" stroke="currentColor" strokeWidth="2" />
-    </svg>
-  );
-}
-
-// Clock-with-backwards-arrow "history" glyph — same convention Google
-// Maps/most apps use for "recent" lists, distinct from a plain clock so it
-// doesn't read as an opening-time indicator (already used elsewhere in
-// the app for that).
-function RecentHistoryIcon() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-      <path
-        d="M3 11a9 9 0 1 1 2.6 6.3"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <path d="M3 5v5h5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M12 8v4.5l3 2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
-// A collapsible section header — used both for a real admin región (with
-// its roman-numeral badge) and for the two quick-pick sections above the
-// región list (with a small icon instead — a location pin / history glyph
-// — so they read as shortcuts rather than a third geographic level). One
-// shared component so both look and behave identically: same chevron,
-// same expand/collapse click target, same keyboard-nav row.
-interface SectionRowProps {
-  title: string;
-  numeral?: string | null;
-  icon?: ReactNode;
-  navKey: string;
-  expanded: boolean;
-  active: boolean;
-  totalCount: number;
-  onToggle: () => void;
-  onHover: () => void;
-}
-
-function SectionRow({ title, numeral, icon, navKey, expanded, active, totalCount, onToggle, onHover }: SectionRowProps) {
+// A single selectable row shared by the zona/región/comuna steps and
+// search results — bordered + normal weight by default, filled dark with
+// bigger/bolder text when it's the visitor's own current comuna's zona/
+// región/comuna (same "you are here" treatment Figma uses for CENTRAL /
+// SANTIAGO / PROVIDENCIA across the three mocks).
+function OptionRow({
+  label,
+  counts,
+  showChevron,
+  current,
+  onClick,
+}: {
+  label: string;
+  counts?: CityCounts;
+  showChevron: boolean;
+  current: boolean;
+  onClick: () => void;
+}) {
   return (
     <button
-      id={regionOptionId(navKey)}
-      aria-expanded={expanded}
-      onClick={onToggle}
-      onMouseEnter={onHover}
-      className={`w-full flex items-center gap-2.5 px-3 py-3.5 text-left rounded-lg transition-colors ${
-        active ? "bg-stone-100" : "hover:bg-stone-50"
+      type="button"
+      onClick={onClick}
+      className={`w-full flex items-center justify-between gap-[12px] p-[16px] rounded-input text-left cursor-pointer ${
+        current ? "bg-text-primary" : "border border-border-default"
       }`}
     >
-      <span className="text-[11px] text-picker-placeholder w-3 shrink-0">{expanded ? "▾" : "▸"}</span>
-      {numeral && (
-        <span className="text-[10px] font-semibold text-muted-gray bg-picker-subtle rounded px-1.5 py-0.5 shrink-0">{numeral}</span>
-      )}
-      {icon && <span className="text-muted-gray shrink-0">{icon}</span>}
-      <span className="flex-grow text-sm font-medium text-heading-gray">{title}</span>
-      <span className="text-[13px] text-picker-placeholder">{totalCount}</span>
+      <span
+        className={`font-lato whitespace-nowrap ${current ? "font-extrabold text-[22px] text-surface-sage-dark" : "font-bold text-[16px] text-text-primary"}`}
+      >
+        {label}
+      </span>
+      <div className="flex items-center gap-[16px] shrink-0">
+        {counts && <Badges counts={counts} />}
+        {showChevron && (
+          // eslint-disable-next-line @next/next/no-img-element -- Figma-exported asset, verbatim per design decision
+          <img src={current ? "/icons/chevron-right-selected.svg" : "/icons/chevron-right-default.svg"} alt="" width={16} height={16} />
+        )}
+      </div>
     </button>
   );
 }
 
+// Compact, border-only shortcut row — "Tu ubicación actual"/"Últimas
+// visitadas" always use this style (never the dark "current" fill
+// OptionRow uses), since they sit outside the zona/región/comuna
+// drill-down as instant shortcuts, not part of the step being browsed.
+function ShortcutRow({ city, counts, onClick }: { city: City; counts: CityCounts; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="w-full flex items-center justify-between gap-[12px] border border-text-primary rounded-input px-[10px] py-[10px] text-left cursor-pointer"
+    >
+      <span className="font-lato text-[14px] text-text-primary whitespace-nowrap">{city.name.toUpperCase()}</span>
+      <Badges counts={counts} />
+    </button>
+  );
+}
+
+// Rediseño 2.0.0 — location selector rebuilt as a 3-step wizard (Zona ->
+// Región -> Comuna: caldearte-web-selector-paso-{1,2,3}-v2.0.0),
+// replacing the old single-panel collapsible país/región/comuna tree.
+// Chile-only for now — a second real country would need its own zona
+// scheme (or none), not worth generalizing before there's real data for
+// one (see zones.ts's own comment). Desktop-only pixel values for now;
+// mobile mocks weren't selected yet, so small screens get a simple
+// stacked fallback rather than a second pixel-matched layout.
 export default function CityPickerPanel({
   open,
   cityId,
@@ -207,90 +135,43 @@ export default function CityPickerPanel({
   onClose,
   onSelectCity,
 }: CityPickerPanelProps) {
+  const [step, setStep] = useState<Step>("zona");
+  const [selectedZoneKey, setSelectedZoneKey] = useState<ZoneKey | null>(null);
+  const [selectedRegionName, setSelectedRegionName] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [filterQuery, setFilterQuery] = useState("");
-  const [activeIndex, setActiveIndex] = useState(0);
-  const [expandedRegions, setExpandedRegions] = useState<Set<string>>(new Set());
   const [recentCityIds, setRecentCityIds] = useState<string[]>([]);
   const [locatingState, setLocatingState] = useState<"idle" | "locating" | "error">("idle");
-  // A same-session freshening of `actualCityId`, scoped to display only —
-  // never persisted itself (the silent check below does that via the
-  // cookie, same as GeoLocationChangedBanner). Real ask 2026-07-30: "si
-  // consultamos la ubicación silenciosamente si abre el selector para
-  // reflejar correctamente la comuna de mi ubicación actual" — opening the
-  // picker should show the truth even if the visitor moved since the
-  // server last rendered, without waiting for a full page reload.
+  // Same-session freshening of actualCityId, display-only — see
+  // GeoLocationChangedBanner's own silent re-check for the durable half.
   const [freshActualCityId, setFreshActualCityId] = useState(actualCityId);
   const router = useRouter();
-  const inputRef = useRef<HTMLInputElement>(null);
-  const closeButtonRef = useRef<HTMLButtonElement>(null);
-  // Real bug found 2026-07-29: every row previously scrolled itself into
-  // view via an inline callback ref whenever it was "active" — but that ref
-  // is a new function identity every render, so React re-invoked it on
-  // EVERY render, not just when a row newly became active. Combined with
-  // onHover also setting activeIndex, moving the mouse during a manual
-  // scroll kept re-triggering scrollIntoView, fighting the user's own
-  // scroll ("recalcula y marea con el scroll"). Now scrollIntoView only
-  // runs from the effect below, and only after an actual keyboard nav —
-  // mouse hover still highlights a row but never yanks the scroll position,
-  // since the user's cursor is already right there.
-  const isKeyboardNavRef = useRef(false);
 
   const metaByCityId = useMemo(() => buildRegionMetaByCityId(regions), [regions]);
 
-  // Reset search + expand state whenever the modal transitions to open —
-  // computed during render (React's documented pattern for resetting
-  // state in response to a prop change), not inside an effect, which would
-  // cause an extra cascading render.
-  const [prevOpen, setPrevOpen] = useState(open);
-  if (open !== prevOpen) {
-    setPrevOpen(open);
+  // Resets to the wizard's first step + clears search whenever the panel
+  // transitions to open — adjusting state during render (React's own
+  // documented pattern for this), not an effect.
+  const [wasOpen, setWasOpen] = useState(open);
+  if (open !== wasOpen) {
+    setWasOpen(open);
     if (open) {
+      setStep("zona");
+      setSelectedZoneKey(null);
+      setSelectedRegionName(null);
       setQuery("");
       setFilterQuery("");
-      setActiveIndex(0);
       setLocatingState("idle");
       setFreshActualCityId(actualCityId);
-      // Silent — no prompt fires, since hasPreciseLocation only becomes
-      // true after a real reading was already granted once. A resolved,
-      // different comuna just updates this open's display; the cookie
-      // write keeps future renders (and GeoLocationChangedBanner's own
-      // comparison) in sync too.
       if (hasPreciseLocation) {
         requestPreciseCityId(regions, (id) => {
           setFreshActualCityId(id);
           setCookie(PRECISE_CITY_COOKIE, id);
         });
       }
-      // Read fresh each open, not just once on mount — a visit recorded
-      // since the last time this panel was open (e.g. via CityCarousel,
-      // which never mounts/opens this panel at all) should still show up.
       setRecentCityIds(getRecentCityIds());
-      const selectedMeta = metaByCityId.get(cityId);
-      // Quick-pick sections AND every country header start expanded too —
-      // collapsing any of them is a manual per-open choice, not a default
-      // (see the user's own framing: "todas con chevron de colapsables" —
-      // collapsible, not collapsed). Countries come straight from
-      // `regions` (not the not-yet-computed `groups`) since there's only
-      // ever a handful of them.
-      const allCountries = new Set(regions.map((r) => r.country));
-      setExpandedRegions(
-        new Set([
-          CURRENT_LOCATION_KEY,
-          RECENT_CITIES_KEY,
-          ...[...allCountries].map(countryKey),
-          ...(selectedMeta?.adminRegionName ? [regionKey(selectedMeta.country, selectedMeta.adminRegionName)] : []),
-        ]),
-      );
     }
   }
-
-  // Focusing the DOM input and locking body scroll are real
-  // external-system side effects, so they stay in effects (unlike the
-  // state resets above).
-  useEffect(() => {
-    if (open) inputRef.current?.focus();
-  }, [open]);
 
   useEffect(() => {
     if (!open) return;
@@ -301,16 +182,27 @@ export default function CityPickerPanel({
     };
   }, [open]);
 
-  // Debounced filter: `query` echoes the input instantly (so typing feels
-  // immediate), `filterQuery` — what actually drives filtering below —
-  // lags 200ms behind the last keystroke.
+  // A document-level listener, not the dialog's own onKeyDown — Escape
+  // needs to close this regardless of which element currently has DOM
+  // focus. React's onKeyDown only fires for events that bubble up FROM
+  // whatever's focused, and nothing here moves focus into the dialog on
+  // open, so a keydown fired while focus is still on the trigger button
+  // (outside the dialog) never reached the old per-element handler — real
+  // bug found 2026-08-04.
+  useEffect(() => {
+    if (!open) return;
+    function onDocumentKeyDown(e: globalThis.KeyboardEvent) {
+      if (e.key === "Escape") onClose();
+    }
+    document.addEventListener("keydown", onDocumentKeyDown);
+    return () => document.removeEventListener("keydown", onDocumentKeyDown);
+  }, [open, onClose]);
+
   useEffect(() => {
     const timer = setTimeout(() => setFilterQuery(query), SEARCH_DEBOUNCE_MS);
     return () => clearTimeout(timer);
   }, [query]);
 
-  // "Muestra lo que hay" — only comunas with events, plus the currently
-  // confirmed city so it never vanishes from its own list.
   const allCities = useMemo(
     () => citiesWithEvents(cityCounts, cityNames, { alwaysIncludeCityId: cityId }),
     [cityCounts, cityNames, cityId],
@@ -319,8 +211,12 @@ export default function CityPickerPanel({
   const trimmedQuery = filterQuery.trim();
   const isSearching = trimmedQuery !== "";
 
-  const filteredCities = useMemo(() => {
-    if (!trimmedQuery) return allCities;
+  // Search is a flat comuna shortcut, not part of the step flow — same
+  // instant pattern as the bottom shortcuts. Clarified with the user
+  // 2026-08-04: cards here are comunas (styled like step 3's rows), not
+  // events.
+  const searchResults = useMemo(() => {
+    if (!trimmedQuery) return [];
     return allCities.filter((c) => {
       if (matchesQuery(c.name, trimmedQuery)) return true;
       const adminRegionName = metaByCityId.get(c.id)?.adminRegionName;
@@ -328,21 +224,21 @@ export default function CityPickerPanel({
     });
   }, [allCities, trimmedQuery, metaByCityId]);
 
-  // A región/país only appears here if it has at least one comuna left
-  // after the events + search filters above — no separate pass needed.
-  const groups: CountryGroup[] = useMemo(() => groupCitiesByRegion(filteredCities, metaByCityId), [filteredCities, metaByCityId]);
+  const chileRegions = useMemo(() => groupCitiesByRegion(allCities, metaByCityId)[0]?.regions ?? [], [allCities, metaByCityId]);
 
-  // Quick-pick sections, listed above the "Chile" group as ordinary
-  // collapsible siblings (not sticky/pinned — a sticky version felt wrong
-  // in practice, see the user's 2026-07-29 follow-up) — "save the time of
-  // finding where you are" (the user's own original framing). Hidden
-  // while actively searching: the intent has already shifted to "find a
-  // specific place", not "jump back to somewhere familiar", and hiding
-  // them sidesteps ever needing to de-duplicate against the filtered
-  // results below (a quick-pick city still also appears in its normal
-  // alphabetical spot in the full región list — that's fine, same
-  // "shortcut + still browsable normally" pattern ride-hailing/delivery
-  // apps already use for exactly this).
+  const currentMeta = metaByCityId.get(cityId);
+  const currentZoneKey = currentMeta?.adminRegionName ? zoneKeyForRegion(currentMeta.adminRegionName) : null;
+
+  const regionsInSelectedZone = useMemo(
+    () => (selectedZoneKey ? chileRegions.filter((r) => zoneKeyForRegion(r.adminRegionName) === selectedZoneKey) : []),
+    [chileRegions, selectedZoneKey],
+  );
+
+  const selectedRegionGroup = useMemo(
+    () => chileRegions.find((r) => r.adminRegionName === selectedRegionName) ?? null,
+    [chileRegions, selectedRegionName],
+  );
+
   const currentLocationCity: City | null =
     !isSearching && freshActualCityId && freshActualCityId !== cityId && freshActualCityId !== OTHER_CITY.id
       ? cityById(freshActualCityId, cityNames)
@@ -353,107 +249,38 @@ export default function CityPickerPanel({
         ? []
         : recentCityIds
             .filter((id) => id !== cityId && id !== freshActualCityId && id !== OTHER_CITY.id)
+            .slice(0, MAX_RECENT_SHORTCUTS)
             .map((id) => cityById(id, cityNames)),
     [isSearching, recentCityIds, cityId, freshActualCityId, cityNames],
   );
-  const recentCitiesCounts = useMemo(() => countsFor(recentCities, cityCounts), [recentCities, cityCounts]);
 
-  // While actively searching, every región left standing (i.e. containing
-  // a match) shows fully expanded regardless of manual toggle state — "si
-  // el texto matchea una comuna, mostrar la comuna y su región
-  // (expandida)". Clearing the search reverts to whatever the user
-  // manually toggled.
-  function isRegionExpanded(key: string): boolean {
-    return isSearching || expandedRegions.has(key);
+  function selectCity(id: string) {
+    onSelectCity(id);
   }
 
-  // One flat, display-order list — región rows interleaved with their
-  // comunas only when expanded — drives keyboard navigation regardless of
-  // how many regions/comunas are actually visible right now.
-  const navEntries = useMemo(() => {
-    const entries: NavEntry[] = [];
-    if (currentLocationCity) {
-      entries.push({ type: "region", key: CURRENT_LOCATION_KEY });
-      if (isSearching || expandedRegions.has(CURRENT_LOCATION_KEY)) entries.push({ type: "city", city: currentLocationCity });
-    }
-    if (recentCities.length > 0) {
-      entries.push({ type: "region", key: RECENT_CITIES_KEY });
-      if (isSearching || expandedRegions.has(RECENT_CITIES_KEY)) {
-        for (const city of recentCities) entries.push({ type: "city", city });
-      }
-    }
-    for (const group of groups) {
-      const cKey = countryKey(group.country);
-      entries.push({ type: "region", key: cKey });
-      if (isSearching || expandedRegions.has(cKey)) {
-        for (const region of group.regions) {
-          const key = regionKey(group.country, region.adminRegionName);
-          entries.push({ type: "region", key });
-          if (isSearching || expandedRegions.has(key)) {
-            for (const city of region.cities) entries.push({ type: "city", city });
-          }
-        }
-        for (const city of group.ungrouped) entries.push({ type: "city", city });
-      }
-    }
-    return entries;
-  }, [groups, expandedRegions, isSearching, currentLocationCity, recentCities]);
-
-  const navIndexByKey = useMemo(() => {
-    const map = new Map<string, number>();
-    navEntries.forEach((entry, i) => map.set(entry.type === "region" ? `region:${entry.key}` : `city:${entry.city.id}`, i));
-    return map;
-  }, [navEntries]);
-
-  // Same render-time reset pattern as the open-transition above: a new
-  // (debounced) query means a new result set, so the highlighted row
-  // snaps back to the top of it.
-  const [prevFilterQuery, setPrevFilterQuery] = useState(filterQuery);
-  if (filterQuery !== prevFilterQuery) {
-    setPrevFilterQuery(filterQuery);
-    setActiveIndex(0);
+  function handleBack() {
+    if (step === "comuna") setStep("region");
+    else if (step === "region") setStep("zona");
+    else onClose();
   }
 
-  const activeEntry = navEntries[activeIndex];
-
-  // Only scrolls when activeIndex changed via the keyboard (see
-  // isKeyboardNavRef's comment above) — looks up the DOM node by id rather
-  // than a per-row ref, so this runs exactly once per real navigation step.
-  useEffect(() => {
-    if (!isKeyboardNavRef.current) return;
-    isKeyboardNavRef.current = false;
-    const id = !activeEntry ? undefined : activeEntry.type === "region" ? regionOptionId(activeEntry.key) : cityOptionId(activeEntry.city.id);
-    if (id) document.getElementById(id)?.scrollIntoView({ block: "nearest" });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeIndex]);
-
-  function toggleRegion(key: string) {
-    setExpandedRegions((prev) => {
-      const next = new Set(prev);
-      if (next.has(key)) next.delete(key);
-      else next.add(key);
-      return next;
-    });
+  function handleZoneClick(key: ZoneKey) {
+    setSelectedZoneKey(key);
+    setStep("region");
   }
 
-  // Opt-in only — never called automatically. Triggers the browser's own
-  // native permission prompt; a denial or lack of support is a normal,
-  // expected outcome (most visitors won't grant this), not an error to
-  // alarm over — surfaced as a small inline note, never a blocking modal.
+  function handleRegionClick(adminRegionName: string) {
+    setSelectedRegionName(adminRegionName);
+    setStep("comuna");
+  }
+
+  // Opt-in only — never called automatically. A denial or lack of support
+  // is a normal, expected outcome, not an error to alarm over.
   function handleUseExactLocation() {
     setLocatingState("locating");
     requestPreciseCityId(
       regions,
       (id) => {
-        // Durable, not local-only state — real bug found 2026-07-30: a
-        // local-only override was lost the moment the visitor navigated
-        // to a different city and came back. Persisting it here means
-        // page.tsx's own actualCityId already reflects this on future
-        // opens too — but router.refresh() doesn't remount THIS already-
-        // open panel, so freshActualCityId also needs a direct update, or
-        // the currently-open picker keeps showing its stale pre-grant
-        // value (real bug found 2026-07-30, second one: the row didn't
-        // appear at all right after granting, until closed and reopened).
         setCookie(PRECISE_CITY_COOKIE, id);
         setFreshActualCityId(id);
         setLocatingState("idle");
@@ -463,64 +290,32 @@ export default function CityPickerPanel({
     );
   }
 
-  function handleInputKeyDown(e: KeyboardEvent<HTMLInputElement>) {
-    if (e.key === "ArrowDown") {
-      e.preventDefault();
-      isKeyboardNavRef.current = true;
-      setActiveIndex((i) => Math.min(i + 1, navEntries.length - 1));
-    } else if (e.key === "ArrowUp") {
-      e.preventDefault();
-      isKeyboardNavRef.current = true;
-      setActiveIndex((i) => Math.max(i - 1, 0));
-    } else if (e.key === "Enter") {
-      e.preventDefault();
-      if (!activeEntry) return;
-      // Committing a city here navigates immediately — same instant
-      // pattern as clicking a CityRow.
-      if (activeEntry.type === "region") toggleRegion(activeEntry.key);
-      else onSelectCity(activeEntry.city.id);
-    } else if (e.key === "Escape") {
-      e.preventDefault();
-      onClose();
-    } else if (e.key === "Tab") {
-      // Two real DOM tab stops (input, close button) — every región/comuna
-      // row is virtually highlighted via aria-activedescendant, never
-      // actually DOM-focused, same combobox pattern as the arrow-key
-      // navigation above.
-      e.preventDefault();
-      closeButtonRef.current?.focus();
-    }
-  }
+  const zoneLabel = selectedZoneKey ? zoneByKey(selectedZoneKey).label : "";
+  const regionShortName = selectedRegionName ? shortRegionName(selectedRegionName) : "";
 
-  function handleCloseKeyDown(e: KeyboardEvent<HTMLButtonElement>) {
-    if (e.key === "Tab") {
-      e.preventDefault();
-      inputRef.current?.focus();
-    } else if (e.key === "Escape") {
-      onClose();
-    }
-  }
+  // Desktop only — mobile shows just the back arrow, no breadcrumb text
+  // (per the user 2026-08-04).
+  const breadcrumbDesktop =
+    step === "comuna" && selectedZoneKey
+      ? esCL.citySelector.zonaRegionBreadcrumb(zoneLabel, regionShortName)
+      : step === "region" && selectedZoneKey
+        ? esCL.citySelector.zonaBreadcrumb(zoneLabel)
+        : null;
 
-  const activeDescendantId = activeEntry
-    ? activeEntry.type === "region"
-      ? regionOptionId(activeEntry.key)
-      : cityOptionId(activeEntry.city.id)
-    : undefined;
+  const headingLines =
+    step === "zona"
+      ? esCL.citySelector.eligeZonaLines
+      : step === "region"
+        ? esCL.citySelector.eligeRegionLines
+        : esCL.citySelector.eligeComunaLines;
+  const stepNumber = step === "zona" ? 1 : step === "region" ? 2 : 3;
 
-  // Real bug found 2026-07-29: this used to gate the whole "Chile" section
-  // (see below), but navEntries only contains cities from EXPANDED
-  // sections — so collapsing the last-expanded quick-pick made this false
-  // and hid the entire región list, not just the row the user collapsed
-  // ("al colapsar 'Últimas visitadas' desaparece Chile"). Only meaningful
-  // while actively searching (where every matching región auto-expands, so
-  // this really does mean "no matches"); collapsing a row during normal
-  // browsing must never affect it.
-  const hasAnyCityResult = navEntries.some((e) => e.type === "city");
-  const showNoResults = isSearching ? !hasAnyCityResult : groups.length === 0;
-
-  function selectCity(city: City) {
-    onSelectCity(city.id);
-  }
+  // Tied to the visitor's own current región (the one shown highlighted
+  // in the step-2 list), not `selectedRegionName` — that navigation state
+  // only gets set once a región is actually clicked (advancing to step
+  // 3), so it's never set while step 2 itself is still on screen.
+  const currentRegionShownHere = regionsInSelectedZone.some((r) => r.adminRegionName === currentMeta?.adminRegionName);
+  const regionFact = step === "region" && currentRegionShownHere && currentMeta?.adminRegionName ? esCL.regionFacts[currentMeta.adminRegionName] : undefined;
 
   return (
     <div
@@ -528,204 +323,184 @@ export default function CityPickerPanel({
       aria-modal="true"
       aria-label={esCL.cityPickerAriaLabel}
       // `inert` (not just visual hiding) pulls the whole modal out of the
-      // tab order and accessibility tree while closed — it's always
-      // mounted (so the opacity transition can play), but a closed modal
-      // must never be reachable by Tab or a screen reader.
+      // tab order and accessibility tree while closed.
       inert={!open}
-      className={`fixed inset-0 z-40 bg-white flex flex-col transition-opacity duration-150 ${
+      className={`fixed inset-0 z-40 bg-surface-sage overflow-y-auto transition-opacity duration-150 ${
         open ? "opacity-100" : "opacity-0 pointer-events-none"
       }`}
     >
-      <div className="relative shrink-0 pt-12 pb-5 px-4">
-        <button
-          ref={closeButtonRef}
-          onClick={onClose}
-          onKeyDown={handleCloseKeyDown}
-          aria-label={esCL.closeCityPicker}
-          className="absolute top-6 right-6 text-[18px] text-muted-gray"
-        >
-          ✕
-        </button>
-        <div className="max-w-[680px] mx-auto mb-6">
-          <h2 className="text-[24px] md:text-[32px] font-bold text-heading-gray">{esCL.chooseCity}</h2>
+      <div className="max-w-[1160px] mx-auto px-5 md:px-0 py-[40px] md:py-[60px] min-h-full flex flex-col">
+        <div className="flex items-center justify-between mb-[40px] md:mb-[60px]">
+          <div className="flex items-center gap-[20px]">
+            <button
+              type="button"
+              onClick={handleBack}
+              aria-label={step === "zona" ? esCL.closeCityPicker : esCL.citySelector.back}
+              className="cursor-pointer"
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element -- Figma-exported asset, verbatim per design decision */}
+              <img src="/icons/selector-back-arrow.svg" alt="" width={140} height={19} />
+            </button>
+            {/* Desktop only, per the user 2026-08-04: mobile shows just the
+                back arrow, no breadcrumb text. */}
+            {breadcrumbDesktop && (
+              <button
+                type="button"
+                onClick={handleBack}
+                className="hidden md:block font-lato font-semibold text-[20px] text-brand-magenta whitespace-nowrap cursor-pointer"
+              >
+                {breadcrumbDesktop}
+              </button>
+            )}
+          </div>
+          <p className="font-lato text-[40px] md:text-[64px] text-brand-magenta whitespace-nowrap">{esCL.citySelector.country.toUpperCase()}</p>
         </div>
-        <div className="max-w-[680px] mx-auto">
-          <input
-            ref={inputRef}
-            type="text"
-            role="searchbox"
-            aria-label={esCL.citySearchAriaLabel}
-            aria-controls="city-picker-listbox"
-            aria-activedescendant={activeDescendantId}
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            onKeyDown={handleInputKeyDown}
-            placeholder={esCL.citySearchPlaceholder}
-            className="w-full text-[15px] px-4 py-3 rounded-xl bg-picker-subtle border border-picker-border text-heading-gray placeholder:text-picker-placeholder focus:outline-none"
-          />
-        </div>
-      </div>
 
-      <div id="city-picker-listbox" role="listbox" aria-label={esCL.chooseCity} className="flex-grow overflow-y-auto px-4 pb-10">
-        <div className="max-w-[680px] mx-auto">
-          {currentLocationCity && (
-            <div className="border-b border-picker-border/30">
-              <SectionRow
-                title={esCL.cityPickerCurrentLocation}
-                icon={<LocationPinIcon />}
-                navKey={CURRENT_LOCATION_KEY}
-                expanded={isRegionExpanded(CURRENT_LOCATION_KEY)}
-                active={activeEntry?.type === "region" && activeEntry.key === CURRENT_LOCATION_KEY}
-                totalCount={(cityCounts[currentLocationCity.id] ?? ZERO_COUNTS).inauguraciones + (cityCounts[currentLocationCity.id] ?? ZERO_COUNTS).exposActuales}
-                onToggle={() => toggleRegion(CURRENT_LOCATION_KEY)}
-                onHover={() => setActiveIndex(navIndexByKey.get(`region:${CURRENT_LOCATION_KEY}`) ?? 0)}
+        <div className="flex-1 flex flex-col md:flex-row md:items-start gap-[40px] md:gap-[120px]">
+          <div className="flex flex-col gap-[10px] shrink-0">
+            <h1 className="font-lato font-extrabold leading-none text-brand-magenta text-[56px] md:text-[96px]">
+              {headingLines.map((line) => (
+                <span key={line} className="block">
+                  {line}
+                </span>
+              ))}
+            </h1>
+            <p className="font-fragment-mono font-bold text-[14px] text-brand-magenta">{esCL.citySelector.stepLabel(stepNumber)}</p>
+          </div>
+
+          <div className="w-full md:w-[319px] flex flex-col gap-[16px]">
+            <div className="relative">
+              <input
+                type="text"
+                role="searchbox"
+                aria-label={esCL.citySearchAriaLabel}
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder={esCL.citySearchPlaceholder}
+                className="w-full bg-surface-white rounded-input pl-[46px] pr-[16px] py-[16px] font-geist text-[16px] text-text-primary placeholder:text-icon-default focus:outline-none"
               />
-              {isRegionExpanded(CURRENT_LOCATION_KEY) && (
-                <div role="listbox" aria-labelledby={regionOptionId(CURRENT_LOCATION_KEY)}>
-                  {!hasPreciseLocation && (
-                    <div className="mx-[52px] mr-3 mb-2">
-                      <div className="flex items-center gap-3 bg-picker-subtle border border-picker-border rounded-xl px-4 py-3">
-                        <span className="flex-grow text-[13px] text-muted-gray">{esCL.cityPickerUseExactLocation}</span>
-                        <button
-                          onClick={handleUseExactLocation}
-                          disabled={locatingState === "locating"}
-                          className="shrink-0 text-sm font-semibold bg-heading-gray text-white rounded-full px-4 py-2 disabled:opacity-60"
-                        >
-                          {locatingState === "locating" ? esCL.cityPickerLocatingExact : esCL.cityPickerShareLocationButton}
-                        </button>
-                      </div>
-                      {locatingState === "error" && <p className="mt-1 text-[11px] text-red-600">{esCL.cityPickerExactLocationError}</p>}
-                    </div>
-                  )}
-                  <CityRow
-                    city={currentLocationCity}
-                    counts={cityCounts[currentLocationCity.id] ?? ZERO_COUNTS}
-                    selected={currentLocationCity.id === cityId}
-                    active={activeEntry?.type === "city" && activeEntry.city.id === currentLocationCity.id}
-                    onSelect={selectCity}
-                    onHover={() => setActiveIndex(navIndexByKey.get(`city:${currentLocationCity.id}`) ?? 0)}
-                  />
-                </div>
-              )}
+              {/* eslint-disable-next-line @next/next/no-img-element -- Figma-exported asset, verbatim per design decision */}
+              <img src="/icons/selector-search.svg" alt="" width={18} height={18} className="absolute left-[16px] top-1/2 -translate-y-1/2" />
             </div>
-          )}
-          {recentCities.length > 0 && (
-            <div className="border-b border-picker-border/30">
-              <SectionRow
-                title={esCL.cityPickerRecentlyVisited}
-                icon={<RecentHistoryIcon />}
-                navKey={RECENT_CITIES_KEY}
-                expanded={isRegionExpanded(RECENT_CITIES_KEY)}
-                active={activeEntry?.type === "region" && activeEntry.key === RECENT_CITIES_KEY}
-                totalCount={recentCitiesCounts.inauguraciones + recentCitiesCounts.exposActuales}
-                onToggle={() => toggleRegion(RECENT_CITIES_KEY)}
-                onHover={() => setActiveIndex(navIndexByKey.get(`region:${RECENT_CITIES_KEY}`) ?? 0)}
-              />
-              {isRegionExpanded(RECENT_CITIES_KEY) && (
-                <div role="listbox" aria-labelledby={regionOptionId(RECENT_CITIES_KEY)}>
-                  {recentCities.map((c) => (
-                    <CityRow
+
+            {isSearching ? (
+              <div className="flex flex-col gap-[8px]">
+                {searchResults.length === 0 ? (
+                  <p className="text-sm text-text-muted text-center py-6">{esCL.noCityResults}</p>
+                ) : (
+                  searchResults.map((c) => (
+                    <OptionRow
                       key={c.id}
-                      city={c}
+                      label={c.name.toUpperCase()}
                       counts={cityCounts[c.id] ?? ZERO_COUNTS}
-                      selected={c.id === cityId}
-                      active={activeEntry?.type === "city" && activeEntry.city.id === c.id}
-                      onSelect={selectCity}
-                      onHover={() => setActiveIndex(navIndexByKey.get(`city:${c.id}`) ?? 0)}
+                      showChevron={false}
+                      current={c.id === cityId}
+                      onClick={() => selectCity(c.id)}
+                    />
+                  ))
+                )}
+              </div>
+            ) : step === "zona" ? (
+              <div className="flex flex-col gap-[8px]">
+                <p className="font-fragment-mono font-bold text-[14px] text-text-primary">{esCL.citySelector.zonasLabel}</p>
+                {ZONES.map((zone) => (
+                  <OptionRow
+                    key={zone.key}
+                    label={zone.label.toUpperCase()}
+                    showChevron
+                    current={zone.key === currentZoneKey}
+                    onClick={() => handleZoneClick(zone.key)}
+                  />
+                ))}
+              </div>
+            ) : step === "region" ? (
+              <div className="flex flex-col gap-[8px]">
+                <p className="font-fragment-mono font-bold text-[14px] text-text-primary">{esCL.citySelector.regionesEnZona(zoneLabel)}</p>
+                {regionsInSelectedZone.map((region) => (
+                  <OptionRow
+                    key={region.adminRegionName}
+                    label={shortRegionName(region.adminRegionName).toUpperCase()}
+                    counts={countsFor(region.cities, cityCounts)}
+                    showChevron
+                    current={region.adminRegionName === currentMeta?.adminRegionName}
+                    onClick={() => handleRegionClick(region.adminRegionName)}
+                  />
+                ))}
+                {regionFact && (
+                  <div className="bg-[#ebedee] border-l-4 border-brand-magenta rounded-[8px] p-[16px] flex flex-col gap-[10px] mt-[8px]">
+                    <p className="font-fragment-mono font-bold text-[12px] text-brand-magenta">{esCL.citySelector.sabiasQue}</p>
+                    <p className="font-geist text-[13px] text-text-primary">{regionFact}</p>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="flex flex-col gap-[8px]">
+                <p className="font-fragment-mono font-bold text-[14px] text-text-primary">
+                  {esCL.citySelector.comunasDe(selectedRegionGroup ? shortRegionName(selectedRegionGroup.adminRegionName) : "")}
+                </p>
+                {/* Scrollable so every comuna fits, per the user's explicit
+                    request 2026-08-04 (Región Metropolitana alone has far
+                    more comunas than fit in one screen). */}
+                <div className="md:border md:border-text-primary md:p-[8px] flex flex-col gap-[4px] max-h-[400px] overflow-y-auto">
+                  {(selectedRegionGroup?.cities ?? []).map((city) => (
+                    <OptionRow
+                      key={city.id}
+                      label={city.name.toUpperCase()}
+                      counts={cityCounts[city.id] ?? ZERO_COUNTS}
+                      showChevron={false}
+                      current={city.id === cityId}
+                      onClick={() => selectCity(city.id)}
                     />
                   ))}
                 </div>
-              )}
-            </div>
-          )}
-          {showNoResults ? (
-            <p className="text-sm text-muted-gray text-center py-10">{esCL.noCityResults}</p>
-          ) : (
-            groups.map((group) => {
-              const countryCities = [...group.regions.flatMap((r) => r.cities), ...group.ungrouped];
-              const countryCounts = countsFor(countryCities, cityCounts);
-              const countryPhrase = esCL.cityStats(countryCounts.inauguraciones, countryCounts.exposActuales);
-              const cKey = countryKey(group.country);
-              const countryExpanded = isRegionExpanded(cKey);
-              return (
-                <div key={group.country}>
-                  <button
-                    id={regionOptionId(cKey)}
-                    aria-expanded={countryExpanded}
-                    onClick={() => toggleRegion(cKey)}
-                    onMouseEnter={() => setActiveIndex(navIndexByKey.get(`region:${cKey}`) ?? 0)}
-                    className={`w-full flex items-center gap-2 py-2 border-b border-picker-border/60 text-left transition-colors ${
-                      activeEntry?.type === "region" && activeEntry.key === cKey ? "bg-stone-100" : "hover:bg-stone-50"
-                    }`}
-                  >
-                    <span className="text-[11px] text-picker-placeholder w-3 shrink-0">{countryExpanded ? "▾" : "▸"}</span>
-                    <span className="flex-grow text-sm font-semibold text-heading-gray">{group.country}</span>
-                    {countryPhrase && <span className="text-[13px] text-muted-gray">{countryPhrase}</span>}
-                  </button>
-                  {countryExpanded && (
-                    <>
-                      {group.regions.map((region) => {
-                        const key = regionKey(group.country, region.adminRegionName);
-                        const expanded = isRegionExpanded(key);
-                        const total = countsFor(region.cities, cityCounts);
-                        return (
-                          <div key={key} className="border-b border-picker-border/30">
-                            <SectionRow
-                              title={shortRegionName(region.adminRegionName)}
-                              numeral={region.adminRegionNumeral}
-                              navKey={key}
-                              expanded={expanded}
-                              active={activeEntry?.type === "region" && activeEntry.key === key}
-                              totalCount={total.inauguraciones + total.exposActuales}
-                              onToggle={() => toggleRegion(key)}
-                              onHover={() => setActiveIndex(navIndexByKey.get(`region:${key}`) ?? 0)}
-                            />
-                            {expanded && (
-                              <div role="listbox" aria-labelledby={regionOptionId(key)}>
-                                {region.cities.map((city) => (
-                                  <CityRow
-                                    key={city.id}
-                                    city={city}
-                                    counts={cityCounts[city.id] ?? ZERO_COUNTS}
-                                    selected={city.id === cityId}
-                                    active={activeEntry?.type === "city" && activeEntry.city.id === city.id}
-                                    onSelect={selectCity}
-                                    onHover={() => setActiveIndex(navIndexByKey.get(`city:${city.id}`) ?? 0)}
-                                  />
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })}
-                      {group.ungrouped.length > 0 && (
-                        <div>
-                          {group.ungrouped.map((city) => (
-                            <CityRow
-                              key={city.id}
-                              city={city}
-                              counts={cityCounts[city.id] ?? ZERO_COUNTS}
-                              selected={city.id === cityId}
-                              active={activeEntry?.type === "city" && activeEntry.city.id === city.id}
-                              onSelect={selectCity}
-                              onHover={() => setActiveIndex(navIndexByKey.get(`city:${city.id}`) ?? 0)}
-                            />
-                          ))}
-                        </div>
-                      )}
-                    </>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {!isSearching && (currentLocationCity || recentCities.length > 0) && (
+          <div className="mt-[60px] flex flex-col md:flex-row gap-[24px] md:gap-[80px]">
+            {currentLocationCity && (
+              <div className="flex flex-col gap-[6px] w-full md:w-[258px]">
+                <div className="flex items-center justify-between gap-[8px]">
+                  <p className="font-fragment-mono font-bold text-[10px] text-text-muted whitespace-nowrap">
+                    {esCL.cityPickerCurrentLocation.toUpperCase()}
+                  </p>
+                  {!hasPreciseLocation && (
+                    <button
+                      type="button"
+                      onClick={handleUseExactLocation}
+                      disabled={locatingState === "locating"}
+                      className="text-[10px] underline text-text-muted shrink-0 cursor-pointer disabled:cursor-default disabled:opacity-60"
+                    >
+                      {locatingState === "locating" ? esCL.cityPickerLocatingExact : esCL.cityPickerShareLocationButton}
+                    </button>
                   )}
                 </div>
-              );
-            })
-          )}
-        </div>
-      </div>
-
-      <div className="shrink-0 border-t border-picker-border px-6 pt-3.5 pb-4 flex items-center justify-center gap-6 text-[11px] text-picker-placeholder">
-        <span>{esCL.cityPickerHints.navigate}</span>
-        <span>{esCL.cityPickerHints.select}</span>
-        <span>{esCL.cityPickerHints.close}</span>
+                <ShortcutRow
+                  city={currentLocationCity}
+                  counts={cityCounts[currentLocationCity.id] ?? ZERO_COUNTS}
+                  onClick={() => selectCity(currentLocationCity.id)}
+                />
+                {locatingState === "error" && <p className="text-[10px] text-red-600">{esCL.cityPickerExactLocationError}</p>}
+              </div>
+            )}
+            {recentCities.length > 0 && (
+              <div className="flex flex-col gap-[6px] flex-1">
+                <p className="font-fragment-mono font-bold text-[10px] text-text-muted whitespace-nowrap">
+                  {esCL.cityPickerRecentlyVisited.toUpperCase()}
+                </p>
+                <div className="flex flex-col md:flex-row gap-[8px]">
+                  {recentCities.map((c) => (
+                    <div key={c.id} className="md:w-[258px]">
+                      <ShortcutRow city={c} counts={cityCounts[c.id] ?? ZERO_COUNTS} onClick={() => selectCity(c.id)} />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

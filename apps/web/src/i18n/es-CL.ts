@@ -76,11 +76,43 @@ export const esCL = {
   cityPickerShareLocationButton: "Compartir ubicación",
   cityPickerLocatingExact: "Buscando...",
   cityPickerExactLocationError: "No pudimos obtener tu ubicación.",
-  cityPickerHints: {
-    navigate: "↑↓ navegar",
-    select: "↵ seleccionar",
-    close: "esc cerrar",
+
+  // Rediseño 2.0.0 — selector de lugar en 3 pasos (Zona -> Región ->
+  // Comuna), reemplaza el árbol colapsable único de arriba
+  // (caldearte-web-selector-paso-{1,2,3}-v2.0.0). "back" es literal:
+  // vuelve un paso, o cierra el selector si ya está en el paso 1 (no hay
+  // paso 0 al que volver). Elegir una comuna sigue siendo instantáneo
+  // (navega y cierra) — confirmado con el usuario 2026-08-04, sin botón
+  // de confirmar pese a que el mock de Figma lo mostraba.
+  citySelector: {
+    country: "Chile",
+    stepLabel: (step: number) => `${step} / 3`,
+    back: "Volver",
+    // Two clean words per line — the Figma mock force-wrapped "REGION"/
+    // "COMUNA" mid-word ("REG"/"ION", "COM"/"UNA") because its text box
+    // was too narrow at 96px; that reads as a Figma sizing artifact, not
+    // deliberate typography, so this wraps on the word boundary instead.
+    // Also fixes "REGION" -> "REGIÓN" (missing accent in the mock).
+    eligeZonaLines: ["ELIGE", "ZONA"],
+    eligeRegionLines: ["ELIGE", "REGIÓN"],
+    eligeComunaLines: ["ELIGE", "COMUNA"],
+    zonasLabel: "ZONAS",
+    zonaBreadcrumb: (zoneLabel: string) => `ZONA ${zoneLabel.toUpperCase()}`,
+    zonaRegionBreadcrumb: (zoneLabel: string, regionShortName: string) => `ZONA ${zoneLabel.toUpperCase()} / ${regionShortName.toUpperCase()}`,
+    regionesEnZona: (zoneLabel: string) => `REGIONES EN ZONA ${zoneLabel.toUpperCase()}`,
+    comunasDe: (regionShortName: string) => `COMUNAS DE ${regionShortName.toUpperCase()}`,
+    sabiasQue: "¿SABÍAS QUÉ?",
   },
+  // Per-región trivia for the step-2 "¿SABÍAS QUÉ?" card — real content,
+  // not placeholder copy, but only written for Región Metropolitana so
+  // far (user's own call, 2026-08-04: "a futuro pensamos en el contenido
+  // de las demás regiones"). Keyed by the canonical admin_region_name
+  // (same strings regionNames.ts maps from); a región with no entry here
+  // simply never shows the card — never a fabricated fact.
+  regionFacts: {
+    "Región Metropolitana de Santiago":
+      "La Región Metropolitana de Santiago concentra más del 60% de las galerías independientes y centros culturales de arte contemporáneo en Chile.",
+  } as Record<string, string>,
   // First-visit banner (GeoConsentBanner.tsx) — asks once, up front,
   // whether to use the visitor's real location, rather than burying that
   // option inside the city picker. Answered either way exactly once (see
