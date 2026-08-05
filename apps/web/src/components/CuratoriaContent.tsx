@@ -77,6 +77,7 @@ export default function CuratoriaContent() {
               </button>
               {cp.section2Body2After}
             </p>
+            <p className="font-geist font-bold leading-[1.6] text-text-primary text-[17px] md:text-[20px]">{cp.section2Closing}</p>
           </div>
         </section>
       </div>

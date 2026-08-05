@@ -23,13 +23,21 @@ function pluralize(n: number, singular: string, plural: string): string {
 // (nobody wants "0 inauguraciones y 2 exposiciones"), so it's dropped
 // entirely rather than shown as a zero. When both are zero, callers decide
 // their own fallback — this returns "" so the caller can detect that case.
-function countsPhrase(inauguracionesCount: number, exposCount: number, joiner: string): string {
+function countsPhrase(
+  inauguracionesCount: number,
+  exposCount: number,
+  joiner: string,
+): string {
   const parts: string[] = [];
   if (inauguracionesCount > 0) {
-    parts.push(`${inauguracionesCount} ${pluralize(inauguracionesCount, "inauguración", "inauguraciones")}`);
+    parts.push(
+      `${inauguracionesCount} ${pluralize(inauguracionesCount, "inauguración", "inauguraciones")}`,
+    );
   }
   if (exposCount > 0) {
-    parts.push(`${exposCount} ${pluralize(exposCount, "exposición", "exposiciones")}`);
+    parts.push(
+      `${exposCount} ${pluralize(exposCount, "exposición", "exposiciones")}`,
+    );
   }
   return parts.join(joiner);
 }
@@ -72,7 +80,8 @@ export const esCL = {
   // action, not "the whole row is vaguely clickable". Never shown as an
   // error toast — errorText renders inline, small, non-blocking
   // (denial/no-support are expected, normal outcomes, not failures).
-  cityPickerUseExactLocation: "Esta ubicación es aproximada. Comparte tu ubicación real para verla siempre correcta aquí.",
+  cityPickerUseExactLocation:
+    "Esta ubicación es aproximada. Comparte tu ubicación real para verla siempre correcta aquí.",
   cityPickerShareLocationButton: "Compartir ubicación",
   cityPickerLocatingExact: "Buscando...",
   cityPickerExactLocationError: "No pudimos obtener tu ubicación.",
@@ -98,9 +107,12 @@ export const esCL = {
     eligeComunaLines: ["ELIGE", "COMUNA"],
     zonasLabel: "ZONAS",
     zonaBreadcrumb: (zoneLabel: string) => `ZONA ${zoneLabel.toUpperCase()}`,
-    zonaRegionBreadcrumb: (zoneLabel: string, regionShortName: string) => `ZONA ${zoneLabel.toUpperCase()} / ${regionShortName.toUpperCase()}`,
-    regionesEnZona: (zoneLabel: string) => `REGIONES EN ZONA ${zoneLabel.toUpperCase()}`,
-    comunasDe: (regionShortName: string) => `COMUNAS DE ${regionShortName.toUpperCase()}`,
+    zonaRegionBreadcrumb: (zoneLabel: string, regionShortName: string) =>
+      `ZONA ${zoneLabel.toUpperCase()} / ${regionShortName.toUpperCase()}`,
+    regionesEnZona: (zoneLabel: string) =>
+      `REGIONES EN ZONA ${zoneLabel.toUpperCase()}`,
+    comunasDe: (regionShortName: string) =>
+      `COMUNAS DE ${regionShortName.toUpperCase()}`,
     sabiasQue: "¿SABÍAS QUÉ?",
   },
   // Per-región trivia for the step-2 "¿SABÍAS QUÉ?" card — real content,
@@ -118,7 +130,8 @@ export const esCL = {
   // option inside the city picker. Answered either way exactly once (see
   // GEO_CONSENT_COOKIE); "decline" also covers a native browser permission
   // denial — both read as "don't ask again", not just an explicit click.
-  geoConsentPrompt: "¿Quieres compartir tu ubicación para ver las inauguraciones y exposiciones cerca de ti ahora?",
+  geoConsentPrompt:
+    "¿Quieres compartir tu ubicación para ver las inauguraciones y exposiciones cerca de ti ahora?",
   geoConsentAccept: "Sí, compartir",
   geoConsentDecline: "No, gracias",
   // GeoLocationChangedBanner — shown only after a real precise reading is
@@ -126,7 +139,8 @@ export const esCL = {
   // different comuna than last time). Declining just quietly updates the
   // cached reading so it doesn't keep asking about the same move; only
   // accepting changes what's actually shown.
-  geoLocationChangedPrompt: (cityName: string) => `Tu ubicación cambió a ${cityName}. ¿Quieres ver qué hay ahí?`,
+  geoLocationChangedPrompt: (cityName: string) =>
+    `Tu ubicación cambió a ${cityName}. ¿Quieres ver qué hay ahí?`,
   geoLocationChangedAccept: "Sí, ver ahí",
   geoLocationChangedDecline: "No, gracias",
   menu: "Menú",
@@ -140,7 +154,8 @@ export const esCL = {
   closeSearch: "Cerrar búsqueda",
   searchTitle: "Buscar eventos",
   searchPlaceholder: "Buscar por título, artista o lugar...",
-  searchHint: "Busca entre todos los eventos vigentes y próximos, en cualquier comuna.",
+  searchHint:
+    "Busca entre todos los eventos vigentes y próximos, en cualquier comuna.",
   noSearchResults: "No encontramos eventos con ese término.",
   // Group headers splitting search results — same two groups as the home
   // page's own sections, just relabeled without "de la semana"/"actuales"
@@ -162,7 +177,9 @@ export const esCL = {
   // already IS the full "everything happening" total; summing both would
   // double-count it.
   headerSummaryMobile: (totalCount: number) =>
-    totalCount > 0 ? `${totalCount} ${pluralize(totalCount, "evento", "eventos")} en` : "Descubre el arte que hay en",
+    totalCount > 0
+      ? `${totalCount} ${pluralize(totalCount, "evento", "eventos")} en`
+      : "Descubre el arte que hay en",
   // Used by the empty-state fallback message — "hoy" when the Hoy filter
   // pill is on, "esta semana" otherwise (the always-on default).
   todaySuffix: "hoy",
@@ -264,11 +281,13 @@ export const esCL = {
     clear: "Limpiar filtros",
   },
   archiveNoResults: "No encontramos expos con esos filtros este mes.",
-  archiveResultsCount: (n: number) => `${n} ${pluralize(n, "resultado", "resultados")}`,
+  archiveResultsCount: (n: number) =>
+    `${n} ${pluralize(n, "resultado", "resultados")}`,
   archivePrevMonth: "← Mes anterior",
   archiveNextMonth: "Mes siguiente →",
 
-  cityStats: (inauguracionesCount: number, exposCount: number) => countsPhrase(inauguracionesCount, exposCount, " · "),
+  cityStats: (inauguracionesCount: number, exposCount: number) =>
+    countsPhrase(inauguracionesCount, exposCount, " · "),
 
   tellUs: "Cuéntanos →",
   doYouKnowOne: "¿Conoces una que deberíamos sumar?",
@@ -276,9 +295,15 @@ export const esCL = {
   // the current window, but there's a real upcoming event to point to
   // instead. `suffix` is todaySuffix/thisWeekSuffix, so both modes share
   // one function instead of forking the copy.
-  emptyWithNextEvent: (cityName: string, suffix: string, nextDateShort: string, nextTitle: string) =>
+  emptyWithNextEvent: (
+    cityName: string,
+    suffix: string,
+    nextDateShort: string,
+    nextTitle: string,
+  ) =>
     `No hay nada que mostrar ${suffix} en ${cityName}. La próxima es el ${nextDateShort} — ${nextTitle}.`,
-  emptyNoEventsYet: (cityName: string) => `Todavía no tenemos inauguraciones ni exposiciones para ${cityName}.`,
+  emptyNoEventsYet: (cityName: string) =>
+    `Todavía no tenemos inauguraciones ni exposiciones para ${cityName}.`,
 
   sensitiveOverlay: {
     label: "Contenido sensible",
@@ -286,7 +311,8 @@ export const esCL = {
   },
 
   footer: {
-    tagline: "Calendario de arte curado por inteligencia humana potenciada por IA",
+    tagline:
+      "Calendario de arte curado por inteligencia humana potenciada por IA",
     copyright: (year: number) => `© ${year} Caldearte`,
     contacto: "Contacto",
     privacidad: "Privacidad",
@@ -316,14 +342,17 @@ export const esCL = {
   // Rediseño 2.0.0 — "texto AI" (174:2985), su propia sección corta
   // entre Exposiciones y el formulario de newsletter, no parte de
   // ninguno de los dos.
-  aiDisclaimer: "Usamos IA para rastrear inauguraciones y exposiciones en todo Chile.",
+  aiDisclaimer:
+    "Usamos IA para rastrear inauguraciones y exposiciones en todo Chile.",
 
   newsletter: {
     headerLabel: "Boletín semanal",
     regionPlaceholder: "Tu región",
     sending: "Enviando…",
-    success: "Te enviamos un correo con un link para confirmar tu suscripción. Si no lo ves en unos minutos, revisa la carpeta de spam.",
-    alreadySubscribed: "Tu dirección de correo ya está suscrita a nuestro boletín semanal.",
+    success:
+      "Te enviamos un correo con un link para confirmar tu suscripción. Si no lo ves en unos minutos, revisa la carpeta de spam.",
+    alreadySubscribed:
+      "Tu dirección de correo ya está suscrita a nuestro boletín semanal.",
     error: "No pudimos suscribirte. Intenta de nuevo.",
     close: "Listo",
     // Rediseño 2.0.0 — inline home-page section (174:2987 web, 178:161
@@ -342,7 +371,8 @@ export const esCL = {
     confirmar: {
       title: "Confirmar suscripción",
       confirmedTitle: "¡Listo! Ya eres parte de Caldearte",
-      confirmed: "Cada lunes recibirás lo mejor del arte de tu región, directo a tu correo.",
+      confirmed:
+        "Cada lunes recibirás lo mejor del arte de tu región, directo a tu correo.",
       alreadyConfirmed: "Tu suscripción ya estaba confirmada.",
       unsubscribed: "Esta suscripción ya fue dada de baja.",
       invalid: "Este link de confirmación no es válido.",
@@ -350,10 +380,12 @@ export const esCL = {
     },
     baja: {
       title: "Darse de baja",
-      unsubscribed: "Te diste de baja del newsletter de Caldearte. No recibirás más correos.",
+      unsubscribed:
+        "Te diste de baja del newsletter de Caldearte. No recibirás más correos.",
       alreadyUnsubscribed: "Ya estabas dado de baja.",
       invalid: "Este link no es válido.",
-      error: "Ocurrió un error al dar de baja. Intenta de nuevo desde el correo.",
+      error:
+        "Ocurrió un error al dar de baja. Intenta de nuevo desde el correo.",
     },
   },
 
@@ -374,7 +406,7 @@ export const esCL = {
     criteria: [
       {
         label: "El peso de la hegemonía:",
-        body: 'No validamos la "exploración" o "documentación" de narrativas bélicas o instituciones eclesiásticas si carecen de una postura crítica declarada. La iconografía dogmática o el rescate patrimonial de la iglesia y el ejército quedan fuera de nuestra selección a menos que la obra confronte y denuncie directamente a la institución.',
+        body: 'No validamos la "exploración" o "documentación" de narrativas bélicas o instituciones eclesiásticas si carecen de una postura crítica declarada. La iconografía dogmática o el rescate patrimonial de la iglesia y el ejército quedan fuera de nuestra selección a menos que la obra confronte y denuncie.',
       },
       {
         label: "La estetización del trauma:",
@@ -384,14 +416,20 @@ export const esCL = {
         label: "La responsabilidad del discurso y el espacio:",
         body: "Descartamos cualquier manifestación que legitime o estetice discursos de odio, xenofobia, racismo o ideologías autoritarias. De igual forma, no damos espacio al esoterismo ni a las pseudociencias. Entendemos, además, que el contenedor es inseparable del contenido: si una exposición —sin importar su mérito técnico— se aloja en un centro de culto activo o en una sede partidista, no formará parte de nuestra guía.",
       },
+      {
+        label: "Filtro familiar y espacios compartidos:",
+        body: "Entendemos que el arte también se experimenta en familia. Por eso, hemos implementado un filtro familiar diseñado para destacar aquellas muestras cuyo lenguaje visual es apto para todas las edades. Este filtro busca facilitar el acceso a la cultura sin exponer a las infancias a temáticas o imágenes que requieran otro nivel de madurez, manteniendo intacto nuestro rigor curatorial.",
+      },
     ],
     section2Heading: "La tecnología al servicio del criterio",
     section2Body1:
-      "La curaduría a escala nacional exige herramientas contemporáneas. Utilizamos inteligencia artificial, entrenada rigurosamente bajo estos principios éticos, para rastrear y evaluar el circuito de inauguraciones todos los días en todo Chile. La máquina ejecuta la regla; nosotros definimos el manifiesto.",
+      "La curaduría a escala nacional exige herramientas contemporáneas. Utilizamos inteligencia artificial, entrenada rigurosamente bajo estos principios éticos, para rastrear y evaluar el circuito de inauguraciones en todo Chile. La máquina ejecuta la regla; nosotros definimos el manifiesto.",
     section2Body2Before:
-      "Sabemos que en las artes visuales la línea entre el homenaje y la crítica puede ser compleja. Si crees que un evento ha sido mal clasificado, o si tienes una inauguración que desafía estos límites, escríbenos desde el ",
+      "Si crees que hemos clasificado mal un evento, si sientes que nuestro algoritmo omitió una obra que era perfectamente apta para disfrutar en familia (o si dejó pasar algo que no lo era), avísanos. Y por supuesto, si tienes una inauguración que debería estar sí o sí en Caldearte o si estás a punto de compartir tu propio trabajo con el mundo, escríbenos desde el ",
     section2ContactLinkLabel: "formulario de contacto",
-    section2Body2After: ". Revisamos cada mensaje.",
+    section2Body2After: ".",
+    section2Closing:
+      "Leemos cada mensaje, y para nosotros será un verdadero honor conocer tu obra, afinar nuestros criterios juntos y sumar tu mirada a nuestra guía.",
   },
 
   // Rediseño 2.0.0 — teaser corto del home que enlaza a /curatoria, no
@@ -421,7 +459,6 @@ export const esCL = {
     success: "Gracias por escribirnos. Te responderemos a la brevedad.",
     error: "No pudimos enviar tu mensaje. Intenta de nuevo.",
   },
-
 };
 
 export type Locale = typeof esCL;
