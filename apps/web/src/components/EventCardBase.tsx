@@ -4,6 +4,8 @@ import { useState } from "react";
 import Link from "next/link";
 import CardImage from "./CardImage";
 import { useEventCardActions } from "@/lib/useEventCardActions";
+import { useIsAdmin } from "@/lib/useIsAdmin";
+import AdminRemoveMenuItem from "./AdminRemoveMenuItem";
 import { DirectionsGlyph, ExternalLinkGlyph, CalendarGlyph, WhatsAppGlyph, XGlyph, FacebookGlyph, CopyGlyph, ShareGlyph, BackArrowGlyph, KebabGlyph } from "./CardActionIcons";
 import { esCL } from "@/i18n/es-CL";
 import type { EventRecord } from "@/lib/events";
@@ -56,6 +58,7 @@ export default function EventCardBase({
   // Originally mobile-only, but the user liked the collapsed UX enough
   // (2026-07-20) to want it everywhere — no more desktop/mobile split.
   const [menuOpen, setMenuOpen] = useState(false);
+  const isAdmin = useIsAdmin();
 
   return (
     <div className="relative bg-black rounded-2xl overflow-hidden flex flex-col h-full">
@@ -148,6 +151,9 @@ export default function EventCardBase({
                     <ShareGlyph color="black" />
                     {esCL.cardMenuShare}
                   </button>
+                  {isAdmin && (
+                    <AdminRemoveMenuItem eventId={event.id} eventTitle={event.title} onRemoved={() => setMenuOpen(false)} />
+                  )}
                 </>
               ) : (
                 <>

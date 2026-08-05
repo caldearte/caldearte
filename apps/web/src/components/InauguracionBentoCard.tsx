@@ -40,6 +40,10 @@ function ActionButton({ href, onClick, icon, label }: { href?: string; onClick?:
   );
 }
 
+// No admin "Quitar" here, deliberately — this card has no role="menu"
+// kebab to add it to (visible ActionButtons instead), and v1 of the admin
+// remove feature (see AdminRemoveMenuItem.tsx) only targets the 3 cards
+// that already have one. Not an oversight.
 export default function InauguracionBentoCard({ event, reversed = false, hideTodayBadge = false }: InauguracionBentoCardProps) {
   const {
     showTodayBadge,

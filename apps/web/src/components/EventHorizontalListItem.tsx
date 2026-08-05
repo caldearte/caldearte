@@ -4,6 +4,8 @@ import { useState } from "react";
 import Link from "next/link";
 import CardImage from "./CardImage";
 import { useEventCardActions } from "@/lib/useEventCardActions";
+import { useIsAdmin } from "@/lib/useIsAdmin";
+import AdminRemoveMenuItem from "./AdminRemoveMenuItem";
 import { DirectionsGlyph, CalendarGlyph, ShareGlyph, WhatsAppGlyph, XGlyph, FacebookGlyph, CopyGlyph, KebabGlyph } from "./CardActionIcons";
 import { esCL } from "@/i18n/es-CL";
 import type { EventRecord } from "@/lib/events";
@@ -43,6 +45,7 @@ export default function EventHorizontalListItem({ event, variant, cityName }: Ev
     handleCopyLink,
   } = useEventCardActions(event, variant);
   const [menuOpen, setMenuOpen] = useState(false);
+  const isAdmin = useIsAdmin();
   const eventHref = `/eventos/${event.id}`;
   // Expo: "Hasta el X" (+ "ÚLTIMOS DÍAS —" prefix when closing soon),
   // matching ExpoBentoCard/Figma — NOT the full run range `dateLine`
@@ -153,6 +156,7 @@ export default function EventHorizontalListItem({ event, variant, cityName }: Ev
                     <ShareGlyph color="black" />
                     {esCL.cardMenuShare}
                   </button>
+                  {isAdmin && <AdminRemoveMenuItem eventId={event.id} eventTitle={event.title} onRemoved={() => setMenuOpen(false)} />}
                 </>
               ) : (
                 <>

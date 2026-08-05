@@ -44,6 +44,10 @@ function ActionButton({ href, onClick, icon, label }: { href?: string; onClick?:
 // bento's untilDateLine) — this page's whole purpose is "more info", so
 // it should give more than the home cards already show, not the same
 // amount.
+//
+// No admin "Quitar" here either, deliberately — same reasoning as
+// InauguracionBentoCard.tsx's own comment: no role="menu" kebab to add it
+// to, out of scope for v1.
 export default function EventDetailCard({ event, domain }: EventDetailCardProps) {
   // Same "hasn't happened yet" rule the home grid uses (splitInauguracionesYExpos)
   // — a past-but-still-running exhibition is an "expo", not an "inauguración",

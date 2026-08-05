@@ -5,6 +5,8 @@ import Link from "next/link";
 import CardImage from "./CardImage";
 import { DirectionsGlyph, CalendarGlyph, ShareGlyph, WhatsAppGlyph, XGlyph, FacebookGlyph, CopyGlyph, KebabGlyph } from "./CardActionIcons";
 import { useEventCardActions } from "@/lib/useEventCardActions";
+import { useIsAdmin } from "@/lib/useIsAdmin";
+import AdminRemoveMenuItem from "./AdminRemoveMenuItem";
 import { esCL } from "@/i18n/es-CL";
 import type { EventRecord } from "@/lib/events";
 
@@ -40,6 +42,7 @@ export default function ExpoBentoCard({ event, hideTodayBadge = false, desktopIm
     handleCopyLink,
   } = useEventCardActions(event, "expo", hideTodayBadge);
   const [menuOpen, setMenuOpen] = useState(false);
+  const isAdmin = useIsAdmin();
   const eventHref = `/eventos/${event.id}`;
 
   return (
@@ -160,6 +163,9 @@ export default function ExpoBentoCard({ event, hideTodayBadge = false, desktopIm
                         <ShareGlyph color="black" />
                         {esCL.cardMenuShare}
                       </button>
+                      {isAdmin && (
+                        <AdminRemoveMenuItem eventId={event.id} eventTitle={event.title} onRemoved={() => setMenuOpen(false)} />
+                      )}
                     </>
                   ) : (
                     <>
