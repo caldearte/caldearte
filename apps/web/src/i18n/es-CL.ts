@@ -264,6 +264,10 @@ export const esCL = {
   // never linked from Header/Footer/MenuDrawer. Reaching it means typing
   // the URL directly (confirmed with the user 2026-08-05).
   loginPage: {
+    // Frames the page as an intentional work-in-progress rather than a
+    // mysterious admin backdoor, in case anyone reaches this unlinked URL
+    // — per the user 2026-08-05.
+    note: "Estamos construyendo las cuentas de usuario de Caldearte. Por ahora, esta sesión es solo para el equipo.",
     signInWithGoogle: "Iniciar sesión con Google",
     signedInAsAdmin: (email: string) => `Sesión iniciada como ${email}.`,
     signedInNotAdmin: (email: string) => `Sesión iniciada como ${email}, pero esta cuenta no tiene permisos de administrador.`,

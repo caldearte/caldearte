@@ -20,6 +20,8 @@ export default function LoginPage() {
       </Link>
 
       <div className="mt-[60px] md:mt-[100px] max-w-[480px] flex flex-col gap-[24px]">
+        <p className="font-geist text-[16px] text-text-primary">{esCL.loginPage.note}</p>
+
         {status === "loading" ? null : session?.user?.isAdmin ? (
           <>
             <p className="font-geist text-[16px] text-text-primary">{esCL.loginPage.signedInAsAdmin(session.user.email ?? "")}</p>
