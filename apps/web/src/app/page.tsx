@@ -7,18 +7,9 @@ import {
   filterActiveInRange,
   splitInauguracionesYExpos,
   filterUpcomingInauguraciones,
-  countByCity,
-  cityNamesFromEvents,
-  thumbnailsByCity,
   findNextEvent,
 } from "@/lib/events";
-import {
-  DEFAULT_CITY_ID,
-  buildRegionMetaByCityId,
-  resolveDefaultCityId,
-  resolveGeoCityId,
-  nearestCityIdByCoords,
-} from "@/lib/cities";
+import { resolveCityPickerContext } from "@/lib/cityPickerContext";
 import {
   todayInSantiago,
   currentWeekInSantiago,
@@ -28,12 +19,10 @@ import {
   isCurrentOrUpcoming,
 } from "@/lib/date";
 import {
-  CITY_COOKIE,
   FAMILY_MODE_COOKIE,
   TODAY_FILTER_COOKIE,
   VIGENTES_FILTER_COOKIE,
   GEO_CONSENT_COOKIE,
-  PRECISE_CITY_COOKIE,
 } from "@/lib/cookies";
 import CalendarView from "@/components/CalendarView";
 import type { NewsletterStatus } from "@/components/NewsletterStatusModal";
@@ -106,26 +95,6 @@ export default async function HomePage({
   // what actually satisfies "no flash of unblurred content" (overview.md).
   const visible = filterFamilyMode(allEvents, familyMode);
 
-  // Real observed city names, not a fixed list — any comuna a real event
-  // resolves to (see cities.ts) is a legitimate, navigable destination.
-  // Built from ALL events (not just active-in-range), so a
-  // directly-navigated city still shows its proper name even with zero
-  // active events right now.
-  const cityNames = cityNamesFromEvents(allEvents);
-
-  // Home shows only what's visitable within the current week — nothing not
-  // yet started, nothing already ended. The Filtros pills (Hoy, Vigentes)
-  // never change this — they only narrow the SELECTED CITY's own lists
-  // further down, not this citywide set.
-  const activeInRange = filterActiveInRange(visible, rangeStart, rangeEnd);
-  // Always full-week — CityCarousel/city picker counts are deliberately
-  // unaffected by the Hoy/Vigentes pills (confirmed scope: those only
-  // narrow the currently-viewed city's own lists).
-  const cityCounts = countByCity(activeInRange, rangeStart, rangeEnd);
-  // Preview thumbnails for the "Arte en todas partes" carousel — computed
-  // over the same all-comunas activeInRange set countByCity already uses,
-  // not the selected city's own narrowed event list.
-  const cityThumbnails = thumbnailsByCity(activeInRange, 4);
   // SearchPanel's own scope: every active/upcoming event, every comuna —
   // deliberately NOT narrowed to rangeStart/rangeEnd or the selected city
   // (see the product discussion: a scoped-empty search result is
@@ -133,63 +102,22 @@ export default async function HomePage({
   // (archived) events; that stays the Archive's own job.
   const searchableEvents = visible.filter((e) => isCurrentOrUpcoming(e, today));
 
-  // A manual pick (CITY_COOKIE) always wins and is never re-resolved. With
-  // no cookie yet, resolve fresh from Vercel's IP-geolocation headers every
-  // render — own comuna (if it has events) -> a comuna in the same admin
-  // región that does -> Santiago if outside Chile or nothing matched.
-  // These headers don't exist on localhost (no-op there, falls through to
-  // Santiago) — real geo-detection only happens on an actual Vercel deploy.
-  const cityCookieValue = cookieStore.get(CITY_COOKIE)?.value;
-  const geoCity = headerStore.get("x-vercel-ip-city") ?? undefined;
-  const geoCountry = headerStore.get("x-vercel-ip-country") ?? undefined;
-  const cityId =
-    cityCookieValue !== undefined
-      ? cityCookieValue in cityNames || cityCookieValue === DEFAULT_CITY_ID
-        ? cityCookieValue
-        : DEFAULT_CITY_ID
-      : resolveDefaultCityId(
-          geoCity,
-          geoCountry,
-          buildRegionMetaByCityId(regions),
-          cityCounts,
-        );
-
-  // Unlike `cityId` above, this is computed EVERY render, even once a
-  // CITY_COOKIE already picked a different city — it's what feeds the city
-  // picker's "Tu ubicación actual" quick-pick row (CityPickerPanel), which
-  // needs to keep offering "jump back home" after the visitor has
-  // wandered off to browse a different comuna, not just on the very first
-  // visit. Never substitutes a region-mate city just because the
-  // visitor's own comuna has zero events right now (real bug found
-  // 2026-07-29: showed "Santiago" to a visitor in La Reina) — null means
-  // no real signal (outside Chile, no geo header, or an unrecognized
-  // comuna) and the row is hidden entirely rather than guessing.
-  //
-  // Prefers Vercel's lat/long headers over its city-name header when
-  // both are present: `x-vercel-ip-city` only resolves to city-level
-  // granularity for Greater Santiago (can't distinguish La Reina from
-  // Santiago), but the coordinates are a finer-grained estimate — see
-  // nearestCityIdByCoords's own doc comment (cities.ts) for the distance
-  // sanity check that keeps a bad/missing coordinate reading from ever
-  // outranking the name match.
-  const geoLatHeader = headerStore.get("x-vercel-ip-latitude");
-  const geoLngHeader = headerStore.get("x-vercel-ip-longitude");
-  const geoLat = geoLatHeader ? Number(geoLatHeader) : NaN;
-  const geoLng = geoLngHeader ? Number(geoLngHeader) : NaN;
-  const hasGeoCoords = Number.isFinite(geoLat) && Number.isFinite(geoLng);
-  // PRECISE_CITY_COOKIE (a real, granted geolocation reading — banner or
-  // the picker's own button) always outranks both of the above: it's
-  // durable and strictly more precise than any per-request IP estimate.
-  // Real bug found 2026-07-30: without this short-circuit, "Tu ubicación
-  // actual" kept reverting to the coarse IP-based city on every new
-  // render/navigation even after the visitor had already granted a
-  // precise reading once.
-  const preciseCityCookie = cookieStore.get(PRECISE_CITY_COOKIE)?.value;
-  const hasPreciseLocation = preciseCityCookie !== undefined;
-  const actualCityId =
-    preciseCityCookie ??
-    (hasGeoCoords ? nearestCityIdByCoords(geoLat, geoLng, regions) : null) ??
-    resolveGeoCityId(geoCity, geoCountry, buildRegionMetaByCityId(regions));
+  // Shared with the event detail page (lib/cityPickerContext.ts) —
+  // extracted 2026-08-06 once /eventos/[id] needed the exact same "which
+  // city, from cookie or IP-geo fallback" + CityPickerPanel sidebar data
+  // (counts/thumbnails), so the two pages can't silently drift on how a
+  // city gets resolved. See that function's own comments for the
+  // reasoning behind each piece (region-mate fallback, precise-location
+  // precedence, etc.) — unchanged here, just relocated.
+  const { cityId, cityNames, cityCounts, cityThumbnails, actualCityId, hasPreciseLocation, activeInRange } = await resolveCityPickerContext({
+    cookieStore,
+    headerStore,
+    allEvents,
+    regions,
+    rangeStart,
+    rangeEnd,
+    familyMode,
+  });
 
   // GeoConsentBanner.tsx: shown at most once ever, the very first time a
   // visitor hasn't yet answered — every subsequent render (including

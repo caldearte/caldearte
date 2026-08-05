@@ -8,12 +8,21 @@ import type { EventRecord } from "@/lib/events";
 import InauguracionBentoCard from "./InauguracionBentoCard";
 import EventHorizontalListItem from "./EventHorizontalListItem";
 
+type ViewMode = "grid" | "list";
+
 interface InauguracionesSectionProps {
   events: EventRecord[];
   hideTodayBadge?: boolean;
+  // "list" — used by the event detail page's own list-mode footer
+  // (EventDetailCard.tsx's caller), which wants the compact row layout by
+  // default to keep the page from being dominated by a second full bento
+  // grid. Home keeps the "grid" default unchanged.
+  defaultView?: ViewMode;
+  // Overrides the sticky toolbar's offset — tuned by default for
+  // Header.tsx's own fixed nav height; the event detail page's list-mode
+  // selector (EventPageTopNav.tsx) is taller, so it passes its own value.
+  stickyTopClass?: string;
 }
-
-type ViewMode = "grid" | "list";
 
 // True from md (768px) up — no CSS-only way to slice an array by
 // breakpoint, so pagination size tracks window width client-side. The
@@ -48,8 +57,13 @@ function ToggleButton({ active, onClick, ariaLabel, icon }: { active: boolean; o
   );
 }
 
-export default function InauguracionesSection({ events, hideTodayBadge = false }: InauguracionesSectionProps) {
-  const [view, setView] = useState<ViewMode>("grid");
+export default function InauguracionesSection({
+  events,
+  hideTodayBadge = false,
+  defaultView = "grid",
+  stickyTopClass = "top-[50px] md:top-[60px]",
+}: InauguracionesSectionProps) {
+  const [view, setView] = useState<ViewMode>(defaultView);
   const isDesktop = useIsDesktop();
   // Figma's mobile toolbar (178:76) has no view-toggle at all, just label
   // + pagination — grid-only was the original spec, but the user
@@ -80,7 +94,7 @@ export default function InauguracionesSection({ events, hideTodayBadge = false }
           since a sticky element can't render outside its containing
           block. bg-surface-sage so content scrolling underneath doesn't
           show through. */}
-      <div className="sticky top-[50px] md:top-[60px] z-30 bg-surface-sage flex items-center justify-between mb-6 py-2">
+      <div className={`sticky ${stickyTopClass} z-30 bg-surface-sage flex items-center justify-between mb-6 py-2`}>
         {/* Grid/list toggle was desktop-only in Figma's mobile toolbar
             (178:76, just label + pagination) — shown on every screen size
             now per the user's explicit request (2026-08-03). The mobile

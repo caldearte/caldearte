@@ -8,12 +8,16 @@ import type { EventRecord } from "@/lib/events";
 import ExpoBentoCard from "./ExpoBentoCard";
 import EventHorizontalListItem from "./EventHorizontalListItem";
 
+type ViewMode = "grid" | "list";
+
 interface ExposicionesSectionProps {
   events: EventRecord[];
   hideTodayBadge?: boolean;
+  // See InauguracionesSection.tsx's own comment — same reasoning, used by
+  // the event detail page's list-mode footer.
+  defaultView?: ViewMode;
+  stickyTopClass?: string;
 }
-
-type ViewMode = "grid" | "list";
 
 // Same breakpoint tracker as InauguracionesSection — see that file's own
 // comment for why this can't be CSS-only.
@@ -55,8 +59,13 @@ function ToggleButton({ active, onClick, ariaLabel, icon }: { active: boolean; o
 const DESKTOP_IMAGE_HEIGHT: string[] = ["md:h-[320px]", "md:h-[200px]", "md:h-[200px]", "md:h-[200px]", "md:h-[322px]"];
 const DESKTOP_COL_SPAN: string[] = ["md:col-span-7", "md:col-span-5", "md:col-span-4", "md:col-span-4", "md:col-span-4"];
 
-export default function ExposicionesSection({ events, hideTodayBadge = false }: ExposicionesSectionProps) {
-  const [view, setView] = useState<ViewMode>("grid");
+export default function ExposicionesSection({
+  events,
+  hideTodayBadge = false,
+  defaultView = "grid",
+  stickyTopClass = "top-[50px] md:top-[60px]",
+}: ExposicionesSectionProps) {
+  const [view, setView] = useState<ViewMode>(defaultView);
   const isDesktop = useIsDesktop();
   // Figma's mobile toolbar (178:119) had no view-toggle at all, just
   // label + pagination — grid-only was the original spec, but the user
@@ -86,7 +95,7 @@ export default function ExposicionesSection({ events, hideTodayBadge = false }: 
       {/* Sticky under the fixed top nav, same as InauguracionesSection's
           own toolbar — see that file's doc comment for the exact z-index
           stack this depends on. */}
-      <div className="sticky top-[50px] md:top-[60px] z-30 bg-surface-sage flex items-center justify-between mb-6 py-2">
+      <div className={`sticky ${stickyTopClass} z-30 bg-surface-sage flex items-center justify-between mb-6 py-2`}>
         <div className="flex items-center gap-[12px]">
           <ToggleButton
             active={view === "grid"}
