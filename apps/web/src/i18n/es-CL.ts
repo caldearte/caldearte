@@ -301,9 +301,16 @@ export const esCL = {
     // newsletter_subscribers.admin_region_name), never updated here.
     dataBody:
       "Guardamos varias cookies de preferencia en tu navegador, por un año: la comuna que elegiste, si tienes activado el modo familiar, tus filtros de vista, tus últimas comunas visitadas, y tu ubicación si la compartiste. Si te suscribes al newsletter, guardamos tu correo y la región que elegiste, y cada envío incluye un link para darte de baja en un clic. No creamos cuentas, no usamos rastreadores de terceros, y no guardamos nada de lo que escribas en el formulario de contacto: solo lo reenviamos por correo. Usamos Vercel Analytics para ver estadísticas agregadas de visitas, sin cookies ni datos que te identifiquen.",
-    contactTitle: "¿Encontraste un error o algo que reportar?",
-    contactBody: "Escríbenos desde el ",
-    contactLinkLabel: "formulario de contacto",
+  },
+
+  // Shared by /privacidad and /curatoria — both end with the same
+  // "found a mistake? write to us" nudge, opening the same contact
+  // drawer. Previously lived only under `privacidad`, moved out once a
+  // second page (curatoria) needed the identical copy.
+  contactPrompt: {
+    title: "¿Encontraste un error o algo que reportar?",
+    body: "Escríbenos desde el ",
+    linkLabel: "formulario de contacto",
   },
 
   // Rediseño 2.0.0 — "texto AI" (174:2985), su propia sección corta
@@ -352,6 +359,18 @@ export const esCL = {
 
   curatoriaPage: {
     title: "Curatoría",
+    historyLabel: "Nuestra historia",
+    // DRAFT, proposed 2026-08-05 from the real story Daniel told me —
+    // every fact preserved as given (10+ años, Camila artista visual,
+    // Daniel diseñador, sin plata, el ambiente festivo/arte vivo, hoy con
+    // IA), just shaped into prose. Needs Daniel & Camila's own edit/
+    // approval before this reads as final — not to be treated as
+    // finished copy.
+    historyText:
+      "Intentamos hacer Caldearte hace más de diez años, recién salidos de la universidad. Camila es artista visual, yo diseñador de formación, y a los dos nos encantaban las inauguraciones: eran la excusa perfecta para salir, sin necesitar mucha plata, y terminar viendo arte real. Ahí entendimos que una inauguración es un espacio único — donde espectadores, artistas y obra se juntan en el mismo lugar al mismo tiempo — y quisimos que más gente pudiera vivir eso.\n\nNos daba lo mismo si era el Museo de Bellas Artes, un club social o una intervención en la calle: lo que amábamos era el ambiente festivo, el arte vivo — donde todos comentan, y muchas veces el propio artista está ahí, contando su obra o respondiendo tus preguntas. Es una celebración real; no hace falta ser experto en arte para disfrutarla, porque casi siempre son eventos abiertos a cualquiera, con vino navegado y sopaipillas o a veces todo un banquete, mientras se aprecia lo que se está mostrando.\n\nEn esa época hacer Caldearte a mano era lentísimo. Hoy, más de una década después, usamos inteligencia artificial para recorrer muchos más rincones de la web buscando inauguraciones y exposiciones, sistematizar cómo las evaluamos, y hacerte llegar la información — para que la experiencia que a nosotros nos marcó esté al alcance de cualquiera.",
+    manifestoLabel: "Cómo curamos",
+    founderSignature: "— Daniel y Camila, fundadores de Caldearte",
+    videoComingSoon: "Un video contándote esto en persona, pronto.",
   },
 
   // Rediseño 2.0.0 — teaser corto del home que enlaza a /curatoria, no

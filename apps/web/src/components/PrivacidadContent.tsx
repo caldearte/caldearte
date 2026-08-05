@@ -34,11 +34,11 @@ export default function PrivacidadContent() {
         </section>
 
         <section>
-          <p className="font-fragment-mono font-bold text-[14px] uppercase text-text-primary mb-[16px]">{esCL.privacidad.contactTitle}</p>
+          <p className="font-fragment-mono font-bold text-[14px] uppercase text-text-primary mb-[16px]">{esCL.contactPrompt.title}</p>
           <p className="font-geist text-[15px] md:text-[16px] leading-[1.6] text-text-primary">
-            {esCL.privacidad.contactBody}
+            {esCL.contactPrompt.body}
             <button type="button" onClick={() => setContactOpen(true)} className="underline cursor-pointer">
-              {esCL.privacidad.contactLinkLabel}
+              {esCL.contactPrompt.linkLabel}
             </button>
             .
           </p>
