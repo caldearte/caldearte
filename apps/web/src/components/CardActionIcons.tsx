@@ -99,12 +99,16 @@ export function BackArrowGlyph({ color }: { color: string }) {
   );
 }
 
+// Bumped from 4x16 to 5x20 (2026-08-06, mobile testing feedback: the
+// kebab button was hard to tap — a bigger icon inside a bigger circle,
+// see the 3 kebab components' own button sizing) — same 3-dot shape,
+// just larger.
 export function KebabGlyph({ color = "white" }: { color?: string }) {
   return (
-    <svg width="4" height="16" viewBox="0 0 4 16" fill={color} xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-      <circle cx="2" cy="2" r="1.7" />
-      <circle cx="2" cy="8" r="1.7" />
-      <circle cx="2" cy="14" r="1.7" />
+    <svg width="5" height="20" viewBox="0 0 5 20" fill={color} xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <circle cx="2.5" cy="2.5" r="2.1" />
+      <circle cx="2.5" cy="10" r="2.1" />
+      <circle cx="2.5" cy="17.5" r="2.1" />
     </svg>
   );
 }

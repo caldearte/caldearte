@@ -84,6 +84,12 @@ export default function ExpoBentoCard({ event, hideTodayBadge = false, desktopIm
           <p className="font-geist text-[13px] text-text-muted truncate">{venueLine}</p>
 
           <div className="relative z-10 shrink-0">
+            {/* Single button, same circle/border at every breakpoint —
+                used to be two separate buttons (a real 30px circle on
+                desktop, a bare unstyled icon on mobile with basically no
+                tap target at all). Found via mobile testing 2026-08-06:
+                "es muy dificil apretar el kebab menu... toma que presione
+                la card". */}
             <button
               type="button"
               onClick={() => {
@@ -93,22 +99,7 @@ export default function ExpoBentoCard({ event, hideTodayBadge = false, desktopIm
               aria-label={esCL.cardMoreOptionsAriaLabel}
               aria-haspopup="menu"
               aria-expanded={menuOpen}
-              className="w-[30px] h-[30px] rounded-full border border-text-primary flex items-center justify-center md:flex hidden cursor-pointer"
-            >
-              <span className="rotate-90 inline-block">
-                <KebabGlyph color="#3d373d" />
-              </span>
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setMenuOpen((open) => !open);
-                setShareSubmenuOpen(false);
-              }}
-              aria-label={esCL.cardMoreOptionsAriaLabel}
-              aria-haspopup="menu"
-              aria-expanded={menuOpen}
-              className="md:hidden cursor-pointer"
+              className="w-[40px] h-[40px] rounded-full border border-text-primary flex items-center justify-center cursor-pointer"
             >
               <span className="rotate-90 inline-block">
                 <KebabGlyph color="#3d373d" />

@@ -221,7 +221,7 @@ export default function EventCardBase({
           aria-label={esCL.cardMoreOptionsAriaLabel}
           aria-haspopup="menu"
           aria-expanded={menuOpen}
-          className="relative z-20 w-8 h-8 rounded-full border border-white/70 flex items-center justify-center cursor-pointer"
+          className="relative z-20 w-[40px] h-[40px] rounded-full border border-white/70 flex items-center justify-center cursor-pointer"
         >
           <KebabGlyph />
         </button>

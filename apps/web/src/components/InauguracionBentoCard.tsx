@@ -40,10 +40,12 @@ function ActionButton({ href, onClick, icon, label }: { href?: string; onClick?:
   );
 }
 
-// No admin "Quitar" here, deliberately — this card has no role="menu"
-// kebab to add it to (visible ActionButtons instead), and v1 of the admin
-// remove feature (see AdminRemoveMenuItem.tsx) only targets the 3 cards
-// that already have one. Not an oversight.
+// Still no admin "Quitar" here, deliberately — this card has no
+// role="menu" kebab to add it to (visible ActionButtons instead). Unlike
+// EventDetailCard.tsx (which gained its own flat "Quitar" button
+// 2026-08-06, a direct user request), this home-grid card wasn't asked
+// for — the event detail page a click already goes to has it. Not an
+// oversight.
 export default function InauguracionBentoCard({ event, reversed = false, hideTodayBadge = false }: InauguracionBentoCardProps) {
   const {
     showTodayBadge,

@@ -1,8 +1,11 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import CardImage from "./CardImage";
 import { DirectionsGlyph, CalendarGlyph, ShareGlyph, WhatsAppGlyph, XGlyph, FacebookGlyph, CopyGlyph } from "./CardActionIcons";
 import { useEventCardActions } from "@/lib/useEventCardActions";
+import { useIsAdmin } from "@/lib/useIsAdmin";
+import { useAdminRemoveEvent } from "@/lib/useAdminRemoveEvent";
 import { dateOnlyFromIso, todayInSantiago } from "@/lib/date";
 import { esCL } from "@/i18n/es-CL";
 import type { EventRecord } from "@/lib/events";
@@ -16,9 +19,26 @@ interface EventDetailCardProps {
 // (border/text-primary, font-fragment-mono) — this page has no whole-card
 // link to compete with (it IS the destination), so no z-index gymnastics
 // needed here, just plain buttons.
-function ActionButton({ href, onClick, icon, label }: { href?: string; onClick?: () => void; icon: React.ReactNode; label: string }) {
-  const className =
-    "flex items-center gap-[10px] border border-text-primary px-[16px] py-[12px] text-[13px] font-fragment-mono text-text-primary whitespace-nowrap cursor-pointer";
+function ActionButton({
+  href,
+  onClick,
+  disabled,
+  destructive = false,
+  icon,
+  label,
+}: {
+  href?: string;
+  onClick?: () => void;
+  disabled?: boolean;
+  // Admin-only "Quitar" reuses this same button shape in red, instead of
+  // its own bespoke markup — see EventDetailCard's own admin block below.
+  destructive?: boolean;
+  icon?: React.ReactNode;
+  label: string;
+}) {
+  const className = `flex items-center gap-[10px] border px-[16px] py-[12px] text-[13px] font-fragment-mono whitespace-nowrap cursor-pointer disabled:opacity-50 disabled:cursor-default ${
+    destructive ? "border-red-600 text-red-600" : "border-text-primary text-text-primary"
+  }`;
   if (href) {
     return (
       <a href={href} target="_blank" rel="noopener noreferrer" className={className}>
@@ -28,7 +48,7 @@ function ActionButton({ href, onClick, icon, label }: { href?: string; onClick?:
     );
   }
   return (
-    <button type="button" onClick={onClick} className={className}>
+    <button type="button" onClick={onClick} disabled={disabled} className={className}>
       {icon}
       {label}
     </button>
@@ -45,10 +65,11 @@ function ActionButton({ href, onClick, icon, label }: { href?: string; onClick?:
 // it should give more than the home cards already show, not the same
 // amount.
 //
-// No admin "Quitar" here either, deliberately — same reasoning as
-// InauguracionBentoCard.tsx's own comment: no role="menu" kebab to add it
-// to, out of scope for v1.
+// Admin "Quitar" added 2026-08-06 (real user request, from mobile
+// testing) — this page's own ActionButton row, not a kebab item, since
+// this page never had a kebab to begin with.
 export default function EventDetailCard({ event, domain }: EventDetailCardProps) {
+  const router = useRouter();
   // Same "hasn't happened yet" rule the home grid uses (splitInauguracionesYExpos)
   // — a past-but-still-running exhibition is an "expo", not an "inauguración",
   // regardless of whether it once had an opening date.
@@ -69,6 +90,18 @@ export default function EventDetailCard({ event, domain }: EventDetailCardProps)
     handleShareFacebook,
     handleCopyLink,
   } = useEventCardActions(event, variant, false);
+
+  const isAdmin = useIsAdmin();
+  // Navigates home instead of router.refresh() (what the kebab-menu
+  // version does) — this page is statically generated (generateStaticParams,
+  // revalidate=3600), so refreshing it wouldn't reflect the removal for
+  // up to an hour. The home page is server-rendered per request, so it
+  // shows the removal immediately.
+  const { removing, removed, handleRemove } = useAdminRemoveEvent({
+    eventId: event.id,
+    eventTitle: event.title,
+    onRemoved: () => router.push("/"),
+  });
 
   return (
     <article className="flex flex-col md:flex-row gap-[24px] md:gap-[60px] items-start">
@@ -107,19 +140,19 @@ export default function EventDetailCard({ event, domain }: EventDetailCardProps)
                   onClick={() => setShareSubmenuOpen(false)}
                 />
                 <div className="absolute top-full left-0 mt-2 z-20 min-w-[190px] overflow-hidden rounded-xl bg-white border border-stone-200 shadow-lg py-1">
-                  <button type="button" className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-sm text-heading-gray" onClick={handleShareWhatsApp}>
+                  <button type="button" className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-sm text-heading-gray cursor-pointer" onClick={handleShareWhatsApp}>
                     <WhatsAppGlyph color="black" />
                     {esCL.cardMenuWhatsApp}
                   </button>
-                  <button type="button" className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-sm text-heading-gray" onClick={handleShareTwitter}>
+                  <button type="button" className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-sm text-heading-gray cursor-pointer" onClick={handleShareTwitter}>
                     <XGlyph color="black" />
                     {esCL.cardMenuTwitter}
                   </button>
-                  <button type="button" className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-sm text-heading-gray" onClick={handleShareFacebook}>
+                  <button type="button" className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-sm text-heading-gray cursor-pointer" onClick={handleShareFacebook}>
                     <FacebookGlyph color="black" />
                     {esCL.cardMenuFacebook}
                   </button>
-                  <button type="button" className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-sm text-heading-gray" onClick={handleCopyLink}>
+                  <button type="button" className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-sm text-heading-gray cursor-pointer" onClick={handleCopyLink}>
                     <CopyGlyph color="black" />
                     {esCL.cardMenuCopyLink}
                   </button>
@@ -132,6 +165,14 @@ export default function EventDetailCard({ event, domain }: EventDetailCardProps)
               </div>
             )}
           </div>
+          {isAdmin && (
+            <ActionButton
+              onClick={handleRemove}
+              disabled={removing}
+              destructive
+              label={removed ? esCL.cardMenuRemoved : removing ? esCL.cardMenuRemoving : esCL.cardMenuRemove}
+            />
+          )}
         </div>
 
         {event.description && (
