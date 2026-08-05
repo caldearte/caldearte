@@ -21,7 +21,7 @@ export default function PrivacidadPage() {
         <h2 className="text-lg font-bold text-heading-gray mb-2">{esCL.privacidad.contactTitle}</h2>
         <p className="text-sm text-muted-gray leading-relaxed">
           {esCL.privacidad.contactBody}
-          <Link href="/contacto" className="underline text-heading-gray">
+          <Link href="/" className="underline text-heading-gray">
             {esCL.privacidad.contactLinkLabel}
           </Link>
           .

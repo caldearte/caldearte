@@ -71,7 +71,15 @@ export default function CalendarView({
   const cityPickerTriggerRef = useRef<HTMLButtonElement>(null);
   const [locationOpen, setLocationOpen] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [drawerInitialView, setDrawerInitialView] = useState<"menu" | "contact">("menu");
   const [searchOpen, setSearchOpen] = useState(false);
+
+  // Footer's "Contacto" link — opens the same MenuDrawer straight into its
+  // contact view, instead of navigating to the now-removed /contacto page.
+  function openContactDrawer() {
+    setDrawerInitialView("contact");
+    setDrawerOpen(true);
+  }
 
   const city = cityById(cityId, cityNames);
 
@@ -122,7 +130,10 @@ export default function CalendarView({
         onOpenCityPicker={() => setLocationOpen(true)}
         cityPickerTriggerRef={cityPickerTriggerRef}
         onOpenSearch={() => setSearchOpen(true)}
-        onOpenMenu={() => setDrawerOpen(true)}
+        onOpenMenu={() => {
+          setDrawerInitialView("menu");
+          setDrawerOpen(true);
+        }}
       />
 
       {isEmpty ? (
@@ -185,7 +196,7 @@ export default function CalendarView({
 
       <NewsletterSection />
 
-      <Footer />
+      <Footer onContactClick={openContactDrawer} />
 
       <CityPickerPanel
         open={locationOpen}
@@ -207,6 +218,7 @@ export default function CalendarView({
         familyMode={familyMode}
         onToggleFamilyMode={toggleFamilyMode}
         onClose={() => setDrawerOpen(false)}
+        initialView={drawerInitialView}
       />
 
       <SearchPanel open={searchOpen} events={searchableEvents} onClose={() => setSearchOpen(false)} />

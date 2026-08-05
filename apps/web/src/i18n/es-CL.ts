@@ -357,25 +357,12 @@ export const esCL = {
   curatoriaTeaser: "LA ESTÉTICA NO ES NEUTRAL, Y NUESTRA SELECCIÓN TAMPOCO.",
   verMas: "ver mas",
 
-  contacto: {
-    title: "Contacto",
-    intro: "¿Viste algo mal curado, una inauguración que nos falta, o simplemente quieres escribirnos? Déjanos tu mensaje.",
-    nameLabel: "Nombre (opcional)",
-    emailLabel: "Tu email",
-    messageLabel: "Mensaje",
-    submit: "Enviar",
-    sending: "Enviando...",
-    success: "¡Gracias! Recibimos tu mensaje.",
-    error: "Algo falló al enviar tu mensaje. Prueba de nuevo en un rato.",
-  },
-
   // Rediseño 2.0.0 — MenuDrawer (caldearte-web-menu-v2.0.0 /
   // caldearte-mobile-menu-v2.0.0) and its in-drawer contact form
-  // (caldearte-web-contacto-v2.0.0 / caldearte-mobile-contacto), replacing
-  // the old plain-link drawer. Distinct copy from esCL.contacto above —
-  // that's the standalone /contacto page, untouched by this redesign; the
-  // drawer's placeholder-style fields read differently ("Tu Nombre" vs.
-  // "Nombre (opcional)") and aren't meant to match it verbatim.
+  // (caldearte-web-contacto-v2.0.0 / caldearte-mobile-contacto). The
+  // standalone /contacto page (and its own esCL.contacto copy) was
+  // removed 2026-08-04 — Footer's "Contacto" link now always opens this
+  // drawer's contact view instead of navigating anywhere.
   menuDrawer: {
     closeAriaLabel: "Cerrar menú",
     backToMenuAriaLabel: "Volver al menú",

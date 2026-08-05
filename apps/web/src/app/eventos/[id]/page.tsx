@@ -7,7 +7,7 @@ import { extractDomain, resolveCardImage } from "@/lib/image-source";
 import { esCL } from "@/i18n/es-CL";
 import EventDetailCard from "@/components/EventDetailCard";
 import EventCityLink from "@/components/EventCityLink";
-import Footer from "@/components/Footer";
+import EventPageFooter from "@/components/EventPageFooter";
 
 export const revalidate = 3600; // matches the archive/sitemap revalidate window
 
@@ -82,7 +82,7 @@ export default async function EventPage({ params }: { params: Promise<PageParams
         {esCL.eventPageBackToHome} →
       </Link>
 
-      <Footer />
+      <EventPageFooter />
     </main>
   );
 }
