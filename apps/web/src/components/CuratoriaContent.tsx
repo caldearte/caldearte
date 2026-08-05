@@ -10,15 +10,17 @@ import ContactPanel from "./ContactPanel";
 // Rediseño 2.0.0 — /curatoria, the most prominent secondary page (linked
 // from both the home's CuratoriaBanner and the menu drawer's own magenta
 // tile), so it gets a real hero treatment instead of the plain-text page
-// this used to be. Section order is deliberate: the founders' own origin
-// story first (the human "why"), then the already-approved curation
-// manifesto (the concrete "what" — independent spirit, art beyond el
-// oficialismo, no hate speech/proselitism), then a sign-off noting a
-// founders' video is coming. Same contact-drawer pattern as
+// this used to be. Deliberately narrow scope, per the user 2026-08-05:
+// curation criteria only — no founder biography here (that moved to a
+// future "Quiénes somos" page, see memory). Manifesto is set BIG
+// ("no hay nada que ocultar, todo debe gritarse") — an opening magenta
+// headline statement, then each following point as its own large, bold
+// paragraph rather than one dense block. Same contact-drawer pattern as
 // PrivacidadContent.tsx — one shared `contactOpen` state for both the
 // inline prompt and the footer's own "Contacto" link.
 export default function CuratoriaContent() {
   const [contactOpen, setContactOpen] = useState(false);
+  const [opener, ...rest] = esCL.curatoriaPage.manifesto;
 
   return (
     <main className="min-h-screen w-full bg-surface-sage px-[20px] py-8 md:px-[61px] max-w-[1280px] mx-auto">
@@ -46,26 +48,19 @@ export default function CuratoriaContent() {
         </h1>
       </div>
 
-      <div className="max-w-[720px] flex flex-col gap-[48px] mt-[40px] md:mt-[60px]">
+      <div className="max-w-[900px] flex flex-col gap-[64px] mt-[60px] md:mt-[100px]">
         <section>
-          <p className="font-fragment-mono font-bold text-[14px] uppercase text-text-primary mb-[16px]">
-            {esCL.curatoriaPage.historyLabel}
-          </p>
-          <p className="font-geist text-[16px] md:text-[17px] leading-[1.7] text-text-primary whitespace-pre-line">
-            {esCL.curatoriaPage.historyText}
-          </p>
-        </section>
-
-        <section>
-          <p className="font-fragment-mono font-bold text-[14px] uppercase text-text-primary mb-[16px]">
+          <p className="font-fragment-mono font-bold text-[14px] uppercase text-text-primary mb-[24px]">
             {esCL.curatoriaPage.manifestoLabel}
           </p>
-          <p className="font-geist text-[16px] md:text-[17px] leading-[1.7] text-text-primary">{esCL.curatoriaText}</p>
-        </section>
-
-        <section>
-          <p className="font-geist text-[16px] md:text-[17px] leading-[1.7] text-text-primary">{esCL.curatoriaPage.founderSignature}</p>
-          <p className="font-fragment-mono uppercase text-[12px] text-brand-magenta mt-[8px]">{esCL.curatoriaPage.videoComingSoon}</p>
+          <div className="flex flex-col gap-[32px] md:gap-[40px]">
+            <p className="font-lato font-black leading-[1.05] text-brand-magenta text-[36px] md:text-[64px]">{opener}</p>
+            {rest.map((paragraph) => (
+              <p key={paragraph} className="font-geist font-bold leading-[1.35] text-text-primary text-[22px] md:text-[34px]">
+                {paragraph}
+              </p>
+            ))}
+          </div>
         </section>
 
         <section>

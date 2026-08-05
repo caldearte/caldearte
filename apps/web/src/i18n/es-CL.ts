@@ -359,23 +359,28 @@ export const esCL = {
 
   curatoriaPage: {
     title: "Curatoría",
-    historyLabel: "Nuestra historia",
-    // DRAFT, proposed 2026-08-05 from the real story Daniel told me —
-    // every fact preserved as given (10+ años, Camila artista visual,
-    // Daniel diseñador, sin plata, el ambiente festivo/arte vivo, hoy con
-    // IA), just shaped into prose. Needs Daniel & Camila's own edit/
-    // approval before this reads as final — not to be treated as
-    // finished copy.
-    historyText:
-      "Intentamos hacer Caldearte hace más de diez años, recién salidos de la universidad. Camila es artista visual, yo diseñador de formación, y a los dos nos encantaban las inauguraciones: eran la excusa perfecta para salir, sin necesitar mucha plata, y terminar viendo arte real. Ahí entendimos que una inauguración es un espacio único — donde espectadores, artistas y obra se juntan en el mismo lugar al mismo tiempo — y quisimos que más gente pudiera vivir eso.\n\nNos daba lo mismo si era el Museo de Bellas Artes, un club social o una intervención en la calle: lo que amábamos era el ambiente festivo, el arte vivo — donde todos comentan, y muchas veces el propio artista está ahí, contando su obra o respondiendo tus preguntas. Es una celebración real; no hace falta ser experto en arte para disfrutarla, porque casi siempre son eventos abiertos a cualquiera, con vino navegado y sopaipillas o a veces todo un banquete, mientras se aprecia lo que se está mostrando.\n\nEn esa época hacer Caldearte a mano era lentísimo. Hoy, más de una década después, usamos inteligencia artificial para recorrer muchos más rincones de la web buscando inauguraciones y exposiciones, sistematizar cómo las evaluamos, y hacerte llegar la información — para que la experiencia que a nosotros nos marcó esté al alcance de cualquiera.",
     manifestoLabel: "Cómo curamos",
-    founderSignature: "— Daniel y Camila, fundadores de Caldearte",
-    videoComingSoon: "Un video contándote esto en persona, pronto.",
+    // Rewritten 2026-08-05 — the founders' origin story that used to live
+    // here (with this page) moved out entirely: this page now stays
+    // narrowly focused on curation criteria, the story is saved for a
+    // future dedicated "Quiénes somos" page (see memory). Same substance
+    // as the original curatoriaText (not neutral, no proselitismo/
+    // violencia/odio, prioritizes art that opens questions regardless of
+    // venue, AI-assisted + human-reviewed, open to correction) — rewritten
+    // in a more declarative, editorial register per the user, and split
+    // into short standalone statements meant to be set BIG (each is its
+    // own paragraph, not a single dense block).
+    manifesto: [
+      "Caldearte no es un agregador neutral.",
+      "Curamos con criterio. El arte que mostramos abre preguntas en vez de cerrarlas: memoria histórica, crítica social, denuncia, experimentación. Nos da lo mismo si ocurre en un museo consagrado o en una intervención callejera de barrio — el mérito está en la obra, no en la institución.",
+      "Lo que no mostramos: proselitismo religioso, glorificación de la violencia, discursos de odio. No es un límite a la libertad creativa — es lo que nos permite seguir siendo un espacio de encuentro, no de adoctrinamiento.",
+      "Usamos inteligencia artificial para rastrear y evaluar inauguraciones todos los días, con revisión humana en cada caso donde el criterio no es obvio. Si crees que nos equivocamos, o encontraste algo que no vimos, escríbenos — leemos cada mensaje.",
+    ],
   },
 
   // Rediseño 2.0.0 — teaser corto del home que enlaza a /curatoria, no
-  // reemplaza curatoriaText (el manifiesto completo, más abajo) que sigue
-  // viviendo solo en esa página.
+  // reemplaza curatoriaPage.manifesto (el manifiesto completo, más arriba)
+  // que sigue viviendo solo en esa página.
   curatoriaWordmarkLines: ["CURA", "TOR", "IA."],
   curatoriaTeaser: "LA ESTÉTICA NO ES NEUTRAL, Y NUESTRA SELECCIÓN TAMPOCO.",
   verMas: "ver mas",
@@ -401,9 +406,6 @@ export const esCL = {
     error: "No pudimos enviar tu mensaje. Intenta de nuevo.",
   },
 
-  // Already-approved copy, not a placeholder.
-  curatoriaText:
-    "Caldearte no es un agregador neutral. Elegimos con criterio qué inauguraciones mostramos, guiados por un compromiso con el arte como espacio de encuentro, reflexión y comunidad — no como vehículo de proselitismo religioso, glorificación de la violencia o plataforma de discursos de odio. Priorizamos el arte que abre preguntas: memoria histórica, crítica social, denuncia, experimentación — sea en un museo consagrado o en una intervención callejera de barrio. Usamos inteligencia artificial para ayudarnos a rastrear y evaluar inauguraciones todos los días, siempre bajo revisión humana en los casos donde el criterio no es obvio. Si crees que nos equivocamos con un evento, o quieres contarnos de una inauguración que no encontramos, escríbenos — leemos cada mensaje.",
 };
 
 export type Locale = typeof esCL;
