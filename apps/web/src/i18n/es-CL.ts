@@ -295,8 +295,12 @@ export const esCL = {
   privacidad: {
     title: "Privacidad",
     dataTitle: "Qué datos guardamos",
+    // Real content fix, 2026-08-05: this used to say "la comuna elegida"
+    // for the newsletter — stale since the newsletter's own scope moved
+    // from comuna to macro-región on 2026-07-30 (see roadmap.md and
+    // newsletter_subscribers.admin_region_name), never updated here.
     dataBody:
-      "Guardamos varias cookies de preferencia en tu navegador, por un año: la comuna que elegiste, si tienes activado el modo familiar, tus filtros de vista, tus últimas comunas visitadas, y tu ubicación si la compartiste. Si te suscribes al newsletter, guardamos tu correo y la comuna elegida, y cada envío incluye un link para darte de baja en un clic. No creamos cuentas, no usamos rastreadores de terceros, y no guardamos nada de lo que escribas en el formulario de contacto: solo lo reenviamos por correo. Usamos Vercel Analytics para ver estadísticas agregadas de visitas, sin cookies ni datos que te identifiquen.",
+      "Guardamos varias cookies de preferencia en tu navegador, por un año: la comuna que elegiste, si tienes activado el modo familiar, tus filtros de vista, tus últimas comunas visitadas, y tu ubicación si la compartiste. Si te suscribes al newsletter, guardamos tu correo y la región que elegiste, y cada envío incluye un link para darte de baja en un clic. No creamos cuentas, no usamos rastreadores de terceros, y no guardamos nada de lo que escribas en el formulario de contacto: solo lo reenviamos por correo. Usamos Vercel Analytics para ver estadísticas agregadas de visitas, sin cookies ni datos que te identifiquen.",
     contactTitle: "¿Encontraste un error o algo que reportar?",
     contactBody: "Escríbenos desde el ",
     contactLinkLabel: "formulario de contacto",
