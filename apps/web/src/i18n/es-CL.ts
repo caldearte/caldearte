@@ -142,6 +142,11 @@ export const esCL = {
   searchPlaceholder: "Buscar por título, artista o lugar...",
   searchHint: "Busca entre todos los eventos vigentes y próximos, en cualquier comuna.",
   noSearchResults: "No encontramos eventos con ese término.",
+  // Group headers splitting search results — same two groups as the home
+  // page's own sections, just relabeled without "de la semana"/"actuales"
+  // since a search spans every upcoming date, not one week.
+  searchGroupInauguraciones: "Inauguraciones",
+  searchGroupExposiciones: "Exposiciones",
 
   // Desktop only — see headerSummaryMobile below for mobile's more compact
   // single-total version.
