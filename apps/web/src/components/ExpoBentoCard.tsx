@@ -45,8 +45,12 @@ export default function ExpoBentoCard({ event, hideTodayBadge = false, desktopIm
   return (
     <div className="relative flex flex-col bg-surface-white cursor-pointer h-full">
       {/* Whole-card link — same z-index stack as InauguracionBentoCard/
-          EventHorizontalListItem: overlay(0) < kebab(10) < popovers(20). */}
-      <Link href={eventHref} aria-label={esCL.eventCardAriaLabel(event.title)} className="absolute inset-0 z-0 cursor-pointer" />
+          EventHorizontalListItem: overlay(1) < kebab(10) < popovers(20).
+          z-[1] (not z-0) — see InauguracionBentoCard's own comment: the
+          image wrapper below is `position:relative` for its own badges,
+          and at equal "auto" stacking level DOM order made it paint over
+          a plain z-0 overlay, silently blocking clicks on the photo. */}
+      <Link href={eventHref} aria-label={esCL.eventCardAriaLabel(event.title)} className="absolute inset-0 z-[1] cursor-pointer" />
 
       <div className={`relative h-[160px] ${desktopImageHeightClass} shrink-0`}>
         <CardImage imageUrl={event.imageUrl} sourceUrl={event.sourceUrl} sensitivityTags={event.sensitivityTags} />

@@ -47,13 +47,17 @@ export default function EventHorizontalListItem({ event, variant }: EventHorizon
   return (
     <div className="relative flex items-center gap-[12px] bg-surface-white p-[12px] cursor-pointer">
       {/* Whole-card link — absolutely positioned overlay (not a wrapper),
-          z-0 so the kebab button/menu (z-10+) sit as a SIBLING and take
+          z-[1] so the kebab button/menu (z-10+) sit as a SIBLING and take
           click precedence, same pattern as EventCardBase. Same z-index
           stack as InauguracionBentoCard's own doc comment — card
-          overlay(0) < kebab(10) < popovers(20) < section sticky
+          overlay(1) < kebab(10) < popovers(20) < section sticky
           toolbar(30) < fixed top nav(40); these used to collide with the
-          toolbar/nav on scroll (real bug, found 2026-08-03). */}
-      <Link href={eventHref} aria-label={esCL.eventCardAriaLabel(event.title)} className="absolute inset-0 z-0 cursor-pointer" />
+          toolbar/nav on scroll (real bug, found 2026-08-03). z-[1] (not
+          z-0) — the thumbnail wrapper below is `position:relative` with
+          no z-index of its own, so at equal "auto" stacking level DOM
+          order made it paint over a plain z-0 overlay, silently blocking
+          clicks on the thumbnail (real bug found 2026-08-04). */}
+      <Link href={eventHref} aria-label={esCL.eventCardAriaLabel(event.title)} className="absolute inset-0 z-[1] cursor-pointer" />
       <div className="relative shrink-0 w-[72px] h-[56px] overflow-hidden">
         <CardImage imageUrl={event.imageUrl} sourceUrl={event.sourceUrl} sensitivityTags={event.sensitivityTags} />
       </div>
