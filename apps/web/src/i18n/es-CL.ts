@@ -359,28 +359,44 @@ export const esCL = {
 
   curatoriaPage: {
     title: "Curatoría",
-    manifestoLabel: "Cómo curamos",
-    // Rewritten 2026-08-05 — the founders' origin story that used to live
-    // here (with this page) moved out entirely: this page now stays
-    // narrowly focused on curation criteria, the story is saved for a
-    // future dedicated "Quiénes somos" page (see memory). Same substance
-    // as the original curatoriaText (not neutral, no proselitismo/
-    // violencia/odio, prioritizes art that opens questions regardless of
-    // venue, AI-assisted + human-reviewed, open to correction) — rewritten
-    // in a more declarative, editorial register per the user, and split
-    // into short standalone statements meant to be set BIG (each is its
-    // own paragraph, not a single dense block).
-    manifesto: [
-      "Caldearte no es un agregador neutral.",
-      "Curamos con criterio. El arte que mostramos abre preguntas en vez de cerrarlas: memoria histórica, crítica social, denuncia, experimentación. Nos da lo mismo si ocurre en un museo consagrado o en una intervención callejera de barrio — el mérito está en la obra, no en la institución.",
-      "Lo que no mostramos: proselitismo religioso, glorificación de la violencia, discursos de odio. No es un límite a la libertad creativa — es lo que nos permite seguir siendo un espacio de encuentro, no de adoctrinamiento.",
-      "Usamos inteligencia artificial para rastrear y evaluar inauguraciones todos los días, con revisión humana en cada caso donde el criterio no es obvio. Si crees que nos equivocamos, o encontraste algo que no vimos, escríbenos — leemos cada mensaje.",
+    // Final copy, given verbatim by the user 2026-08-05 (own editorial
+    // voice, not AI-drafted like the earlier attempts on this page) —
+    // render exactly as given, not to be reworded. Replaces the earlier
+    // shorter manifesto AND the founders' origin story that briefly lived
+    // here (moved to a future "Quiénes somos" page, see memory) — this
+    // page is curation policy only.
+    manifestoTitle: "Cómo curamos: La ética de la mirada",
+    manifestoIntro:
+      "Caldearte asume una postura irreductible: la estética y la ética son inseparables. Es imposible comunicar desde la neutralidad. Toda decisión visual es una toma de posición frente al mundo. El arte que seleccionamos para nuestra guía no busca ser un mero reflejo pasivo de la realidad, sino una fuerza que la tensiona, la subvierte y la cuestiona. Nos da lo mismo si ocurre en un museo consagrado o en una intervención callejera; el valor de la obra reside en su urgencia discursiva y su peso crítico.",
+    section1Heading: "El mito de la observación aséptica",
+    section1Intro:
+      "Creemos que la contemplación desapasionada de las estructuras de poder no es neutralidad, sino complicidad estética. Por ello, aplicamos un criterio de selección estricto que exige una postura crítica explícita e inequívoca:",
+    criteria: [
+      {
+        label: "El peso de la hegemonía:",
+        body: 'No validamos la "exploración" o "documentación" de narrativas bélicas o instituciones eclesiásticas si carecen de una postura crítica declarada. La iconografía dogmática o el rescate patrimonial de la iglesia y el ejército quedan fuera de nuestra selección a menos que la obra confronte y denuncie directamente a la institución.',
+      },
+      {
+        label: "La estetización del trauma:",
+        body: "Trazamos una línea firme frente a la agresión física o sexual explícita. Creemos que la verdadera potencia de las artes visuales reside en su capacidad para abordar la violencia y el dolor a través de la metáfora, el símbolo y la composición, sin necesidad de recurrir al shock gráfico y revictimizante.",
+      },
+      {
+        label: "La responsabilidad del discurso y el espacio:",
+        body: "Descartamos cualquier manifestación que legitime o estetice discursos de odio, xenofobia, racismo o ideologías autoritarias. De igual forma, no damos espacio al esoterismo ni a las pseudociencias. Entendemos, además, que el contenedor es inseparable del contenido: si una exposición —sin importar su mérito técnico— se aloja en un centro de culto activo o en una sede partidista, no formará parte de nuestra guía.",
+      },
     ],
+    section2Heading: "La tecnología al servicio del criterio",
+    section2Body1:
+      "La curaduría a escala nacional exige herramientas contemporáneas. Utilizamos inteligencia artificial, entrenada rigurosamente bajo estos principios éticos, para rastrear y evaluar el circuito de inauguraciones todos los días en todo Chile. La máquina ejecuta la regla; nosotros definimos el manifiesto.",
+    section2Body2Before:
+      "Sabemos que en las artes visuales la línea entre el homenaje y la crítica puede ser compleja. Si crees que un evento ha sido mal clasificado, o si tienes una inauguración que desafía estos límites, escríbenos desde el ",
+    section2ContactLinkLabel: "formulario de contacto",
+    section2Body2After: ". Revisamos cada mensaje.",
   },
 
   // Rediseño 2.0.0 — teaser corto del home que enlaza a /curatoria, no
-  // reemplaza curatoriaPage.manifesto (el manifiesto completo, más arriba)
-  // que sigue viviendo solo en esa página.
+  // reemplaza el manifiesto completo (curatoriaPage.*, más arriba) que
+  // sigue viviendo solo en esa página.
   curatoriaWordmarkLines: ["CURA", "TOR", "IA."],
   curatoriaTeaser: "LA ESTÉTICA NO ES NEUTRAL, Y NUESTRA SELECCIÓN TAMPOCO.",
   verMas: "ver mas",
