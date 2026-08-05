@@ -101,7 +101,7 @@ export default function EventHorizontalListItem({ event, variant, cityName }: Ev
           aria-label={esCL.cardMoreOptionsAriaLabel}
           aria-haspopup="menu"
           aria-expanded={menuOpen}
-          className="w-8 h-8 rounded-full border border-border-default flex items-center justify-center cursor-pointer"
+          className="w-[40px] h-[40px] rounded-full border border-border-default flex items-center justify-center cursor-pointer"
         >
           <span className="rotate-90 inline-block">
             <KebabGlyph color="#3d373d" />

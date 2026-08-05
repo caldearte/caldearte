@@ -257,6 +257,8 @@ export const esCL = {
   // regular visitor. Soft-removes the event (events.removed_at), not a
   // hard delete.
   cardMenuRemove: "Quitar",
+  cardMenuRemoving: "Quitando…",
+  cardMenuRemoved: "Evento quitado",
   cardMenuRemoveConfirm: (title: string) => `¿Quitar "${title}" de Caldearte? Dejará de verse en el sitio.`,
   cardMenuRemoveError: "No se pudo quitar el evento. Intenta de nuevo.",
 
