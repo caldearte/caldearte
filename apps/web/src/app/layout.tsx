@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Inter } from "next/font/google";
+import { Inter, Lato, Geist, Fragment_Mono } from "next/font/google";
 import { Analytics } from "@vercel/analytics/react";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { esCL } from "@/i18n/es-CL";
@@ -9,6 +9,30 @@ const inter = Inter({
   variable: "--font-inter",
   subsets: ["latin"],
   weight: ["400", "500", "600", "700", "800", "900"],
+});
+
+// Rediseño 2.0.0 — 3 fuentes nuevas (Figma, ver
+// docs/plan de rediseño): Lato para wordmark/headings, Geist para
+// labels/UI, Fragment Mono para texto trackeado/body. Lato en Google
+// Fonts solo trae 100/300/400/700/900 (no 600/800, que es lo que Figma
+// pide como SemiBold/ExtraBold) — aproximado con 700/900, decisión
+// confirmada con el usuario.
+const lato = Lato({
+  variable: "--font-lato",
+  subsets: ["latin"],
+  weight: ["400", "700", "900"],
+});
+
+const geist = Geist({
+  variable: "--font-geist",
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700", "800"],
+});
+
+const fragmentMono = Fragment_Mono({
+  variable: "--font-fragment-mono",
+  subsets: ["latin"],
+  weight: ["400"],
 });
 
 const title = "Caldearte";
@@ -52,7 +76,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="es" className={`${inter.variable} h-full antialiased`}>
+    <html lang="es" className={`${inter.variable} ${lato.variable} ${geist.variable} ${fragmentMono.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col">
         {children}
         <Analytics />

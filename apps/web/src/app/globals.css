@@ -1,10 +1,11 @@
 @import "tailwindcss";
 
-/* Museum-white by design — the brand is white bg + black cards, not
-   dark-mode-adaptive, so there's deliberately no prefers-color-scheme
-   override here. */
 :root {
-  --background: #ffffff;
+  /* Rediseño 2.0.0 — el fondo de toda la web pasa a surface/sage
+     (confirmado con el usuario 2026-08-03, viendo el mockup real: no es
+     blanco). Cards/paneles individuales siguen usando surface/white
+     explícitamente donde corresponda — este es solo el fondo de página. */
+  --background: var(--color-surface-sage);
   --foreground: #111827;
 
   --color-venue-gray: #a0a0a0;
@@ -22,6 +23,48 @@
   --color-picker-placeholder: #b2b5ba;
   --color-picker-badge-inaug-bg: #f5ede0;
   --color-picker-badge-inaug-fg: #8c5926;
+
+  /* Rediseño 2.0.0 — tokens extraídos vía Figma Dev Mode MCP
+     (get_variable_defs, nodos 174:2790 web / 178:41 mobile), no
+     aproximados a ojo. Nombres calcan los de Figma (brand/surface/text/
+     border/radius/space) para que el mapeo quede trazable. */
+  --color-brand-magenta: #ff00fb;
+  --color-surface-sage: #d7dfe2;
+  --color-surface-white: #ffffff;
+  --color-text-primary: #3d373d;
+  --color-text-secondary: #868b8f;
+  --color-text-muted: #767f82;
+  --color-text-placeholder: #a5b1b6;
+  --color-border-default: #767f82;
+  /* Selector de lugar (Zona/Región/Comuna, 187:1283-1570) — texto sobre
+     una fila resaltada oscura (bg-text-primary), e ícono/placeholder
+     dentro de un input blanco. */
+  --color-surface-sage-dark: #cdd5d8;
+  --color-icon-default: #5e6668;
+
+  --radius-card: 10px;
+  --radius-input: 4px;
+  --radius-button: 16px;
+  --radius-badge: 2px;
+
+  /* Deliberately NOT registered under Tailwind's --spacing-* namespace
+     (that would silently override the default numeric scale — p-7, gap-4,
+     mt-8, etc. — used by ~27 other files that predate this redesign and
+     assume Tailwind's real 4px-multiple values). Reference these via
+     arbitrary-value utilities instead, e.g. px-[var(--space-13)]. */
+  --space-2: 4px;
+  --space-3: 6px;
+  --space-4: 8px;
+  --space-5: 10px;
+  --space-6: 12px;
+  --space-7: 16px;
+  --space-8: 20px;
+  --space-9: 24px;
+  --space-10: 32px;
+  --space-11: 40px;
+  --space-12: 48px;
+  --space-13: 60px;
+  --space-14: 80px;
 }
 
 @theme inline {
@@ -43,6 +86,26 @@
   --color-picker-placeholder: var(--color-picker-placeholder);
   --color-picker-badge-inaug-bg: var(--color-picker-badge-inaug-bg);
   --color-picker-badge-inaug-fg: var(--color-picker-badge-inaug-fg);
+
+  --font-lato: var(--font-lato);
+  --font-geist: var(--font-geist);
+  --font-fragment-mono: var(--font-fragment-mono);
+
+  --color-brand-magenta: var(--color-brand-magenta);
+  --color-surface-sage: var(--color-surface-sage);
+  --color-surface-white: var(--color-surface-white);
+  --color-text-primary: var(--color-text-primary);
+  --color-text-secondary: var(--color-text-secondary);
+  --color-text-muted: var(--color-text-muted);
+  --color-text-placeholder: var(--color-text-placeholder);
+  --color-border-default: var(--color-border-default);
+  --color-surface-sage-dark: var(--color-surface-sage-dark);
+  --color-icon-default: var(--color-icon-default);
+
+  --radius-card: var(--radius-card);
+  --radius-input: var(--radius-input);
+  --radius-button: var(--radius-button);
+  --radius-badge: var(--radius-badge);
 }
 
 body {

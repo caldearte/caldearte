@@ -52,6 +52,36 @@ export function fmtPeriod(runStartDate: string | null, runEndDate: string | null
   return `${s.getDate()} de ${MONTHS[s.getMonth()]} al ${e.getDate()} de ${MONTHS[e.getMonth()]}`;
 }
 
+// Rediseño 2.0.0 — exposiciones bento/list cards, e.g. "Hasta el 2 de
+// Septiembre" (capitalized month, unlike fmtPeriod's lowercase — matches
+// Figma's own capitalization for this specific label). Falls back to the
+// anchor date when there's no real runEndDate (mirrors fmtPeriod's own
+// anchor fallback). Appends a 2-digit year ("Hasta el 28 de Febrero '27")
+// only when the end date falls in a later calendar year than `todayStr` —
+// this year's own dates never show a year at all (user request
+// 2026-08-04: the year is only useful when it isn't the obvious one).
+export function fmtUntilDate(runEndDate: string | null, anchorDate: string, todayStr: string): string {
+  const d = parseDateOnly(runEndDate ?? anchorDate);
+  const month = MONTHS[d.getMonth()];
+  const monthCap = `${month.charAt(0).toUpperCase()}${month.slice(1)}`;
+  const today = parseDateOnly(todayStr);
+  const yearSuffix = d.getFullYear() > today.getFullYear() ? ` '${String(d.getFullYear()).slice(-2)}` : "";
+  return `Hasta el ${d.getDate()} de ${monthCap}${yearSuffix}`;
+}
+
+// "Closing soon" — within `thresholdDays` (inclusive) of runEndDate,
+// never in the past (an already-closed exhibition wouldn't be in
+// "Exposiciones actuales" at all, but this stays defensive rather than
+// assuming upstream filtering). No runEndDate at all (still-open,
+// undated run) is never "closing soon" — there's nothing to warn about.
+export function isClosingSoon(runEndDate: string | null, todayStr: string, thresholdDays = 7): boolean {
+  if (!runEndDate) return false;
+  const today = parseDateOnly(todayStr);
+  const end = parseDateOnly(runEndDate);
+  const diffDays = Math.round((end.getTime() - today.getTime()) / (24 * 60 * 60 * 1000));
+  return diffDays >= 0 && diffDays <= thresholdDays;
+}
+
 // Single opening date, e.g. "15 de julio" — reuses fmtPeriod's own
 // single-day collapse by passing the same date as start/end/anchor. An
 // inauguración is always exactly one day, never the exhibition's full run
@@ -104,6 +134,33 @@ export function currentWeekInSantiago(): { start: string; end: string } {
   return weekBoundsInSantiago(todayInSantiago());
 }
 
+// Monday of the first week Caldearte published as a weekly guide —
+// confirmed with the user 2026-08-03, matches the redesign's own Figma
+// mockup ("SEMANA N°1" = 27 de julio – 02 de agosto). Sequential counter
+// from here, not the ISO calendar week number — this is an editorial
+// "issue number," not a calendar concept.
+const WEEK_ONE_MONDAY = "2026-07-27";
+
+// Shifts a Monday date string by `weeks` (positive = later, negative =
+// earlier), returning the new Monday — used for prev/next week
+// navigation. Any date works as input, not just a Monday, but callers
+// always pass a week's start.
+export function addWeeks(mondayStr: string, weeks: number): string {
+  const d = parseDateOnly(mondayStr);
+  d.setDate(d.getDate() + weeks * 7);
+  return toDateOnlyString(d);
+}
+
+// "SEMANA N°X" — 1-indexed count of weeks since WEEK_ONE_MONDAY. Clamped
+// to a minimum of 1 so a week before the epoch (e.g. while still testing
+// pre-launch) never renders a confusing zero/negative number.
+export function weekNumberSince(weekStart: string): number {
+  const start = parseDateOnly(WEEK_ONE_MONDAY);
+  const target = parseDateOnly(weekStart);
+  const diffDays = Math.round((target.getTime() - start.getTime()) / (24 * 60 * 60 * 1000));
+  return Math.max(1, Math.floor(diffDays / 7) + 1);
+}
+
 // "Julio 2026" — capitalized month, for the archive's page title/heading.
 export function fmtMonthYear(year: number, month: number): string {
   const name = MONTHS[month - 1];
@@ -152,6 +209,22 @@ export function fmtWeekHeader(weekStart: string, weekEnd: string): string {
     return `${s.getDate()} al ${e.getDate()} de ${MONTHS[s.getMonth()].toUpperCase()}`;
   }
   return `${s.getDate()} de ${MONTHS[s.getMonth()].toUpperCase()} al ${e.getDate()} de ${MONTHS[e.getMonth()].toUpperCase()}`;
+}
+
+// Rediseño 2.0.0 hero week range (selector). Day always zero-padded to 2
+// digits, "al" joiner (not an em dash). Same month: full month name once,
+// e.g. "03 al 09 de AGOSTO". Different months: abbreviated month on both
+// sides, only the end date gets "de", e.g. "27 JUL al 09 de AGO" — spec
+// confirmed with the user 2026-08-03. Distinct from fmtWeekHeader (used
+// elsewhere, unpadded day, "de MONTH" on the same-month case only).
+export function fmtWeekRange(weekStart: string, weekEnd: string): string {
+  const s = parseDateOnly(weekStart);
+  const e = parseDateOnly(weekEnd);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  if (s.getMonth() === e.getMonth()) {
+    return `${pad(s.getDate())} al ${pad(e.getDate())} de ${MONTHS[s.getMonth()].toUpperCase()}`;
+  }
+  return `${pad(s.getDate())} ${MONTHS_SHORT[s.getMonth()].toUpperCase()} al ${pad(e.getDate())} de ${MONTHS_SHORT[e.getMonth()].toUpperCase()}`;
 }
 
 // Google Calendar's compact UTC format for its event-creation link:

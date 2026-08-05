@@ -1,15 +1,7 @@
 import EventCardBase from "./EventCardBase";
 import type { EventRecord } from "@/lib/events";
 
-export default function InauguracionCard({
-  event,
-  standalone,
-  hideTodayBadge,
-}: {
-  event: EventRecord;
-  standalone?: boolean;
-  hideTodayBadge?: boolean;
-}) {
+export default function InauguracionCard({ event, hideTodayBadge }: { event: EventRecord; hideTodayBadge?: boolean }) {
   return (
     <EventCardBase
       event={event}
@@ -19,7 +11,6 @@ export default function InauguracionCard({
       titleClass="text-2xl font-extrabold"
       periodClass="text-sm"
       contentPaddingClass="p-5"
-      standalone={standalone}
       hideTodayBadge={hideTodayBadge}
     />
   );

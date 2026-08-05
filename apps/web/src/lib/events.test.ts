@@ -19,6 +19,7 @@ import {
   truncateDescription,
   resolveCityId,
   displayNameForCity,
+  sortByRunEndAsc,
   type EventRecord,
 } from "./events";
 
@@ -125,6 +126,16 @@ test("splitInauguracionesYExpos: an opening anywhere within the Mon-Sun window a
   assert.deepEqual(exposActuales.map((e) => e.id).sort(), ["no-opening", "opened-last-week", "opened-wed"]);
   const exposIds = new Set(exposActuales.map((e) => e.id));
   assert.ok(inauguraciones.every((e) => exposIds.has(e.id)), "inauguraciones must be a subset of exposActuales");
+});
+
+test("sortByRunEndAsc: soonest-closing first, falls back to the anchor date, unknown end sorts last", () => {
+  const closesLast = event({ id: "closes-last", runEndDate: "2026-09-01" });
+  const closesFirst = event({ id: "closes-first", runEndDate: "2026-07-15" });
+  const noRunEndFallsBackToOpening = event({ id: "no-run-end", runEndDate: null, openingDatetime: "2026-07-10T22:00:00+00:00" });
+  const noDateAtAll = event({ id: "no-date", runEndDate: null, runStartDate: null, openingDatetime: null });
+
+  const sorted = sortByRunEndAsc([closesLast, noDateAtAll, closesFirst, noRunEndFallsBackToOpening]);
+  assert.deepEqual(sorted.map((e) => e.id), ["no-run-end", "closes-first", "closes-last", "no-date"]);
 });
 
 test("countByCity tallies per city, dropping 'otro', for ANY comuna a real event resolves to — not just a fixed list", () => {

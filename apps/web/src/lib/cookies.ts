@@ -26,12 +26,6 @@ export const GEO_CONSENT_COOKIE = "caldearte_geo_consent";
 // BOTH GeoConsentBanner (first-visit prompt) and CityPickerPanel's "Usar
 // mi ubicación exacta" button — same durable signal either way.
 export const PRECISE_CITY_COOKIE = "caldearte_precise_city";
-// Whether the visitor has already been shown NewsletterEntryModal's
-// first-visit auto-prompt — set on EITHER outcome (dismissed or
-// subscribed), same "ask at most once, ever" pattern as
-// GEO_CONSENT_COOKIE. Does NOT gate the Footer's own "Suscríbete" link,
-// which can always reopen the same modal on demand.
-export const NEWSLETTER_PROMPT_COOKIE = "caldearte_newsletter_prompt";
 
 // Client-side only (writes document.cookie directly) — matches the
 // 1-year expiry every preference cookie above already uses. Previously

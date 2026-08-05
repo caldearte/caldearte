@@ -11,10 +11,22 @@ import {
   cityNamesFromEvents,
   thumbnailsByCity,
   findNextEvent,
-  listArchiveMonths,
 } from "@/lib/events";
-import { DEFAULT_CITY_ID, buildRegionMetaByCityId, resolveDefaultCityId, resolveGeoCityId, nearestCityIdByCoords } from "@/lib/cities";
-import { todayInSantiago, currentWeekInSantiago, isCurrentOrUpcoming } from "@/lib/date";
+import {
+  DEFAULT_CITY_ID,
+  buildRegionMetaByCityId,
+  resolveDefaultCityId,
+  resolveGeoCityId,
+  nearestCityIdByCoords,
+} from "@/lib/cities";
+import {
+  todayInSantiago,
+  currentWeekInSantiago,
+  weekBoundsInSantiago,
+  addWeeks,
+  weekNumberSince,
+  isCurrentOrUpcoming,
+} from "@/lib/date";
 import {
   CITY_COOKIE,
   FAMILY_MODE_COOKIE,
@@ -22,39 +34,73 @@ import {
   VIGENTES_FILTER_COOKIE,
   GEO_CONSENT_COOKIE,
   PRECISE_CITY_COOKIE,
-  NEWSLETTER_PROMPT_COOKIE,
 } from "@/lib/cookies";
 import CalendarView from "@/components/CalendarView";
 import type { NewsletterStatus } from "@/components/NewsletterStatusModal";
 
-const NEWSLETTER_STATUSES: NewsletterStatus[] = ["confirmed", "already_confirmed", "unsubscribed", "already_unsubscribed", "invalid", "error"];
+const NEWSLETTER_STATUSES: NewsletterStatus[] = [
+  "confirmed",
+  "already_confirmed",
+  "unsubscribed",
+  "already_unsubscribed",
+  "invalid",
+  "error",
+];
 
-export default async function HomePage({ searchParams }: { searchParams: Promise<{ newsletter?: string; suscribir?: string }> }) {
+export default async function HomePage({
+  searchParams,
+}: {
+  searchParams: Promise<{
+    newsletter?: string;
+    semana?: string;
+  }>;
+}) {
   const cookieStore = await cookies();
   const headerStore = await headers();
   // Landed here from /newsletter/confirmar or /newsletter/baja (both
   // redirect to `/?newsletter=<status>` after calling their Edge Function
   // server-side) — see NewsletterStatusModal.tsx.
-  const { newsletter, suscribir } = await searchParams;
-  const newsletterStatus: NewsletterStatus | null = NEWSLETTER_STATUSES.includes(newsletter as NewsletterStatus)
-    ? (newsletter as NewsletterStatus)
-    : null;
+  const { newsletter, semana } = await searchParams;
+  const newsletterStatus: NewsletterStatus | null =
+    NEWSLETTER_STATUSES.includes(newsletter as NewsletterStatus)
+      ? (newsletter as NewsletterStatus)
+      : null;
   // Absent cookie means family mode ON — a first-time visitor sees
   // filtered content by default; explicitly turning it off (empty-string
   // cookie value, set by CalendarView.tsx's toggleFamilyMode) is the only
   // way to see everything.
   const familyModeCookie = cookieStore.get(FAMILY_MODE_COOKIE)?.value;
-  const familyMode = familyModeCookie === undefined ? true : Boolean(familyModeCookie);
+  const familyMode =
+    familyModeCookie === undefined ? true : Boolean(familyModeCookie);
   // Filtros pills — both absent-cookie-means-off, same pattern as
   // FAMILY_MODE_COOKIE's inverse. Everything always operates on the
   // current Monday-Sunday week; these two only narrow what's DISPLAYED
   // for the currently-selected city, never the week/carousel counts below.
   const todayFilterOn = Boolean(cookieStore.get(TODAY_FILTER_COOKIE)?.value);
-  const vigentesFilterOn = Boolean(cookieStore.get(VIGENTES_FILTER_COOKIE)?.value);
+  const vigentesFilterOn = Boolean(
+    cookieStore.get(VIGENTES_FILTER_COOKIE)?.value,
+  );
   const today = todayInSantiago();
-  const { start: rangeStart, end: rangeEnd } = currentWeekInSantiago();
+  // Week navigation lives in the URL (?semana=YYYY-MM-DD), not a cookie —
+  // unlike city/filters, "which week" is inherently a point-in-time value:
+  // a cookie would silently keep showing a past/future week on a visitor's
+  // NEXT, unrelated visit days later. A query param is also what makes a
+  // specific week shareable/bookmarkable, matching the archive's own
+  // date-in-URL precedent (/expos-anteriores/[year]/[month]). Any
+  // malformed or non-Monday value falls back to today's real week rather
+  // than erroring — weekBoundsInSantiago normalizes to that date's own
+  // Monday-Sunday bounds regardless of which weekday was passed in.
+  const { start: rangeStart, end: rangeEnd } = /^\d{4}-\d{2}-\d{2}$/.test(
+    semana ?? "",
+  )
+    ? weekBoundsInSantiago(semana!)
+    : currentWeekInSantiago();
+  const weekNumber = weekNumberSince(rangeStart);
+  const prevWeekHref = `/?semana=${addWeeks(rangeStart, -1)}`;
+  const nextWeekHref = `/?semana=${addWeeks(rangeStart, 1)}`;
 
-  const { events: allEvents, regions } = await fetchApprovedEvents(getSupabaseClient());
+  const { events: allEvents, regions } =
+    await fetchApprovedEvents(getSupabaseClient());
   // Family-mode filtering happens here, server-side, before anything is
   // sent to the client — excluded events never reach the HTML/JS, which is
   // what actually satisfies "no flash of unblurred content" (overview.md).
@@ -101,7 +147,12 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
       ? cityCookieValue in cityNames || cityCookieValue === DEFAULT_CITY_ID
         ? cityCookieValue
         : DEFAULT_CITY_ID
-      : resolveDefaultCityId(geoCity, geoCountry, buildRegionMetaByCityId(regions), cityCounts);
+      : resolveDefaultCityId(
+          geoCity,
+          geoCountry,
+          buildRegionMetaByCityId(regions),
+          cityCounts,
+        );
 
   // Unlike `cityId` above, this is computed EVERY render, even once a
   // CITY_COOKIE already picked a different city — it's what feeds the city
@@ -144,43 +195,42 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
   // visitor hasn't yet answered — every subsequent render (including
   // after they answer, since answering sets this cookie and refreshes)
   // has it hidden.
-  const showGeoConsentPrompt = cookieStore.get(GEO_CONSENT_COOKIE) === undefined;
-
-  // NewsletterEntryModal: same "ask at most once, ever" pattern — but only
-  // as an unprompted auto-open. The Footer's own "Suscríbete" link can
-  // still open the same modal any time, regardless of this cookie — from
-  // a page that doesn't render the modal itself (eventos/[id]), that link
-  // navigates here with ?suscribir=1 instead, which forces it open too.
-  const showNewsletterPrompt = cookieStore.get(NEWSLETTER_PROMPT_COOKIE) === undefined || suscribir === "1";
+  const showGeoConsentPrompt =
+    cookieStore.get(GEO_CONSENT_COOKIE) === undefined;
 
   const cityEventsInRange = filterByCity(activeInRange, cityId);
-  const split = splitInauguracionesYExpos(cityEventsInRange, rangeStart, rangeEnd);
+  const split = splitInauguracionesYExpos(
+    cityEventsInRange,
+    rangeStart,
+    rangeEnd,
+  );
   // "Hoy" filter: narrows THIS city's lists down to only today's active
   // events — applied after the split, scoped to the selected city only
   // (never the carousel/citywide counts above).
-  const inauguracionesForCity = todayFilterOn ? filterActiveInRange(split.inauguraciones, today, today) : split.inauguraciones;
-  const exposActualesForCity = todayFilterOn ? filterActiveInRange(split.exposActuales, today, today) : split.exposActuales;
+  const inauguracionesForCity = todayFilterOn
+    ? filterActiveInRange(split.inauguraciones, today, today)
+    : split.inauguraciones;
+  const exposActualesForCity = todayFilterOn
+    ? filterActiveInRange(split.exposActuales, today, today)
+    : split.exposActuales;
   // "Vigentes" filter: hides inauguraciones whose opening date already
   // passed this week — inauguraciones only, never exposActuales (an
   // exhibition's run is still "vigente" regardless of when it opened).
-  const inauguraciones = vigentesFilterOn ? filterUpcomingInauguraciones(inauguracionesForCity, today) : inauguracionesForCity;
+  const inauguraciones = vigentesFilterOn
+    ? filterUpcomingInauguraciones(inauguracionesForCity, today)
+    : inauguracionesForCity;
   const exposActuales = exposActualesForCity;
 
   // Empty-state fallback looks beyond the current week within the selected
   // city, so it can say "the next one is on X" instead of just "nothing."
-  const nextEvent = findNextEvent(filterByCity(visible, cityId), today, rangeEnd);
-
-  // "Revisá expos anteriores" link next to EXPOS ACTUALES — points at the
-  // most recently archived month, computed from data already in memory
-  // (no extra fetch). Omitted (null) rather than guessed when there's no
-  // archived month yet, so it's never a link to a 404.
-  const [latestArchiveMonth] = listArchiveMonths(allEvents, today);
-  const archiveHref = latestArchiveMonth
-    ? `/expos-anteriores/${latestArchiveMonth.year}/${String(latestArchiveMonth.month).padStart(2, "0")}`
-    : null;
+  const nextEvent = findNextEvent(
+    filterByCity(visible, cityId),
+    today,
+    rangeEnd,
+  );
 
   return (
-    <main className="min-h-screen w-full bg-white px-4 py-8 md:px-[61px] max-w-[1280px] mx-auto">
+    <main className="min-h-screen w-full bg-surface-sage px-[20px] py-8 md:px-[61px] max-w-[1280px] mx-auto">
       <CalendarView
         inauguraciones={inauguraciones}
         exposActuales={exposActuales}
@@ -188,7 +238,6 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
         actualCityId={actualCityId}
         hasPreciseLocation={hasPreciseLocation}
         showGeoConsentPrompt={showGeoConsentPrompt}
-        showNewsletterPrompt={showNewsletterPrompt}
         cityNames={cityNames}
         familyMode={familyMode}
         todayFilterOn={todayFilterOn}
@@ -196,12 +245,14 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
         today={today}
         rangeStart={rangeStart}
         rangeEnd={rangeEnd}
+        weekNumber={weekNumber}
+        prevWeekHref={prevWeekHref}
+        nextWeekHref={nextWeekHref}
         cityCounts={cityCounts}
         cityThumbnails={cityThumbnails}
         searchableEvents={searchableEvents}
         nextEvent={nextEvent}
         regions={regions}
-        archiveHref={archiveHref}
         newsletterStatus={newsletterStatus}
       />
     </main>

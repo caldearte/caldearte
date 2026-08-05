@@ -12,11 +12,16 @@ import {
   dateOnlyFromIso,
   weekBoundsInSantiago,
   fmtWeekHeader,
+  fmtWeekRange,
   fmtMonthYear,
   isArchivableMonth,
   monthBounds,
   fmtInauguracionDate,
   buildGoogleCalendarUrl,
+  addWeeks,
+  weekNumberSince,
+  fmtUntilDate,
+  isClosingSoon,
 } from "./date";
 
 test("fmtShort formats a short date", () => {
@@ -162,6 +167,38 @@ test("fmtWeekHeader: week spanning a month boundary", () => {
   assert.equal(fmtWeekHeader("2026-07-27", "2026-08-02"), "27 de JULIO al 2 de AGOSTO");
 });
 
+test("fmtWeekRange: same-month week — full month name once, zero-padded days", () => {
+  assert.equal(fmtWeekRange("2026-08-03", "2026-08-09"), "03 al 09 de AGOSTO");
+});
+
+test("fmtWeekRange: cross-month week — abbreviated month on both sides, only the end date gets 'de'", () => {
+  assert.equal(fmtWeekRange("2026-07-27", "2026-08-02"), "27 JUL al 02 de AGO");
+});
+
+test("addWeeks: shifts a Monday forward and backward by whole weeks", () => {
+  assert.equal(addWeeks("2026-07-27", 1), "2026-08-03");
+  assert.equal(addWeeks("2026-07-27", -1), "2026-07-20");
+  assert.equal(addWeeks("2026-07-27", 0), "2026-07-27");
+});
+
+test("addWeeks: crosses a year boundary", () => {
+  assert.equal(addWeeks("2026-12-28", 1), "2027-01-04");
+});
+
+test("weekNumberSince: the epoch week itself is N°1", () => {
+  assert.equal(weekNumberSince("2026-07-27"), 1);
+});
+
+test("weekNumberSince: counts sequential weeks after the epoch", () => {
+  assert.equal(weekNumberSince("2026-08-03"), 2);
+  assert.equal(weekNumberSince("2026-08-10"), 3);
+});
+
+test("weekNumberSince: clamps to 1 for any week before the epoch", () => {
+  assert.equal(weekNumberSince("2026-07-20"), 1);
+  assert.equal(weekNumberSince("2020-01-06"), 1);
+});
+
 test("fmtMonthYear formats a capitalized month name and year", () => {
   assert.equal(fmtMonthYear(2026, 7), "Julio 2026");
   assert.equal(fmtMonthYear(2026, 1), "Enero 2026");
@@ -188,4 +225,33 @@ test("monthBounds: February in a non-leap year", () => {
 
 test("monthBounds: February in a leap year", () => {
   assert.deepEqual(monthBounds(2028, 2), { start: "2028-02-01", end: "2028-02-29" });
+});
+
+test("fmtUntilDate: capitalized month, falls back to the anchor when there's no runEndDate", () => {
+  assert.equal(fmtUntilDate("2026-09-02", "2026-07-01", "2026-08-01"), "Hasta el 2 de Septiembre");
+  assert.equal(fmtUntilDate(null, "2026-08-15", "2026-08-01"), "Hasta el 15 de Agosto");
+});
+
+test("fmtUntilDate: appends a 2-digit year only when the end date is in a later calendar year than today", () => {
+  assert.equal(fmtUntilDate("2027-02-28", "2026-07-01", "2026-08-01"), "Hasta el 28 de Febrero '27");
+  assert.equal(fmtUntilDate("2026-12-31", "2026-07-01", "2026-08-01"), "Hasta el 31 de Diciembre");
+});
+
+test("isClosingSoon: within the 7-day default threshold (inclusive)", () => {
+  assert.equal(isClosingSoon("2026-08-10", "2026-08-03"), true);
+  assert.equal(isClosingSoon("2026-08-03", "2026-08-03"), true);
+});
+
+test("isClosingSoon: beyond the threshold, or already past, is not closing soon", () => {
+  assert.equal(isClosingSoon("2026-08-11", "2026-08-03"), false);
+  assert.equal(isClosingSoon("2026-08-01", "2026-08-03"), false);
+});
+
+test("isClosingSoon: no runEndDate at all is never closing soon", () => {
+  assert.equal(isClosingSoon(null, "2026-08-03"), false);
+});
+
+test("isClosingSoon: respects a custom threshold", () => {
+  assert.equal(isClosingSoon("2026-08-05", "2026-08-03", 2), true);
+  assert.equal(isClosingSoon("2026-08-06", "2026-08-03", 2), false);
 });

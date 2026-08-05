@@ -23,9 +23,11 @@ export default function EventCityLink({ cityId, cityName }: EventCityLinkProps) 
   return (
     <button
       onClick={goToCity}
-      className="inline-flex items-center gap-1.5 bg-city-pill-bg text-city-pill-fg rounded-lg px-3 py-1.5 text-sm shrink-0"
+      className="inline-flex items-center gap-[9px] border border-border-default rounded-[9px] px-[16px] py-[10px] shrink-0 cursor-pointer"
     >
-      {cityName}
+      {/* eslint-disable-next-line @next/next/no-img-element -- Figma-exported asset, verbatim per design decision */}
+      <img src="/icons/location-pin.svg" alt="" width={12} height={16} className="shrink-0" />
+      <span className="font-fragment-mono text-[14px] text-border-default uppercase whitespace-nowrap">{cityName}</span>
     </button>
   );
 }

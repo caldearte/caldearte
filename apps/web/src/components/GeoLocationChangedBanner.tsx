@@ -48,7 +48,7 @@ export default function GeoLocationChangedBanner({ hasPreciseLocation, actualCit
   const city = cityById(detectedCityId, cityNames);
 
   return (
-    <div className="w-full bg-picker-subtle border border-picker-border px-4 py-5 md:px-6 mb-6 rounded-xl flex flex-col md:flex-row md:items-center gap-4">
+    <div className="w-full bg-picker-subtle border border-picker-border px-4 py-5 md:px-6 mt-[50px] md:mt-[60px] mb-6 rounded-xl flex flex-col md:flex-row md:items-center gap-4">
       <p className="flex-grow text-sm md:text-base font-medium text-heading-gray">{esCL.geoLocationChangedPrompt(city.name)}</p>
       <div className="flex items-center gap-2 shrink-0">
         <button
