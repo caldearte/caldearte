@@ -20,9 +20,18 @@ export default function CardImage({ imageUrl, sourceUrl, sensitivityTags, fullSi
   const sensitive = sensitivityTags.length > 0;
   const image = resolveCardImage({ imageUrl, sourceUrl });
   const blurClass = sensitive && !revealed ? "blur-xl scale-110" : "";
+  // Real bug found 2026-08-06 (EventDetailCard's own listPosition row
+  // exposed it, but it predates that change): fullSize + a PLACEHOLDER
+  // image (no real photo — this prop's own doc comment already says
+  // "placeholders... keep a fixed aspect box either way") used to still
+  // get `h-full` — meaningless on this page, since EventDetailCard's
+  // wrapper div has no explicit height for it to fill, so the whole image
+  // box silently collapsed to 0px and everything below it rendered on
+  // top of the (still absolutely-positioned) HOY/ÚLTIMOS DÍAS badges.
+  const heightClass = fullSize ? (image.type === "photo" ? "" : "aspect-[4/3]") : "h-full";
 
   return (
-    <div className={`relative w-full ${fullSize && image.type === "photo" ? "" : "h-full"} overflow-hidden bg-stone-800`}>
+    <div className={`relative w-full ${heightClass} overflow-hidden bg-stone-800`}>
       {image.type === "photo" ? (
         // eslint-disable-next-line @next/next/no-img-element -- external, unoptimized scraped URLs, see next.config.ts
         <img

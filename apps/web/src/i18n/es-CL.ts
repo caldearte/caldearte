@@ -284,6 +284,13 @@ export const esCL = {
   eventPageSourceLink: "Ver publicación original ↗",
   eventPageAttributionNote: (domain: string) =>
     `Esta información fue recopilada por Caldearte a partir de una publicación pública de ${domain}.`,
+  // "List mode" — reached by clicking a card from the home page's own
+  // city+week list (see EventDetailCard.tsx's listPosition prop). Not
+  // shown when reached directly (search, a shared link) — see
+  // app/eventos/[id]/page.tsx's own list-mode-membership check.
+  eventPagePosition: (current: number, total: number, cityName: string) => `${current} de ${total} eventos en ${cityName} para esta semana`,
+  eventPagePrevAriaLabel: "Evento anterior",
+  eventPageNextAriaLabel: "Siguiente evento",
 
   archiveLink: "Revisa expos anteriores",
   archiveMonthTitle: (label: string) => `Expos anteriores — ${label}`,

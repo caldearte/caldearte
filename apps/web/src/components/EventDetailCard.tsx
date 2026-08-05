@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import CardImage from "./CardImage";
 import { DirectionsGlyph, CalendarGlyph, ShareGlyph, WhatsAppGlyph, XGlyph, FacebookGlyph, CopyGlyph } from "./CardActionIcons";
@@ -13,6 +14,18 @@ import type { EventRecord } from "@/lib/events";
 interface EventDetailCardProps {
   event: EventRecord;
   domain: string | null;
+  // "List mode" — only set when the visitor actually reached this event
+  // from the home page's own city+week "Exposiciones actuales" list (see
+  // app/eventos/[id]/page.tsx's membership check). Absent for a direct
+  // hit (search result, shared link) — in that case this renders exactly
+  // like the page always has, no position row at all.
+  listPosition?: {
+    current: number;
+    total: number;
+    cityName: string;
+    prevHref: string | null;
+    nextHref: string | null;
+  };
 }
 
 // Same visible-button treatment as InauguracionBentoCard's ActionButton
@@ -68,7 +81,7 @@ function ActionButton({
 // Admin "Quitar" added 2026-08-06 (real user request, from mobile
 // testing) — this page's own ActionButton row, not a kebab item, since
 // this page never had a kebab to begin with.
-export default function EventDetailCard({ event, domain }: EventDetailCardProps) {
+export default function EventDetailCard({ event, domain, listPosition }: EventDetailCardProps) {
   const router = useRouter();
   // Same "hasn't happened yet" rule the home grid uses (splitInauguracionesYExpos)
   // — a past-but-still-running exhibition is an "expo", not an "inauguración",
@@ -120,6 +133,35 @@ export default function EventDetailCard({ event, domain }: EventDetailCardProps)
       </div>
 
       <div className="flex-1 flex flex-col gap-[20px] md:gap-[24px] min-w-0">
+        {listPosition && (
+          <div className="flex items-center gap-[12px]">
+            <Link
+              href={listPosition.prevHref ?? "#"}
+              aria-label={esCL.eventPagePrevAriaLabel}
+              aria-disabled={!listPosition.prevHref}
+              className={`flex items-center justify-center size-[32px] rounded-full border border-text-primary ${
+                listPosition.prevHref ? "cursor-pointer" : "opacity-30 pointer-events-none"
+              }`}
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element -- Figma-exported asset, verbatim per design decision */}
+              <img src="/icons/arrow-left.svg" alt="" width={14} height={14} />
+            </Link>
+            <p className="font-geist text-[13px] text-text-primary whitespace-nowrap">
+              {esCL.eventPagePosition(listPosition.current, listPosition.total, listPosition.cityName)}
+            </p>
+            <Link
+              href={listPosition.nextHref ?? "#"}
+              aria-label={esCL.eventPageNextAriaLabel}
+              aria-disabled={!listPosition.nextHref}
+              className={`flex items-center justify-center size-[32px] rounded-full border border-text-primary ${
+                listPosition.nextHref ? "cursor-pointer" : "opacity-30 pointer-events-none"
+              }`}
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element -- Figma-exported asset, verbatim per design decision */}
+              <img src="/icons/arrow-right.svg" alt="" width={14} height={14} />
+            </Link>
+          </div>
+        )}
         <div className="flex flex-col gap-[12px] md:gap-[16px]">
           {dateLine && <p className="font-geist font-extrabold text-[14px] md:text-[16px] text-brand-magenta">{dateLine}</p>}
           <h1 className="font-fragment-mono leading-[1.1] text-[28px] md:text-[36px] text-text-primary">{event.title}</h1>
