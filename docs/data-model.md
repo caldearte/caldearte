@@ -69,6 +69,13 @@ events
   curation_reasoning (internal, technical, for the curators),
   public_explanation (nullable; only set on automatic rejection of a
     "submitted" event, goes in the reply email),
+  removed_at, removed_reason (both nullable, added 2026-08-05) — manual
+    admin soft-delete, deliberately separate from curation_status (which
+    is pipeline-owned). Set by an admin clicking "Quitar" on an event
+    card's kebab menu (apps/web/src/components/AdminRemoveMenuItem.tsx,
+    gated behind Auth.js + ADMIN_EMAIL, see apps/web/src/lib/auth.ts) —
+    never written by Event Discovery. events_public excludes any row with
+    removed_at set, same as it excludes non-approved curation_status.
   created_at
   -- Auto-deleted ~1 year past run_end_date (or run_start_date/
   -- opening_datetime as fallbacks) — see overview.md's "full exhibition
@@ -106,11 +113,14 @@ events_public, regions_public (views, not tables — created in
     20260717050000_restrict_public_columns_via_views.sql)
   events_public: id, title, artist, description, freeform_location,
     place_name, region_id, image_url, opening_datetime, run_start_date,
-    run_end_date, sensitivity_tags, source_url — a subset of events'
-    columns, `where curation_status = 'approved'` baked directly into the
-    view definition. Excludes curation_reasoning, image_storage_path,
+    run_end_date, sensitivity_tags, source_url, opening_time_confirmed
+    (added 20260720070000) — a subset of events' columns, `where
+    curation_status = 'approved' and removed_at is null` baked directly
+    into the view definition (the removed_at exclusion added
+    20260805070000, alongside the removed_at/removed_reason columns
+    themselves). Excludes curation_reasoning, image_storage_path,
     curation_status, public_explanation, created_at, medium_type,
-    opening_date_confidence, source.
+    opening_date_confidence, source, removed_at, removed_reason.
   regions_public: id, name, country, lat, lng, population,
     admin_region_name, admin_region_order, admin_region_numeral — excludes
     every pipeline-internal column (status, exclusion_reason,

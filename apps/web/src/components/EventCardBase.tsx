@@ -4,6 +4,8 @@ import { useState } from "react";
 import Link from "next/link";
 import CardImage from "./CardImage";
 import { useEventCardActions } from "@/lib/useEventCardActions";
+import { useIsAdmin } from "@/lib/useIsAdmin";
+import AdminRemoveMenuItem from "./AdminRemoveMenuItem";
 import { DirectionsGlyph, ExternalLinkGlyph, CalendarGlyph, WhatsAppGlyph, XGlyph, FacebookGlyph, CopyGlyph, ShareGlyph, BackArrowGlyph, KebabGlyph } from "./CardActionIcons";
 import { esCL } from "@/i18n/es-CL";
 import type { EventRecord } from "@/lib/events";
@@ -56,6 +58,7 @@ export default function EventCardBase({
   // Originally mobile-only, but the user liked the collapsed UX enough
   // (2026-07-20) to want it everywhere — no more desktop/mobile split.
   const [menuOpen, setMenuOpen] = useState(false);
+  const isAdmin = useIsAdmin();
 
   return (
     <div className="relative bg-black rounded-2xl overflow-hidden flex flex-col h-full">
@@ -106,7 +109,7 @@ export default function EventCardBase({
                       target="_blank"
                       rel="noopener noreferrer"
                       role="menuitem"
-                      className="flex items-center gap-2.5 px-3.5 py-2.5 text-sm text-heading-gray"
+                      className="flex items-center gap-2.5 px-3.5 py-2.5 text-sm text-heading-gray cursor-pointer"
                       onClick={() => setMenuOpen(false)}
                     >
                       <DirectionsGlyph color="black" />
@@ -119,7 +122,7 @@ export default function EventCardBase({
                       target="_blank"
                       rel="noopener noreferrer"
                       role="menuitem"
-                      className="flex items-center gap-2.5 px-3.5 py-2.5 text-sm text-heading-gray"
+                      className="flex items-center gap-2.5 px-3.5 py-2.5 text-sm text-heading-gray cursor-pointer"
                       onClick={() => setMenuOpen(false)}
                     >
                       <ExternalLinkGlyph color="black" />
@@ -132,7 +135,7 @@ export default function EventCardBase({
                       target="_blank"
                       rel="noopener noreferrer"
                       role="menuitem"
-                      className="flex items-center gap-2.5 px-3.5 py-2.5 text-sm text-heading-gray"
+                      className="flex items-center gap-2.5 px-3.5 py-2.5 text-sm text-heading-gray cursor-pointer"
                       onClick={() => setMenuOpen(false)}
                     >
                       <CalendarGlyph color="black" />
@@ -142,19 +145,22 @@ export default function EventCardBase({
                   <button
                     type="button"
                     role="menuitem"
-                    className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-sm text-heading-gray"
+                    className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-sm text-heading-gray cursor-pointer"
                     onClick={() => setShareSubmenuOpen(true)}
                   >
                     <ShareGlyph color="black" />
                     {esCL.cardMenuShare}
                   </button>
+                  {isAdmin && (
+                    <AdminRemoveMenuItem eventId={event.id} eventTitle={event.title} onRemoved={() => setMenuOpen(false)} />
+                  )}
                 </>
               ) : (
                 <>
                   <button
                     type="button"
                     role="menuitem"
-                    className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-sm text-heading-gray"
+                    className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-sm text-heading-gray cursor-pointer"
                     onClick={() => setShareSubmenuOpen(false)}
                   >
                     <BackArrowGlyph color="black" />
@@ -163,7 +169,7 @@ export default function EventCardBase({
                   <button
                     type="button"
                     role="menuitem"
-                    className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-sm text-heading-gray"
+                    className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-sm text-heading-gray cursor-pointer"
                     onClick={handleShareWhatsApp}
                   >
                     <WhatsAppGlyph color="black" />
@@ -172,7 +178,7 @@ export default function EventCardBase({
                   <button
                     type="button"
                     role="menuitem"
-                    className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-sm text-heading-gray"
+                    className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-sm text-heading-gray cursor-pointer"
                     onClick={handleShareTwitter}
                   >
                     <XGlyph color="black" />
@@ -181,7 +187,7 @@ export default function EventCardBase({
                   <button
                     type="button"
                     role="menuitem"
-                    className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-sm text-heading-gray"
+                    className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-sm text-heading-gray cursor-pointer"
                     onClick={handleShareFacebook}
                   >
                     <FacebookGlyph color="black" />
@@ -190,7 +196,7 @@ export default function EventCardBase({
                   <button
                     type="button"
                     role="menuitem"
-                    className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-sm text-heading-gray"
+                    className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-sm text-heading-gray cursor-pointer"
                     onClick={handleCopyLink}
                   >
                     <CopyGlyph color="black" />
@@ -215,7 +221,7 @@ export default function EventCardBase({
           aria-label={esCL.cardMoreOptionsAriaLabel}
           aria-haspopup="menu"
           aria-expanded={menuOpen}
-          className="relative z-20 w-8 h-8 rounded-full border border-white/70 flex items-center justify-center"
+          className="relative z-20 w-8 h-8 rounded-full border border-white/70 flex items-center justify-center cursor-pointer"
         >
           <KebabGlyph />
         </button>

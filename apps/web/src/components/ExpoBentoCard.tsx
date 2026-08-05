@@ -5,6 +5,8 @@ import Link from "next/link";
 import CardImage from "./CardImage";
 import { DirectionsGlyph, CalendarGlyph, ShareGlyph, WhatsAppGlyph, XGlyph, FacebookGlyph, CopyGlyph, KebabGlyph } from "./CardActionIcons";
 import { useEventCardActions } from "@/lib/useEventCardActions";
+import { useIsAdmin } from "@/lib/useIsAdmin";
+import AdminRemoveMenuItem from "./AdminRemoveMenuItem";
 import { esCL } from "@/i18n/es-CL";
 import type { EventRecord } from "@/lib/events";
 
@@ -40,6 +42,7 @@ export default function ExpoBentoCard({ event, hideTodayBadge = false, desktopIm
     handleCopyLink,
   } = useEventCardActions(event, "expo", hideTodayBadge);
   const [menuOpen, setMenuOpen] = useState(false);
+  const isAdmin = useIsAdmin();
   const eventHref = `/eventos/${event.id}`;
 
   return (
@@ -90,7 +93,7 @@ export default function ExpoBentoCard({ event, hideTodayBadge = false, desktopIm
               aria-label={esCL.cardMoreOptionsAriaLabel}
               aria-haspopup="menu"
               aria-expanded={menuOpen}
-              className="w-[30px] h-[30px] rounded-full border border-text-primary flex items-center justify-center md:flex hidden"
+              className="w-[30px] h-[30px] rounded-full border border-text-primary flex items-center justify-center md:flex hidden cursor-pointer"
             >
               <span className="rotate-90 inline-block">
                 <KebabGlyph color="#3d373d" />
@@ -105,7 +108,7 @@ export default function ExpoBentoCard({ event, hideTodayBadge = false, desktopIm
               aria-label={esCL.cardMoreOptionsAriaLabel}
               aria-haspopup="menu"
               aria-expanded={menuOpen}
-              className="md:hidden"
+              className="md:hidden cursor-pointer"
             >
               <span className="rotate-90 inline-block">
                 <KebabGlyph color="#3d373d" />
@@ -131,7 +134,7 @@ export default function ExpoBentoCard({ event, hideTodayBadge = false, desktopIm
                           target="_blank"
                           rel="noopener noreferrer"
                           role="menuitem"
-                          className="flex items-center gap-2.5 px-3.5 py-2.5 text-sm text-heading-gray"
+                          className="flex items-center gap-2.5 px-3.5 py-2.5 text-sm text-heading-gray cursor-pointer"
                           onClick={() => setMenuOpen(false)}
                         >
                           <DirectionsGlyph color="black" />
@@ -144,7 +147,7 @@ export default function ExpoBentoCard({ event, hideTodayBadge = false, desktopIm
                           target="_blank"
                           rel="noopener noreferrer"
                           role="menuitem"
-                          className="flex items-center gap-2.5 px-3.5 py-2.5 text-sm text-heading-gray"
+                          className="flex items-center gap-2.5 px-3.5 py-2.5 text-sm text-heading-gray cursor-pointer"
                           onClick={() => setMenuOpen(false)}
                         >
                           <CalendarGlyph color="black" />
@@ -154,19 +157,22 @@ export default function ExpoBentoCard({ event, hideTodayBadge = false, desktopIm
                       <button
                         type="button"
                         role="menuitem"
-                        className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-sm text-heading-gray"
+                        className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-sm text-heading-gray cursor-pointer"
                         onClick={() => setShareSubmenuOpen(true)}
                       >
                         <ShareGlyph color="black" />
                         {esCL.cardMenuShare}
                       </button>
+                      {isAdmin && (
+                        <AdminRemoveMenuItem eventId={event.id} eventTitle={event.title} onRemoved={() => setMenuOpen(false)} />
+                      )}
                     </>
                   ) : (
                     <>
                       <button
                         type="button"
                         role="menuitem"
-                        className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-sm text-heading-gray"
+                        className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-sm text-heading-gray cursor-pointer"
                         onClick={handleShareWhatsApp}
                       >
                         <WhatsAppGlyph color="black" />
@@ -175,7 +181,7 @@ export default function ExpoBentoCard({ event, hideTodayBadge = false, desktopIm
                       <button
                         type="button"
                         role="menuitem"
-                        className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-sm text-heading-gray"
+                        className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-sm text-heading-gray cursor-pointer"
                         onClick={handleShareTwitter}
                       >
                         <XGlyph color="black" />
@@ -184,7 +190,7 @@ export default function ExpoBentoCard({ event, hideTodayBadge = false, desktopIm
                       <button
                         type="button"
                         role="menuitem"
-                        className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-sm text-heading-gray"
+                        className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-sm text-heading-gray cursor-pointer"
                         onClick={handleShareFacebook}
                       >
                         <FacebookGlyph color="black" />
@@ -193,7 +199,7 @@ export default function ExpoBentoCard({ event, hideTodayBadge = false, desktopIm
                       <button
                         type="button"
                         role="menuitem"
-                        className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-sm text-heading-gray"
+                        className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-sm text-heading-gray cursor-pointer"
                         onClick={handleCopyLink}
                       >
                         <CopyGlyph color="black" />

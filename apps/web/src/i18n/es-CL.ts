@@ -253,6 +253,26 @@ export const esCL = {
   cardMenuFacebook: "Facebook",
   cardMenuCopyLink: "Copiar link",
   shareLinkCopied: "Link copiado",
+  // Admin-only (see useIsAdmin/lib/auth.ts) — never rendered for a
+  // regular visitor. Soft-removes the event (events.removed_at), not a
+  // hard delete.
+  cardMenuRemove: "Quitar",
+  cardMenuRemoveConfirm: (title: string) => `¿Quitar "${title}" de Caldearte? Dejará de verse en el sitio.`,
+  cardMenuRemoveError: "No se pudo quitar el evento. Intenta de nuevo.",
+
+  // /login — the ONLY place a sign-in control exists on the whole site,
+  // never linked from Header/Footer/MenuDrawer. Reaching it means typing
+  // the URL directly (confirmed with the user 2026-08-05).
+  loginPage: {
+    // Frames the page as an intentional work-in-progress rather than a
+    // mysterious admin backdoor, in case anyone reaches this unlinked URL
+    // — per the user 2026-08-05.
+    note: "Estamos construyendo las cuentas de usuario de Caldearte. Por ahora, esta sesión es solo para el equipo.",
+    signInWithGoogle: "Iniciar sesión con Google",
+    signedInAsAdmin: (email: string) => `Sesión iniciada como ${email}.`,
+    signedInNotAdmin: (email: string) => `Sesión iniciada como ${email}, pero esta cuenta no tiene permisos de administrador.`,
+    signOut: "Cerrar sesión",
+  },
 
   // /eventos/[id] — the shareable, individually-linkable page for one
   // event (see docs/risks.md's ToS note on scraped sources: this page's

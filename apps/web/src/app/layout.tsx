@@ -3,6 +3,7 @@ import { Inter, Lato, Geist, Fragment_Mono } from "next/font/google";
 import { Analytics } from "@vercel/analytics/react";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { esCL } from "@/i18n/es-CL";
+import AuthSessionProvider from "@/components/AuthSessionProvider";
 import "./globals.css";
 
 const inter = Inter({
@@ -78,7 +79,7 @@ export default function RootLayout({
   return (
     <html lang="es" className={`${inter.variable} ${lato.variable} ${geist.variable} ${fragmentMono.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col">
-        {children}
+        <AuthSessionProvider>{children}</AuthSessionProvider>
         <Analytics />
         <SpeedInsights />
       </body>
