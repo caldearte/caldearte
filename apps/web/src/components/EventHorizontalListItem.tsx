@@ -101,7 +101,7 @@ export default function EventHorizontalListItem({ event, variant, cityName }: Ev
           aria-label={esCL.cardMoreOptionsAriaLabel}
           aria-haspopup="menu"
           aria-expanded={menuOpen}
-          className="w-8 h-8 rounded-full border border-border-default flex items-center justify-center"
+          className="w-8 h-8 rounded-full border border-border-default flex items-center justify-center cursor-pointer"
         >
           <span className="rotate-90 inline-block">
             <KebabGlyph color="#3d373d" />
@@ -127,7 +127,7 @@ export default function EventHorizontalListItem({ event, variant, cityName }: Ev
                       target="_blank"
                       rel="noopener noreferrer"
                       role="menuitem"
-                      className="flex items-center gap-2.5 px-3.5 py-2.5 text-sm text-heading-gray"
+                      className="flex items-center gap-2.5 px-3.5 py-2.5 text-sm text-heading-gray cursor-pointer"
                       onClick={() => setMenuOpen(false)}
                     >
                       <DirectionsGlyph color="black" />
@@ -140,7 +140,7 @@ export default function EventHorizontalListItem({ event, variant, cityName }: Ev
                       target="_blank"
                       rel="noopener noreferrer"
                       role="menuitem"
-                      className="flex items-center gap-2.5 px-3.5 py-2.5 text-sm text-heading-gray"
+                      className="flex items-center gap-2.5 px-3.5 py-2.5 text-sm text-heading-gray cursor-pointer"
                       onClick={() => setMenuOpen(false)}
                     >
                       <CalendarGlyph color="black" />
@@ -150,7 +150,7 @@ export default function EventHorizontalListItem({ event, variant, cityName }: Ev
                   <button
                     type="button"
                     role="menuitem"
-                    className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-sm text-heading-gray"
+                    className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-sm text-heading-gray cursor-pointer"
                     onClick={() => setShareSubmenuOpen(true)}
                   >
                     <ShareGlyph color="black" />
@@ -163,7 +163,7 @@ export default function EventHorizontalListItem({ event, variant, cityName }: Ev
                   <button
                     type="button"
                     role="menuitem"
-                    className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-sm text-heading-gray"
+                    className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-sm text-heading-gray cursor-pointer"
                     onClick={handleShareWhatsApp}
                   >
                     <WhatsAppGlyph color="black" />
@@ -172,7 +172,7 @@ export default function EventHorizontalListItem({ event, variant, cityName }: Ev
                   <button
                     type="button"
                     role="menuitem"
-                    className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-sm text-heading-gray"
+                    className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-sm text-heading-gray cursor-pointer"
                     onClick={handleShareTwitter}
                   >
                     <XGlyph color="black" />
@@ -181,7 +181,7 @@ export default function EventHorizontalListItem({ event, variant, cityName }: Ev
                   <button
                     type="button"
                     role="menuitem"
-                    className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-sm text-heading-gray"
+                    className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-sm text-heading-gray cursor-pointer"
                     onClick={handleShareFacebook}
                   >
                     <FacebookGlyph color="black" />
@@ -190,7 +190,7 @@ export default function EventHorizontalListItem({ event, variant, cityName }: Ev
                   <button
                     type="button"
                     role="menuitem"
-                    className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-sm text-heading-gray"
+                    className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-sm text-heading-gray cursor-pointer"
                     onClick={handleCopyLink}
                   >
                     <CopyGlyph color="black" />
