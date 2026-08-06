@@ -102,10 +102,15 @@ function hasEvents(counts: CityCounts | undefined): boolean {
 
 // "Muestra lo que hay": a city with nothing to show today isn't a real
 // destination — filtered out of both the city picker and the "Arte en
-// todas partes" carousel. `alwaysIncludeCityId` (the currently-selected
-// city, in the picker's case) is a UX safety net, not a data override — a
-// city always passes if it's you, even at zero, so opening the picker
-// while viewing a currently-empty city never makes your own city vanish.
+// todas partes" carousel, no exception for the currently-selected city
+// either (real bug, found 2026-08-06: after removing every Antofagasta
+// event, its own now-empty entry kept lingering in the picker via the
+// previous alwaysIncludeCityId safety net — removed). The safety net this
+// used to need is now handled upstream instead: resolveCityPickerContext
+// validates the CITY_COOKIE against the real comuna list (regions), not
+// against "has events right now", so a comuna with zero current events is
+// still a valid selection — it just doesn't show up as a browsable
+// destination in the picker until it has something again.
 //
 // Built entirely from `cityCounts`' own keys, not a static list —
 // `countByCity` (events.ts) only ever creates an entry for a city that
@@ -114,13 +119,11 @@ function hasEvents(counts: CityCounts | undefined): boolean {
 export function citiesWithEvents(
   cityCounts: Record<string, CityCounts>,
   cityNames: Record<string, string>,
-  options: { excludeCityId?: string; alwaysIncludeCityId?: string } = {},
+  options: { excludeCityId?: string } = {},
 ): City[] {
-  const ids = new Set(Object.keys(cityCounts));
-  if (options.alwaysIncludeCityId) ids.add(options.alwaysIncludeCityId);
-  return [...ids]
+  return Object.keys(cityCounts)
     .filter((id) => id !== options.excludeCityId)
-    .filter((id) => id === options.alwaysIncludeCityId || hasEvents(cityCounts[id]))
+    .filter((id) => hasEvents(cityCounts[id]))
     .map((id) => cityById(id, cityNames))
     .sort((a, b) => a.name.localeCompare(b.name, "es"));
 }

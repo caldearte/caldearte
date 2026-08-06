@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { esCL } from "@/i18n/es-CL";
-import { buildRegionMetaByCityId, citiesWithEvents, groupCitiesByRegion, matchesQuery, cityById, OTHER_CITY, type City } from "@/lib/cities";
+import { buildRegionMetaByCityId, citiesWithEvents, groupCitiesByRegion, matchesQuery, cityById, cityIdFromRegionName, OTHER_CITY, type City } from "@/lib/cities";
 import { shortRegionName } from "@/lib/regionNames";
 import { ZONES, zoneKeyForRegion, zoneByKey, type ZoneKey } from "@/lib/zones";
 import { getRecentCityIds, setCookie, PRECISE_CITY_COOKIE } from "@/lib/cookies";
@@ -67,21 +67,31 @@ function OptionRow({
   counts,
   showChevron,
   current,
+  disabled = false,
   onClick,
 }: {
   label: string;
   counts?: CityCounts;
   showChevron: boolean;
   current: boolean;
+  // Zonas only, for now (2026-08-06) — a zone with nothing this week
+  // stays visible but unselectable, rather than disappearing like an
+  // empty región/comuna does. Removing a whole zone from the map would
+  // read as "this part of Chile doesn't exist," not "nothing here right
+  // now" — the distinction régiones/comunas don't need since there are
+  // dozens of them and losing one from a list reads as pruning, not
+  // erasure.
+  disabled?: boolean;
   onClick: () => void;
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className={`w-full flex items-center justify-between gap-[12px] p-[16px] rounded-input text-left cursor-pointer ${
-        current ? "bg-text-primary" : "border border-border-default"
-      }`}
+      disabled={disabled}
+      className={`w-full flex items-center justify-between gap-[12px] p-[16px] rounded-input text-left ${
+        disabled ? "cursor-default opacity-40" : "cursor-pointer"
+      } ${current ? "bg-text-primary" : "border border-border-default"}`}
     >
       <span
         className={`font-lato whitespace-nowrap ${current ? "font-extrabold text-[22px] text-surface-sage-dark" : "font-bold text-[16px] text-text-primary"}`}
@@ -90,7 +100,7 @@ function OptionRow({
       </span>
       <div className="flex items-center gap-[16px] shrink-0">
         {counts && <Badges counts={counts} />}
-        {showChevron && (
+        {showChevron && !disabled && (
           // eslint-disable-next-line @next/next/no-img-element -- Figma-exported asset, verbatim per design decision
           <img src={current ? "/icons/chevron-right-selected.svg" : "/icons/chevron-right-default.svg"} alt="" width={16} height={16} />
         )}
@@ -203,10 +213,25 @@ export default function CityPickerPanel({
     return () => clearTimeout(timer);
   }, [query]);
 
-  const allCities = useMemo(
-    () => citiesWithEvents(cityCounts, cityNames, { alwaysIncludeCityId: cityId }),
-    [cityCounts, cityNames, cityId],
-  );
+  const allCities = useMemo(() => citiesWithEvents(cityCounts, cityNames), [cityCounts, cityNames]);
+
+  // Zonas always stay visible (unlike regiones/comunas, which disappear
+  // entirely when empty) — just disabled when none of their regiones have
+  // anything this week. Computed from the full `regions` list, not
+  // `allCities`, since a zone needs to know about every comuna it could
+  // ever contain, not just the ones currently passing citiesWithEvents'
+  // own filter.
+  const zonesWithEvents = useMemo(() => {
+    const withEvents = new Set<ZoneKey>();
+    for (const region of regions) {
+      if (!region.adminRegionName) continue;
+      const zoneKey = zoneKeyForRegion(region.adminRegionName);
+      if (!zoneKey || withEvents.has(zoneKey)) continue;
+      const counts = cityCounts[cityIdFromRegionName(region.name)];
+      if ((counts?.inauguraciones ?? 0) > 0 || (counts?.exposActuales ?? 0) > 0) withEvents.add(zoneKey);
+    }
+    return withEvents;
+  }, [regions, cityCounts]);
 
   const trimmedQuery = filterQuery.trim();
   const isSearching = trimmedQuery !== "";
@@ -409,6 +434,7 @@ export default function CityPickerPanel({
                     label={zone.label.toUpperCase()}
                     showChevron
                     current={zone.key === currentZoneKey}
+                    disabled={!zonesWithEvents.has(zone.key)}
                     onClick={() => handleZoneClick(zone.key)}
                   />
                 ))}

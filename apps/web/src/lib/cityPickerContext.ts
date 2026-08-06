@@ -52,16 +52,24 @@ export async function resolveCityPickerContext({
   const activeInRange = filterActiveInRange(visible, rangeStart, rangeEnd);
   const cityCounts = countByCity(activeInRange, rangeStart, rangeEnd);
   const cityThumbnails = thumbnailsByCity(activeInRange, 4);
+  const metaByCityId = buildRegionMetaByCityId(regions);
 
   const cityCookieValue = cookieStore.get(CITY_COOKIE)?.value;
   const geoCity = headerStore.get("x-vercel-ip-city") ?? undefined;
   const geoCountry = headerStore.get("x-vercel-ip-country") ?? undefined;
+  // Validated against the real comuna list (`regions`, all 346 seeded
+  // comunas regardless of events), not `cityNames` — real bug, found
+  // 2026-08-06: cityNames only has an entry for a comuna with at least one
+  // event RIGHT NOW, so a comuna that still has a valid CITY_COOKIE but
+  // currently zero events (e.g. right after removing its last event) used
+  // to silently bounce to DEFAULT_CITY_ID on every page load, not just
+  // when re-selecting it in the picker.
   const cityId =
     cityCookieValue !== undefined
-      ? cityCookieValue in cityNames || cityCookieValue === DEFAULT_CITY_ID
+      ? metaByCityId.has(cityCookieValue) || cityCookieValue === DEFAULT_CITY_ID
         ? cityCookieValue
         : DEFAULT_CITY_ID
-      : resolveDefaultCityId(geoCity, geoCountry, buildRegionMetaByCityId(regions), cityCounts);
+      : resolveDefaultCityId(geoCity, geoCountry, metaByCityId, cityCounts);
 
   const geoLatHeader = headerStore.get("x-vercel-ip-latitude");
   const geoLngHeader = headerStore.get("x-vercel-ip-longitude");
@@ -73,7 +81,7 @@ export async function resolveCityPickerContext({
   const actualCityId =
     preciseCityCookie ??
     (hasGeoCoords ? nearestCityIdByCoords(geoLat, geoLng, regions) : null) ??
-    resolveGeoCityId(geoCity, geoCountry, buildRegionMetaByCityId(regions));
+    resolveGeoCityId(geoCity, geoCountry, metaByCityId);
 
   return { cityId, cityNames, cityCounts, cityThumbnails, actualCityId, hasPreciseLocation, activeInRange };
 }
