@@ -1,0 +1,24 @@
+-- Admin "sensitive material" toggle (apps/web's kebab-menu/event-page
+-- action, gated behind Auth.js + ADMIN_EMAIL — same pattern as "Quitar",
+-- see 20260805060000_add_events_removed_at.sql): lets an admin manually
+-- flag an event as containing sensitive content Haiku's own curation pass
+-- missed. Deliberately a SEPARATE column, never written into
+-- events.sensitivity_tags itself — that column is Haiku's own
+-- AI-classification output (and has a CHECK constraint limiting it to
+-- the 3 real axis values: desnudo_erotismo, guerra_violencia,
+-- memoria_dictadura), and conflating a manual override into it would
+-- blur the line between "what the pipeline detected" and "what a human
+-- added" for anyone auditing later. Nullable timestamp (not a plain
+-- boolean) for the same reason removed_at is a timestamp — "when" is
+-- free context to keep, costs nothing.
+--
+-- events_public (below) folds this into its OWN sensitivity_tags output
+-- as a synthetic 'marcado_admin' entry — safe to do at the VIEW level
+-- despite the base column's CHECK constraint, since that constraint only
+-- ever applies to writes into the physical column, not a view's computed
+-- SELECT expression. The real sensitivity_tags column on `events` itself
+-- is never touched by this feature — Haiku's own classification stays
+-- exactly as written either way; admin marking can only ADD a reason to
+-- blur an image, never remove one Haiku already found.
+
+alter table events add column admin_sensitive_marked_at timestamptz;

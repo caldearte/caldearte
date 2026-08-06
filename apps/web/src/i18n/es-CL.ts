@@ -261,6 +261,16 @@ export const esCL = {
   cardMenuRemoved: "Evento quitado",
   cardMenuRemoveConfirm: (title: string) => `¿Quitar "${title}" de Caldearte? Dejará de verse en el sitio.`,
   cardMenuRemoveError: "No se pudo quitar el evento. Intenta de nuevo.",
+  // Toggle, not a one-way action — no confirm() dialog like Quitar has,
+  // it's instantly reversible by clicking again. Label reflects current
+  // state (see useAdminToggleSensitive's own "marcado_admin" tag check).
+  cardMenuMarkSensitive: "Marcar como sensible",
+  cardMenuUnmarkSensitive: "Quitar marca de sensible",
+  cardMenuMarkingSensitive: "Marcando…",
+  cardMenuMarkedSensitive: "Marcado como sensible",
+  cardMenuUnmarkingSensitive: "Desmarcando…",
+  cardMenuUnmarkedSensitive: "Ya no está marcado",
+  cardMenuToggleSensitiveError: "No se pudo actualizar. Intenta de nuevo.",
 
   // /login — the ONLY place a sign-in control exists on the whole site,
   // never linked from Header/Footer/MenuDrawer. Reaching it means typing
