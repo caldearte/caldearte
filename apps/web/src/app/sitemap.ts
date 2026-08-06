@@ -1,5 +1,4 @@
 import type { MetadataRoute } from "next";
-import { getSupabaseClient } from "@/lib/supabase-client";
 import { fetchApprovedEvents, listArchiveMonths } from "@/lib/events";
 import { todayInSantiago } from "@/lib/date";
 
@@ -11,7 +10,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // www, not the apex — see robots.ts's comment. Every <loc> here must be
   // the final URL Google actually lands on, not one that 308-redirects.
   const base = "https://www.caldearte.com";
-  const { events } = await fetchApprovedEvents(getSupabaseClient());
+  const { events } = await fetchApprovedEvents();
   const archiveUrls: MetadataRoute.Sitemap = listArchiveMonths(events, todayInSantiago()).map(({ year, month }) => ({
     url: `${base}/expos-anteriores/${year}/${String(month).padStart(2, "0")}`,
     changeFrequency: "monthly",
