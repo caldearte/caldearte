@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getSupabaseClient } from "@/lib/supabase-client";
 import { fetchApprovedEvents, eventsForMonth, listArchiveMonths } from "@/lib/events";
 import { fmtMonthYear, isArchivableMonth, todayInSantiago } from "@/lib/date";
 import { esCL } from "@/i18n/es-CL";
@@ -15,7 +14,7 @@ interface PageParams {
 }
 
 export async function generateStaticParams() {
-  const { events } = await fetchApprovedEvents(getSupabaseClient());
+  const { events } = await fetchApprovedEvents();
   return listArchiveMonths(events, todayInSantiago()).map(({ year, month }) => ({
     year: String(year),
     month: String(month).padStart(2, "0"),
@@ -33,7 +32,7 @@ export async function generateMetadata({ params }: { params: Promise<PageParams>
   const parsed = parseParams(await params);
   if (!parsed) return {};
   const label = fmtMonthYear(parsed.year, parsed.month);
-  const { events: allEvents } = await fetchApprovedEvents(getSupabaseClient());
+  const { events: allEvents } = await fetchApprovedEvents();
   const monthEvents = eventsForMonth(allEvents, parsed.year, parsed.month);
   const sample = monthEvents.slice(0, 5).map((e) => e.title).join(", ");
   return {
@@ -59,7 +58,7 @@ export default async function ArchiveMonthPage({ params }: { params: Promise<Pag
   const today = todayInSantiago();
   if (!isArchivableMonth(year, month, today)) notFound();
 
-  const { events: allEvents } = await fetchApprovedEvents(getSupabaseClient());
+  const { events: allEvents } = await fetchApprovedEvents();
   const monthEvents = eventsForMonth(allEvents, year, month);
   if (monthEvents.length === 0) notFound();
 

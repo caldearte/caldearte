@@ -1,5 +1,4 @@
 import { cookies, headers } from "next/headers";
-import { getSupabaseClient } from "@/lib/supabase-client";
 import {
   fetchApprovedEvents,
   filterFamilyMode,
@@ -88,8 +87,7 @@ export default async function HomePage({
   const prevWeekHref = `/?semana=${addWeeks(rangeStart, -1)}`;
   const nextWeekHref = `/?semana=${addWeeks(rangeStart, 1)}`;
 
-  const { events: allEvents, regions } =
-    await fetchApprovedEvents(getSupabaseClient());
+  const { events: allEvents, regions } = await fetchApprovedEvents();
   // Family-mode filtering happens here, server-side, before anything is
   // sent to the client — excluded events never reach the HTML/JS, which is
   // what actually satisfies "no flash of unblurred content" (overview.md).

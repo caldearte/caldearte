@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
-import { getSupabaseClient } from "@/lib/supabase-client";
 import { fetchApprovedEvents, filterFamilyMode, filterActiveInRange, filterByCity, splitInauguracionesYExpos } from "@/lib/events";
 import { currentWeekInSantiago, weekBoundsInSantiago, todayInSantiago } from "@/lib/date";
 import { CITY_COOKIE, FAMILY_MODE_COOKIE, TODAY_FILTER_COOKIE } from "@/lib/cookies";
@@ -33,7 +32,7 @@ export async function GET(request: Request) {
   const todayFilterOn = Boolean(cookieStore.get(TODAY_FILTER_COOKIE)?.value);
   const today = todayInSantiago();
 
-  const { events: allEvents } = await fetchApprovedEvents(getSupabaseClient());
+  const { events: allEvents } = await fetchApprovedEvents();
   const visible = filterFamilyMode(allEvents, familyMode);
   const activeInRange = filterActiveInRange(visible, rangeStart, rangeEnd);
   const cityEventsInRange = filterByCity(activeInRange, cityId);

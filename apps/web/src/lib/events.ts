@@ -1,5 +1,6 @@
-import type { SupabaseClient } from "@supabase/supabase-js";
+import { unstable_cache } from "next/cache";
 import type { Database } from "@caldearte/shared-types";
+import { getSupabaseClient } from "./supabase-client";
 import { cityIdFromRegionName, deriveCityId, OTHER_CITY } from "./cities";
 import { activeRange, anchorDateOnly, dateOnlyFromIso, isArchivableMonth, isCurrentOrUpcoming, rangesOverlap, type EventDates } from "./date";
 import { matchesQuery } from "./cities";
@@ -104,9 +105,16 @@ export interface RegionMeta {
 // fetched in full (not just the subset referenced by events) so the city
 // picker can group EVERY comuna with events by its macro-región, not only
 // ones that happen to also appear in regionNameById.
-export async function fetchApprovedEvents(
-  client: SupabaseClient<Database>,
-): Promise<{ events: EventRecord[]; regions: RegionMeta[] }> {
+//
+// Doesn't depend on the visitor's city/week cookie — only the filtering
+// callers do afterwards — so it's wrapped in unstable_cache (60s) instead
+// of re-hitting Supabase on every request. Every page that reads events
+// (home, /eventos/[id], /expos-anteriores, sitemap, go-to-city) shares
+// this one cache entry. No client argument — always the same anon
+// singleton (getSupabaseClient()), keeping this cacheable without needing
+// to serialize a client object into the cache key.
+async function fetchApprovedEventsFromDb(): Promise<{ events: EventRecord[]; regions: RegionMeta[] }> {
+  const client = getSupabaseClient();
   const [eventsRes, regionsRes] = await Promise.all([
     client.from("events_public").select("*"),
     client.from("regions_public").select("*"),
@@ -134,6 +142,10 @@ export async function fetchApprovedEvents(
   const eventRows = (eventsRes.data ?? []) as EventRow[];
   return { events: eventRows.map((row) => toEventRecord(row, regionNameById)), regions };
 }
+
+export const fetchApprovedEvents = unstable_cache(fetchApprovedEventsFromDb, ["approved-events-and-regions"], {
+  revalidate: 60,
+});
 
 // Prefers the curator's own region match (exact, resolved at write time)
 // over the frontend's freeform_location guess — the guess only covers rows

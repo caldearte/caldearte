@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { cookies, headers } from "next/headers";
 import { notFound } from "next/navigation";
-import { getSupabaseClient } from "@/lib/supabase-client";
 import {
   fetchApprovedEvents,
   truncateDescription,
@@ -31,13 +30,13 @@ interface PageParams {
 }
 
 export async function generateStaticParams() {
-  const { events } = await fetchApprovedEvents(getSupabaseClient());
+  const { events } = await fetchApprovedEvents();
   return events.map((e) => ({ id: e.id }));
 }
 
 export async function generateMetadata({ params }: { params: Promise<PageParams> }): Promise<Metadata> {
   const { id } = await params;
-  const { events } = await fetchApprovedEvents(getSupabaseClient());
+  const { events } = await fetchApprovedEvents();
   const event = events.find((e) => e.id === id);
   if (!event) return {};
 
@@ -98,7 +97,7 @@ export default async function EventPage({
   searchParams: Promise<{ semana?: string }>;
 }) {
   const { id } = await params;
-  const { events, regions } = await fetchApprovedEvents(getSupabaseClient());
+  const { events, regions } = await fetchApprovedEvents();
   const event = events.find((e) => e.id === id);
   if (!event) notFound();
 
