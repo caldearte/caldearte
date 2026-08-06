@@ -6,6 +6,8 @@ import CardImage from "./CardImage";
 import { useEventCardActions } from "@/lib/useEventCardActions";
 import { useIsAdmin } from "@/lib/useIsAdmin";
 import AdminRemoveMenuItem from "./AdminRemoveMenuItem";
+import AdminSensitiveMenuItem from "./AdminSensitiveMenuItem";
+import { ADMIN_SENSITIVE_TAG } from "@/lib/useAdminToggleSensitive";
 import { DirectionsGlyph, ExternalLinkGlyph, CalendarGlyph, WhatsAppGlyph, XGlyph, FacebookGlyph, CopyGlyph, ShareGlyph, BackArrowGlyph, KebabGlyph } from "./CardActionIcons";
 import { esCL } from "@/i18n/es-CL";
 import type { EventRecord } from "@/lib/events";
@@ -151,6 +153,13 @@ export default function EventCardBase({
                     <ShareGlyph color="black" />
                     {esCL.cardMenuShare}
                   </button>
+                  {isAdmin && (
+                    <AdminSensitiveMenuItem
+                      eventId={event.id}
+                      initialMarked={event.sensitivityTags.includes(ADMIN_SENSITIVE_TAG)}
+                      onToggled={() => setMenuOpen(false)}
+                    />
+                  )}
                   {isAdmin && (
                     <AdminRemoveMenuItem eventId={event.id} eventTitle={event.title} onRemoved={() => setMenuOpen(false)} />
                   )}

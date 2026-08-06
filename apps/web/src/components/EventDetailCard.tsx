@@ -7,6 +7,7 @@ import { DirectionsGlyph, CalendarGlyph, ShareGlyph, WhatsAppGlyph, XGlyph, Face
 import { useEventCardActions } from "@/lib/useEventCardActions";
 import { useIsAdmin } from "@/lib/useIsAdmin";
 import { useAdminRemoveEvent } from "@/lib/useAdminRemoveEvent";
+import { useAdminToggleSensitive, ADMIN_SENSITIVE_TAG } from "@/lib/useAdminToggleSensitive";
 import { dateOnlyFromIso, todayInSantiago } from "@/lib/date";
 import { esCL } from "@/i18n/es-CL";
 import type { EventRecord } from "@/lib/events";
@@ -115,6 +116,27 @@ export default function EventDetailCard({ event, domain, listPosition }: EventDe
     eventTitle: event.title,
     onRemoved: () => router.push("/"),
   });
+  const {
+    marked: sensitiveMarked,
+    toggling: sensitiveToggling,
+    justToggled: sensitiveJustToggled,
+    handleToggle: handleToggleSensitive,
+  } = useAdminToggleSensitive({
+    eventId: event.id,
+    initialMarked: event.sensitivityTags.includes(ADMIN_SENSITIVE_TAG),
+    onToggled: () => router.refresh(),
+  });
+  const sensitiveLabel = sensitiveJustToggled
+    ? sensitiveMarked
+      ? esCL.cardMenuMarkedSensitive
+      : esCL.cardMenuUnmarkedSensitive
+    : sensitiveToggling
+      ? sensitiveMarked
+        ? esCL.cardMenuUnmarkingSensitive
+        : esCL.cardMenuMarkingSensitive
+      : sensitiveMarked
+        ? esCL.cardMenuUnmarkSensitive
+        : esCL.cardMenuMarkSensitive;
 
   return (
     <article className="flex flex-col md:flex-row gap-[24px] md:gap-[60px] items-start">
@@ -207,6 +229,9 @@ export default function EventDetailCard({ event, domain, listPosition }: EventDe
               </div>
             )}
           </div>
+          {isAdmin && (
+            <ActionButton onClick={handleToggleSensitive} disabled={sensitiveToggling} label={sensitiveLabel} />
+          )}
           {isAdmin && (
             <ActionButton
               onClick={handleRemove}
