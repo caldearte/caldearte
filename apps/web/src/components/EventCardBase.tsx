@@ -2,10 +2,12 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import CardImage from "./CardImage";
 import { useEventCardActions } from "@/lib/useEventCardActions";
 import { useIsAdmin } from "@/lib/useIsAdmin";
 import AdminRemoveMenuItem from "./AdminRemoveMenuItem";
+import AdminRemoveReasonMenu from "./AdminRemoveReasonMenu";
 import AdminSensitiveMenuItem from "./AdminSensitiveMenuItem";
 import { ADMIN_SENSITIVE_TAG } from "@/lib/useAdminToggleSensitive";
 import { DirectionsGlyph, ExternalLinkGlyph, CalendarGlyph, WhatsAppGlyph, XGlyph, FacebookGlyph, CopyGlyph, ShareGlyph, BackArrowGlyph, KebabGlyph } from "./CardActionIcons";
@@ -60,7 +62,9 @@ export default function EventCardBase({
   // Originally mobile-only, but the user liked the collapsed UX enough
   // (2026-07-20) to want it everywhere — no more desktop/mobile split.
   const [menuOpen, setMenuOpen] = useState(false);
+  const [removeReasonOpen, setRemoveReasonOpen] = useState(false);
   const isAdmin = useIsAdmin();
+  const router = useRouter();
 
   return (
     <div className="relative bg-black rounded-2xl overflow-hidden flex flex-col h-full">
@@ -100,10 +104,23 @@ export default function EventCardBase({
               onClick={() => {
                 setMenuOpen(false);
                 setShareSubmenuOpen(false);
+                setRemoveReasonOpen(false);
               }}
             />
             <div role="menu" className="absolute bottom-10 right-0 z-20 min-w-[190px] overflow-hidden rounded-xl bg-white shadow-lg py-1">
-              {!shareSubmenuOpen ? (
+              {removeReasonOpen ? (
+                <AdminRemoveReasonMenu
+                  eventId={event.id}
+                  onBack={() => setRemoveReasonOpen(false)}
+                  onRemoved={() => {
+                    setMenuOpen(false);
+                    // Card lists are server-fetched props all the way from
+                    // app/page.tsx — a full refetch is the simplest correct
+                    // way to make the removed card actually disappear.
+                    router.refresh();
+                  }}
+                />
+              ) : !shareSubmenuOpen ? (
                 <>
                   {mapsHref && (
                     <a
@@ -160,9 +177,7 @@ export default function EventCardBase({
                       onToggled={() => setMenuOpen(false)}
                     />
                   )}
-                  {isAdmin && (
-                    <AdminRemoveMenuItem eventId={event.id} eventTitle={event.title} onRemoved={() => setMenuOpen(false)} />
-                  )}
+                  {isAdmin && <AdminRemoveMenuItem onClick={() => setRemoveReasonOpen(true)} />}
                 </>
               ) : (
                 <>
@@ -226,6 +241,7 @@ export default function EventCardBase({
           onClick={() => {
             setMenuOpen((open) => !open);
             setShareSubmenuOpen(false);
+            setRemoveReasonOpen(false);
           }}
           aria-label={esCL.cardMoreOptionsAriaLabel}
           aria-haspopup="menu"
