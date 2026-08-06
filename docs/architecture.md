@@ -27,8 +27,17 @@
   cost data.
 - **Email:** Resend (free tier, 3,000/month) for approval and inbound-mail
   flows (Phase 1b).
-- **Geocoding:** Nominatim (OpenStreetMap), free, 1 req/sec. Caching
-  mechanism not yet designed — see [roadmap.md](roadmap.md#phase-2--geotemporal-personalization).
+- **Geocoding:** no external service — `nearestCityIdByCoords`
+  (`apps/web/src/lib/cities.ts`) matches a lat/lng (from Vercel's IP
+  headers or the browser's own Geolocation API) against each comuna's
+  already-seeded centroid coordinates
+  (`20260730005132_backfill_region_coordinates.sql`) via plain haversine
+  distance, capped at 50km before falling back to the coarser name-only
+  match. Nominatim was evaluated early on but never actually wired in —
+  no per-venue geocoding is needed since location stays freeform text,
+  and the one remaining coordinate need (visitor-side "which comuna am I
+  near") is fully covered by matching against Chile's own fixed,
+  already-known 346 comuna centroids.
 
 ## Free-tier posture: upgrade reactively, not preemptively
 
@@ -47,6 +56,62 @@ Anthropic API spend specifically — see
 [region-discovery.md](region-discovery.md#cost-governance) for the
 self-tracked $10/month ceiling.
 
+## Admin mode
+
+**Shipped 2026-08-05/06.** A single-admin (not multi-user) tooling layer,
+built as the first real consumer of the Auth.js decision in
+[roadmap.md](roadmap.md#phase-2--community)'s Phase 2.1 — but scoped
+narrowly to admin-only actions, NOT the general visitor accounts
+("quiero ir"/"ya la vi") that phase still describes as unbuilt. When 2.1
+eventually ships real user accounts, only the session/JWT plumbing below
+gets reused; there is no `users` table yet and none of this exposes
+sign-in to regular visitors.
+
+- **Auth.js v5** (`next-auth@5`), Google OAuth provider only, JWT session
+  strategy, no database adapter, no `users` table
+  (`apps/web/src/lib/auth.ts`). A `jwt`/`session` callback compares the
+  signed-in email against `ADMIN_EMAIL` (server-side only) and attaches
+  the result as an `isAdmin` claim on the session
+  (`apps/web/src/next-auth.d.ts` module augmentation) — the raw email
+  comparison itself never reaches the client, only the boolean.
+  `isAdminSession(session)` is the one place that check lives, reused by
+  every admin API route.
+- **`/login`** (`apps/web/src/app/login/page.tsx`) is the ONLY sign-in
+  surface on the whole site — never linked from the header, footer, or
+  menu drawer, and disallowed in `robots.ts`. Reaching it means typing
+  the URL directly. Framed to visitors as "estamos construyendo las
+  cuentas de usuario" (the real, forward-looking Phase 2.1 framing) since
+  anyone can technically sign in with their own Google account — signing
+  in without being the admin just grants no extra capability, per the
+  `isAdmin` gate above.
+- **`useIsAdmin()`** (`apps/web/src/lib/useIsAdmin.ts`) — client hook
+  gating which admin UI renders at all. Purely a UX convenience; the real
+  enforcement is server-side (below), so this hook being wrong/bypassed
+  client-side grants no actual access.
+- **Admin action pattern** — every privileged write goes through the same
+  three-step chain, first established for "Quitar" (soft-remove) and
+  reused as-is for "Marcar como sensible" (toggle):
+  1. Browser → a Next.js API route under `apps/web/src/app/api/admin/*`
+     that calls `auth()` + `isAdminSession()` and 401s/403s before doing
+     anything else.
+  2. That route forwards the request to a Supabase Edge Function
+     (`supabase/functions/admin-*`), authenticated by a shared
+     `x-admin-secret` header matching `ADMIN_ACTIONS_SECRET` — the same
+     "our own server, not the public internet" trust boundary every Edge
+     Function in this repo already relies on (see `newsletter-confirm`/
+     `newsletter-unsubscribe`). Deployed with `--no-verify-jwt`, since
+     none of these functions receive a Supabase JWT from their caller.
+  3. The Edge Function holds `SUPABASE_SERVICE_ROLE_KEY` and does the
+     actual privileged write. `apps/web`'s own `lib/supabase-client.ts`
+     never holds the service-role key (`assertAnonRole` guard) — this
+     three-step indirection is what keeps that invariant intact while
+     still letting an admin action reach past RLS.
+  Both shipped actions soft-modify a row rather than hard-deleting or
+  overwriting pipeline-owned columns — see data-model.md's `removed_at`/
+  `removed_reason`/`admin_sensitive_marked_at` entries for why each stays
+  a separate column from the AI-owned ones (`curation_status`,
+  `sensitivity_tags`).
+
 ## User city detection
 
 **Chosen approach: Vercel's native IP geolocation as a silent default (SSR) +
@@ -61,33 +126,54 @@ unnecessary: the ones evaluated (ipapi.co, ipinfo.io) are either not
 production-viable on their free tier, or their free tier only gives
 country-level precision, not city.
 
-Actual implementation (as of the production-launch pass, 2026-07-17):
+Actual implementation:
 
-1. `apps/web/src/app/page.tsx` (a server component, NOT edge middleware —
-   an earlier version resolved this in `proxy.ts` via `@vercel/functions`'
-   `geolocation(request)`, which was removed because it only has access to
-   the geo headers, not live event/región data, and could only recognize a
-   fixed 5-city allowlist as a result) reads the raw `x-vercel-ip-city`/
-   `x-vercel-ip-country` headers directly via `next/headers`' `headers()`
-   on every request that has no `caldearte_city` cookie yet — recomputed
-   fresh each time, never permanently pinned, so a visitor's default
-   improves automatically as more comunas get events.
-2. `apps/web/src/lib/cities.ts`'s `resolveDefaultCityId` does the actual
-   matching, three tiers in order: (a) if the geo country isn't Chile,
-   Santiago immediately, no city matching attempted; (b) if the geo city
-   is a real seeded comuna AND has events today, use it directly — any of
-   the 346 comunas, not a hardcoded whitelist; (c) else, a comuna in the
-   same admin región that has events today ("una cercana de la misma
-   región"); (d) else Santiago.
-3. A manual city selector, always visible in the header, sets the
-   `caldearte_city` cookie client-side and takes precedence over IP
-   resolution on every later visit — covers the cases where IP fails (VPN,
-   mobile network, local dev) and gives the user control. Once set, this
-   cookie is never re-evaluated against geolocation again.
-4. Browser Geolocation API as an optional action ("Use my exact location")
-   remains unbuilt — not automatic, still just an idea, not a regression
-   from a prior working version.
-5. `/privacidad` (`apps/web/src/app/privacidad/page.tsx`) explains IP-based
+1. `resolveCityPickerContext` (`apps/web/src/lib/cityPickerContext.ts`,
+   extracted 2026-08-06 once both the home page and the event detail page
+   needed the exact same city-resolution + picker-sidebar-data logic — a
+   server-only function, reads `cookies()`/`headers()` directly, no edge
+   middleware) is the single place a visitor's active city gets resolved,
+   for every page that needs it.
+2. If a `caldearte_city` cookie is set, it wins — **validated against the
+   real comuna list** (`buildRegionMetaByCityId(regions)`, all 346 seeded
+   comunas regardless of whether any currently has an event), not against
+   which comunas happen to have an event right now. Real bug, found
+   2026-08-06: this used to validate against `cityNames` (built only from
+   comunas with at least one CURRENT event) — so removing the last event
+   from a comuna silently invalidated its own visitor's cookie on every
+   subsequent page load, bouncing them to `DEFAULT_CITY_ID` (Santiago)
+   even though they never touched the city picker. A valid comuna with
+   zero current events now stays a visitor's real selection; it just
+   doesn't offer itself as a browsable destination in the picker (below)
+   until it has something again.
+3. With no cookie at all (first-time visitor), `resolveDefaultCityId`
+   (`apps/web/src/lib/cities.ts`) reads the raw `x-vercel-ip-city`/
+   `x-vercel-ip-country` headers and matches three tiers in order: (a) if
+   the geo country isn't Chile, Santiago immediately, no city matching
+   attempted; (b) if the geo city is a real seeded comuna AND has events
+   today, use it directly — any of the 346 comunas, not a hardcoded
+   whitelist; (c) else, a comuna in the same admin región that has events
+   today ("una cercana de la misma región"); (d) else Santiago.
+4. **The manual city selector** (`CityPickerPanel.tsx`) — rebuilt
+   2026-08-03 as a 3-step wizard (Zona → Región → Comuna, replacing the
+   earlier single-panel collapsible tree) — sets the `caldearte_city`
+   cookie client-side on selection, taking precedence over IP resolution
+   on every later visit. Only comunas/regiones with at least one event for
+   the currently selected week are offered as browsable destinations at
+   steps 2/3 (`citiesWithEvents`, `groupCitiesByRegion`) — an empty one
+   simply doesn't appear, no exception for the visitor's own current
+   selection (removed 2026-08-06 alongside the cookie-validation fix
+   above, once that fix made the exception unnecessary as a safety net).
+   The 5 zonas at step 1 are the one exception to "hide if empty": they
+   always stay visible, just disabled (non-clickable) when none of their
+   regiones has anything this week — collapsing a whole geographic zone
+   out of the map would read as "this part of Chile doesn't exist," not
+   "nothing here right now."
+5. Browser Geolocation API as an optional action ("Usar ubicación exacta")
+   is built and opt-in only (`requestPreciseCityId`,
+   `PRECISE_CITY_COOKIE`) — never automatic, surfaced inside the picker
+   and via `GeoLocationChangedBanner`'s own silent re-check.
+6. `/privacidad` (`apps/web/src/app/privacidad/page.tsx`) explains IP-based
    city inference in plain terms, without tying it to an account or storing
    it beyond the preference cookie.
 

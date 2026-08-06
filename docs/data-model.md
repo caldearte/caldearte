@@ -71,11 +71,29 @@ events
     "submitted" event, goes in the reply email),
   removed_at, removed_reason (both nullable, added 2026-08-05) — manual
     admin soft-delete, deliberately separate from curation_status (which
-    is pipeline-owned). Set by an admin clicking "Quitar" on an event
-    card's kebab menu (apps/web/src/components/AdminRemoveMenuItem.tsx,
-    gated behind Auth.js + ADMIN_EMAIL, see apps/web/src/lib/auth.ts) —
-    never written by Event Discovery. events_public excludes any row with
-    removed_at set, same as it excludes non-approved curation_status.
+    is pipeline-owned). Set by an admin clicking "Quitar" then picking a
+    reason from a submenu (apps/web/src/components/AdminRemoveReasonMenu.tsx,
+    gated behind Auth.js + ADMIN_EMAIL, see apps/web/src/lib/auth.ts and
+    architecture.md's "Admin mode" section) — never written by Event
+    Discovery. removed_reason is a stable short code (convocatoria |
+    teatro_tocata | lanzamiento_libro | no_vigente | otro, see
+    apps/web/src/i18n/es-CL.ts's cardMenuRemoveReasons), kept for future
+    pattern analysis (e.g. if "convocatoria" removals pile up, that's a
+    signal Event Discovery should filter that category at the source).
+    events_public excludes any row with removed_at set, same as it
+    excludes non-approved curation_status.
+  admin_sensitive_marked_at (nullable, added 2026-08-06) — manual admin
+    correction for sensitivity_tags, deliberately a SEPARATE column
+    rather than a write into sensitivity_tags itself (which stays
+    exclusively Haiku's own output). Toggled by the same admin menu
+    (apps/web/src/components/AdminSensitiveMenuItem.tsx) for either
+    direction of the mistake: Haiku missed something sensitive, or
+    flagged something that isn't. events_public folds a synthetic
+    'marcado_admin' string into its computed sensitivity_tags output
+    when this is set (see that view's own entry below) — every existing
+    frontend consumer of sensitivity_tags (CardImage's blur,
+    filterFamilyMode) already just checks array length/membership, so
+    this needed zero frontend prop/type changes to take effect.
   created_at
   -- Auto-deleted ~1 year past run_end_date (or run_start_date/
   -- opening_datetime as fallbacks) — see overview.md's "full exhibition
@@ -118,9 +136,19 @@ events_public, regions_public (views, not tables — created in
     curation_status = 'approved' and removed_at is null` baked directly
     into the view definition (the removed_at exclusion added
     20260805070000, alongside the removed_at/removed_reason columns
-    themselves). Excludes curation_reasoning, image_storage_path,
+    themselves). sensitivity_tags here is a CASE expression, not a direct
+    column passthrough (added 20260806070000): when
+    admin_sensitive_marked_at is set, it's the real column's array with a
+    synthetic 'marcado_admin' string appended; otherwise the real column
+    unchanged. admin_sensitive_marked_at itself is NOT exposed as its own
+    column — the frontend's admin toggle button reads current state from
+    that same synthetic tag. (The events table's own CHECK constraint on
+    sensitivity_tags only binds writes into that physical column, not this
+    view's computed SELECT expression, so the synthetic tag never risks
+    violating it.) Excludes curation_reasoning, image_storage_path,
     curation_status, public_explanation, created_at, medium_type,
-    opening_date_confidence, source, removed_at, removed_reason.
+    opening_date_confidence, source, removed_at, removed_reason,
+    admin_sensitive_marked_at.
   regions_public: id, name, country, lat, lng, population,
     admin_region_name, admin_region_order, admin_region_numeral — excludes
     every pipeline-internal column (status, exclusion_reason,
@@ -242,6 +270,10 @@ Fixed in the cost-governance migration for all tables that existed then.
 | `RESEND_API_KEY` | Vercel project env var (server-only, never `NEXT_PUBLIC_*`) AND GitHub Actions secret | in use since 2026-07-17 for `apps/web/src/app/api/contact/route.ts`'s outbound-only contact-form relay; also in use since 2026-07-30 for `apps/curator`'s run-summary and cross-source-conflict-escalation emails (`lib/notify.ts`), sending from `contacto@caldearte.com` in both cases; also used by the newsletter's confirmation email (`apps/web/src/app/api/newsletter/subscribe/route.ts`) and weekly digest (`apps/curator/src/lib/notify.ts`'s `sendDigestEmail`). |
 | ~~`APPROVAL_TOKEN_SECRET`~~ | not needed | originally planned to sign the one-time links behind email approval buttons — the cross-source conflict escalation feature that shipped 2026-07-30 (see region-discovery.md) uses opaque random tokens stored in `curation_escalations` and looked up by exact value instead, same trust model as everything else behind `service_role`-only RLS in this schema. No signing needed. |
 | `RESEND_WEBHOOK_SECRET` | Supabase Edge Function secret | verifies inbound-email webhooks (date inquiry, public mailbox) really come from Resend — still Phase 1b, not built |
+| `AUTH_SECRET` | Vercel project env var (server-only) AND `apps/web/.env.local` | Auth.js v5's session-encryption secret, generated once via `openssl rand -base64 32`; see architecture.md's "Admin mode" section |
+| `AUTH_GOOGLE_ID` / `AUTH_GOOGLE_SECRET` | Vercel project env var (server-only) AND `apps/web/.env.local` | Google OAuth 2.0 client credentials (Google Cloud Console, Testing-mode consent screen, single test user) — the only sign-in provider `/login` offers |
+| `ADMIN_EMAIL` | Vercel project env var (server-only) AND `apps/web/.env.local` | the one email compared against a signed-in session to compute `isAdmin` (`apps/web/src/lib/auth.ts`) — never shipped to the client, only the resulting boolean claim is |
+| `ADMIN_ACTIONS_SECRET` | Vercel project env var (server-only) AND `apps/web/.env.local`, ALSO a Supabase Edge Function secret (must match) | shared secret between apps/web's admin API routes (`/api/admin/remove-event`, `/api/admin/toggle-sensitive`) and their corresponding Edge Functions — see architecture.md's "Admin mode" section for the full trust chain |
 | `META_APP_ID` / `META_APP_SECRET` | Phase 4, GitHub Actions secret | not needed until Phase 4 |
 | `TIKTOK_CLIENT_KEY` / `TIKTOK_CLIENT_SECRET` | Phase 4, GitHub Actions secret | not needed until Phase 4 |
 
