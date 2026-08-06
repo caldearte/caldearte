@@ -22,23 +22,23 @@ import type { EventRecord } from "@/lib/events";
 // reuse it instead of re-deriving the same rules (which have already had
 // real bugs fixed in them — see the date-line comment below).
 export function useEventCardActions(event: EventRecord, variant: "inauguracion" | "expo", hideTodayBadge = false) {
+  const today = todayInSantiago();
   const anchor = anchorDateOnly(event);
   // An inauguración is a single-day happening (the opening night itself),
   // never a range — real bug, found 2026-07-31: this used to check the
   // full run range for both variants, so an inauguración card kept
   // showing "HOY" for the entire multi-week run that followed its actual
   // (already-past) opening date.
-  const showTodayBadge =
-    !hideTodayBadge && (variant === "inauguracion" ? anchor === todayInSantiago() : isActiveOn(event, todayInSantiago()));
+  const showTodayBadge = !hideTodayBadge && (variant === "inauguracion" ? anchor === today : isActiveOn(event, today));
   const dateLine =
     variant === "inauguracion" && event.openingDatetime
-      ? `${fmtInauguracionDate(event.openingDatetime)} - ${
+      ? `${fmtInauguracionDate(event.openingDatetime, today)} - ${
           event.openingTimeConfirmed ? fmtOpeningHour(event.openingDatetime) : esCL.consultHourWithVenue
         }`
       : // "expo" variant: just the exhibition's run range, never an hour —
         // real bug, found 2026-07-20: this used to append the same hour
         // suffix as the inauguración variant.
-        anchor && fmtPeriod(event.runStartDate, event.runEndDate, anchor);
+        anchor && fmtPeriod(event.runStartDate, event.runEndDate, anchor, today);
 
   // Rediseño 2.0.0 bento/list cards — expo variant only. NOT the same as
   // `dateLine` above (which the older kebab-menu-based EventCardBase/
@@ -47,8 +47,8 @@ export function useEventCardActions(event: EventRecord, variant: "inauguracion" 
   // "ÚLTIMOS DÍAS —" once the run is within a week of ending. Kept as a
   // separate field rather than changing `dateLine` itself, so the older
   // full-range display doesn't silently change underneath it.
-  const untilDateLine = variant === "expo" && anchor ? fmtUntilDate(event.runEndDate, anchor, todayInSantiago()) : null;
-  const closingSoon = variant === "expo" && computeIsClosingSoon(event.runEndDate, todayInSantiago());
+  const untilDateLine = variant === "expo" && anchor ? fmtUntilDate(event.runEndDate, anchor, today) : null;
+  const closingSoon = variant === "expo" && computeIsClosingSoon(event.runEndDate, today);
 
   const displayedVenue = event.placeName ?? event.freeformLocation;
   const comuna = deriveComuna(event.freeformLocation, event.placeName);

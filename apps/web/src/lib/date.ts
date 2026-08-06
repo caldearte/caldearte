@@ -32,24 +32,40 @@ export function fmtShort(dateStr: string): string {
   return `${date.getDate()} ${MONTHS_SHORT[date.getMonth()]}`;
 }
 
+// A year is only worth printing when it isn't the obvious one — same rule
+// fmtUntilDate already applies (user request 2026-08-04), generalized
+// here to `!==` rather than `>` since fmtPeriod's start date (unlike
+// fmtUntilDate's always-current-or-future end date) can legitimately be
+// in a past year for a still-running exhibition.
+function yearSuffix(date: Date, todayStr: string): string {
+  const todayYear = parseDateOnly(todayStr).getFullYear();
+  return date.getFullYear() !== todayYear ? ` '${String(date.getFullYear()).slice(-2)}` : "";
+}
+
 // Card period text, e.g. "12 al 28 de Julio" or, spanning two months,
 // "28 de julio al 3 de agosto". Collapses to a single date when the run is
-// one day (or there's no run at all, just an anchor).
-export function fmtPeriod(runStartDate: string | null, runEndDate: string | null, anchorDate: string): string {
+// one day (or there's no run at all, just an anchor). Appends a 2-digit
+// year to whichever side(s) fall outside today's calendar year — e.g. "10
+// de julio '25 al 31 de julio '27" — real bug, found 2026-08-06: this used
+// to never print a year at all, even for a multi-year run, so "Roberto
+// Matta. Abrir la mirada" (10 jul 2025 – 31 jul 2027) rendered as just "10
+// al 31 de julio" on the event's own page, silently losing the very
+// distinction fmtUntilDate was already making elsewhere on the site.
+export function fmtPeriod(runStartDate: string | null, runEndDate: string | null, anchorDate: string, todayStr: string): string {
   const start = runStartDate ?? anchorDate;
   const end = runEndDate ?? anchorDate;
 
   if (start === end) {
     const d = parseDateOnly(start);
-    return `${d.getDate()} de ${MONTHS[d.getMonth()]}`;
+    return `${d.getDate()} de ${MONTHS[d.getMonth()]}${yearSuffix(d, todayStr)}`;
   }
 
   const s = parseDateOnly(start);
   const e = parseDateOnly(end);
   if (s.getMonth() === e.getMonth() && s.getFullYear() === e.getFullYear()) {
-    return `${s.getDate()} al ${e.getDate()} de ${MONTHS[s.getMonth()]}`;
+    return `${s.getDate()} al ${e.getDate()} de ${MONTHS[s.getMonth()]}${yearSuffix(e, todayStr)}`;
   }
-  return `${s.getDate()} de ${MONTHS[s.getMonth()]} al ${e.getDate()} de ${MONTHS[e.getMonth()]}`;
+  return `${s.getDate()} de ${MONTHS[s.getMonth()]}${yearSuffix(s, todayStr)} al ${e.getDate()} de ${MONTHS[e.getMonth()]}${yearSuffix(e, todayStr)}`;
 }
 
 // Rediseño 2.0.0 — exposiciones bento/list cards, e.g. "Hasta el 2 de
@@ -88,8 +104,8 @@ export function isClosingSoon(runEndDate: string | null, todayStr: string, thres
 // (that's what ExpoCard shows instead) — real bug, found 2026-07-20: the
 // inauguración card used to show fmtPeriod(runStartDate, runEndDate, ...),
 // the whole run through closing day, instead of just the opening date.
-export function fmtInauguracionDate(openingDatetimeIso: string): string {
-  return fmtPeriod(null, null, dateOnlyFromIso(openingDatetimeIso));
+export function fmtInauguracionDate(openingDatetimeIso: string, todayStr: string): string {
+  return fmtPeriod(null, null, dateOnlyFromIso(openingDatetimeIso), todayStr);
 }
 
 // "- 19 hr" / "- 19:30 hr" suffix for an inauguración card. Chile-timezone,
