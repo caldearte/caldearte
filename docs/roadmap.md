@@ -27,6 +27,21 @@ basics. See [architecture.md](architecture.md) for the shipped city-picker
 and geo-detection design, and `apps/web/src/components/` for the actual
 component tree.
 
+**"Rediseño 2.0.0" (2026-08-03 through 2026-08-06, PRs #182–#208) fully
+shipped and merged to `main`** — a visual and structural overhaul on top of the
+July launch, not a separate phase: new event/exposición cards (bento +
+list view toggle), a rebuilt 3-step location selector (Zona → Región →
+Comuna, see architecture.md), a redesigned search panel, `/curatoria` and
+`/privacidad` split into their own pages, a per-event page "modo lista"
+(stays inside the visitor's current city+week list, with position/prev-
+next nav), and — the first genuinely new capability, not just a visual
+pass — **admin mode**: real Google sign-in (Auth.js) gating two actions
+directly on the live site (soft-remove an event with a reason, correct a
+sensitivity-tag miss in either direction), see architecture.md's "Admin
+mode" section. This is deliberately narrower than Phase 2.1 below (admin-
+only, no `users` table, not visitor-facing) but reuses the same Auth.js/
+JWT foundation that phase will eventually build on.
+
 ## Phase 0 — Definition (complete)
 
 Closed out the initial project brief, moved into a dedicated repo.
@@ -256,6 +271,15 @@ building infra" discipline the rest of this project has followed.
   personal to-do list; "ya la vi" is the one that starts being genuinely
   new, and gives the "Expos anteriores" archive a second, personal reason
   to exist beyond SEO.
+  **Partially shipped, 2026-08-05, but not this phase**: the Auth.js/JWT
+  foundation described above now exists in production (as "admin mode,"
+  see the redesign summary above and architecture.md) — but scoped to a
+  single hardcoded `ADMIN_EMAIL`, no `users`/`event_marks` tables, and no
+  visitor-facing sign-in surface (`/login` is unlinked from the site).
+  This phase is still fully unbuilt: general visitor accounts, the
+  `users`/`event_marks` schema, and "quiero ir"/"ya la vi" themselves
+  remain open work, just with less infrastructure risk than before since
+  the session/auth plumbing is already proven in production.
 - **2.2 — Public profile.** "Lo que Fulano ha visto" — tests the social/
   identity angle cheaply, before any moderation surface exists.
 - **2.3 — Rating + short review per exposición.** First real
