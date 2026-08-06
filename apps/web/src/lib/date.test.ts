@@ -74,19 +74,38 @@ test("isActiveOn: false for an event with no resolvable anchor at all", () => {
 });
 
 test("fmtPeriod: same-month run", () => {
-  assert.equal(fmtPeriod("2026-07-12", "2026-07-28", "2026-07-12"), "12 al 28 de julio");
+  assert.equal(fmtPeriod("2026-07-12", "2026-07-28", "2026-07-12", "2026-07-01"), "12 al 28 de julio");
 });
 
 test("fmtPeriod: cross-month run", () => {
-  assert.equal(fmtPeriod("2026-07-28", "2026-08-03", "2026-07-28"), "28 de julio al 3 de agosto");
+  assert.equal(fmtPeriod("2026-07-28", "2026-08-03", "2026-07-28", "2026-07-01"), "28 de julio al 3 de agosto");
 });
 
 test("fmtPeriod: single day (no run, just an anchor)", () => {
-  assert.equal(fmtPeriod(null, null, "2026-07-11"), "11 de julio");
+  assert.equal(fmtPeriod(null, null, "2026-07-11", "2026-07-01"), "11 de julio");
+});
+
+test("fmtPeriod: appends a 2-digit year to whichever side falls outside today's calendar year", () => {
+  // Multi-year run, both ends outside today's year — real bug, found
+  // 2026-08-06: "Roberto Matta. Abrir la mirada" (10 jul 2025 – 31 jul
+  // 2027) rendered as just "10 al 31 de julio" on its own event page.
+  assert.equal(fmtPeriod("2025-07-10", "2027-07-31", "2025-07-10", "2026-08-06"), "10 de julio '25 al 31 de julio '27");
+  // Same-year run, but not today's year — suffix printed once, at the end.
+  assert.equal(fmtPeriod("2027-07-12", "2027-07-28", "2027-07-12", "2026-08-06"), "12 al 28 de julio '27");
+  // Cross-month, end year differs from today's — only the end gets a suffix.
+  assert.equal(fmtPeriod("2026-12-28", "2027-01-03", "2026-12-28", "2026-08-06"), "28 de diciembre al 3 de enero '27");
+  // Single day, outside today's year.
+  assert.equal(fmtPeriod(null, null, "2027-07-11", "2026-08-06"), "11 de julio '27");
+  // Today's own year never gets a suffix.
+  assert.equal(fmtPeriod("2026-07-12", "2026-07-28", "2026-07-12", "2026-08-06"), "12 al 28 de julio");
 });
 
 test("fmtInauguracionDate: always the single opening day, ignoring any run range", () => {
-  assert.equal(fmtInauguracionDate("2026-07-11T23:00:00.000Z"), "11 de julio");
+  assert.equal(fmtInauguracionDate("2026-07-11T23:00:00.000Z", "2026-07-01"), "11 de julio");
+});
+
+test("fmtInauguracionDate: appends a 2-digit year when the opening isn't in today's calendar year", () => {
+  assert.equal(fmtInauguracionDate("2027-07-11T23:00:00.000Z", "2026-08-06"), "11 de julio '27");
 });
 
 test("fmtOpeningHour: whole hour", () => {
