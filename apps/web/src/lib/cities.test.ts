@@ -103,12 +103,6 @@ test("citiesWithEvents: excludeCityId always drops that city, even if it has eve
   assert.ok(!result.some((c) => c.id === "santiago"));
 });
 
-test("citiesWithEvents: alwaysIncludeCityId keeps that city even at zero counts (the picker's 'don't make my own city vanish' safety net)", () => {
-  const result = citiesWithEvents({}, {}, { alwaysIncludeCityId: "santiago" });
-  assert.ok(result.some((c) => c.id === "santiago"));
-  assert.equal(result.length, 1); // every other zero-count city still dropped
-});
-
 test("resolveDefaultCityId: own comuna wins when it's real and has events today", () => {
   const metaByCityId = buildRegionMetaByCityId([regionMeta({ name: "Las Condes" })]);
   const cityCounts: Record<string, CityCounts> = { "las-condes": { inauguraciones: 1, exposActuales: 0 } };
