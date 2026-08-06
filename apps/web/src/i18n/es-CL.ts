@@ -259,8 +259,22 @@ export const esCL = {
   cardMenuRemove: "Quitar",
   cardMenuRemoving: "Quitando…",
   cardMenuRemoved: "Evento quitado",
-  cardMenuRemoveConfirm: (title: string) => `¿Quitar "${title}" de Caldearte? Dejará de verse en el sitio.`,
   cardMenuRemoveError: "No se pudo quitar el evento. Intenta de nuevo.",
+  // Picking one of these IS the confirmation — replaced the old
+  // window.confirm() dialog 2026-08-06 (user request: submenu of reasons,
+  // same pattern as Compartir's WhatsApp/X/Facebook list). `value` is
+  // what's stored in events.removed_reason — a stable code, not the
+  // Spanish label, so it stays queryable/analyzable later even if the
+  // label copy changes (same reasoning as sensitivity_tags' own codes).
+  // "Otro" deliberately has no free-text follow-up for now — add one only
+  // if it turns out to be the common case in practice.
+  cardMenuRemoveReasons: [
+    { value: "convocatoria", label: "Convocatoria" },
+    { value: "teatro_tocata", label: "Teatro / Tocata" },
+    { value: "lanzamiento_libro", label: "Lanzamiento de libro" },
+    { value: "no_vigente", label: "Ya no está vigente" },
+    { value: "otro", label: "Otro" },
+  ],
   // Toggle, not a one-way action — no confirm() dialog like Quitar has,
   // it's instantly reversible by clicking again. Label reflects current
   // state (see useAdminToggleSensitive's own "marcado_admin" tag check).

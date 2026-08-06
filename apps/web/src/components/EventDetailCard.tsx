@@ -1,12 +1,13 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import CardImage from "./CardImage";
 import { DirectionsGlyph, CalendarGlyph, ShareGlyph, WhatsAppGlyph, XGlyph, FacebookGlyph, CopyGlyph } from "./CardActionIcons";
+import AdminRemoveReasonMenu from "./AdminRemoveReasonMenu";
 import { useEventCardActions } from "@/lib/useEventCardActions";
 import { useIsAdmin } from "@/lib/useIsAdmin";
-import { useAdminRemoveEvent } from "@/lib/useAdminRemoveEvent";
 import { useAdminToggleSensitive, ADMIN_SENSITIVE_TAG } from "@/lib/useAdminToggleSensitive";
 import { dateOnlyFromIso, todayInSantiago } from "@/lib/date";
 import { esCL } from "@/i18n/es-CL";
@@ -106,16 +107,9 @@ export default function EventDetailCard({ event, domain, listPosition }: EventDe
   } = useEventCardActions(event, variant, false);
 
   const isAdmin = useIsAdmin();
-  // Navigates home instead of router.refresh() (what the kebab-menu
-  // version does) — this page is statically generated (generateStaticParams,
-  // revalidate=3600), so refreshing it wouldn't reflect the removal for
-  // up to an hour. The home page is server-rendered per request, so it
-  // shows the removal immediately.
-  const { removing, removed, handleRemove } = useAdminRemoveEvent({
-    eventId: event.id,
-    eventTitle: event.title,
-    onRemoved: () => router.push("/"),
-  });
+  // Reason-picker popover, same trigger-then-switch-panel pattern as the
+  // Compartir button just above — see AdminRemoveReasonMenu's own comment.
+  const [removeReasonOpen, setRemoveReasonOpen] = useState(false);
   const {
     marked: sensitiveMarked,
     toggling: sensitiveToggling,
@@ -233,12 +227,30 @@ export default function EventDetailCard({ event, domain, listPosition }: EventDe
             <ActionButton onClick={handleToggleSensitive} disabled={sensitiveToggling} label={sensitiveLabel} />
           )}
           {isAdmin && (
-            <ActionButton
-              onClick={handleRemove}
-              disabled={removing}
-              destructive
-              label={removed ? esCL.cardMenuRemoved : removing ? esCL.cardMenuRemoving : esCL.cardMenuRemove}
-            />
+            <div className="relative">
+              <ActionButton onClick={() => setRemoveReasonOpen((open) => !open)} destructive label={esCL.cardMenuRemove} />
+              {removeReasonOpen && (
+                <>
+                  <button
+                    type="button"
+                    aria-label={esCL.cardMoreOptionsAriaLabel}
+                    className="fixed inset-0 z-10"
+                    onClick={() => setRemoveReasonOpen(false)}
+                  />
+                  <div className="absolute top-full left-0 mt-2 z-20 min-w-[190px] overflow-hidden rounded-xl bg-white border border-stone-200 shadow-lg py-1">
+                    <AdminRemoveReasonMenu
+                      eventId={event.id}
+                      onBack={() => setRemoveReasonOpen(false)}
+                      // Navigates home instead of router.refresh() — this
+                      // event no longer exists once removed, so refreshing
+                      // IN PLACE would just hit notFound() instead of
+                      // showing the admin their change actually landed.
+                      onRemoved={() => router.push("/")}
+                    />
+                  </div>
+                </>
+              )}
+            </div>
           )}
         </div>
 

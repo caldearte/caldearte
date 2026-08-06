@@ -2,11 +2,13 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import CardImage from "./CardImage";
 import { DirectionsGlyph, CalendarGlyph, ShareGlyph, WhatsAppGlyph, XGlyph, FacebookGlyph, CopyGlyph, KebabGlyph } from "./CardActionIcons";
 import { useEventCardActions } from "@/lib/useEventCardActions";
 import { useIsAdmin } from "@/lib/useIsAdmin";
 import AdminRemoveMenuItem from "./AdminRemoveMenuItem";
+import AdminRemoveReasonMenu from "./AdminRemoveReasonMenu";
 import AdminSensitiveMenuItem from "./AdminSensitiveMenuItem";
 import { ADMIN_SENSITIVE_TAG } from "@/lib/useAdminToggleSensitive";
 import { esCL } from "@/i18n/es-CL";
@@ -44,7 +46,9 @@ export default function ExpoBentoCard({ event, hideTodayBadge = false, desktopIm
     handleCopyLink,
   } = useEventCardActions(event, "expo", hideTodayBadge);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [removeReasonOpen, setRemoveReasonOpen] = useState(false);
   const isAdmin = useIsAdmin();
+  const router = useRouter();
   const eventHref = `/eventos/${event.id}`;
 
   return (
@@ -97,6 +101,7 @@ export default function ExpoBentoCard({ event, hideTodayBadge = false, desktopIm
               onClick={() => {
                 setMenuOpen((open) => !open);
                 setShareSubmenuOpen(false);
+                setRemoveReasonOpen(false);
               }}
               aria-label={esCL.cardMoreOptionsAriaLabel}
               aria-haspopup="menu"
@@ -116,10 +121,24 @@ export default function ExpoBentoCard({ event, hideTodayBadge = false, desktopIm
                   onClick={() => {
                     setMenuOpen(false);
                     setShareSubmenuOpen(false);
+                    setRemoveReasonOpen(false);
                   }}
                 />
                 <div role="menu" className="absolute top-full right-0 mt-2 z-20 min-w-[190px] overflow-hidden rounded-xl bg-white shadow-lg py-1">
-                  {!shareSubmenuOpen ? (
+                  {removeReasonOpen ? (
+                    <AdminRemoveReasonMenu
+                      eventId={event.id}
+                      onBack={() => setRemoveReasonOpen(false)}
+                      onRemoved={() => {
+                        setMenuOpen(false);
+                        // Card lists are server-fetched props all the way
+                        // from app/page.tsx — a full refetch is the
+                        // simplest correct way to make the removed card
+                        // actually disappear.
+                        router.refresh();
+                      }}
+                    />
+                  ) : !shareSubmenuOpen ? (
                     <>
                       {mapsHref && (
                         <a
@@ -163,9 +182,7 @@ export default function ExpoBentoCard({ event, hideTodayBadge = false, desktopIm
                           onToggled={() => setMenuOpen(false)}
                         />
                       )}
-                      {isAdmin && (
-                        <AdminRemoveMenuItem eventId={event.id} eventTitle={event.title} onRemoved={() => setMenuOpen(false)} />
-                      )}
+                      {isAdmin && <AdminRemoveMenuItem onClick={() => setRemoveReasonOpen(true)} />}
                     </>
                   ) : (
                     <>
