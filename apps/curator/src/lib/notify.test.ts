@@ -390,9 +390,9 @@ test("buildDigestHtmlBody renders every section grouped by comuna as thumbnail c
   assert.match(html, /newsletter\/baja\?token=unsub-token/);
 });
 
-test("buildDigestHtmlBody: the CALDEARTE header is a link to the homepage, styled white and without an underline so it reads as a logo, not a link", () => {
+test("buildDigestHtmlBody: the CALDEARTE header is a link to the homepage, styled in the real brand magenta and without an underline so it reads as a logo, not a link — Rediseño 2.0.0 pass, 2026-08-07 (was white-on-black, predating the real site's own bold-magenta wordmark)", () => {
   const html = buildDigestHtmlBody(fixtureDigestSections, "unsub-token");
-  assert.match(html, /<a href="https:\/\/www\.caldearte\.com" style="[^"]*color:#fff[^"]*text-decoration:none[^"]*">CALDEARTE<\/a>/);
+  assert.match(html, /<a href="https:\/\/www\.caldearte\.com" style="[^"]*color:#ff00fb[^"]*text-decoration:none[^"]*">CALDEARTE<\/a>/);
 });
 
 test("buildDigestBody and buildDigestHtmlBody render a section's emptyMessage instead of a card list when it has no events", () => {

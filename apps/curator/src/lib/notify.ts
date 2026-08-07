@@ -722,11 +722,24 @@ export function buildDigestBody(
   return lines.join("\n");
 }
 
-// Horizontal card matching the site's own card style, per user reference
-// screenshot: photo left, black rounded panel right (category label, bold
-// title, date, arrow), the whole card as one link — not a bare
-// thumbnail+text row. <table> layout (not flex/grid) since email clients
-// don't reliably support either.
+// Caldearte 2.0.0 brand tokens (apps/web/src/app/globals.css) — duplicated
+// as plain hex here rather than imported, since apps/curator is a separate
+// package and email HTML needs literal values anyway (no CSS variables in
+// most email clients). Keep these in sync by hand if the site's palette
+// ever changes.
+const BRAND_MAGENTA = "#ff00fb";
+const SURFACE_SAGE = "#d7dfe2";
+const TEXT_PRIMARY = "#3d373d";
+// Fragment Mono (the site's own monospace, used for labels/dates) isn't a
+// safe email font — a system monospace stack evokes the same "technical
+// label" feel without depending on a webfont most inboxes won't load.
+const MONO_STACK = "ui-monospace,'SFMono-Regular',Menlo,Consolas,'Liberation Mono',monospace";
+
+// Horizontal card matching the site's own EventCardBase style (black
+// rounded card, magenta date line): photo left, black rounded panel
+// right (category label, bold title, magenta date, arrow), the whole
+// card as one link — not a bare thumbnail+text row. <table> layout (not
+// flex/grid) since email clients don't reliably support either.
 function eventCardHtml(e: DigestEvent, referenceYear: number): string {
   const date = fmtDigestDate(e, referenceYear);
   const thumb = e.imageUrl
@@ -736,13 +749,13 @@ function eventCardHtml(e: DigestEvent, referenceYear: number): string {
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-radius:16px;overflow:hidden;">
       <tr>
         <td width="110" valign="top" style="line-height:0;">${thumb}</td>
-        <td valign="middle" style="background:#1c1c1c;padding:14px 16px;">
+        <td valign="middle" style="background:#000;padding:14px 16px;">
           <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
             <tr>
               <td valign="middle">
                 <p style="margin:0 0 6px;color:#9a9a9a;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.03em;">${escapeHtml(e.placeName)}</p>
                 <p style="margin:0 0 6px;color:#fff;font-size:16px;font-weight:800;line-height:1.25;">${escapeHtml(e.title)}</p>
-                ${date ? `<p style="margin:0;color:#9a9a9a;font-size:12px;">${escapeHtml(date)}</p>` : ""}
+                ${date ? `<p style="margin:0;color:${BRAND_MAGENTA};font-size:12px;font-family:${MONO_STACK};font-weight:700;">${escapeHtml(date)}</p>` : ""}
               </td>
               <td valign="middle" align="right" width="28">
                 <span style="color:#fff;font-size:20px;">&#8594;</span>
@@ -770,17 +783,19 @@ export function buildDigestHtmlBody(
           : groupByComuna(section.events)
               .map(
                 ([comuna, events]) =>
-                  `<p style="margin:20px 0 10px;font-size:12px;font-weight:700;color:#1c1c1c;">${escapeHtml(comuna)}</p>${events.map((e) => eventCardHtml(e, referenceYear)).join("")}`,
+                  `<p style="margin:20px 0 10px;font-size:12px;font-weight:700;color:${TEXT_PRIMARY};">${escapeHtml(comuna)}</p>${events.map((e) => eventCardHtml(e, referenceYear)).join("")}`,
               )
               .join("");
       const moreLinkHtml = section.moreLink
-        ? `<p style="margin:12px 0 0;"><a href="${escapeHtml(section.moreLink.url)}" style="color:#1c1c1c;font-weight:700;font-size:13px;text-decoration:underline;">${escapeHtml(section.moreLink.label)}</a></p>`
+        ? `<p style="margin:12px 0 0;"><a href="${escapeHtml(section.moreLink.url)}" style="color:${BRAND_MAGENTA};font-weight:700;font-size:13px;text-decoration:underline;">${escapeHtml(section.moreLink.label)}</a></p>`
         : "";
       // Generous top margin (not just the h2's own padding) — real
       // feedback: sections read as cramped/jammed together without real
-      // air between them, especially after a card grid.
+      // air between them, especially after a card grid. Label styled
+      // like the site's own section headings (fragment-mono, magenta) —
+      // Rediseño 2.0.0 pass, 2026-08-07.
       return `<div style="margin:48px 0 0;">
-      <h2 style="font-size:14px;text-transform:uppercase;letter-spacing:0.04em;color:#888;margin:0;border-bottom:1px solid #e2e0da;padding-bottom:6px;">${escapeHtml(section.label)}</h2>
+      <h2 style="font-family:${MONO_STACK};font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;color:${BRAND_MAGENTA};margin:0;border-bottom:1px solid #c9c2b8;padding-bottom:6px;">${escapeHtml(section.label)}</h2>
       ${bodyHtml}
       ${moreLinkHtml}
       </div>`;
@@ -794,34 +809,46 @@ export function buildDigestHtmlBody(
         .split(/\n\s*\n/)
         .map((p) => p.trim())
         .filter(Boolean)
-        .map((p) => `<p style="margin:0 0 14px;font-size:15px;color:#333;line-height:1.6;">${escapeHtml(p)}</p>`)
+        .map((p) => `<p style="margin:0 0 14px;font-size:15px;color:${TEXT_PRIMARY};line-height:1.6;">${escapeHtml(p)}</p>`)
         .join("")
     : "";
   const weekLabel = week ? escapeHtml(fmtWeekHeaderEs(week.start, week.end)) : "";
 
+  // Rediseño 2.0.0 pass (2026-08-07) — was a dark #1c1c1c/white-on-black
+  // header with a plain white body, styled before the redesign existed.
+  // Now mirrors the real site: sage page background (apps/web's own
+  // bg-surface-sage), a bold magenta wordmark instead of white-on-black
+  // (Header.tsx's own text-brand-magenta treatment — not a dark box,
+  // Caldearte's mark IS the magenta text), and a full-bleed magenta
+  // footer block echoing Footer.tsx's own "CALDEARTE." sign-off. Event
+  // cards stay black (matches EventCardBase's own bg-black), the one
+  // piece of the old design that was already faithful to the real site.
   return `<!doctype html>
 <html lang="es-CL">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
   </head>
-  <body style="margin:0;padding:0;">
-    <div style="font-family:'Helvetica Neue',Arial,sans-serif;max-width:640px;margin:0 auto;">
-    <div style="background:#1c1c1c;padding:24px 28px;border-radius:12px 12px 0 0;">
+  <body style="margin:0;padding:0;background:${SURFACE_SAGE};">
+    <div style="font-family:Helvetica,Arial,sans-serif;max-width:640px;margin:0 auto;background:${SURFACE_SAGE};">
+    <div style="padding:28px 28px 8px;">
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
         <tr>
-          <td valign="middle"><a href="${SITE_URL}" style="color:#fff;text-decoration:none;font-size:20px;font-weight:800;letter-spacing:0.02em;">CALDEARTE</a></td>
-          ${weekLabel ? `<td valign="middle" align="right"><p style="margin:0;color:#9a9a9a;font-size:13px;">${weekLabel}</p></td>` : ""}
+          <td valign="middle"><a href="${SITE_URL}" style="color:${BRAND_MAGENTA};text-decoration:none;font-size:24px;font-weight:900;letter-spacing:0.01em;">CALDEARTE</a></td>
+          ${weekLabel ? `<td valign="middle" align="right"><p style="margin:0;font-family:${MONO_STACK};color:${TEXT_PRIMARY};font-size:12px;font-weight:700;">${weekLabel}</p></td>` : ""}
         </tr>
       </table>
     </div>
-    <div style="background:#fff;padding:24px 28px 8px;">
+    <div style="padding:16px 28px 8px;">
       ${introHtml}
       ${sectionsHtml}
-      <p style="margin:80px 0 0;padding-top:20px;border-top:1px solid #e2e0da;font-size:12px;color:#999;line-height:1.6;">
+    </div>
+    <div style="background:${BRAND_MAGENTA};color:${SURFACE_SAGE};padding:40px 28px;margin-top:56px;">
+      <p style="margin:0 0 16px;font-family:Helvetica,Arial,sans-serif;font-weight:900;font-size:32px;letter-spacing:0.01em;color:${SURFACE_SAGE};">CALDEARTE.</p>
+      <p style="margin:0 0 12px;font-size:12px;line-height:1.6;color:${SURFACE_SAGE};">
         Este es el boletín semanal de Caldearte, un calendario de arte curado por inteligencia humana potenciada por IA. Te lo enviamos porque te suscribiste para recibir la agenda de tu región cada semana.
-        <a href="${unsubscribeUrl(unsubscribeToken)}" style="color:#999;">Darse de baja</a>.
       </p>
+      <a href="${unsubscribeUrl(unsubscribeToken)}" style="color:${SURFACE_SAGE};font-size:12px;text-decoration:underline;">Darse de baja</a>
     </div>
     </div>
   </body>
