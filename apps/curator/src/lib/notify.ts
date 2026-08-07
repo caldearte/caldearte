@@ -749,6 +749,12 @@ const TEXT_PRIMARY = "#3d373d";
 // safe email font — a system monospace stack evokes the same "technical
 // label" feel without depending on a webfont most inboxes won't load.
 const MONO_STACK = "ui-monospace,'SFMono-Regular',Menlo,Consolas,'Liberation Mono',monospace";
+// The real site's own display-headline font (Header.tsx's "CALDE"/"ARTE.",
+// MenuDrawer's "GUIA"/"DE"/"ARTE") is Lato Black — not a system font, so
+// it needs an actual webfont load (see the <link> in buildDigestHtmlBody's
+// <head>). Falls back to the same Helvetica/Arial stack used everywhere
+// else in the email for any client that blocks the Google Fonts request.
+const LATO_STACK = "'Lato',Helvetica,Arial,sans-serif";
 
 // Section labels stacked into deliberately mid-word-broken lines — same
 // graphic-typography device the site itself already uses for display
@@ -765,6 +771,21 @@ const SECTION_LABEL_LINES: Record<string, string[]> = {
   "En otras regiones": ["EN", "OTRAS", "REGIO", "NES"],
 };
 
+// Same hand-set device as SECTION_LABEL_LINES above, but for the header
+// title — which can't be a single fixed array since it carries the
+// week's own date range. Keyed by week.start (the digest's own
+// per-week identity), this holds an exact, hand-chosen break for a
+// specific week's send when one has been provided (as it was for the
+// week of 2026-08-08, matching the user's own literal spec); any week
+// without an entry here falls back to the generic CSS word-break/
+// overflow-wrap behavior in buildDigestHtmlBody, which reflows on its
+// own but won't reproduce hand-set line balance exactly. Add a new
+// entry here for a future week only if a send needs an exact override
+// again — this isn't meant to be kept up weekly by hand.
+const HEADER_TITLE_LINE_OVERRIDES: Record<string, string[]> = {
+  "2026-08-03": ["GUIA", "INDEPEN", "DIENTE DE", "ARTE SEMA", "NA DEL 3 AL", "9 DE AGOS", "TO."],
+};
+
 // Same "within 7 days, never past" rule as apps/web/src/lib/date.ts's own
 // isClosingSoon (duplicated, not imported — separate packages). `todayStr`
 // anchors off the digest's own week.start (the send always goes out
@@ -779,39 +800,33 @@ function isClosingSoon(runEndDate: string | null, todayStr: string | null, thres
   return diffDays >= 0 && diffDays <= thresholdDays;
 }
 
-// Horizontal card matching the site's own EventCardBase style (black
-// rounded card, magenta date line): photo left, black rounded panel
-// right (category label, bold title, magenta date, arrow), the whole
-// card as one link. Reverted to this 2026-08-08 after a detour into
-// EventHorizontalListItem's flatter list-view style — user clarified:
-// keep the card design already shipped (this one), just add the
-// "ÚLTIMOS DÍAS" prefix to the date line when the run is closing soon.
-// Image size unchanged throughout (110×132). <table> layout (not
-// flex/grid) since email clients don't reliably support either.
+// Matches the real site's own "list view" card — EventHorizontalListItem
+// (apps/web/src/components/EventHorizontalListItem.tsx): white row, a
+// small 72×56 thumbnail (no rounding — the real component doesn't round
+// it either), a bold badge line (magenta for an opening/closing-soon
+// date, text-primary black otherwise — the same policy the component
+// itself follows), the title in the site's monospace display font, and
+// the venue in muted gray underneath. Replaces the earlier black-panel
+// design (2026-08-08, user feedback: cards still didn't read as the
+// site's own "cards tipo listas" — the black panel was this file's own
+// invention, not the real component).
 function eventCardHtml(e: DigestEvent, referenceYear: number, todayStr: string | null): string {
   const date = fmtDigestDate(e, referenceYear);
   const closingSoon = isClosingSoon(e.runEndDate, todayStr);
   const dateText = closingSoon ? `${escapeHtml("ÚLTIMOS DÍAS")} — ${escapeHtml(date)}` : escapeHtml(date);
+  const badgeColor = e.isOpeningThisWeek || closingSoon ? BRAND_MAGENTA : TEXT_PRIMARY;
   const thumb = e.imageUrl
-    ? `<img src="${escapeHtml(e.imageUrl)}" width="110" height="132" alt="" style="display:block;width:110px;height:132px;object-fit:cover;" />`
-    : `<div style="width:110px;height:132px;background:#3a3a3a;"></div>`;
-  return `<a href="${eventUrl(e.id)}" style="display:block;text-decoration:none;margin:0 0 16px;">
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-radius:16px;overflow:hidden;">
+    ? `<img src="${escapeHtml(e.imageUrl)}" width="72" height="56" alt="" style="display:block;width:72px;height:56px;object-fit:cover;" />`
+    : `<div style="width:72px;height:56px;background:#3a3a3a;"></div>`;
+  return `<a href="${eventUrl(e.id)}" style="display:block;text-decoration:none;margin:0 0 8px;background:#fff;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="padding:12px;">
       <tr>
-        <td width="110" valign="top" style="line-height:0;">${thumb}</td>
-        <td valign="middle" style="background:#000;padding:14px 16px;">
-          <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
-            <tr>
-              <td valign="middle">
-                <p style="margin:0 0 6px;color:#9a9a9a;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.03em;">${escapeHtml(e.placeName)}</p>
-                <p style="margin:0 0 6px;color:#fff;font-size:16px;font-weight:800;line-height:1.25;">${escapeHtml(e.title)}</p>
-                ${date ? `<p style="margin:0;color:${BRAND_MAGENTA};font-size:12px;font-family:${MONO_STACK};font-weight:700;">${dateText}</p>` : ""}
-              </td>
-              <td valign="middle" align="right" width="28">
-                <span style="color:#fff;font-size:20px;">&#8594;</span>
-              </td>
-            </tr>
-          </table>
+        <td width="72" valign="top" style="line-height:0;">${thumb}</td>
+        <td width="12"></td>
+        <td valign="middle">
+          ${date ? `<p style="margin:0 0 4px;color:${badgeColor};font-size:11px;font-weight:800;">${dateText}</p>` : ""}
+          <p style="margin:0 0 4px;color:${TEXT_PRIMARY};font-family:${MONO_STACK};font-size:14px;line-height:1.2;">${escapeHtml(e.title)}</p>
+          <p style="margin:0;color:#767f82;font-size:11px;">${escapeHtml(e.placeName)}</p>
         </td>
       </tr>
     </table>
@@ -883,59 +898,52 @@ export function buildDigestHtmlBody(
         .map((p) => `<p style="margin:0 0 14px;font-size:15px;color:${TEXT_PRIMARY};line-height:1.6;">${escapeHtml(p)}</p>`)
         .join("")
     : "";
-  // Big right-side title — the week range when known, otherwise the same
-  // generic tagline the site itself falls back to (esCL.heroTagline) when
-  // there's nothing week-specific to say.
-  const headerTitle = escapeHtml(week ? fmtHeaderTitle(week.start, week.end) : "GUÍA INDEPENDIENTE DE ARTE SEMANAL");
+  // Title lines — an exact hand-set override for this week if one exists
+  // (HEADER_TITLE_LINE_OVERRIDES), otherwise the computed week-range title
+  // (or the generic fallback tagline with no week at all) reflowed via
+  // CSS word-break in a narrow column. Either way it's stacked as
+  // left-aligned <span> lines now, not a single wrapped paragraph — see
+  // the layout comment below for why.
+  const titleLineOverride = week ? HEADER_TITLE_LINE_OVERRIDES[week.start] : undefined;
+  const headerTitleHtml = titleLineOverride
+    ? titleLineOverride.map((line) => `<span style="display:block;">${escapeHtml(line)}</span>`).join("")
+    : escapeHtml(week ? fmtHeaderTitle(week.start, week.end) : "GUÍA INDEPENDIENTE DE ARTE SEMANAL");
 
-  // Rediseño 2.0.0 pass (2026-08-07/08) — was a dark #1c1c1c/white-on-black
-  // header with a plain white body, styled before the redesign existed.
-  // Now mirrors the real site's own home hero (Header.tsx): wordmark
-  // ("CALDE"/"ARTE.", stacked, magenta, bold) on the left, and — user
-  // request 2026-08-08 — a big text-primary-black title on the right
-  // instead of the site's own small gray tagline, since email has no
-  // separate city/week selector to fill that space with. Sage page
-  // background throughout (apps/web's own bg-surface-sage), and a
-  // full-bleed magenta footer block echoing Footer.tsx's own
-  // "CALDEARTE." sign-off. Event cards stay black (matches
-  // EventCardBase's own bg-black), the one piece of the old design that
-  // was already faithful to the real site.
+  // Rediseño 2.0.0 pass (2026-08-07/08), restacked 2026-08-08 per user
+  // feedback: was a dark #1c1c1c/white-on-black header, then a wordmark
+  // beside a right-aligned title. Now a single left-aligned column —
+  // wordmark on top (bigger, real Lato Black — the site's own logo font,
+  // not the Helvetica approximation used elsewhere in this email), the
+  // week's title directly below it in the same column, matching how
+  // MenuDrawer's own "GUIA"/"DE"/"ARTE" wordmark block is laid out on the
+  // real site. Sage page background throughout (apps/web's own
+  // bg-surface-sage), and a full-bleed magenta footer block echoing
+  // Footer.tsx's own "CALDEARTE." sign-off. Event cards stay a plain
+  // white row now too (see eventCardHtml) — matches the real site's own
+  // list-view card, not this file's earlier black-panel invention.
   return `<!doctype html>
 <html lang="es-CL">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link href="https://fonts.googleapis.com/css2?family=Lato:wght@900&display=swap" rel="stylesheet" />
   </head>
   <body style="margin:0;padding:0;background:${SURFACE_SAGE};">
     <div style="font-family:Helvetica,Arial,sans-serif;max-width:640px;margin:0 auto;background:${SURFACE_SAGE};">
     <div style="padding:32px 28px 8px;">
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
-        <tr>
-          <td valign="top" width="46%">
-            <a href="${SITE_URL}" style="display:block;text-decoration:none;color:${BRAND_MAGENTA};font-family:Helvetica,Arial,sans-serif;font-weight:900;font-size:34px;line-height:0.95;letter-spacing:0.01em;">
-              <span style="display:block;">CALDE</span>
-              <span style="display:block;">ARTE.</span>
-            </a>
-          </td>
-          <td valign="top" align="right" width="54%">
-            <!-- Doubled 20px -> 40px, 2026-08-08 — at that size the column
-                 is narrower than the text, so word-break/overflow-wrap
-                 force the same dense, mid-word-breaking stack the site's
-                 own hand-set display headers use elsewhere (see
-                 SECTION_LABEL_LINES' own comment) — done via CSS here,
-                 not hardcoded lines, since this title includes the week's
-                 date range and changes every send. -->
-            <p style="margin:0;color:${TEXT_PRIMARY};font-family:Helvetica,Arial,sans-serif;font-weight:900;font-size:40px;line-height:0.95;text-align:right;word-break:break-word;overflow-wrap:anywhere;">${headerTitle}</p>
-          </td>
-        </tr>
-      </table>
+      <a href="${SITE_URL}" style="display:block;text-decoration:none;color:${BRAND_MAGENTA};font-family:${LATO_STACK};font-weight:900;font-size:56px;line-height:0.92;letter-spacing:0.01em;">
+        <span style="display:block;">CALDE</span>
+        <span style="display:block;">ARTE.</span>
+      </a>
+      <p style="margin:20px 0 0;max-width:320px;color:${TEXT_PRIMARY};font-family:${LATO_STACK};font-weight:900;font-size:40px;line-height:0.95;text-align:left;word-break:break-word;overflow-wrap:anywhere;">${headerTitleHtml}</p>
     </div>
     <div style="padding:24px 28px 8px;">
       ${introHtml}
       ${sectionsHtml}
     </div>
     <div style="background:${BRAND_MAGENTA};color:${SURFACE_SAGE};padding:40px 28px;margin-top:56px;">
-      <p style="margin:0 0 16px;font-family:Helvetica,Arial,sans-serif;font-weight:900;font-size:32px;letter-spacing:0.01em;color:${SURFACE_SAGE};">CALDEARTE.</p>
+      <p style="margin:0 0 16px;font-family:${LATO_STACK};font-weight:900;font-size:32px;letter-spacing:0.01em;color:${SURFACE_SAGE};">CALDEARTE.</p>
       <!-- Contact prompt, added 2026-08-08 (user request) — same invitation
            the curatoría page itself makes (esCL.curatoriaPage.section2Body2*):
            tell us if we missed/misclassified something, or share your own
