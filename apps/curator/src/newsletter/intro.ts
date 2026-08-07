@@ -69,13 +69,23 @@ function buildEventList(sections: DigestSection[]): string {
 // avenue for invention. It never gets new data to reason from (still only
 // titles/venue/comuna, nothing else) — the anti-fabrication posture from
 // the 2026-07-22 incident is unchanged, only the angle of the prose is.
-const SYSTEM_PROMPT = `Eres el redactor editorial de Caldearte, un boletín semanal que reúne exposiciones de arte visual en Chile.
+// Tone and "find a thread" instruction added 2026-08-08 (user request):
+// academic-but-warm — a knowledgeable friend, not a press release — and
+// permission (not a requirement) to name a real thematic/content/
+// technique connection across two or more of the GIVEN titles, if one
+// genuinely stands out; never invented, never forced. Also explicit now:
+// the curatorial rubric shapes what gets emphasized, but the text itself
+// must never name it ("nuestra curaduría", "nuestro criterio editorial")
+// — it should read as one person's take, not a policy statement.
+const SYSTEM_PROMPT = `Eres un investigador de arte que escribe la introducción del boletín semanal de Caldearte, una guía de exposiciones de arte visual en Chile.
 Te entregan el número real de exposiciones activas esta semana en una región, y una lista de esas exposiciones agrupada bajo los mismos encabezados que usa el boletín.
-Escribe la introducción del boletín de esa región: tres párrafos breves, en español, con voz curatorial — precisa y algo evocadora, nunca publicitaria ni de listicle.
+Escribe tres párrafos breves, en español. El tono es académico pero cercano: como el mensaje de un amigo que sabe muchísimo de arte y te cuenta, con entusiasmo genuino y criterio propio, qué vale la pena ver esta semana — nunca como un comunicado de prensa ni una lista promocional.
 
-El foco de esta introducción es QUÉ HAY DE INTERESANTE PARA VER esta semana — sobre todo las inauguraciones — no la logística (fechas, cuántas comunas, cuántas exposiciones hay en total). Los números y el panorama pasan a segundo plano; lo que se destaca es lo que vale la pena ir a ver y por qué.
+El foco de esta introducción es QUÉ HAY DE INTERESANTE PARA VER esta semana — sobre todo las inauguraciones, pero también lo que sigue en exhibición — no la logística (fechas, cuántas comunas, cuántas exposiciones hay en total). Los números y el panorama pasan a segundo plano; lo que se destaca es lo que vale la pena ir a ver y por qué.
 
-Al elegir qué exposiciones destacar (siempre solo por su título, lugar y encabezado — nunca por una sinopsis que no tienes), prioriza las que parezcan más alineadas con el criterio editorial real de Caldearte: obras con peso discursivo y postura crítica por sobre lo meramente decorativo o pasivo; sospecha de imaginería bélica o religiosa sin postura crítica declarada; nada que estetice el trauma o la violencia de forma explícita. Esto es un criterio de ÉNFASIS narrativo, no un filtro — la lista que recibes ya fue curada, así que toda ella es válida; simplemente dale más protagonismo en el texto a lo que mejor encarna esa postura.
+Al elegir qué exposiciones destacar (siempre solo por su título, lugar y encabezado — nunca por una sinopsis que no tienes), prioriza las que parezcan tener más peso discursivo y postura crítica por sobre lo meramente decorativo o pasivo; desconfía de imaginería bélica o religiosa sin postura crítica declarada; evita cualquier título que sugiera estetizar el trauma o la violencia de forma explícita. Este criterio guía qué se destaca y cómo se enmarca, pero NUNCA debe nombrarse en el texto — nada de "nuestra curaduría", "nuestro criterio editorial" ni frases equivalentes. El texto debe leerse como la mirada de una sola persona, no como una declaración de políticas.
+
+Si al mirar la lista completa (títulos, espacios, comunas) aparece con naturalidad un hilo real entre dos o más exposiciones — un tema, un tipo de contenido, una técnica, un diálogo entre espacios o comunas — puedes tejerlo en el texto. Es una posibilidad, no una obligación: si no hay ningún hilo genuino, no lo inventes ni lo fuerces.
 
 Estructura:
 - Párrafo 1: entra directo en lo más interesante de la semana, con énfasis en inauguraciones si las hay — nómbralas, junto a su espacio, y da un gancho basado solo en el título y el lugar.
@@ -89,28 +99,31 @@ Reglas estrictas:
 - No repitas la lista completa ni cites más de tres o cuatro títulos en total entre los tres párrafos, escritos tal como aparecen.
 - No prometas nada que la lista no respalde (nada de "y mucho más").
 - Evita signos de exclamación, superlativos ("imperdible", "increíble") y lenguaje publicitario.
+- Nunca nombres textualmente el criterio editorial, la curaduría o las políticas de Caldearte — el criterio se nota en qué eliges destacar, no se declara.
 - Cada párrafo debe tener entre 2 y 3 frases.
 - Responde solo con el texto de los tres párrafos, separados por una línea en blanco cada uno — sin títulos, comillas ni explicaciones adicionales.`;
 
-// Same anti-fabrication posture as the main intro above, condensed to one
-// paragraph — this runs once per región per week too (see run.ts), not
-// per subscriber. Only ever sees the SAME deterministic "En otras
-// regiones" sample every subscriber in the región is shown as cards (see
-// run.ts's buildDigestSections — no longer randomized per subscriber,
-// 2026-08-08, specifically so this text and the cards below it always
-// agree on which shows it's talking about).
-const OTHER_REGIONS_SYSTEM_PROMPT = `Eres el redactor editorial de Caldearte, un boletín semanal que reúne exposiciones de arte visual en Chile.
+// Same anti-fabrication posture as the main intro above — this runs once
+// per región per week too (see run.ts), not per subscriber. Only ever
+// sees the SAME deterministic "En otras regiones" sample every subscriber
+// in the región is shown as cards (see run.ts's buildDigestSections — no
+// longer randomized per subscriber, 2026-08-08, specifically so this text
+// and the cards below it always agree on which shows it's talking
+// about). Bumped 1 -> 2 paragraphs 2026-08-08 (user request), same
+// tone/thread-finding rules as the main intro above, condensed.
+const OTHER_REGIONS_SYSTEM_PROMPT = `Eres un investigador de arte que escribe una sección del boletín semanal de Caldearte, una guía de exposiciones de arte visual en Chile.
 Te entregan una muestra de exposiciones activas esta semana FUERA de la región del lector (distintas regiones de Chile).
-Escribe un solo párrafo breve, en español, con voz curatorial — precisa y algo evocadora, nunca publicitaria — que invite a mirar hacia el resto del país.
+Escribe dos párrafos breves, en español, con el mismo tono que el resto del boletín: académico pero cercano, como un amigo que sabe muchísimo de arte, nunca publicitario. Invita a mirar hacia el resto del país.
 
-El foco es de CONTENIDO, no de geografía ni logística: nombra una o dos exposiciones de la lista (con su lugar) que mejor encarnen el criterio editorial de Caldearte — obras con peso discursivo y postura crítica por sobre lo decorativo o pasivo — y da un gancho basado solo en el título y el lugar, nunca en una sinopsis que no tienes.
+El foco es de CONTENIDO, no de geografía ni logística: nombra dos o tres exposiciones de la lista (con su lugar) que tengan más peso discursivo y postura crítica por sobre lo decorativo o pasivo, y da un gancho basado solo en el título y el lugar, nunca en una sinopsis que no tienes. Si aparece con naturalidad un hilo real entre dos o más de esas exposiciones (un tema, una técnica, un diálogo entre regiones), puedes nombrarlo — solo si es genuino, nunca forzado.
 
 Reglas estrictas:
 - Usa ÚNICAMENTE la información entregada. No inventes fechas, horas, artistas, técnicas, temáticas ni descripciones de obra.
-- No repitas la lista completa ni cites más de dos títulos, escritos tal como aparecen.
+- No repitas la lista completa ni cites más de tres títulos en total, escritos tal como aparecen.
 - Evita signos de exclamación, superlativos y lenguaje publicitario.
-- Entre 2 y 3 frases en total.
-- Responde solo con el texto del párrafo — sin título, comillas ni explicaciones adicionales.`;
+- Nunca nombres textualmente el criterio editorial, la curaduría o las políticas de Caldearte.
+- Cada párrafo debe tener entre 2 y 3 frases.
+- Responde solo con el texto de los dos párrafos, separados por una línea en blanco — sin título, comillas ni explicaciones adicionales.`;
 
 export interface GenerateIntroDeps {
   messagesClient?: MessagesClient;
@@ -184,5 +197,6 @@ export async function generateRegionIntro(
 export async function generateOtherRegionsIntro(events: DigestSection["events"], deps: GenerateIntroDeps = {}): Promise<string | null> {
   if (events.length === 0) return null;
   const userContent = events.map((e) => `- ${e.title} (${e.placeName}${e.comunaName ? `, ${e.comunaName}` : ""})`).join("\n");
-  return callHaikuForIntro(OTHER_REGIONS_SYSTEM_PROMPT, userContent, 250, deps, "generateOtherRegionsIntro");
+  // Bumped 250 -> 400, 2026-08-08 — this now generates 2 paragraphs, was 1.
+  return callHaikuForIntro(OTHER_REGIONS_SYSTEM_PROMPT, userContent, 400, deps, "generateOtherRegionsIntro");
 }
