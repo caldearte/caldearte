@@ -383,7 +383,7 @@ test("buildDigestHtmlBody renders every section grouped by comuna as thumbnail c
   const html = buildDigestHtmlBody(fixtureDigestSections, "unsub-token");
   assert.match(html, />CALDE</);
   assert.match(html, />ARTE\.</);
-  assert.match(html, /Inauguraciones de esta semana/);
+  assert.match(html, /INAUGU[\s\S]*?RACIONES DE[\s\S]*?ESTA SEMA[\s\S]*?NA/);
   assert.match(html, />Quinta Normal</);
   assert.match(html, /href="https:\/\/www\.caldearte\.com\/eventos\/event-estrella-distante"/);
   assert.match(html, /src="https:\/\/example\.com\/estrella\.jpg"/);
@@ -593,10 +593,41 @@ test("buildDigestBody and buildDigestHtmlBody render the otherRegionsIntro parag
   assert.match(body, /-- En otras regiones --\nEn regiones, destaca una muestra sobre memoria y territorio en Concepción\./);
 
   const html = buildDigestHtmlBody(fixtureDigestSections, "unsub-token", null, undefined, otherRegionsIntro);
-  assert.match(html, /En otras regiones<\/h2>\s*<p[^>]*>En regiones, destaca una muestra sobre memoria y territorio en Concepción\.<\/p>/);
+  assert.match(html, /NES<\/span><\/h2>\s*<p[^>]*>En regiones, destaca una muestra sobre memoria y territorio en Concepción\.<\/p>/);
 
   const withoutIntro = buildDigestHtmlBody(fixtureDigestSections, "unsub-token");
   assert.doesNotMatch(withoutIntro, /destaca una muestra/);
+});
+
+test("buildDigestHtmlBody: the 3 known section labels render as hand-broken stacked lines at 2x size (matching the site's own hardcoded wordmark convention), and an unmapped label falls back to plain text — 2026-08-08", () => {
+  const html = buildDigestHtmlBody(fixtureDigestSections, "unsub-token");
+  assert.match(
+    html,
+    /<h2[^>]*font-size:26px[^>]*><span style="display:block;">INAUGU<\/span><span style="display:block;">RACIONES DE<\/span><span style="display:block;">ESTA SEMA<\/span><span style="display:block;">NA<\/span><\/h2>/,
+  );
+  assert.match(
+    html,
+    /<h2[^>]*font-size:26px[^>]*><span style="display:block;">EN<\/span><span style="display:block;">OTRAS<\/span><span style="display:block;">REGIO<\/span><span style="display:block;">NES<\/span><\/h2>/,
+  );
+
+  const unmappedLabelSections: DigestSection[] = [{ label: "Sección sin mapear", events: [], emptyMessage: "vacía" }];
+  const unmappedHtml = buildDigestHtmlBody(unmappedLabelSections, "unsub-token");
+  assert.match(unmappedHtml, /<h2[^>]*>Sección sin mapear<\/h2>/);
+});
+
+test("buildDigestHtmlBody: the header title renders at 2x size with word-break so a long dynamic week range reflows densely like the hardcoded wordmarks, in Caldearte black — 2026-08-08", () => {
+  const html = buildDigestHtmlBody(fixtureDigestSections, "unsub-token", null, { start: "2026-07-27", end: "2026-08-02" });
+  assert.match(
+    html,
+    /<p style="margin:0;color:#3d373d;font-family:Helvetica,Arial,sans-serif;font-weight:900;font-size:40px;line-height:0\.95;text-align:right;word-break:break-word;overflow-wrap:anywhere;">GUÍA INDEPENDIENTE DE ARTE, SEMANA DEL 27 DE JULIO AL 2 DE AGOSTO<\/p>/,
+  );
+});
+
+test("buildDigestHtmlBody: the footer invites readers to flag a missed/misclassified event or share their own work, linking to contacto@caldearte.com — 2026-08-08", () => {
+  const html = buildDigestHtmlBody(fixtureDigestSections, "unsub-token");
+  assert.match(html, /¿Sientes que nos perdimos una exposición, o que clasificamos algo mal\?/);
+  assert.match(html, /¿Estás por compartir tu propia obra con el mundo\?/);
+  assert.match(html, /<a href="mailto:contacto@caldearte\.com"[^>]*>Escríbenos a contacto@caldearte\.com<\/a>/);
 });
 
 test("sendDigestEmail: no-ops with a warning when RESEND_API_KEY is unset", async () => {
