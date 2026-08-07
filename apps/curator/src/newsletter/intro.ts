@@ -55,55 +55,80 @@ function buildEventList(sections: DigestSection[]): string {
 // Style modeled on how independent art-world editorial newsletters (e-flux
 // announcements, gallery weeklies) actually write their intros: understated,
 // specific, curatorial rather than promotional — never listicle-y ad copy
-// ("¡no te lo pierdas!"). Two short paragraphs: the first sets the scene for
-// the week in that región in general terms (how many shows, what kind of
-// range/character), the second zooms into one or two specific titles from
-// the list with a light curatorial framing tied strictly to what's given
-// (the title and venue/comuna) — never inventing a description, medium, or
-// theme the list doesn't state.
+// ("¡no te lo pierdas!"). Three short paragraphs (2026-08-08, was two —
+// user feedback: the old version leaned on logistics — dates, how many
+// shows, spread across comunas — instead of what's actually interesting
+// to go see, especially openings).
+//
+// The "curatorial weight" framing below is a real, deliberate choice, not
+// a stray adjective: Caldearte's own published criteria
+// (esCL.curatoriaPage — "El peso de la hegemonía," "La estetización del
+// trauma," etc.) are summarized here so Haiku has an actual rubric for
+// WHICH of the real, given titles is worth spotlighting — this is a
+// selection/framing judgment over facts already in the list, not a new
+// avenue for invention. It never gets new data to reason from (still only
+// titles/venue/comuna, nothing else) — the anti-fabrication posture from
+// the 2026-07-22 incident is unchanged, only the angle of the prose is.
 const SYSTEM_PROMPT = `Eres el redactor editorial de Caldearte, un boletín semanal que reúne exposiciones de arte visual en Chile.
 Te entregan el número real de exposiciones activas esta semana en una región, y una lista de esas exposiciones agrupada bajo los mismos encabezados que usa el boletín.
-Escribe la introducción del boletín de esa región: dos párrafos breves, en español, con voz curatorial — precisa y algo evocadora, nunca publicitaria ni de listicle.
+Escribe la introducción del boletín de esa región: tres párrafos breves, en español, con voz curatorial — precisa y algo evocadora, nunca publicitaria ni de listicle.
+
+El foco de esta introducción es QUÉ HAY DE INTERESANTE PARA VER esta semana — sobre todo las inauguraciones — no la logística (fechas, cuántas comunas, cuántas exposiciones hay en total). Los números y el panorama pasan a segundo plano; lo que se destaca es lo que vale la pena ir a ver y por qué.
+
+Al elegir qué exposiciones destacar (siempre solo por su título, lugar y encabezado — nunca por una sinopsis que no tienes), prioriza las que parezcan más alineadas con el criterio editorial real de Caldearte: obras con peso discursivo y postura crítica por sobre lo meramente decorativo o pasivo; sospecha de imaginería bélica o religiosa sin postura crítica declarada; nada que estetice el trauma o la violencia de forma explícita. Esto es un criterio de ÉNFASIS narrativo, no un filtro — la lista que recibes ya fue curada, así que toda ella es válida; simplemente dale más protagonismo en el texto a lo que mejor encarna esa postura.
 
 Estructura:
-- Párrafo 1: panorama general de la semana en la región (qué variedad de comunas o espacios reúne), sin inventar un hilo temático que la lista no sugiere.
-- Párrafo 2: detente en una o dos exposiciones puntuales de la lista — nómbralas tal como aparecen, junto a su espacio — y dales un poco de contexto o gancho basado solo en el título y el lugar (no en una sinopsis inventada).
+- Párrafo 1: entra directo en lo más interesante de la semana, con énfasis en inauguraciones si las hay — nómbralas, junto a su espacio, y da un gancho basado solo en el título y el lugar.
+- Párrafo 2: una o dos exposiciones más (inauguración u otra) que valgan la pena destacar, con el mismo criterio.
+- Párrafo 3: cierre breve que abra el apetito por explorar el resto de la guía, sin resumir lo ya dicho ni volver a la logística.
 
 Reglas estrictas:
 - Usa ÚNICAMENTE la información entregada. No inventes fechas, horas, artistas, técnicas, temáticas ni descripciones de obra que no estén en la lista.
 - Solo puedes decir que una exposición "inaugura" o "abre" esta semana si aparece bajo el encabezado "Inauguraciones de esta semana". Cualquier exposición bajo otro encabezado (por ejemplo "Expos para visitar esta semana") ya está en exhibición — descríbela como tal ("sigue en exhibición", "se puede visitar"), nunca como algo que inaugura o abre, aunque su título lo sugiera.
 - Si mencionas una cifra de cuántas exposiciones hay en la región, usa EXACTAMENTE el número entregado al inicio del mensaje — nunca cuentes tú mismo los ítems de la lista, que puede estar incompleta respecto del total real.
-- No repitas la lista completa ni cites más de dos o tres títulos en total entre ambos párrafos, escritos tal como aparecen.
+- No repitas la lista completa ni cites más de tres o cuatro títulos en total entre los tres párrafos, escritos tal como aparecen.
 - No prometas nada que la lista no respalde (nada de "y mucho más").
 - Evita signos de exclamación, superlativos ("imperdible", "increíble") y lenguaje publicitario.
 - Cada párrafo debe tener entre 2 y 3 frases.
-- Responde solo con el texto de los dos párrafos, separados por una línea en blanco — sin títulos, comillas ni explicaciones adicionales.`;
+- Responde solo con el texto de los tres párrafos, separados por una línea en blanco cada uno — sin títulos, comillas ni explicaciones adicionales.`;
+
+// Same anti-fabrication posture as the main intro above, condensed to one
+// paragraph — this runs once per región per week too (see run.ts), not
+// per subscriber. Only ever sees the SAME deterministic "En otras
+// regiones" sample every subscriber in the región is shown as cards (see
+// run.ts's buildDigestSections — no longer randomized per subscriber,
+// 2026-08-08, specifically so this text and the cards below it always
+// agree on which shows it's talking about).
+const OTHER_REGIONS_SYSTEM_PROMPT = `Eres el redactor editorial de Caldearte, un boletín semanal que reúne exposiciones de arte visual en Chile.
+Te entregan una muestra de exposiciones activas esta semana FUERA de la región del lector (distintas regiones de Chile).
+Escribe un solo párrafo breve, en español, con voz curatorial — precisa y algo evocadora, nunca publicitaria — que invite a mirar hacia el resto del país.
+
+El foco es de CONTENIDO, no de geografía ni logística: nombra una o dos exposiciones de la lista (con su lugar) que mejor encarnen el criterio editorial de Caldearte — obras con peso discursivo y postura crítica por sobre lo decorativo o pasivo — y da un gancho basado solo en el título y el lugar, nunca en una sinopsis que no tienes.
+
+Reglas estrictas:
+- Usa ÚNICAMENTE la información entregada. No inventes fechas, horas, artistas, técnicas, temáticas ni descripciones de obra.
+- No repitas la lista completa ni cites más de dos títulos, escritos tal como aparecen.
+- Evita signos de exclamación, superlativos y lenguaje publicitario.
+- Entre 2 y 3 frases en total.
+- Responde solo con el texto del párrafo — sin título, comillas ni explicaciones adicionales.`;
 
 export interface GenerateIntroDeps {
   messagesClient?: MessagesClient;
 }
 
-export async function generateRegionIntro(
-  sections: DigestSection[],
-  regionTotalThisWeek: number,
-  deps: GenerateIntroDeps = {},
-): Promise<string | null> {
-  const eventList = buildEventList(sections);
-  if (!eventList) return null;
-  const userContent = `Número real de exposiciones activas esta semana en la región: ${regionTotalThisWeek}.\n\n${eventList}`;
-
-  // Cost governance: same ceiling that gates new-region activation
-  // (docs/region-discovery.md#cost-governance) — if the month's already
-  // over budget, skip the intro rather than push further over. The
-  // digest still sends fine without one.
+// Shared by generateRegionIntro and generateOtherRegionsIntro — budget
+// check, client creation, the actual call, and usage recording. Both
+// callers degrade to null on any failure (budget exceeded, API error) —
+// the digest always sends fine without an intro.
+async function callHaikuForIntro(system: string, userContent: string, maxTokens: number, deps: GenerateIntroDeps, callerName: string): Promise<string | null> {
   try {
     const [spend, budget] = await Promise.all([getCurrentMonthSpend(), getConfigNumber("monthly_budget_usd")]);
     if (spend >= budget) {
-      console.warn("generateRegionIntro: monthly budget already exceeded — skipping AI intro this week.");
+      console.warn(`${callerName}: monthly budget already exceeded — skipping AI intro this week.`);
       return null;
     }
   } catch (err) {
-    console.warn("generateRegionIntro: failed to check budget, skipping AI intro", err);
+    console.warn(`${callerName}: failed to check budget, skipping AI intro`, err);
     return null;
   }
 
@@ -116,8 +141,8 @@ export async function generateRegionIntro(
   try {
     const response = await client.messages.create({
       model: MODEL,
-      max_tokens: 400,
-      system: SYSTEM_PROMPT,
+      max_tokens: maxTokens,
+      system,
       messages: [{ role: "user", content: userContent }],
     });
 
@@ -135,7 +160,29 @@ export async function generateRegionIntro(
     const text = response.content.find((b) => b.type === "text")?.text?.trim();
     return text || null;
   } catch (err) {
-    console.error("generateRegionIntro: Haiku call failed — sending the digest without an intro", err);
+    console.error(`${callerName}: Haiku call failed — sending the digest without an intro`, err);
     return null;
   }
+}
+
+export async function generateRegionIntro(
+  sections: DigestSection[],
+  regionTotalThisWeek: number,
+  deps: GenerateIntroDeps = {},
+): Promise<string | null> {
+  const eventList = buildEventList(sections);
+  if (!eventList) return null;
+  const userContent = `Número real de exposiciones activas esta semana en la región: ${regionTotalThisWeek}.\n\n${eventList}`;
+  return callHaikuForIntro(SYSTEM_PROMPT, userContent, 500, deps, "generateRegionIntro");
+}
+
+// One paragraph, region-agnostic teaser for "En otras regiones" — takes a
+// flat event list (that section's own deterministic sample, see run.ts),
+// not grouped DigestSections, since there's no "inauguración vs. ya
+// abierta" distinction to preserve here the way the main intro needs
+// (every event here is simply "elsewhere, active this week").
+export async function generateOtherRegionsIntro(events: DigestSection["events"], deps: GenerateIntroDeps = {}): Promise<string | null> {
+  if (events.length === 0) return null;
+  const userContent = events.map((e) => `- ${e.title} (${e.placeName}${e.comunaName ? `, ${e.comunaName}` : ""})`).join("\n");
+  return callHaikuForIntro(OTHER_REGIONS_SYSTEM_PROMPT, userContent, 250, deps, "generateOtherRegionsIntro");
 }
