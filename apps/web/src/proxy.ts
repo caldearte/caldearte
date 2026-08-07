@@ -15,10 +15,33 @@ const SCANNER_PATH_PATTERNS = [
   /^\/xmlrpc\.php$/i,
   /^\/\.env/i,
   /^\/\.git/i,
+  /^\/\.svn/i,
+  /^\/\.aws/i,
+  /^\/\.ssh/i,
+  /^\/\.htaccess$/i,
+  /^\/\.htpasswd$/i,
+  /^\/\.idea/i,
+  /^\/\.vscode/i,
   /^\/phpmyadmin/i,
+  /^\/pma/i,
   /^\/admin\.php$/i,
   /^\/config\.php$/i,
   /^\/vendor\/phpunit/i,
+  /^\/vendor\//i, // exposed Composer vendor dir — PHP-only concept, real hits are always scanners here
+  /^\/laravel/i,
+  /^\/telescope/i, // Laravel's debug dashboard
+  /^\/_profiler/i, // Symfony's debug toolbar
+  /^\/actuator/i, // Spring Boot's management endpoints
+  /^\/console$/i,
+  /^\/cgi-bin/i,
+  /^\/server-status$/i,
+  /^\/shell\.php$/i,
+  /^\/eval-stdin\.php$/i,
+  // Any request for a server-side script extension this Next.js app never
+  // serves (no PHP/ASP/JSP anywhere in this stack) — one broad rule that
+  // catches the long tail of scanner probes without needing a new pattern
+  // for every filename they try (config.php, backup.php, upload.asp, ...).
+  /\.(php\d?|phtml|asp|aspx|jsp|jspx|cgi)$/i,
 ];
 
 export function proxy(request: NextRequest) {
