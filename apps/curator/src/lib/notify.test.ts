@@ -383,7 +383,7 @@ test("buildDigestHtmlBody renders every section grouped by comuna as thumbnail c
   const html = buildDigestHtmlBody(fixtureDigestSections, "unsub-token");
   assert.match(html, />CALDE</);
   assert.match(html, />ARTE\.</);
-  assert.match(html, /INAUGU[\s\S]*?RACIONES DE[\s\S]*?ESTA SEMA[\s\S]*?NA/);
+  assert.match(html, /INAUGU[\s\S]*?RACIONES\./);
   assert.match(html, />Quinta Normal</);
   assert.match(html, /href="https:\/\/www\.caldearte\.com\/eventos\/event-estrella-distante"/);
   assert.match(html, /src="https:\/\/example\.com\/estrella\.jpg"/);
@@ -538,13 +538,16 @@ test("buildDigestHtmlBody includes the AI-generated intro when present, and omit
   assert.doesNotMatch(withoutIntro, /Esta semana destaca/);
 });
 
-test("buildDigestHtmlBody renders a big right-aligned header title with the week range when provided (no year — a display headline, not a citation), and falls back to the generic tagline when absent — Rediseño 2.0.0 pass, 2026-08-08", () => {
-  const withWeek = buildDigestHtmlBody(fixtureDigestSections, "unsub-token", null, { start: "2026-07-27", end: "2026-08-02" });
-  assert.match(withWeek, /GUÍA INDEPENDIENTE DE ARTE, SEMANA DEL 27 DE JULIO AL 2 DE AGOSTO/);
-  assert.doesNotMatch(withWeek, /DE AGOSTO 2026/);
+test("buildDigestHtmlBody: the header always shows the fixed 'GUIA INDEPENDIENTE DE ARTE.' tagline, plus a right-aligned week line and región line only when those are provided — restacked 2026-08-08, user's own manual redesign pass", () => {
+  const withWeekAndRegion = buildDigestHtmlBody(fixtureDigestSections, "unsub-token", null, { start: "2026-07-27", end: "2026-08-02" }, null, "Región Metropolitana de Santiago");
+  assert.match(withWeekAndRegion, />GUIA INDEPENDIENTE DE ARTE\.</);
+  assert.match(withWeekAndRegion, /SEMANA DEL 27 DE JULIO AL 2 DE AGOSTO/);
+  assert.doesNotMatch(withWeekAndRegion, /DE AGOSTO 2026/);
+  assert.match(withWeekAndRegion, />SANTIAGO</);
 
-  const withoutWeek = buildDigestHtmlBody(fixtureDigestSections, "unsub-token", null);
-  assert.match(withoutWeek, /GUÍA INDEPENDIENTE DE ARTE SEMANAL/);
+  const withNeither = buildDigestHtmlBody(fixtureDigestSections, "unsub-token");
+  assert.match(withNeither, />GUIA INDEPENDIENTE DE ARTE\.</);
+  assert.doesNotMatch(withNeither, /SEMANA DEL/);
 });
 
 test("buildDigestBody includes the week date range as its first line when provided", () => {
@@ -589,54 +592,48 @@ test("eventCardHtml: shows an ÚLTIMOS DÍAS badge when the run ends within 7 da
   assert.doesNotMatch(farFromClosing, /ÚLTIMOS DÍAS/);
 });
 
-test("buildDigestBody and buildDigestHtmlBody render the otherRegionsIntro paragraph right under the 'En otras regiones' heading, and omit it (and its section) when absent — Rediseño 2.0.0 pass 2026-08-08", () => {
+test("buildDigestBody and buildDigestHtmlBody render the otherRegionsIntro right under the 'En otras regiones' heading, and omit it (and its section) when absent — Rediseño 2.0.0 pass 2026-08-08", () => {
   const otherRegionsIntro = "En regiones, destaca una muestra sobre memoria y territorio en Concepción.";
 
   const body = buildDigestBody(fixtureDigestSections, "unsub-token", null, undefined, otherRegionsIntro);
   assert.match(body, /-- En otras regiones --\nEn regiones, destaca una muestra sobre memoria y territorio en Concepción\./);
 
   const html = buildDigestHtmlBody(fixtureDigestSections, "unsub-token", null, undefined, otherRegionsIntro);
-  assert.match(html, /NES<\/span><\/h2>\s*<p[^>]*>En regiones, destaca una muestra sobre memoria y territorio en Concepción\.<\/p>/);
+  assert.match(html, /EN OTRAS REGIONES\.<\/p>\s*<p[^>]*>En regiones, destaca una muestra sobre memoria y territorio en Concepción\.<\/p>/);
 
   const withoutIntro = buildDigestHtmlBody(fixtureDigestSections, "unsub-token");
   assert.doesNotMatch(withoutIntro, /destaca una muestra/);
 });
 
-test("buildDigestHtmlBody: the 3 known section labels render as hand-broken stacked lines at 2x size (matching the site's own hardcoded wordmark convention), and an unmapped label falls back to plain text — 2026-08-08", () => {
+test("buildDigestHtmlBody: the 2 mapped section labels render as hand-broken stacked lines at wordmark size (85px, matching the CALDEARTE logo), 'En otras regiones' renders as a plain black headline instead, and an unmapped label falls back to plain text at the same size — 2026-08-08", () => {
   const html = buildDigestHtmlBody(fixtureDigestSections, "unsub-token");
   assert.match(
     html,
-    /<h2[^>]*font-size:26px[^>]*><span style="display:block;">INAUGU<\/span><span style="display:block;">RACIONES DE<\/span><span style="display:block;">ESTA SEMA<\/span><span style="display:block;">NA<\/span><\/h2>/,
+    /<h2[^>]*font-size:85px[^>]*><span style="display:block;">INAUGU<\/span><span style="display:block;">RACIONES\.<\/span><\/h2>/,
   );
-  assert.match(
-    html,
-    /<h2[^>]*font-size:26px[^>]*><span style="display:block;">EN<\/span><span style="display:block;">OTRAS<\/span><span style="display:block;">REGIO<\/span><span style="display:block;">NES<\/span><\/h2>/,
-  );
+  assert.match(html, /<p[^>]*font-size:40px[^>]*>EN OTRAS REGIONES\.<\/p>/);
+  assert.doesNotMatch(html, /<h2[^>]*>[\s\S]*?EN[\s\S]*?OTRAS[\s\S]*?<\/h2>/);
 
   const unmappedLabelSections: DigestSection[] = [{ label: "Sección sin mapear", events: [], emptyMessage: "vacía" }];
   const unmappedHtml = buildDigestHtmlBody(unmappedLabelSections, "unsub-token");
-  assert.match(unmappedHtml, /<h2[^>]*>Sección sin mapear<\/h2>/);
+  assert.match(unmappedHtml, /<h2[^>]*font-size:85px[^>]*>Sección sin mapear<\/h2>/);
 });
 
-test("buildDigestHtmlBody: a week with no hand-set override renders its computed title at 2x size, left-aligned, in the real Lato logo font, with word-break so it reflows densely like the hardcoded wordmarks — 2026-08-08", () => {
-  const html = buildDigestHtmlBody(fixtureDigestSections, "unsub-token", null, { start: "2026-07-27", end: "2026-08-02" });
+test("buildDigestHtmlBody: the week line and región line render right-aligned in the real Lato logo font under the fixed tagline — 2026-08-08", () => {
+  const html = buildDigestHtmlBody(fixtureDigestSections, "unsub-token", null, { start: "2026-07-27", end: "2026-08-02" }, null, "Región Metropolitana de Santiago");
   assert.match(
     html,
-    /<p style="margin:20px 0 0;max-width:320px;color:#3d373d;font-family:'Lato',Helvetica,Arial,sans-serif;font-weight:900;font-size:40px;line-height:0\.95;text-align:left;word-break:break-word;overflow-wrap:anywhere;">GUÍA INDEPENDIENTE DE ARTE, SEMANA DEL 27 DE JULIO AL 2 DE AGOSTO<\/p>/,
+    /<p style="margin:50px 0 0;color:#3d373d;font-family:'Lato',Helvetica,Arial,sans-serif;font-weight:900;font-size:20px;line-height:0\.95;text-align:right;overflow-wrap:anywhere;">SEMANA DEL 27 DE JULIO AL 2 DE AGOSTO<\/p>/,
+  );
+  assert.match(
+    html,
+    /<p style="margin:6px 0 0;color:#3d373d;font-family:'Lato',Helvetica,Arial,sans-serif;font-weight:900;font-size:57px;line-height:0\.95;text-align:right;overflow-wrap:anywhere;">SANTIAGO<\/p>/,
   );
 });
 
-test("buildDigestHtmlBody: a week WITH a hand-set override (HEADER_TITLE_LINE_OVERRIDES) renders those exact literal lines instead of the computed title — 2026-08-08", () => {
-  const html = buildDigestHtmlBody(fixtureDigestSections, "unsub-token", null, { start: "2026-08-03", end: "2026-08-09" });
-  assert.match(
-    html,
-    /<span style="display:block;">GUIA<\/span><span style="display:block;">INDEPEN<\/span><span style="display:block;">DIENTE DE<\/span><span style="display:block;">ARTE SEMA<\/span><span style="display:block;">NA DEL 3 AL<\/span><span style="display:block;">9 DE AGOS<\/span><span style="display:block;">TO\.<\/span>/,
-  );
-});
-
-test("buildDigestHtmlBody: the CALDE/ARTE. wordmark renders bigger and in the real Lato logo font (not the Helvetica approximation), left-aligned above the title — 2026-08-08", () => {
+test("buildDigestHtmlBody: the CALDE/ARTE. wordmark renders bigger (85px) and in the real Lato logo font (not the Helvetica approximation), left-aligned above the tagline — 2026-08-08", () => {
   const html = buildDigestHtmlBody(fixtureDigestSections, "unsub-token");
-  assert.match(html, /font-family:'Lato',Helvetica,Arial,sans-serif;font-weight:900;font-size:56px[^"]*">\s*<span style="display:block;">CALDE<\/span>/);
+  assert.match(html, /font-family:'Lato',Helvetica,Arial,sans-serif;font-weight:900;font-size:85px[^"]*">\s*<span style="display:block;">CALDE<\/span>/);
 });
 
 test("buildDigestHtmlBody: the footer invites readers to flag a missed/misclassified event or share their own work, linking to contacto@caldearte.com — 2026-08-08", () => {

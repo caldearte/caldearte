@@ -114,6 +114,23 @@ test("buildDigestSections: 'Expos para visitar esta semana' shows up to 10 alrea
   assert.equal(paraVisitar.moreLink, undefined);
 });
 
+test("buildDigestSections: 'Expos para visitar esta semana' diversifies across comunas when capping at 10 (2026-08-08 user request: 'ojalá de distintas comunas') — round-robins one event per comuna per pass, instead of letting one comuna's closing-soon cluster crowd out the rest", () => {
+  const events = [
+    // Comuna A has 8 closing-soon events — a flat soonest-first cut would
+    // fill the whole cap with just this one comuna.
+    ...Array.from({ length: 8 }, (_, i) => makeEvent({ comunaName: "Comuna A", run_end_date: `2026-08-${10 + i}` })),
+    makeEvent({ comunaName: "Comuna B", run_end_date: "2026-08-25" }),
+    makeEvent({ comunaName: "Comuna C", run_end_date: "2026-08-26" }),
+    makeEvent({ comunaName: "Comuna D", run_end_date: "2026-08-27" }),
+  ];
+  const { sections } = buildDigestSections(events, REGION_A, WEEK);
+  const paraVisitar = sections.find((s) => s.label === "Expos para visitar esta semana");
+  assert.ok(paraVisitar);
+  assert.equal(paraVisitar.events.length, 10);
+  const comunas = new Set(paraVisitar.events.map((e) => e.comunaName));
+  assert.equal(comunas.size, 4, "expected all 4 comunas represented, not just Comuna A's closing-soon cluster");
+});
+
 test("buildDigestSections: 'Expos para visitar esta semana' caps cards at 10 and adds a 'ver todas' link naming the región's TRUE total (including openings/new, not just the para-visitar pool) when there's more", () => {
   const events = [
     makeEvent({ opening_datetime: "2026-08-05T20:00:00.000Z" }), // +1 opening
@@ -134,7 +151,7 @@ test("buildDigestSections: an event that already closed before the week's end is
   assert.equal(sections.length, 0);
 });
 
-test("buildDigestSections: an event in a different región appears only in 'En otras regiones', sampled up to 5, with an always-present nationwide explore link", () => {
+test("buildDigestSections: an event in a different región appears only in 'En otras regiones', sampled up to 10, with an always-present nationwide explore link", () => {
   const events = [
     makeEvent({ adminRegionName: REGION_B }),
     makeEvent({ adminRegionName: REGION_B }),
@@ -149,11 +166,11 @@ test("buildDigestSections: an event in a different región appears only in 'En o
   assert.equal(otras.moreLink?.url, "https://www.caldearte.com");
 });
 
-test("buildDigestSections: 'En otras regiones' samples at most 5 even with more available", () => {
-  const events = Array.from({ length: 8 }, () => makeEvent({ adminRegionName: REGION_B }));
+test("buildDigestSections: 'En otras regiones' samples at most 10 even with more available — bumped 5 -> 10, 2026-08-08 user request", () => {
+  const events = Array.from({ length: 14 }, () => makeEvent({ adminRegionName: REGION_B }));
   const { sections } = buildDigestSections(events, REGION_A, WEEK);
   const otras = sections.find((s) => s.label === "En otras regiones");
-  assert.equal(otras?.events.length, 5);
+  assert.equal(otras?.events.length, 10);
 });
 
 test("buildDigestSections: 'En otras regiones' is sorted soonest-closing-first and deterministic — no longer randomized (2026-08-08), since it now also feeds a shared per-región AI intro that must agree with whichever cards are actually shown", () => {

@@ -631,15 +631,44 @@ function fmtWeekHeaderEs(weekStart: string, weekEnd: string): string {
   return `${range} ${ey}`;
 }
 
-// "GUÍA INDEPENDIENTE DE ARTE, SEMANA DEL 3 AL 9 DE AGOSTO" — the header's
-// big right-side title (Rediseño 2.0.0 pass, 2026-08-08, user request).
-// No year (unlike fmtWeekHeaderEs above, used elsewhere) — this is a big
-// display headline meant to be read at a glance, not a precise citation.
-function fmtHeaderTitle(weekStart: string, weekEnd: string): string {
+// "SEMANA DEL 3 AL 9 DE AGOSTO" — its own line under the header title now
+// (2026-08-08 restack, user request), separate from the fixed "GUIA
+// INDEPENDIENTE DE ARTE." tagline above it, which no longer carries the
+// date range itself. No year (unlike fmtWeekHeaderEs above, used
+// elsewhere) — this is a big display headline meant to be read at a
+// glance, not a precise citation.
+function fmtWeekLine(weekStart: string, weekEnd: string): string {
   const [, sm, sd] = weekStart.split("-").map(Number);
   const [, em, ed] = weekEnd.split("-").map(Number);
   const range = sm === em ? `${sd} al ${ed} de ${MONTHS_ES[sm - 1]}` : `${sd} de ${MONTHS_ES[sm - 1]} al ${ed} de ${MONTHS_ES[em - 1]}`;
-  return `GUÍA INDEPENDIENTE DE ARTE, SEMANA DEL ${range.toUpperCase()}`;
+  return `SEMANA DEL ${range.toUpperCase()}`;
+}
+
+// Display-only shortening of admin_region_name — duplicated from
+// apps/web/src/lib/regionNames.ts (separate package, same values;
+// confirmed with the user 2026-08-04 on the web side). Falls back to the
+// full name for anything unmapped, same defensive stance as the original.
+const SHORT_REGION_NAMES: Record<string, string> = {
+  "Arica y Parinacota": "Arica y Parinacota",
+  Tarapacá: "Tarapacá",
+  Antofagasta: "Antofagasta",
+  Atacama: "Atacama",
+  Coquimbo: "Coquimbo",
+  Valparaíso: "Valparaíso",
+  "Región Metropolitana de Santiago": "Santiago",
+  "Región del Libertador Gral. Bernardo O'Higgins": "O'Higgins",
+  "Región del Maule": "Maule",
+  "Región de Ñuble": "Ñuble",
+  "Región del Biobío": "Biobío",
+  "Región de la Araucanía": "Araucanía",
+  "Región de Los Ríos": "Los Ríos",
+  "Región de Los Lagos": "Los Lagos",
+  "Región Aisén del Gral. Carlos Ibáñez del Campo": "Aisén",
+  "Región de Magallanes y de la Antártica Chilena": "Magallanes",
+};
+
+function shortRegionName(adminRegionName: string): string {
+  return SHORT_REGION_NAMES[adminRegionName] ?? adminRegionName;
 }
 
 const SITE_URL = "https://www.caldearte.com";
@@ -699,10 +728,13 @@ export function buildDigestBody(
   intro: string | null = null,
   week?: { start: string; end: string },
   otherRegionsIntro: string | null = null,
+  regionName: string | null = null,
 ): string {
   const referenceYear = referenceYearFor(week);
   const lines: string[] = [];
-  if (week) lines.push(fmtWeekHeaderEs(week.start, week.end), "");
+  if (week) lines.push(fmtWeekHeaderEs(week.start, week.end));
+  if (regionName) lines.push(shortRegionName(regionName));
+  if (week || regionName) lines.push("");
   if (intro) {
     lines.push(intro);
     lines.push("");
@@ -761,29 +793,16 @@ const LATO_STACK = "'Lato',Helvetica,Arial,sans-serif";
 // headers (esCL.wordmarkLine1/2 "CALDE"/"ARTE.", curatoriaWordmarkLines
 // "CURA"/"TOR"/"IA.", menuDrawer.guiaDeArteWordmarkLines "GUIA"/"DE"/
 // "ARTE" — none of those are natural word-wrap either, they're hand-set).
-// User-specified exact breaks, 2026-08-08. Hardcoded (not CSS word-break)
-// because these three section labels are fixed strings, never dynamic —
-// unlike the header title below, which DOES need to reflow at runtime
-// since it includes the week's date range.
+// Shortened to 2-line labels and doubled again (26px -> 85px, matching the
+// CALDEARTE wordmark's own size) 2026-08-08, per the user's own manual
+// redesign pass. "En otras regiones" is no longer in this map — it now
+// renders as its own plain black paragraph, not a magenta wordmark
+// heading (see buildDigestHtmlBody's per-section branch below). Any
+// section not in this map (e.g. "Expos nuevas esta semana") falls back to
+// its plain label on one unbroken line, still at the same big size.
 const SECTION_LABEL_LINES: Record<string, string[]> = {
-  "Inauguraciones de esta semana": ["INAUGU", "RACIONES DE", "ESTA SEMA", "NA"],
-  "Expos para visitar esta semana": ["EXPOS PA", "RA VISITAR ES", "TA SEMAN", "A"],
-  "En otras regiones": ["EN", "OTRAS", "REGIO", "NES"],
-};
-
-// Same hand-set device as SECTION_LABEL_LINES above, but for the header
-// title — which can't be a single fixed array since it carries the
-// week's own date range. Keyed by week.start (the digest's own
-// per-week identity), this holds an exact, hand-chosen break for a
-// specific week's send when one has been provided (as it was for the
-// week of 2026-08-08, matching the user's own literal spec); any week
-// without an entry here falls back to the generic CSS word-break/
-// overflow-wrap behavior in buildDigestHtmlBody, which reflows on its
-// own but won't reproduce hand-set line balance exactly. Add a new
-// entry here for a future week only if a send needs an exact override
-// again — this isn't meant to be kept up weekly by hand.
-const HEADER_TITLE_LINE_OVERRIDES: Record<string, string[]> = {
-  "2026-08-03": ["GUIA", "INDEPEN", "DIENTE DE", "ARTE SEMA", "NA DEL 3 AL", "9 DE AGOS", "TO."],
+  "Inauguraciones de esta semana": ["INAUGU", "RACIONES."],
+  "Expos para visitar esta semana": ["EXPO", "SICIONES."],
 };
 
 // Same "within 7 days, never past" rule as apps/web/src/lib/date.ts's own
@@ -802,35 +821,48 @@ function isClosingSoon(runEndDate: string | null, todayStr: string | null, thres
 
 // Matches the real site's own "list view" card — EventHorizontalListItem
 // (apps/web/src/components/EventHorizontalListItem.tsx): white row, a
-// small 72×56 thumbnail (no rounding — the real component doesn't round
-// it either), a bold badge line (magenta for an opening/closing-soon
-// date, text-primary black otherwise — the same policy the component
-// itself follows), the title in the site's monospace display font, and
-// the venue in muted gray underneath. Replaces the earlier black-panel
-// design (2026-08-08, user feedback: cards still didn't read as the
-// site's own "cards tipo listas" — the black panel was this file's own
-// invention, not the real component).
+// thumbnail (no rounding — the real component doesn't round it either), a
+// bold badge line (magenta for an opening/closing-soon date, text-primary
+// black otherwise — the same policy the component itself follows), the
+// title in the site's monospace display font, and the venue in muted gray
+// underneath. Replaces the earlier black-panel design (2026-08-08, user
+// feedback: cards still didn't read as the site's own "cards tipo
+// listas" — the black panel was this file's own invention, not the real
+// component). Thumbnail bumped 72×56 -> 150×150 and every text size
+// scaled up in the same pass (2026-08-08, user's own manual redesign) —
+// the <td width> below is kept in sync with the image's own width so the
+// cell doesn't render narrower than its content in stricter email
+// clients.
 function eventCardHtml(e: DigestEvent, referenceYear: number, todayStr: string | null): string {
   const date = fmtDigestDate(e, referenceYear);
   const closingSoon = isClosingSoon(e.runEndDate, todayStr);
   const dateText = closingSoon ? `${escapeHtml("ÚLTIMOS DÍAS")} — ${escapeHtml(date)}` : escapeHtml(date);
   const badgeColor = e.isOpeningThisWeek || closingSoon ? BRAND_MAGENTA : TEXT_PRIMARY;
   const thumb = e.imageUrl
-    ? `<img src="${escapeHtml(e.imageUrl)}" width="72" height="56" alt="" style="display:block;width:72px;height:56px;object-fit:cover;" />`
-    : `<div style="width:72px;height:56px;background:#3a3a3a;"></div>`;
+    ? `<img src="${escapeHtml(e.imageUrl)}" width="150" height="150" alt="" style="display:block;width:150px;height:150px;object-fit:cover;" />`
+    : `<div style="width:150px;height:150px;background:#3a3a3a;"></div>`;
   return `<a href="${eventUrl(e.id)}" style="display:block;text-decoration:none;margin:0 0 8px;background:#fff;">
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="padding:12px;">
       <tr>
-        <td width="72" valign="top" style="line-height:0;">${thumb}</td>
+        <td width="150" valign="top" style="line-height:0;">${thumb}</td>
         <td width="12"></td>
         <td valign="middle">
-          ${date ? `<p style="margin:0 0 4px;color:${badgeColor};font-size:11px;font-weight:800;">${dateText}</p>` : ""}
-          <p style="margin:0 0 4px;color:${TEXT_PRIMARY};font-family:${MONO_STACK};font-size:14px;line-height:1.2;">${escapeHtml(e.title)}</p>
-          <p style="margin:0;color:#767f82;font-size:11px;">${escapeHtml(e.placeName)}</p>
+          ${date ? `<p style="margin:0 0 4px;color:${badgeColor};font-size:18px;font-weight:800;">${dateText}</p>` : ""}
+          <p style="margin:0 0 4px;color:${TEXT_PRIMARY};font-family:${MONO_STACK};font-size:21px;line-height:1.2;">${escapeHtml(e.title)}</p>
+          <p style="margin:0;color:#767f82;font-size:15px;">${escapeHtml(e.placeName)}</p>
         </td>
       </tr>
     </table>
   </a>`;
+}
+
+// Every section's own "ver más" link — bumped from a small 13px inline
+// link to a big centered magenta CTA (2026-08-08, user's own manual
+// redesign pass), matching the visual weight of everything else at this
+// size.
+function moreLinkHtml(moreLink: { label: string; url: string } | undefined): string {
+  if (!moreLink) return "";
+  return `<p style="margin:60px 0 0;text-align:center;"><a href="${escapeHtml(moreLink.url)}" style="color:${BRAND_MAGENTA};font-weight:700;font-size:38px;text-decoration:underline;">${escapeHtml(moreLink.label)}</a></p>`;
 }
 
 export function buildDigestHtmlBody(
@@ -839,6 +871,7 @@ export function buildDigestHtmlBody(
   intro: string | null = null,
   week?: { start: string; end: string },
   otherRegionsIntro: string | null = null,
+  regionName: string | null = null,
 ): string {
   const referenceYear = referenceYearFor(week);
   const todayStr = week?.start ?? null;
@@ -849,78 +882,85 @@ export function buildDigestHtmlBody(
           ? `<p style="margin:14px 0 0;font-size:13px;color:#888;font-style:italic;">${escapeHtml(section.emptyMessage)}</p>`
           : groupByComuna(section.events)
               .map(
-                // Comuna label bumped 12px -> 15px (user request, 2026-08-08:
-                // read as too small next to the redesigned cards).
+                // Comuna label bumped 12px -> 15px -> 18px (user request,
+                // 2026-08-08: read as too small next to the redesigned cards).
                 ([comuna, events]) =>
-                  `<p style="margin:20px 0 10px;font-size:15px;font-weight:700;color:${TEXT_PRIMARY};">${escapeHtml(comuna)}</p>${events.map((e) => eventCardHtml(e, referenceYear, todayStr)).join("")}`,
+                  `<p style="margin:20px 0 10px;font-size:18px;font-weight:700;color:${TEXT_PRIMARY};">${escapeHtml(comuna)}</p>${events.map((e) => eventCardHtml(e, referenceYear, todayStr)).join("")}`,
               )
               .join("");
-      const moreLinkHtml = section.moreLink
-        ? `<p style="margin:12px 0 0;"><a href="${escapeHtml(section.moreLink.url)}" style="color:${BRAND_MAGENTA};font-weight:700;font-size:13px;text-decoration:underline;">${escapeHtml(section.moreLink.label)}</a></p>`
-        : "";
-      // "En otras regiones" gets its own short intro paragraph, right
-      // under the heading — same content-first framing as the top intro,
-      // just one paragraph and scoped to whichever handful of other-región
-      // shows are actually shown as cards below it (see run.ts — that
-      // sample is deterministic per región/week now, specifically so this
-      // text and the cards never disagree on which shows it's about).
-      const otherRegionsIntroHtml =
-        section.label === "En otras regiones" && otherRegionsIntro
-          ? `<p style="margin:14px 0 0;font-size:14px;color:${TEXT_PRIMARY};line-height:1.6;">${escapeHtml(otherRegionsIntro)}</p>`
+
+      // "En otras regiones" is special-cased (2026-08-08 restack, user's
+      // own manual redesign pass): it no longer gets the magenta wordmark
+      // heading the other two sections do — instead a plain black Lato
+      // headline (same family/weight as the header title, not
+      // SECTION_LABEL_LINES' mono/magenta treatment), with its own intro
+      // paragraph right under it. A large top margin gives it real air
+      // after the previous section's big "ver más" CTA.
+      if (section.label === "En otras regiones") {
+        const introParagraph = otherRegionsIntro
+          ? `<p style="margin:14px 0 0;font-size:21px;color:${TEXT_PRIMARY};line-height:1.6;">${escapeHtml(otherRegionsIntro)}</p>`
           : "";
+        return `<div style="margin:48px 0 0;">
+      <p style="margin:160px 0 60px;max-width:320px;color:${TEXT_PRIMARY};font-family:${LATO_STACK};font-weight:900;font-size:40px;line-height:0.95;text-align:left;word-break:break-word;overflow-wrap:anywhere;">EN OTRAS REGIONES.</p>
+      ${introParagraph}
+      ${bodyHtml}
+      ${moreLinkHtml(section.moreLink)}
+      </div>`;
+      }
+
       // Generous top margin (not just the h2's own padding) — real
       // feedback: sections read as cramped/jammed together without real
-      // air between them, especially after a card grid. Label styled
-      // like the site's own section headings (fragment-mono, magenta) —
-      // Rediseño 2.0.0 pass, 2026-08-07. Doubled 13px -> 26px and stacked
-      // into hand-set lines (SECTION_LABEL_LINES) 2026-08-08, per user
-      // request — falls back to the plain label on one line for any
-      // section not in that map (e.g. "Expos nuevas esta semana", which
-      // wasn't given a break pattern), so an unmapped label never breaks.
+      // air between them, especially after a card grid. Label styled as
+      // its own big magenta wordmark now (26px mono -> 85px Lato, same
+      // size as the CALDEARTE logo, 2026-08-08 user's own manual redesign
+      // pass) via SECTION_LABEL_LINES — falls back to the plain label on
+      // one (still word-breaking) line for any section not in that map
+      // (e.g. "Expos nuevas esta semana", which wasn't given a specific
+      // break pattern).
       const labelLines = SECTION_LABEL_LINES[section.label];
-      const labelHtml = labelLines ? labelLines.map((line) => `<span style="display:block;">${escapeHtml(line)}</span>`).join("") : escapeHtml(section.label);
+      const labelHtml = labelLines
+        ? labelLines.map((line) => `<span style="display:block;">${escapeHtml(line)}</span>`).join("")
+        : escapeHtml(section.label);
       return `<div style="margin:48px 0 0;">
-      <h2 style="font-family:${MONO_STACK};font-size:26px;line-height:1.05;font-weight:700;text-transform:uppercase;letter-spacing:0.01em;color:${BRAND_MAGENTA};margin:0 0 16px;">${labelHtml}</h2>
-      ${otherRegionsIntroHtml}
+      <h2 style="margin:0 0 16px;color:${BRAND_MAGENTA};font-family:${LATO_STACK};font-weight:900;font-size:85px;line-height:0.92;letter-spacing:0.01em;word-break:break-word;overflow-wrap:anywhere;">${labelHtml}</h2>
       ${bodyHtml}
-      ${moreLinkHtml}
+      ${moreLinkHtml(section.moreLink)}
       </div>`;
     })
     .join("");
 
-  // Rendered as one <p> per paragraph (split on blank lines) — the intro is
-  // now 2 short paragraphs (see intro.ts's prompt), not a single line.
+  // Rendered as one <p> per paragraph (split on blank lines) — bumped
+  // 15px -> 18px alongside every other text size in this pass.
   const introHtml = intro
     ? intro
         .split(/\n\s*\n/)
         .map((p) => p.trim())
         .filter(Boolean)
-        .map((p) => `<p style="margin:0 0 14px;font-size:15px;color:${TEXT_PRIMARY};line-height:1.6;">${escapeHtml(p)}</p>`)
+        .map((p) => `<p style="margin:0 0 14px;font-size:18px;color:${TEXT_PRIMARY};line-height:1.6;">${escapeHtml(p)}</p>`)
         .join("")
     : "";
-  // Title lines — an exact hand-set override for this week if one exists
-  // (HEADER_TITLE_LINE_OVERRIDES), otherwise the computed week-range title
-  // (or the generic fallback tagline with no week at all) reflowed via
-  // CSS word-break in a narrow column. Either way it's stacked as
-  // left-aligned <span> lines now, not a single wrapped paragraph — see
-  // the layout comment below for why.
-  const titleLineOverride = week ? HEADER_TITLE_LINE_OVERRIDES[week.start] : undefined;
-  const headerTitleHtml = titleLineOverride
-    ? titleLineOverride.map((line) => `<span style="display:block;">${escapeHtml(line)}</span>`).join("")
-    : escapeHtml(week ? fmtHeaderTitle(week.start, week.end) : "GUÍA INDEPENDIENTE DE ARTE SEMANAL");
+
+  const weekLineHtml = week
+    ? `<p style="margin:50px 0 0;color:${TEXT_PRIMARY};font-family:${LATO_STACK};font-weight:900;font-size:20px;line-height:0.95;text-align:right;overflow-wrap:anywhere;">${escapeHtml(fmtWeekLine(week.start, week.end))}</p>`
+    : "";
+  const regionLineHtml = regionName
+    ? `<p style="margin:6px 0 0;color:${TEXT_PRIMARY};font-family:${LATO_STACK};font-weight:900;font-size:57px;line-height:0.95;text-align:right;overflow-wrap:anywhere;">${escapeHtml(shortRegionName(regionName).toUpperCase())}</p>`
+    : "";
 
   // Rediseño 2.0.0 pass (2026-08-07/08), restacked 2026-08-08 per user
-  // feedback: was a dark #1c1c1c/white-on-black header, then a wordmark
-  // beside a right-aligned title. Now a single left-aligned column —
-  // wordmark on top (bigger, real Lato Black — the site's own logo font,
-  // not the Helvetica approximation used elsewhere in this email), the
-  // week's title directly below it in the same column, matching how
-  // MenuDrawer's own "GUIA"/"DE"/"ARTE" wordmark block is laid out on the
-  // real site. Sage page background throughout (apps/web's own
-  // bg-surface-sage), and a full-bleed magenta footer block echoing
-  // Footer.tsx's own "CALDEARTE." sign-off. Event cards stay a plain
-  // white row now too (see eventCardHtml) — matches the real site's own
-  // list-view card, not this file's earlier black-panel invention.
+  // feedback, then substantially reworked again the same day from the
+  // user's own manual HTML edit: logo (bigger still, 85px) and a short,
+  // fixed "GUIA INDEPENDIENTE DE ARTE." tagline on the left; the week
+  // range and the subscriber's own región name as two big right-aligned
+  // lines underneath (asymmetric on purpose — matches the user's own
+  // layout). Section headings are now full wordmark-sized magenta
+  // headlines (85px, matching the logo), "En otras regiones" breaks from
+  // that pattern into a plain black headline instead. Sage page
+  // background throughout, full-bleed magenta footer. The contact prompt
+  // now sits on the sage background above the footer (was inside the
+  // magenta block) — wrapped in the same 28px horizontal padding as
+  // everything else, which the user's own edit had dropped, leaving it
+  // flush against the email's edges.
   return `<!doctype html>
 <html lang="es-CL">
   <head>
@@ -932,29 +972,35 @@ export function buildDigestHtmlBody(
   <body style="margin:0;padding:0;background:${SURFACE_SAGE};">
     <div style="font-family:Helvetica,Arial,sans-serif;max-width:640px;margin:0 auto;background:${SURFACE_SAGE};">
     <div style="padding:32px 28px 8px;">
-      <a href="${SITE_URL}" style="display:block;text-decoration:none;color:${BRAND_MAGENTA};font-family:${LATO_STACK};font-weight:900;font-size:56px;line-height:0.92;letter-spacing:0.01em;">
+      <a href="${SITE_URL}" style="display:block;text-decoration:none;color:${BRAND_MAGENTA};font-family:${LATO_STACK};font-weight:900;font-size:85px;line-height:0.92;letter-spacing:0.01em;">
         <span style="display:block;">CALDE</span>
         <span style="display:block;">ARTE.</span>
       </a>
-      <p style="margin:20px 0 0;max-width:320px;color:${TEXT_PRIMARY};font-family:${LATO_STACK};font-weight:900;font-size:40px;line-height:0.95;text-align:left;word-break:break-word;overflow-wrap:anywhere;">${headerTitleHtml}</p>
+      <p style="margin:20px 0 0;max-width:206px;color:${TEXT_PRIMARY};font-family:${LATO_STACK};font-weight:900;font-size:40px;line-height:0.95;text-align:left;word-break:break-word;overflow-wrap:anywhere;">GUIA INDEPENDIENTE DE ARTE.</p>
+      ${weekLineHtml}
+      ${regionLineHtml}
     </div>
     <div style="padding:24px 28px 8px;">
       ${introHtml}
       ${sectionsHtml}
     </div>
+    <div style="padding:0 28px;">
+      <!-- Contact prompt, added 2026-08-08, moved out of the magenta
+           footer the same day (user's own manual redesign pass) — same
+           invitation the curatoría page itself makes
+           (esCL.curatoriaPage.section2Body2*): tell us if we missed/
+           misclassified something, or share your own work. mailto:
+           instead of a link to the site's contact drawer — that's a
+           React component, doesn't exist as a URL an email can deep-link
+           into. contacto@caldearte.com is the same address these emails
+           already send from. -->
+      <p style="margin:80px 0 14px;font-size:21px;color:${TEXT_PRIMARY};line-height:1.6;">
+        ¿Sientes que nos perdimos una exposición, o que clasificamos algo mal? ¿Estás por compartir tu propia obra con el mundo?
+        <a href="mailto:contacto@caldearte.com" style="color:${BRAND_MAGENTA};font-weight:700;text-decoration:underline;">Escríbenos a contacto@caldearte.com</a>.
+      </p>
+    </div>
     <div style="background:${BRAND_MAGENTA};color:${SURFACE_SAGE};padding:40px 28px;margin-top:56px;">
       <p style="margin:0 0 16px;font-family:${LATO_STACK};font-weight:900;font-size:32px;letter-spacing:0.01em;color:${SURFACE_SAGE};">CALDEARTE.</p>
-      <!-- Contact prompt, added 2026-08-08 (user request) — same invitation
-           the curatoría page itself makes (esCL.curatoriaPage.section2Body2*):
-           tell us if we missed/misclassified something, or share your own
-           work. mailto: instead of a link to the site's contact drawer —
-           that's a React component, doesn't exist as a URL an email can
-           deep-link into. contacto@caldearte.com is the same address these
-           emails already send from. -->
-      <p style="margin:0 0 16px;font-size:14px;font-weight:700;line-height:1.6;color:${SURFACE_SAGE};">
-        ¿Sientes que nos perdimos una exposición, o que clasificamos algo mal? ¿Estás por compartir tu propia obra con el mundo?
-        <a href="mailto:contacto@caldearte.com" style="color:${SURFACE_SAGE};text-decoration:underline;">Escríbenos a contacto@caldearte.com</a>.
-      </p>
       <p style="margin:0 0 12px;font-size:12px;line-height:1.6;color:${SURFACE_SAGE};">
         Este es el boletín semanal de Caldearte, un calendario de arte curado por inteligencia humana potenciada por IA. Te lo enviamos porque te suscribiste para recibir la agenda de tu región cada semana.
       </p>
@@ -976,6 +1022,7 @@ export async function sendDigestEmail(
   intro: string | null = null,
   week?: { start: string; end: string },
   otherRegionsIntro: string | null = null,
+  regionName: string | null = null,
 ): Promise<void> {
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) {
@@ -987,8 +1034,8 @@ export async function sendDigestEmail(
     from: "Caldearte <contacto@caldearte.com>",
     to: email,
     subject: buildDigestSubject(sections, week),
-    text: buildDigestBody(sections, unsubscribeToken, intro, week, otherRegionsIntro),
-    html: buildDigestHtmlBody(sections, unsubscribeToken, intro, week, otherRegionsIntro),
+    text: buildDigestBody(sections, unsubscribeToken, intro, week, otherRegionsIntro, regionName),
+    html: buildDigestHtmlBody(sections, unsubscribeToken, intro, week, otherRegionsIntro, regionName),
     headers: {
       "List-Unsubscribe": `<${unsubscribeUrl(unsubscribeToken)}>`,
     },

@@ -22,8 +22,41 @@ type EventRow = Tables<"events">;
 type EventWithRegion = EventRow & { adminRegionName: string | null; comunaName: string | null };
 
 const VISIT_CAP = 10;
-const OTHER_REGIONS_CAP = 5;
+// Bumped 5 -> 10, 2026-08-08 (user request) — matches VISIT_CAP now, both
+// read as "up to 10" sections.
+const OTHER_REGIONS_CAP = 10;
 const SITE_URL = "https://www.caldearte.com";
+
+// Round-robins across comunas (each comuna's own events kept in their
+// incoming order — soonest-closing-first for alsoVisitAll) so a capped
+// list favors breadth across the región instead of letting one comuna
+// with many closing-soon shows crowd out everything else — 2026-08-08
+// user request ("ojalá de distintas comunas"). Comuna order follows each
+// comuna's own first appearance in the input, i.e. still roughly
+// soonest-closing-first overall.
+function diversifyByComuna<T extends { comunaName: string | null }>(events: T[], cap: number): T[] {
+  const buckets = new Map<string, T[]>();
+  for (const e of events) {
+    const key = e.comunaName ?? "__none__";
+    if (!buckets.has(key)) buckets.set(key, []);
+    buckets.get(key)!.push(e);
+  }
+  const bucketKeys = Array.from(buckets.keys());
+  const result: T[] = [];
+  for (let round = 0; result.length < cap; round++) {
+    let addedInRound = false;
+    for (const key of bucketKeys) {
+      const bucket = buckets.get(key)!;
+      if (round < bucket.length) {
+        result.push(bucket[round]);
+        addedInRound = true;
+        if (result.length >= cap) break;
+      }
+    }
+    if (!addedInRound) break;
+  }
+  return result;
+}
 
 export interface RunDeps {
   supabase?: SupabaseClient<Database>;
@@ -119,7 +152,7 @@ export function buildDigestSections(
   const alsoVisitAll = runningThisWeek
     .filter((e) => !openingIds.has(e.id) && !newIds.has(e.id))
     .sort((a, b) => (a.run_end_date ?? "9999-12-31").localeCompare(b.run_end_date ?? "9999-12-31"));
-  const alsoVisit = alsoVisitAll.slice(0, VISIT_CAP);
+  const alsoVisit = diversifyByComuna(alsoVisitAll, VISIT_CAP);
 
   // Deterministic (soonest-closing first, same convention as alsoVisitAll
   // above), not randomized — was shuffle()'d per-subscriber until
@@ -250,7 +283,15 @@ export async function run(deps: RunDeps = {}): Promise<void> {
     // Reuses the subscriber's own confirm_token as the unsubscribe token
     // too — one opaque value per subscriber is enough, see the migration
     // comment.
-    await (deps.sendDigestEmailFn ?? sendDigestEmail)(subscriber.email, subscriber.confirm_token, sections, intro, week, otherRegionsIntro);
+    await (deps.sendDigestEmailFn ?? sendDigestEmail)(
+      subscriber.email,
+      subscriber.confirm_token,
+      sections,
+      intro,
+      week,
+      otherRegionsIntro,
+      subscriber.admin_region_name,
+    );
     sent++;
   }
 
