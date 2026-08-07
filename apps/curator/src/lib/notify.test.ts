@@ -552,9 +552,12 @@ test("buildDigestBody includes the week date range as its first line when provid
   assert.match(body, /^27 de julio al 2 de agosto 2026/);
 });
 
-test("eventCardHtml: the whole card is one link to caldearte.com's event page, with placeName, title, and date inside the black panel", () => {
+test("eventCardHtml: the whole card is one link to caldearte.com's event page, with the date, title, and placeName — matching the real site's EventHorizontalListItem order (badge, title, venue), 2026-08-08", () => {
   const html = buildDigestHtmlBody(fixtureDigestSections, "unsub-token");
-  assert.match(html, /<a href="https:\/\/www\.caldearte\.com\/eventos\/event-estrella-distante"[^>]*>[\s\S]*?MAC Quinta Normal[\s\S]*?Estrella distante[\s\S]*?<\/a>/);
+  assert.match(
+    html,
+    /<a href="https:\/\/www\.caldearte\.com\/eventos\/event-estrella-distante"[^>]*>[\s\S]*?Inauguración[\s\S]*?Estrella distante[\s\S]*?MAC Quinta Normal[\s\S]*?<\/a>/,
+  );
 });
 
 test("eventCardHtml: shows an ÚLTIMOS DÍAS badge when the run ends within 7 days of the digest's own week.start, never otherwise", () => {
@@ -615,12 +618,25 @@ test("buildDigestHtmlBody: the 3 known section labels render as hand-broken stac
   assert.match(unmappedHtml, /<h2[^>]*>Sección sin mapear<\/h2>/);
 });
 
-test("buildDigestHtmlBody: the header title renders at 2x size with word-break so a long dynamic week range reflows densely like the hardcoded wordmarks, in Caldearte black — 2026-08-08", () => {
+test("buildDigestHtmlBody: a week with no hand-set override renders its computed title at 2x size, left-aligned, in the real Lato logo font, with word-break so it reflows densely like the hardcoded wordmarks — 2026-08-08", () => {
   const html = buildDigestHtmlBody(fixtureDigestSections, "unsub-token", null, { start: "2026-07-27", end: "2026-08-02" });
   assert.match(
     html,
-    /<p style="margin:0;color:#3d373d;font-family:Helvetica,Arial,sans-serif;font-weight:900;font-size:40px;line-height:0\.95;text-align:right;word-break:break-word;overflow-wrap:anywhere;">GUÍA INDEPENDIENTE DE ARTE, SEMANA DEL 27 DE JULIO AL 2 DE AGOSTO<\/p>/,
+    /<p style="margin:20px 0 0;max-width:320px;color:#3d373d;font-family:'Lato',Helvetica,Arial,sans-serif;font-weight:900;font-size:40px;line-height:0\.95;text-align:left;word-break:break-word;overflow-wrap:anywhere;">GUÍA INDEPENDIENTE DE ARTE, SEMANA DEL 27 DE JULIO AL 2 DE AGOSTO<\/p>/,
   );
+});
+
+test("buildDigestHtmlBody: a week WITH a hand-set override (HEADER_TITLE_LINE_OVERRIDES) renders those exact literal lines instead of the computed title — 2026-08-08", () => {
+  const html = buildDigestHtmlBody(fixtureDigestSections, "unsub-token", null, { start: "2026-08-03", end: "2026-08-09" });
+  assert.match(
+    html,
+    /<span style="display:block;">GUIA<\/span><span style="display:block;">INDEPEN<\/span><span style="display:block;">DIENTE DE<\/span><span style="display:block;">ARTE SEMA<\/span><span style="display:block;">NA DEL 3 AL<\/span><span style="display:block;">9 DE AGOS<\/span><span style="display:block;">TO\.<\/span>/,
+  );
+});
+
+test("buildDigestHtmlBody: the CALDE/ARTE. wordmark renders bigger and in the real Lato logo font (not the Helvetica approximation), left-aligned above the title — 2026-08-08", () => {
+  const html = buildDigestHtmlBody(fixtureDigestSections, "unsub-token");
+  assert.match(html, /font-family:'Lato',Helvetica,Arial,sans-serif;font-weight:900;font-size:56px[^"]*">\s*<span style="display:block;">CALDE<\/span>/);
 });
 
 test("buildDigestHtmlBody: the footer invites readers to flag a missed/misclassified event or share their own work, linking to contacto@caldearte.com — 2026-08-08", () => {
