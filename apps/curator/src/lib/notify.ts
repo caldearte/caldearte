@@ -750,6 +750,21 @@ const TEXT_PRIMARY = "#3d373d";
 // label" feel without depending on a webfont most inboxes won't load.
 const MONO_STACK = "ui-monospace,'SFMono-Regular',Menlo,Consolas,'Liberation Mono',monospace";
 
+// Section labels stacked into deliberately mid-word-broken lines — same
+// graphic-typography device the site itself already uses for display
+// headers (esCL.wordmarkLine1/2 "CALDE"/"ARTE.", curatoriaWordmarkLines
+// "CURA"/"TOR"/"IA.", menuDrawer.guiaDeArteWordmarkLines "GUIA"/"DE"/
+// "ARTE" — none of those are natural word-wrap either, they're hand-set).
+// User-specified exact breaks, 2026-08-08. Hardcoded (not CSS word-break)
+// because these three section labels are fixed strings, never dynamic —
+// unlike the header title below, which DOES need to reflow at runtime
+// since it includes the week's date range.
+const SECTION_LABEL_LINES: Record<string, string[]> = {
+  "Inauguraciones de esta semana": ["INAUGU", "RACIONES DE", "ESTA SEMA", "NA"],
+  "Expos para visitar esta semana": ["EXPOS PA", "RA VISITAR ES", "TA SEMAN", "A"],
+  "En otras regiones": ["EN", "OTRAS", "REGIO", "NES"],
+};
+
 // Same "within 7 days, never past" rule as apps/web/src/lib/date.ts's own
 // isClosingSoon (duplicated, not imported — separate packages). `todayStr`
 // anchors off the digest's own week.start (the send always goes out
@@ -842,9 +857,15 @@ export function buildDigestHtmlBody(
       // feedback: sections read as cramped/jammed together without real
       // air between them, especially after a card grid. Label styled
       // like the site's own section headings (fragment-mono, magenta) —
-      // Rediseño 2.0.0 pass, 2026-08-07.
+      // Rediseño 2.0.0 pass, 2026-08-07. Doubled 13px -> 26px and stacked
+      // into hand-set lines (SECTION_LABEL_LINES) 2026-08-08, per user
+      // request — falls back to the plain label on one line for any
+      // section not in that map (e.g. "Expos nuevas esta semana", which
+      // wasn't given a break pattern), so an unmapped label never breaks.
+      const labelLines = SECTION_LABEL_LINES[section.label];
+      const labelHtml = labelLines ? labelLines.map((line) => `<span style="display:block;">${escapeHtml(line)}</span>`).join("") : escapeHtml(section.label);
       return `<div style="margin:48px 0 0;">
-      <h2 style="font-family:${MONO_STACK};font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;color:${BRAND_MAGENTA};margin:0;border-bottom:1px solid #c9c2b8;padding-bottom:6px;">${escapeHtml(section.label)}</h2>
+      <h2 style="font-family:${MONO_STACK};font-size:26px;line-height:1.05;font-weight:700;text-transform:uppercase;letter-spacing:0.01em;color:${BRAND_MAGENTA};margin:0 0 16px;">${labelHtml}</h2>
       ${otherRegionsIntroHtml}
       ${bodyHtml}
       ${moreLinkHtml}
@@ -896,8 +917,15 @@ export function buildDigestHtmlBody(
               <span style="display:block;">ARTE.</span>
             </a>
           </td>
-          <td valign="bottom" align="right" width="54%">
-            <p style="margin:0;color:${TEXT_PRIMARY};font-family:Helvetica,Arial,sans-serif;font-weight:900;font-size:20px;line-height:1.15;text-align:right;">${headerTitle}</p>
+          <td valign="top" align="right" width="54%">
+            <!-- Doubled 20px -> 40px, 2026-08-08 — at that size the column
+                 is narrower than the text, so word-break/overflow-wrap
+                 force the same dense, mid-word-breaking stack the site's
+                 own hand-set display headers use elsewhere (see
+                 SECTION_LABEL_LINES' own comment) — done via CSS here,
+                 not hardcoded lines, since this title includes the week's
+                 date range and changes every send. -->
+            <p style="margin:0;color:${TEXT_PRIMARY};font-family:Helvetica,Arial,sans-serif;font-weight:900;font-size:40px;line-height:0.95;text-align:right;word-break:break-word;overflow-wrap:anywhere;">${headerTitle}</p>
           </td>
         </tr>
       </table>
@@ -908,6 +936,17 @@ export function buildDigestHtmlBody(
     </div>
     <div style="background:${BRAND_MAGENTA};color:${SURFACE_SAGE};padding:40px 28px;margin-top:56px;">
       <p style="margin:0 0 16px;font-family:Helvetica,Arial,sans-serif;font-weight:900;font-size:32px;letter-spacing:0.01em;color:${SURFACE_SAGE};">CALDEARTE.</p>
+      <!-- Contact prompt, added 2026-08-08 (user request) — same invitation
+           the curatoría page itself makes (esCL.curatoriaPage.section2Body2*):
+           tell us if we missed/misclassified something, or share your own
+           work. mailto: instead of a link to the site's contact drawer —
+           that's a React component, doesn't exist as a URL an email can
+           deep-link into. contacto@caldearte.com is the same address these
+           emails already send from. -->
+      <p style="margin:0 0 16px;font-size:14px;font-weight:700;line-height:1.6;color:${SURFACE_SAGE};">
+        ¿Sientes que nos perdimos una exposición, o que clasificamos algo mal? ¿Estás por compartir tu propia obra con el mundo?
+        <a href="mailto:contacto@caldearte.com" style="color:${SURFACE_SAGE};text-decoration:underline;">Escríbenos a contacto@caldearte.com</a>.
+      </p>
       <p style="margin:0 0 12px;font-size:12px;line-height:1.6;color:${SURFACE_SAGE};">
         Este es el boletín semanal de Caldearte, un calendario de arte curado por inteligencia humana potenciada por IA. Te lo enviamos porque te suscribiste para recibir la agenda de tu región cada semana.
       </p>
