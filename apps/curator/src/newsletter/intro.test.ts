@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { generateRegionIntro, type MessagesClient } from "./intro.js";
-import type { DigestSection } from "../lib/notify.js";
+import { generateRegionIntro, generateOtherRegionsIntro, type MessagesClient } from "./intro.js";
+import type { DigestSection, DigestEvent } from "../lib/notify.js";
 
 const hasLocalSupabase = Boolean(process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY);
 
@@ -158,6 +158,82 @@ test(
       },
     };
     const intro = await generateRegionIntro(fixtureSections, 2, { messagesClient: client });
+    assert.equal(intro, null);
+  },
+);
+
+const fixtureOtherRegionsEvents: DigestEvent[] = [
+  {
+    id: "e-otras-1",
+    title: "Cuerpo, tierra y memoria",
+    placeName: "Sala Municipal",
+    comunaName: "Concepción",
+    openingDatetime: null,
+    openingTimeConfirmed: true,
+    runEndDate: "2026-08-20",
+    imageUrl: null,
+    isOpeningThisWeek: false,
+  },
+];
+
+test("generateOtherRegionsIntro: returns null immediately for an empty sample — never calls the model", async () => {
+  const intro = await generateOtherRegionsIntro([], {});
+  assert.equal(intro, null);
+});
+
+test(
+  "generateOtherRegionsIntro: returns the model's text and records usage under the newsletter_intro purpose (same budget gate as the main intro)",
+  { skip: !hasLocalSupabase },
+  async () => {
+    const { getSupabaseClient } = await import("../lib/supabase-client.js");
+    const client = getSupabaseClient();
+    const { getCurrentMonthSpend } = await import("../lib/usage-tracking.js");
+
+    const spendBefore = await getCurrentMonthSpend();
+    const intro = await generateOtherRegionsIntro(fixtureOtherRegionsEvents, {
+      messagesClient: stubClient("En Concepción, una muestra sobre memoria y territorio."),
+    });
+    assert.equal(intro, "En Concepción, una muestra sobre memoria y territorio.");
+
+    const spendAfter = await getCurrentMonthSpend();
+    assert.ok(spendAfter > spendBefore, "expected recordUsage to add a newsletter_intro row with nonzero cost");
+  },
+);
+
+test(
+  "generateOtherRegionsIntro: only ever sends title/placeName/comunaName — never dates or other fields — for the sample it's given",
+  { skip: !hasLocalSupabase },
+  async () => {
+    let capturedPrompt = "";
+    const client: MessagesClient = {
+      messages: {
+        create: async (params) => {
+          capturedPrompt = String((params.messages as Array<{ content: string }>)[0].content);
+          return {
+            content: [{ type: "text", text: "ok" }],
+            usage: { input_tokens: 1, output_tokens: 1, cache_creation_input_tokens: 0, cache_read_input_tokens: 0 },
+          };
+        },
+      },
+    };
+    await generateOtherRegionsIntro(fixtureOtherRegionsEvents, { messagesClient: client });
+    assert.match(capturedPrompt, /Cuerpo, tierra y memoria \(Sala Municipal, Concepción\)/);
+    assert.doesNotMatch(capturedPrompt, /2026-08-20/);
+  },
+);
+
+test(
+  "generateOtherRegionsIntro: degrades to null when the model call fails",
+  { skip: !hasLocalSupabase },
+  async () => {
+    const client: MessagesClient = {
+      messages: {
+        create: async () => {
+          throw new Error("simulated API failure");
+        },
+      },
+    };
+    const intro = await generateOtherRegionsIntro(fixtureOtherRegionsEvents, { messagesClient: client });
     assert.equal(intro, null);
   },
 );

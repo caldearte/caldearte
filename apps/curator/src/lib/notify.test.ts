@@ -381,7 +381,8 @@ test("buildDigestBody lists every section's events grouped by comuna, links to c
 
 test("buildDigestHtmlBody renders every section grouped by comuna as thumbnail cards linking to caldearte.com, includes the branded header, and the unsubscribe link", () => {
   const html = buildDigestHtmlBody(fixtureDigestSections, "unsub-token");
-  assert.match(html, />CALDEARTE</);
+  assert.match(html, />CALDE</);
+  assert.match(html, />ARTE\.</);
   assert.match(html, /Inauguraciones de esta semana/);
   assert.match(html, />Quinta Normal</);
   assert.match(html, /href="https:\/\/www\.caldearte\.com\/eventos\/event-estrella-distante"/);
@@ -390,9 +391,13 @@ test("buildDigestHtmlBody renders every section grouped by comuna as thumbnail c
   assert.match(html, /newsletter\/baja\?token=unsub-token/);
 });
 
-test("buildDigestHtmlBody: the CALDEARTE header is a link to the homepage, styled in the real brand magenta and without an underline so it reads as a logo, not a link — Rediseño 2.0.0 pass, 2026-08-07 (was white-on-black, predating the real site's own bold-magenta wordmark)", () => {
+test("buildDigestHtmlBody: the CALDE/ARTE. header is a link to the homepage, styled in the real brand magenta and without an underline so it reads as a logo, not a link — Rediseño 2.0.0 pass, 2026-08-07/08 (was white-on-black, predating the real site's own two-line bold-magenta wordmark)", () => {
   const html = buildDigestHtmlBody(fixtureDigestSections, "unsub-token");
-  assert.match(html, /<a href="https:\/\/www\.caldearte\.com" style="[^"]*color:#ff00fb[^"]*text-decoration:none[^"]*">CALDEARTE<\/a>/);
+  const wordmarkLink = html.match(/<a href="https:\/\/www\.caldearte\.com" style="([^"]*)">[\s\S]*?<\/a>/);
+  assert.ok(wordmarkLink, "expected a homepage link wrapping the wordmark");
+  assert.match(wordmarkLink![1], /color:#ff00fb/);
+  assert.match(wordmarkLink![1], /text-decoration:none/);
+  assert.match(wordmarkLink![0], /CALDE[\s\S]*?ARTE\./);
 });
 
 test("buildDigestBody and buildDigestHtmlBody render a section's emptyMessage instead of a card list when it has no events", () => {
@@ -533,12 +538,13 @@ test("buildDigestHtmlBody includes the AI-generated intro when present, and omit
   assert.doesNotMatch(withoutIntro, /Esta semana destaca/);
 });
 
-test("buildDigestHtmlBody renders the week date range right-aligned in the header when provided, and omits it when absent", () => {
+test("buildDigestHtmlBody renders a big right-aligned header title with the week range when provided (no year — a display headline, not a citation), and falls back to the generic tagline when absent — Rediseño 2.0.0 pass, 2026-08-08", () => {
   const withWeek = buildDigestHtmlBody(fixtureDigestSections, "unsub-token", null, { start: "2026-07-27", end: "2026-08-02" });
-  assert.match(withWeek, /27 de julio al 2 de agosto 2026/);
+  assert.match(withWeek, /GUÍA INDEPENDIENTE DE ARTE, SEMANA DEL 27 DE JULIO AL 2 DE AGOSTO/);
+  assert.doesNotMatch(withWeek, /DE AGOSTO 2026/);
 
   const withoutWeek = buildDigestHtmlBody(fixtureDigestSections, "unsub-token", null);
-  assert.doesNotMatch(withoutWeek, /de agosto 2026/);
+  assert.match(withoutWeek, /GUÍA INDEPENDIENTE DE ARTE SEMANAL/);
 });
 
 test("buildDigestBody includes the week date range as its first line when provided", () => {
@@ -549,6 +555,48 @@ test("buildDigestBody includes the week date range as its first line when provid
 test("eventCardHtml: the whole card is one link to caldearte.com's event page, with placeName, title, and date inside the black panel", () => {
   const html = buildDigestHtmlBody(fixtureDigestSections, "unsub-token");
   assert.match(html, /<a href="https:\/\/www\.caldearte\.com\/eventos\/event-estrella-distante"[^>]*>[\s\S]*?MAC Quinta Normal[\s\S]*?Estrella distante[\s\S]*?<\/a>/);
+});
+
+test("eventCardHtml: shows an ÚLTIMOS DÍAS badge when the run ends within 7 days of the digest's own week.start, never otherwise", () => {
+  const closingSoonEvent: DigestSection[] = [
+    {
+      label: "Expos para visitar esta semana",
+      events: [
+        {
+          id: "event-closing-soon",
+          title: "Cierra pronto",
+          placeName: "Sala Z",
+          comunaName: "Santiago",
+          openingDatetime: null,
+          openingTimeConfirmed: true,
+          runEndDate: "2026-08-05",
+          imageUrl: null,
+          isOpeningThisWeek: false,
+        },
+      ],
+    },
+  ];
+  const withBadge = buildDigestHtmlBody(closingSoonEvent, "unsub-token", null, WEEK);
+  assert.match(withBadge, /ÚLTIMOS DÍAS/);
+
+  const withoutWeek = buildDigestHtmlBody(closingSoonEvent, "unsub-token", null);
+  assert.doesNotMatch(withoutWeek, /ÚLTIMOS DÍAS/);
+
+  const farFromClosing = buildDigestHtmlBody(fixtureDigestSections, "unsub-token", null, WEEK);
+  assert.doesNotMatch(farFromClosing, /ÚLTIMOS DÍAS/);
+});
+
+test("buildDigestBody and buildDigestHtmlBody render the otherRegionsIntro paragraph right under the 'En otras regiones' heading, and omit it (and its section) when absent — Rediseño 2.0.0 pass 2026-08-08", () => {
+  const otherRegionsIntro = "En regiones, destaca una muestra sobre memoria y territorio en Concepción.";
+
+  const body = buildDigestBody(fixtureDigestSections, "unsub-token", null, undefined, otherRegionsIntro);
+  assert.match(body, /-- En otras regiones --\nEn regiones, destaca una muestra sobre memoria y territorio en Concepción\./);
+
+  const html = buildDigestHtmlBody(fixtureDigestSections, "unsub-token", null, undefined, otherRegionsIntro);
+  assert.match(html, /En otras regiones<\/h2>\s*<p[^>]*>En regiones, destaca una muestra sobre memoria y territorio en Concepción\.<\/p>/);
+
+  const withoutIntro = buildDigestHtmlBody(fixtureDigestSections, "unsub-token");
+  assert.doesNotMatch(withoutIntro, /destaca una muestra/);
 });
 
 test("sendDigestEmail: no-ops with a warning when RESEND_API_KEY is unset", async () => {

@@ -631,6 +631,17 @@ function fmtWeekHeaderEs(weekStart: string, weekEnd: string): string {
   return `${range} ${ey}`;
 }
 
+// "GUÍA INDEPENDIENTE DE ARTE, SEMANA DEL 3 AL 9 DE AGOSTO" — the header's
+// big right-side title (Rediseño 2.0.0 pass, 2026-08-08, user request).
+// No year (unlike fmtWeekHeaderEs above, used elsewhere) — this is a big
+// display headline meant to be read at a glance, not a precise citation.
+function fmtHeaderTitle(weekStart: string, weekEnd: string): string {
+  const [, sm, sd] = weekStart.split("-").map(Number);
+  const [, em, ed] = weekEnd.split("-").map(Number);
+  const range = sm === em ? `${sd} al ${ed} de ${MONTHS_ES[sm - 1]}` : `${sd} de ${MONTHS_ES[sm - 1]} al ${ed} de ${MONTHS_ES[em - 1]}`;
+  return `GUÍA INDEPENDIENTE DE ARTE, SEMANA DEL ${range.toUpperCase()}`;
+}
+
 const SITE_URL = "https://www.caldearte.com";
 
 function eventUrl(id: string): string {
@@ -687,6 +698,7 @@ export function buildDigestBody(
   unsubscribeToken: string,
   intro: string | null = null,
   week?: { start: string; end: string },
+  otherRegionsIntro: string | null = null,
 ): string {
   const referenceYear = referenceYearFor(week);
   const lines: string[] = [];
@@ -697,6 +709,9 @@ export function buildDigestBody(
   }
   for (const section of sections) {
     lines.push(`-- ${section.label} --`);
+    if (section.label === "En otras regiones" && otherRegionsIntro) {
+      lines.push(otherRegionsIntro, "");
+    }
     if (section.events.length === 0 && section.emptyMessage) {
       lines.push(section.emptyMessage);
     } else {
@@ -735,13 +750,33 @@ const TEXT_PRIMARY = "#3d373d";
 // label" feel without depending on a webfont most inboxes won't load.
 const MONO_STACK = "ui-monospace,'SFMono-Regular',Menlo,Consolas,'Liberation Mono',monospace";
 
+// Same "within 7 days, never past" rule as apps/web/src/lib/date.ts's own
+// isClosingSoon (duplicated, not imported — separate packages). `todayStr`
+// anchors off the digest's own week.start (the send always goes out
+// Monday morning, so that's the closest thing to "today" this module has
+// without threading the run's real clock all the way through) — omitted
+// (no badge, ever) when there's no week at all.
+function isClosingSoon(runEndDate: string | null, todayStr: string | null, thresholdDays = 7): boolean {
+  if (!runEndDate || !todayStr) return false;
+  const [ty, tm, td] = todayStr.split("-").map(Number);
+  const [ey, em, ed] = runEndDate.split("-").map(Number);
+  const diffDays = Math.round((Date.UTC(ey, em - 1, ed) - Date.UTC(ty, tm - 1, td)) / (24 * 60 * 60 * 1000));
+  return diffDays >= 0 && diffDays <= thresholdDays;
+}
+
 // Horizontal card matching the site's own EventCardBase style (black
 // rounded card, magenta date line): photo left, black rounded panel
 // right (category label, bold title, magenta date, arrow), the whole
-// card as one link — not a bare thumbnail+text row. <table> layout (not
+// card as one link. Reverted to this 2026-08-08 after a detour into
+// EventHorizontalListItem's flatter list-view style — user clarified:
+// keep the card design already shipped (this one), just add the
+// "ÚLTIMOS DÍAS" prefix to the date line when the run is closing soon.
+// Image size unchanged throughout (110×132). <table> layout (not
 // flex/grid) since email clients don't reliably support either.
-function eventCardHtml(e: DigestEvent, referenceYear: number): string {
+function eventCardHtml(e: DigestEvent, referenceYear: number, todayStr: string | null): string {
   const date = fmtDigestDate(e, referenceYear);
+  const closingSoon = isClosingSoon(e.runEndDate, todayStr);
+  const dateText = closingSoon ? `${escapeHtml("ÚLTIMOS DÍAS")} — ${escapeHtml(date)}` : escapeHtml(date);
   const thumb = e.imageUrl
     ? `<img src="${escapeHtml(e.imageUrl)}" width="110" height="132" alt="" style="display:block;width:110px;height:132px;object-fit:cover;" />`
     : `<div style="width:110px;height:132px;background:#3a3a3a;"></div>`;
@@ -755,7 +790,7 @@ function eventCardHtml(e: DigestEvent, referenceYear: number): string {
               <td valign="middle">
                 <p style="margin:0 0 6px;color:#9a9a9a;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.03em;">${escapeHtml(e.placeName)}</p>
                 <p style="margin:0 0 6px;color:#fff;font-size:16px;font-weight:800;line-height:1.25;">${escapeHtml(e.title)}</p>
-                ${date ? `<p style="margin:0;color:${BRAND_MAGENTA};font-size:12px;font-family:${MONO_STACK};font-weight:700;">${escapeHtml(date)}</p>` : ""}
+                ${date ? `<p style="margin:0;color:${BRAND_MAGENTA};font-size:12px;font-family:${MONO_STACK};font-weight:700;">${dateText}</p>` : ""}
               </td>
               <td valign="middle" align="right" width="28">
                 <span style="color:#fff;font-size:20px;">&#8594;</span>
@@ -773,8 +808,10 @@ export function buildDigestHtmlBody(
   unsubscribeToken: string,
   intro: string | null = null,
   week?: { start: string; end: string },
+  otherRegionsIntro: string | null = null,
 ): string {
   const referenceYear = referenceYearFor(week);
+  const todayStr = week?.start ?? null;
   const sectionsHtml = sections
     .map((section) => {
       const bodyHtml =
@@ -782,13 +819,25 @@ export function buildDigestHtmlBody(
           ? `<p style="margin:14px 0 0;font-size:13px;color:#888;font-style:italic;">${escapeHtml(section.emptyMessage)}</p>`
           : groupByComuna(section.events)
               .map(
+                // Comuna label bumped 12px -> 15px (user request, 2026-08-08:
+                // read as too small next to the redesigned cards).
                 ([comuna, events]) =>
-                  `<p style="margin:20px 0 10px;font-size:12px;font-weight:700;color:${TEXT_PRIMARY};">${escapeHtml(comuna)}</p>${events.map((e) => eventCardHtml(e, referenceYear)).join("")}`,
+                  `<p style="margin:20px 0 10px;font-size:15px;font-weight:700;color:${TEXT_PRIMARY};">${escapeHtml(comuna)}</p>${events.map((e) => eventCardHtml(e, referenceYear, todayStr)).join("")}`,
               )
               .join("");
       const moreLinkHtml = section.moreLink
         ? `<p style="margin:12px 0 0;"><a href="${escapeHtml(section.moreLink.url)}" style="color:${BRAND_MAGENTA};font-weight:700;font-size:13px;text-decoration:underline;">${escapeHtml(section.moreLink.label)}</a></p>`
         : "";
+      // "En otras regiones" gets its own short intro paragraph, right
+      // under the heading — same content-first framing as the top intro,
+      // just one paragraph and scoped to whichever handful of other-región
+      // shows are actually shown as cards below it (see run.ts — that
+      // sample is deterministic per región/week now, specifically so this
+      // text and the cards never disagree on which shows it's about).
+      const otherRegionsIntroHtml =
+        section.label === "En otras regiones" && otherRegionsIntro
+          ? `<p style="margin:14px 0 0;font-size:14px;color:${TEXT_PRIMARY};line-height:1.6;">${escapeHtml(otherRegionsIntro)}</p>`
+          : "";
       // Generous top margin (not just the h2's own padding) — real
       // feedback: sections read as cramped/jammed together without real
       // air between them, especially after a card grid. Label styled
@@ -796,6 +845,7 @@ export function buildDigestHtmlBody(
       // Rediseño 2.0.0 pass, 2026-08-07.
       return `<div style="margin:48px 0 0;">
       <h2 style="font-family:${MONO_STACK};font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;color:${BRAND_MAGENTA};margin:0;border-bottom:1px solid #c9c2b8;padding-bottom:6px;">${escapeHtml(section.label)}</h2>
+      ${otherRegionsIntroHtml}
       ${bodyHtml}
       ${moreLinkHtml}
       </div>`;
@@ -812,17 +862,23 @@ export function buildDigestHtmlBody(
         .map((p) => `<p style="margin:0 0 14px;font-size:15px;color:${TEXT_PRIMARY};line-height:1.6;">${escapeHtml(p)}</p>`)
         .join("")
     : "";
-  const weekLabel = week ? escapeHtml(fmtWeekHeaderEs(week.start, week.end)) : "";
+  // Big right-side title — the week range when known, otherwise the same
+  // generic tagline the site itself falls back to (esCL.heroTagline) when
+  // there's nothing week-specific to say.
+  const headerTitle = escapeHtml(week ? fmtHeaderTitle(week.start, week.end) : "GUÍA INDEPENDIENTE DE ARTE SEMANAL");
 
-  // Rediseño 2.0.0 pass (2026-08-07) — was a dark #1c1c1c/white-on-black
+  // Rediseño 2.0.0 pass (2026-08-07/08) — was a dark #1c1c1c/white-on-black
   // header with a plain white body, styled before the redesign existed.
-  // Now mirrors the real site: sage page background (apps/web's own
-  // bg-surface-sage), a bold magenta wordmark instead of white-on-black
-  // (Header.tsx's own text-brand-magenta treatment — not a dark box,
-  // Caldearte's mark IS the magenta text), and a full-bleed magenta
-  // footer block echoing Footer.tsx's own "CALDEARTE." sign-off. Event
-  // cards stay black (matches EventCardBase's own bg-black), the one
-  // piece of the old design that was already faithful to the real site.
+  // Now mirrors the real site's own home hero (Header.tsx): wordmark
+  // ("CALDE"/"ARTE.", stacked, magenta, bold) on the left, and — user
+  // request 2026-08-08 — a big text-primary-black title on the right
+  // instead of the site's own small gray tagline, since email has no
+  // separate city/week selector to fill that space with. Sage page
+  // background throughout (apps/web's own bg-surface-sage), and a
+  // full-bleed magenta footer block echoing Footer.tsx's own
+  // "CALDEARTE." sign-off. Event cards stay black (matches
+  // EventCardBase's own bg-black), the one piece of the old design that
+  // was already faithful to the real site.
   return `<!doctype html>
 <html lang="es-CL">
   <head>
@@ -831,15 +887,22 @@ export function buildDigestHtmlBody(
   </head>
   <body style="margin:0;padding:0;background:${SURFACE_SAGE};">
     <div style="font-family:Helvetica,Arial,sans-serif;max-width:640px;margin:0 auto;background:${SURFACE_SAGE};">
-    <div style="padding:28px 28px 8px;">
+    <div style="padding:32px 28px 8px;">
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
         <tr>
-          <td valign="middle"><a href="${SITE_URL}" style="color:${BRAND_MAGENTA};text-decoration:none;font-size:24px;font-weight:900;letter-spacing:0.01em;">CALDEARTE</a></td>
-          ${weekLabel ? `<td valign="middle" align="right"><p style="margin:0;font-family:${MONO_STACK};color:${TEXT_PRIMARY};font-size:12px;font-weight:700;">${weekLabel}</p></td>` : ""}
+          <td valign="top" width="46%">
+            <a href="${SITE_URL}" style="display:block;text-decoration:none;color:${BRAND_MAGENTA};font-family:Helvetica,Arial,sans-serif;font-weight:900;font-size:34px;line-height:0.95;letter-spacing:0.01em;">
+              <span style="display:block;">CALDE</span>
+              <span style="display:block;">ARTE.</span>
+            </a>
+          </td>
+          <td valign="bottom" align="right" width="54%">
+            <p style="margin:0;color:${TEXT_PRIMARY};font-family:Helvetica,Arial,sans-serif;font-weight:900;font-size:20px;line-height:1.15;text-align:right;">${headerTitle}</p>
+          </td>
         </tr>
       </table>
     </div>
-    <div style="padding:16px 28px 8px;">
+    <div style="padding:24px 28px 8px;">
       ${introHtml}
       ${sectionsHtml}
     </div>
@@ -865,6 +928,7 @@ export async function sendDigestEmail(
   sections: DigestSection[],
   intro: string | null = null,
   week?: { start: string; end: string },
+  otherRegionsIntro: string | null = null,
 ): Promise<void> {
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) {
@@ -876,8 +940,8 @@ export async function sendDigestEmail(
     from: "Caldearte <contacto@caldearte.com>",
     to: email,
     subject: buildDigestSubject(sections, week),
-    text: buildDigestBody(sections, unsubscribeToken, intro, week),
-    html: buildDigestHtmlBody(sections, unsubscribeToken, intro, week),
+    text: buildDigestBody(sections, unsubscribeToken, intro, week, otherRegionsIntro),
+    html: buildDigestHtmlBody(sections, unsubscribeToken, intro, week, otherRegionsIntro),
     headers: {
       "List-Unsubscribe": `<${unsubscribeUrl(unsubscribeToken)}>`,
     },

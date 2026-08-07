@@ -10,7 +10,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database, Tables } from "@caldearte/shared-types";
 import { getSupabaseClient } from "../lib/supabase-client.js";
 import { sendDigestEmail, type DigestEvent, type DigestSection } from "../lib/notify.js";
-import { generateRegionIntro } from "./intro.js";
+import { generateRegionIntro, generateOtherRegionsIntro } from "./intro.js";
 
 type Subscriber = Pick<Tables<"newsletter_subscribers">, "id" | "email" | "admin_region_name" | "confirm_token">;
 type EventRow = Tables<"events">;
@@ -30,6 +30,7 @@ export interface RunDeps {
   now?: Date;
   sendDigestEmailFn?: typeof sendDigestEmail;
   generateRegionIntroFn?: typeof generateRegionIntro;
+  generateOtherRegionsIntroFn?: typeof generateOtherRegionsIntro;
 }
 
 // Same "fixed Monday-Sunday week" convention as apps/web/src/lib/date.ts's
@@ -71,15 +72,6 @@ function toDigestEvent(event: EventWithRegion, week: { start: string; end: strin
     imageUrl: event.image_url,
     isOpeningThisWeek: isOpeningInWeek(event, week),
   };
-}
-
-function shuffle<T>(items: T[]): T[] {
-  const copy = [...items];
-  for (let i = copy.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [copy[i], copy[j]] = [copy[j], copy[i]];
-  }
-  return copy;
 }
 
 export interface DigestSectionsResult {
@@ -129,7 +121,16 @@ export function buildDigestSections(
     .sort((a, b) => (a.run_end_date ?? "9999-12-31").localeCompare(b.run_end_date ?? "9999-12-31"));
   const alsoVisit = alsoVisitAll.slice(0, VISIT_CAP);
 
-  const otherRegionsAll = shuffle(events.filter((e) => e.adminRegionName !== adminRegionName && isRunningOn(e, week.end)));
+  // Deterministic (soonest-closing first, same convention as alsoVisitAll
+  // above), not randomized — was shuffle()'d per-subscriber until
+  // 2026-08-08, but this section now also gets its own shared AI intro
+  // (generateOtherRegionsIntro, once per región/week, see run()'s own
+  // memoization below) that names specific titles from this sample. A
+  // random per-subscriber reshuffle would let that shared text describe
+  // shows a given subscriber's own cards don't even include.
+  const otherRegionsAll = events
+    .filter((e) => e.adminRegionName !== adminRegionName && isRunningOn(e, week.end))
+    .sort((a, b) => (a.run_end_date ?? "9999-12-31").localeCompare(b.run_end_date ?? "9999-12-31"));
   const otherRegionsSample = otherRegionsAll.slice(0, OTHER_REGIONS_CAP);
 
   // Only skip the subscriber entirely if there's truly nothing anywhere —
@@ -215,11 +216,14 @@ export async function run(deps: RunDeps = {}): Promise<void> {
   console.log(`[newsletter] ${subscribers.length} confirmed subscriber(s), ${events.length} eligible approved event(s), week ${week.start}..${week.end}`);
 
   // One intro per región, shared across every subscriber in it — not
-  // per-subscriber, since buildDigestSections' own content (aside from
-  // the randomized "En otras regiones" sample, which the intro never
-  // reads anyway) is identical for every subscriber of the same región.
-  // Keeps the real Haiku cost to "once per active región per week."
+  // per-subscriber, since buildDigestSections' own content is now
+  // identical for every subscriber of the same región (the "En otras
+  // regiones" sample is deterministic per región/week too, as of
+  // 2026-08-08 — see buildDigestSections' own comment on otherRegionsAll).
+  // Keeps the real Haiku cost to "once per active región per week," times
+  // two now that there are two intros.
   const introByRegion = new Map<string, string | null>();
+  const otherRegionsIntroByRegion = new Map<string, string | null>();
 
   let sent = 0;
   let skipped = 0;
@@ -236,10 +240,17 @@ export async function run(deps: RunDeps = {}): Promise<void> {
     }
     const intro = introByRegion.get(subscriber.admin_region_name) ?? null;
 
+    if (!otherRegionsIntroByRegion.has(subscriber.admin_region_name)) {
+      const otherRegionsEvents = sections.find((s) => s.label === "En otras regiones")?.events ?? [];
+      const otherRegionsIntro = await (deps.generateOtherRegionsIntroFn ?? generateOtherRegionsIntro)(otherRegionsEvents);
+      otherRegionsIntroByRegion.set(subscriber.admin_region_name, otherRegionsIntro);
+    }
+    const otherRegionsIntro = otherRegionsIntroByRegion.get(subscriber.admin_region_name) ?? null;
+
     // Reuses the subscriber's own confirm_token as the unsubscribe token
     // too — one opaque value per subscriber is enough, see the migration
     // comment.
-    await (deps.sendDigestEmailFn ?? sendDigestEmail)(subscriber.email, subscriber.confirm_token, sections, intro, week);
+    await (deps.sendDigestEmailFn ?? sendDigestEmail)(subscriber.email, subscriber.confirm_token, sections, intro, week, otherRegionsIntro);
     sent++;
   }
 

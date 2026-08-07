@@ -156,6 +156,23 @@ test("buildDigestSections: 'En otras regiones' samples at most 5 even with more 
   assert.equal(otras?.events.length, 5);
 });
 
+test("buildDigestSections: 'En otras regiones' is sorted soonest-closing-first and deterministic — no longer randomized (2026-08-08), since it now also feeds a shared per-región AI intro that must agree with whichever cards are actually shown", () => {
+  const events = [
+    makeEvent({ adminRegionName: REGION_B, run_end_date: "2026-09-01" }),
+    makeEvent({ adminRegionName: REGION_B, run_end_date: "2026-08-10" }),
+    makeEvent({ adminRegionName: REGION_B, run_end_date: "2026-08-20" }),
+  ];
+  const runTwice = () => buildDigestSections(events, REGION_A, WEEK).sections.find((s) => s.label === "En otras regiones")!.events.map((e) => e.id);
+  const first = runTwice();
+  const second = runTwice();
+  assert.deepEqual(first, second, "expected the same order every call, not a random shuffle");
+  assert.deepEqual(
+    first,
+    [events[1].id, events[2].id, events[0].id],
+    "expected soonest-closing-first, same convention as 'Expos para visitar esta semana'",
+  );
+});
+
 test("buildDigestSections: an empty event pool yields zero sections (subscriber gets skipped, not an empty email)", () => {
   assert.deepEqual(buildDigestSections([], REGION_A, WEEK), { sections: [], regionTotalThisWeek: 0 });
 });
@@ -249,6 +266,7 @@ test(
         // the intro-generation behavior itself has its own dedicated test
         // below, plus intro.test.ts.
         generateRegionIntroFn: async () => null,
+        generateOtherRegionsIntroFn: async () => null,
       });
 
       assert.deepEqual(sentTo, ["confirmado-con-eventos@example.com"]);
@@ -293,21 +311,30 @@ test(
       if (subscribersError) throw new Error(`Failed to seed test subscribers: ${subscribersError.message}`);
 
       let introCalls = 0;
+      let otherRegionsIntroCalls = 0;
       const introsUsed: Array<string | null> = [];
+      const otherRegionsIntrosUsed: Array<string | null> = [];
       await run({
         supabase: client,
         now: new Date("2026-08-05T12:00:00.000Z"),
-        sendDigestEmailFn: async (_email, _token, _sections, intro) => {
+        sendDigestEmailFn: async (_email, _token, _sections, intro, _week, otherRegionsIntro) => {
           introsUsed.push(intro ?? null);
+          otherRegionsIntrosUsed.push(otherRegionsIntro ?? null);
         },
         generateRegionIntroFn: async () => {
           introCalls++;
           return "Intro compartida para toda la región.";
         },
+        generateOtherRegionsIntroFn: async () => {
+          otherRegionsIntroCalls++;
+          return "Intro de otras regiones compartida.";
+        },
       });
 
       assert.equal(introCalls, 1, "expected exactly one intro generation call for two subscribers in the same región");
       assert.deepEqual(introsUsed, ["Intro compartida para toda la región.", "Intro compartida para toda la región."]);
+      assert.equal(otherRegionsIntroCalls, 1, "expected exactly one otherRegionsIntro generation call for two subscribers in the same región");
+      assert.deepEqual(otherRegionsIntrosUsed, ["Intro de otras regiones compartida.", "Intro de otras regiones compartida."]);
     } finally {
       await client.from("newsletter_subscribers").delete().eq("admin_region_name", TEST_ADMIN_REGION);
       await client.from("events").delete().eq("region_id", regionId);
