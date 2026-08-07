@@ -1,59 +1,41 @@
 import { NextResponse } from "next/server";
-import type { NextRequest } from "next/server";
 
 // Short-circuits known vulnerability-scanner probes (WordPress, common
-// config/secret files, etc.) with a plain 404, before the request ever
-// reaches a page/route handler — Caldearte runs none of this, so every
-// hit here is pure noise (confirmed 2026-08-06: /wp-admin/install.php
-// showed up in real Vercel usage data while investigating a Fast Origin
-// Transfer spike). This alone won't be the fix for that spike (bot
-// traffic volume here is tiny next to real page views), but it's free
-// cleanup that stops those specific hits from invoking the app/DB at all.
-const SCANNER_PATH_PATTERNS = [
-  /^\/wp-/i, // wp-admin, wp-login.php, wp-content, wp-includes, wp-json, ...
-  /^\/wordpress/i,
-  /^\/xmlrpc\.php$/i,
-  /^\/\.env/i,
-  /^\/\.git/i,
-  /^\/\.svn/i,
-  /^\/\.aws/i,
-  /^\/\.ssh/i,
-  /^\/\.htaccess$/i,
-  /^\/\.htpasswd$/i,
-  /^\/\.idea/i,
-  /^\/\.vscode/i,
-  /^\/phpmyadmin/i,
-  /^\/pma/i,
-  /^\/admin\.php$/i,
-  /^\/config\.php$/i,
-  /^\/vendor\/phpunit/i,
-  /^\/vendor\//i, // exposed Composer vendor dir — PHP-only concept, real hits are always scanners here
-  /^\/laravel/i,
-  /^\/telescope/i, // Laravel's debug dashboard
-  /^\/_profiler/i, // Symfony's debug toolbar
-  /^\/actuator/i, // Spring Boot's management endpoints
-  /^\/console$/i,
-  /^\/cgi-bin/i,
-  /^\/server-status$/i,
-  /^\/shell\.php$/i,
-  /^\/eval-stdin\.php$/i,
-  // Any request for a server-side script extension this Next.js app never
-  // serves (no PHP/ASP/JSP anywhere in this stack) — one broad rule that
-  // catches the long tail of scanner probes without needing a new pattern
-  // for every filename they try (config.php, backup.php, upload.asp, ...).
-  /\.(php\d?|phtml|asp|aspx|jsp|jspx|cgi)$/i,
-];
-
-export function proxy(request: NextRequest) {
-  if (SCANNER_PATH_PATTERNS.some((p) => p.test(request.nextUrl.pathname))) {
-    return new NextResponse(null, { status: 404 });
-  }
-  return NextResponse.next();
+// config/secret files, exposed debug/admin endpoints, server-side script
+// extensions this app never serves) with a plain 404, before the request
+// ever reaches a page/route handler — Caldearte runs none of this, so
+// every hit matching `config.matcher` below is pure noise (confirmed
+// 2026-08-06: /wp-admin/install.php showed up in real Vercel usage data
+// while investigating a Fast Origin Transfer spike). The actual pattern
+// list lives in `config.matcher`, not here — see that export's own
+// comment for why.
+export function proxy() {
+  // Reaching here at all means the matcher below already confirmed this
+  // path looks like a scanner probe — no real route ever matches it.
+  return new NextResponse(null, { status: 404 });
 }
 
+// Positive matcher — the INVERSE of the previous approach (which ran on
+// almost every request and excluded a few static folders). Vercel's own
+// guidance (vercel.com/docs/manage-cdn-usage#optimizing-fast-origin-transfer,
+// checked 2026-08-06): Middleware/Proxy can accrue Fast Origin Transfer
+// TWICE per request — once for the Proxy invocation, once for the page/
+// function it's guarding — specifically warning to scope the matcher down
+// to only what's necessary. Since this proxy's only job is blocking known
+// scanner paths, it should never run at all for a real app route (/,
+// /eventos/*, /api/*, ...) — only for paths matching the scanner patterns
+// themselves, mirrored here as one matcher regex instead of in the
+// function body.
+// One entry, one outer capturing group around the whole alternation —
+// Next's matcher parser (path-to-regexp) rejects a `*`/`.*` modifier that
+// falls OUTSIDE a group (tried multiple separate entries first, several
+// failed to even boot the dev server with "Unexpected MODIFIER, expected
+// END"). Mirrors the shape of Next's own documented matcher example
+// (`'/((?!api|_next/static|_next/image|.*\\.png$).*)'`) — a trailing
+// `.*`/wildcard only ever appears immediately before that single closing
+// `)`, never after it.
 export const config = {
-  // Excludes _next/static, _next/image, and public assets — no reason for
-  // this to run on every single request, only ones that could plausibly
-  // be a scanner probe.
-  matcher: ["/((?!_next/static|_next/image|icons|images|placeholders).*)"],
+  matcher: [
+    "/((?:wp-.*|wordpress.*|xmlrpc\\.php|\\.env.*|\\.git.*|\\.svn.*|\\.aws.*|\\.ssh.*|\\.idea.*|\\.vscode.*|\\.htaccess|\\.htpasswd|phpmyadmin.*|pma.*|admin\\.php|config\\.php|vendor/.*|laravel.*|telescope.*|_profiler.*|actuator.*|console|cgi-bin/.*|server-status|shell\\.php|eval-stdin\\.php|.*\\.(?:php\\d?|phtml|asp|aspx|jsp|jspx|cgi)))",
+  ],
 };
