@@ -1,7 +1,6 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { useRouter } from "next/navigation";
 import { esCL } from "@/i18n/es-CL";
 import { cityById, OTHER_CITY } from "@/lib/cities";
 import { CITY_COOKIE, FAMILY_MODE_COOKIE, setCookie, pushRecentCityId } from "@/lib/cookies";
@@ -43,6 +42,17 @@ interface CalendarViewProps {
   nextEvent: EventRecord | null; // empty-state fallback, beyond the current week
   regions: RegionMeta[]; // for the city picker's región grouping
   newsletterStatus: NewsletterStatus | null; // from ?newsletter= — set by /newsletter/confirmar or /newsletter/baja's redirect
+  // Called after a city or family-mode change, instead of router.refresh()
+  // (2026-08-06) — this page is cache-eligible now (see app/page.tsx's own
+  // comment), so a plain refresh would just re-serve the same cached
+  // default instead of picking up the cookie that was just set.
+  // HomeClient.tsx supplies the real implementation (re-fetch
+  // /api/home-data and swap the view model in). Optional, defaulting to a
+  // no-op — page.tsx's own Suspense fallback renders this component
+  // directly from a Server Component, which can't pass a function prop
+  // across that boundary; that fallback is only ever shown for the
+  // instant before client hydration takes over, so a no-op there is safe.
+  onRefreshNeeded?: () => void;
 }
 
 export default function CalendarView({
@@ -66,8 +76,8 @@ export default function CalendarView({
   nextEvent,
   regions,
   newsletterStatus,
+  onRefreshNeeded = () => {},
 }: CalendarViewProps) {
-  const router = useRouter();
   const cityPickerTriggerRef = useRef<HTMLButtonElement>(null);
   const [locationOpen, setLocationOpen] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -99,12 +109,12 @@ export default function CalendarView({
     setCookie(CITY_COOKIE, nextCityId);
     setLocationOpen(false);
     window.scrollTo(0, 0);
-    router.refresh();
+    onRefreshNeeded();
   }
 
   function toggleFamilyMode() {
     setCookie(FAMILY_MODE_COOKIE, familyMode ? "" : "1");
-    router.refresh();
+    onRefreshNeeded();
   }
 
   const isEmpty = inauguraciones.length === 0 && exposActuales.length === 0;

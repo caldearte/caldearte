@@ -1,4 +1,3 @@
-import type { cookies } from "next/headers";
 import {
   filterFamilyMode,
   filterActiveInRange,
@@ -11,6 +10,18 @@ import {
 } from "@/lib/events";
 import { DEFAULT_CITY_ID, buildRegionMetaByCityId, resolveDefaultCityId, resolveGeoCityId, nearestCityIdByCoords } from "@/lib/cities";
 import { CITY_COOKIE, PRECISE_CITY_COOKIE } from "@/lib/cookies";
+
+// Narrow structural subset of next/headers' cookies() return type — real
+// cookies() satisfies this, but so does a plain object, which is what
+// lets page.tsx (2026-08-06, made cache-eligible to fix a Fast Origin
+// Transfer spike — see homeViewModel.ts) call this with an "empty" reader
+// for its cached default render, no Next.js cookies()/headers() call
+// involved at all.
+export interface CookieReader {
+  get(name: string): { value: string } | undefined;
+}
+
+export const EMPTY_COOKIE_READER: CookieReader = { get: () => undefined };
 
 export interface CityPickerContext {
   cityId: string;
@@ -39,7 +50,7 @@ export async function resolveCityPickerContext({
   rangeEnd,
   familyMode,
 }: {
-  cookieStore: Awaited<ReturnType<typeof cookies>>;
+  cookieStore: CookieReader;
   headerStore: Headers;
   allEvents: EventRecord[];
   regions: RegionMeta[];

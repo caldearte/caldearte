@@ -35,6 +35,18 @@ export function setCookie(name: string, value: string): void {
   document.cookie = `${name}=${encodeURIComponent(value)}; path=/; max-age=${60 * 60 * 24 * 365}`;
 }
 
+// Client-side counterpart to setCookie — used by HomeClient.tsx to check
+// whether the visitor's real cookies differ from the default page.tsx
+// rendered (see that file's own comment). Same regex-parse approach as
+// getRecentCityIds below. Returns undefined both when the cookie is
+// genuinely absent and when document isn't available yet (SSR) — callers
+// only ever run this client-side, post-mount.
+export function getCookie(name: string): string | undefined {
+  if (typeof document === "undefined") return undefined;
+  const match = document.cookie.match(new RegExp(`(?:^|;\\s*)${name}=([^;]*)`));
+  return match ? decodeURIComponent(match[1]) : undefined;
+}
+
 // Deliberately dumb/mechanical — no domain filtering here (excluding
 // "otro", excluding the city being navigated TO, deduping against the
 // city being navigated FROM) — that's CalendarView.tsx's job, the one
