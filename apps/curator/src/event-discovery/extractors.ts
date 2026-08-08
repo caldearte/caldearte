@@ -78,8 +78,27 @@ export function collapseWhitespace(text: string): string {
 // query-string "&" as "&amp;" — a real bug found against mnba.gob.cl's
 // Drupal image-style URLs (?h=...&amp;itok=...): stored verbatim, that
 // "&amp;" is literal text, not the "&" the real URL needs, breaking it.
+//
+// Numeric character references (&#8211; / &#x2014;) resolved generically
+// by codepoint — real gap found 2026-08-08 (dieecke.art's titles use
+// "&#8211;" for an en dash): this function only ever covered a handful of
+// named entities, silently leaving any numeric reference undecoded in
+// TITLES (this function is also used for image URLs, unaffected — no
+// numeric refs seen there so far). `lib/description-extract.ts` already
+// had this exact fix for DESCRIPTIONS (its own separate copy, added
+// 2026-07-28 for centronacionaldearte.cultura.gob.cl) but it was never
+// backported to this sibling function — same lesson as that fix's own
+// comment: a decoding gap found in one copy doesn't automatically apply
+// to a duplicate.
 function decodeHtmlEntities(text: string): string {
-  return text.replace(/&amp;/g, "&").replace(/&quot;/g, '"').replace(/&#0?39;/g, "'").replace(/&lt;/g, "<").replace(/&gt;/g, ">");
+  return text
+    .replace(/&#x([0-9A-Fa-f]+);/g, (_, hex: string) => String.fromCodePoint(parseInt(hex, 16)))
+    .replace(/&#(\d+);/g, (_, dec: string) => String.fromCodePoint(parseInt(dec, 10)))
+    .replace(/&amp;/g, "&")
+    .replace(/&quot;/g, '"')
+    .replace(/&#0?39;/g, "'")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">");
 }
 
 export function extractImgTags(html: string): Array<{ url: string; description: string | null }> {

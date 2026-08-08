@@ -525,6 +525,31 @@ export const KNOWN_SOURCES: KnownSource[] = [
       pattern: /<div class="content__excerpt">([\s\S]*?)<\/div>/,
     },
   },
+  {
+    url: "https://dieecke.art/exhibiciones/",
+    note: 'Die Ecke, a real contemporary-art gallery in Providencia, Santiago — evaluated at the user\'s request 2026-08-08. WordPress, real "exhibiciones" custom post type via /wp-json/wp/v2/exhibiciones, but — same shape as cclm.cl — the REST API never gives real run dates, only a coarse "year" taxonomy (fecha_exhibiciones) and WordPress\'s own post date/modified; the real per-item date range only exists as listing display text, so this uses the plain HTML articleList path.\n\n**Real, important structural finding: Die Ecke has TWO physical locations, Santiago AND Barcelona** (footer confirms both addresses) — NOT a simple single-comuna fixedLocation source without extra care. Each listing item states "Sede Santiago" or "Sede Barcelona" right after its date. A Barcelona exhibition would be genuinely out of scope (Caldearte is Chile-only, same country-scope precedent as casablancacentrocultural.com\'s Perú rejection) — rather than trust Haiku\'s own scope judgment to catch a country mismatch (this project\'s consistent posture is to make anything regex-determinable deterministic, not delegated), blockRegex itself requires "Sede Santiago" to appear via a lookahead right after the opening tag, so a Barcelona-sede block never gets captured as an item at all — confirmed against the real live page (1 real Santiago item extracted, the 1 real Barcelona item correctly excluded).\n\nListing markup is clean (WordPress + Elementor page builder, but this specific listing block isn\'t Elementor-generated soup): `<div class="col-sm-6"><a href="..." title="..."><div class="exhibicion" style="background-image:url(...)"></div><h2>Title</h2></a><p>Artist<br>DD de MES al DD de MES de YYYY<br>Sede X</p></div>` — same CSS-background-image thumbnail pattern as cclm.cl (extractImgTags\'s background-image detection, added for that source, applies here unchanged). Dates: "23 de junio al 31 de agosto de 2026" — day + "de" + full Spanish month (first 3 letters captured) + "al" + day + "de" + full month + "de" + a single shared year — clean and consistent across every sampled item, no irregular cases found (unlike cclm.cl).\n\nDescription: no prose on the listing — recovered from each detail page\'s `dieecke-overflow` div (confirmed against the one real sampled detail page), matching the REST API\'s own `content.rendered` almost exactly (confirmed by comparison) — same "capture the whole prose container" posture as every other detail-page-description source.\n\n**Real bug found building this, fixed generically, not dieecke.art-specific**: `extractors.ts`\'s own `decodeHtmlEntities` (used for titles and image URLs) only ever covered a handful of named entities (`&amp;`/`&quot;`/`&#39;`/`&lt;`/`&gt;`) — this source\'s titles use `&#8211;` (a numeric en-dash reference), which passed through undecoded. `lib/description-extract.ts` already had the fix for this exact class of bug (added 2026-07-28 for centronacionaldearte.cultura.gob.cl\'s numeric entities) but it was never backported to this sibling copy — now it has the same numeric hex/decimal resolution, benefiting every source\'s titles/image URLs, not just this one.\n\nNo openingTimeExtractor — no confirmed "Inauguración: <fecha> <hora>" phrasing found on the one sampled detail page (only general prose describing the show "inaugurating," and the gallery\'s own generic weekly opening hours, unrelated to any specific exhibition).',
+    lastReviewedAt: "2026-08-08",
+    extractor: {
+      kind: "articleList",
+      // Positive lookahead requiring "Sede Santiago" within the block —
+      // see the note above: this source spans two countries, and a
+      // Barcelona item must never be captured as an item at all, not just
+      // hoped-away by Haiku's own scope judgment.
+      blockRegex: /<div class="col-sm-6">(?=[\s\S]*?Sede Santiago)([\s\S]*?)(?=<div class="col-sm-6">|<\/div>\s*<\/div>\s*<\/div>\s*<\/div>)/g,
+      titleLinkRegex: /<a href="([^"]+)"[^>]*>[\s\S]*?<h2>([^<]*)<\/h2>/,
+      // The block's own <p> is "Artist<br>DateRange<br>Sede X" — the
+      // SECOND segment (between the first and second <br>) is the date.
+      daysRegex: /<p>[^<]*<br>([^<]+)<br>/,
+      dateRangeExtractor: {
+        pattern:
+          /(?<startDay>\d{1,2})\s+de\s+(?<startMonth>[a-zé]{3})[a-zé]*\s+al\s+(?<endDay>\d{1,2})\s+de\s+(?<endMonth>[a-zé]{3})[a-zé]*\s+de\s+(?<year>\d{4})/i,
+      },
+    },
+    fixedLocation: { location: "Santiago", placeName: "Die Ecke" },
+    descriptionExtractor: {
+      pattern: /<div class="dieecke-overflow">([\s\S]*?)<\/div>/,
+    },
+  },
 ];
 
 export function knownSourceDomain(url: string): string {
