@@ -17,6 +17,7 @@ import { cityById } from "@/lib/cities";
 import { currentWeekInSantiago, weekBoundsInSantiago, addWeeks, weekNumberSince, todayInSantiago } from "@/lib/date";
 import { FAMILY_MODE_COOKIE, TODAY_FILTER_COOKIE, VIGENTES_FILTER_COOKIE } from "@/lib/cookies";
 import { extractDomain, resolveCardImage } from "@/lib/image-source";
+import { buildEventJsonLd, jsonLdScriptContent } from "@/lib/eventJsonLd";
 import { esCL } from "@/i18n/es-CL";
 import EventDetailCard from "@/components/EventDetailCard";
 import EventCityLink from "@/components/EventCityLink";
@@ -176,6 +177,8 @@ export default async function EventPage({
 
   return (
     <main className="min-h-screen w-full bg-surface-sage px-[20px] py-8 md:px-[61px] max-w-[1280px] mx-auto">
+      {/* Schema.org VisualArtsEvent — see lib/eventJsonLd.ts's own comment. */}
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdScriptContent(buildEventJsonLd(event)) }} />
       {/* `fixed`, not `sticky` — same reasoning as Header.tsx's own top
           nav (see that file's comment: sticky silently failed to pin
           there, verified in-browser). Content is duplicated into a real
