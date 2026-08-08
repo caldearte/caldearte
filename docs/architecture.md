@@ -183,3 +183,65 @@ always falls through to Santiago locally; real geo-detection only happens
 on an actual Vercel deploy.
 
 Sources: [Vercel — geolocation IP headers](https://vercel.com/kb/guide/geo-ip-headers-geolocation-vercel-functions), [ipapi.co pricing](https://ipapi.co/pricing/), [IPinfo pricing](https://ipinfo.io/pricing), [IPinfo Lite](https://ipinfo.io/lite).
+
+## Home page: cached default + client-side personalization
+
+**Real incident that forced this (2026-08-06): a Fast Origin Transfer
+spike hit 94% of Vercel's Hobby free-tier limit.** Root cause: the home
+page (`app/page.tsx`) used to call `cookies()`/`headers()` directly at the
+top level to resolve a visitor's real city/family-mode/etc — either of
+those forces Next.js to render the route fresh, from scratch, on *every*
+single request, no caching possible. At real traffic volume that was
+84K uncached requests to one route in the period that tripped the usage
+warning. Never documented until this note (2026-08-08) — this section
+exists specifically to close that gap.
+
+**Fix, still in place**: `page.tsx` now calls neither `cookies()`,
+`headers()`, nor reads `searchParams` — it computes exactly ONE default
+view (`computeHomeViewModel` with `EMPTY_COOKIE_READER`: Santiago, the
+current week, family mode ON — the same fallback a cookie-less
+first-time visitor already got) and lets Next.js serve that from
+cache/ISR (`revalidate = 60`) to most visitors. Personalization moves to
+the client: `HomeClient.tsx` reads the visitor's real cookies/URL params
+in a `useEffect` after the cached HTML has already painted, and — only
+when `hasPersonalizationSignal` finds something that could differ from
+the default (a city cookie, family-mode-off, `?semana=`/`?newsletter=`,
+etc.) — fetches `/api/home-data` (same `computeHomeViewModel`
+computation, real `cookies()`/`headers()`, just a small JSON response
+instead of a full page render) and swaps the personalized view in.
+
+**The default must always be the safe-to-flash-briefly state, never the
+one that needs correcting-away-from.** Family mode ON is safe (worst
+case: a visitor whose real preference is OFF briefly sees the
+*more*-filtered view, never less). This same principle has a real
+counter-example, found and fixed 2026-08-08: `showGeoConsentPrompt` in
+the cached default came back `true` for every visitor (an empty cookie
+reader always reads as "cookie absent"), so the location-sharing banner
+flashed on for everyone — including visitors who'd already answered it —
+then vanished once the personalization fetch loaded the real answer.
+Fixed two ways at once: the cached default now forces
+`showGeoConsentPrompt: false` (never flash content that might be
+unwanted), and `HomeClient.tsx` runs a *second*, independent `useEffect`
+that checks the real cookie directly on mount — independent of
+`hasPersonalizationSignal`/`refresh()`, because a genuinely fresh visitor
+has no cookies at all, so that fetch never fires, and the banner still
+needs to appear for them. Lesson for anything added to this cached
+default later: ask which direction is safe to flash, and if hiding
+something is the safe direction, don't rely on the personalization fetch
+alone to reveal it — a zero-cookie visitor may never trigger that fetch.
+
+## SEO: structured data
+
+**Added 2026-08-08** (a Search Console coverage audit found zero
+structured data anywhere on the site): every `/eventos/[id]` page now
+emits a `VisualArtsEvent` JSON-LD block (`lib/eventJsonLd.ts`) — the
+schema.org subtype for exhibitions (no `ExhibitionEvent` type exists).
+Same anti-fabrication posture as the rest of the app: dates come from
+`activeRange()` (the same "full run" range every other feature already
+derives from `openingDatetime`/`runStartDate`/`runEndDate`, date-only,
+never a fabricated hour), and `image` is included only when
+`resolveCardImage` confirms a real photo — never one of the generic
+domain/city placeholders. Beyond enabling Google's event rich results,
+this also gives AI answer engines that ground on schema.org markup a
+structured, unambiguous source instead of having to infer date/place
+from prose.

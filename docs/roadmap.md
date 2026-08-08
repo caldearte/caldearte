@@ -42,6 +42,33 @@ mode" section. This is deliberately narrower than Phase 2.1 below (admin-
 only, no `users` table, not visitor-facing) but reuses the same Auth.js/
 JWT foundation that phase will eventually build on.
 
+**Fast Origin Transfer incident, 2026-08-06** (PRs #210-211, never
+written down here until now — see architecture.md's "Home page: cached
+default + client-side personalization" for the full design): a real
+usage spike hit 94% of the Vercel Hobby free-tier limit because the home
+page read `cookies()`/`headers()` at the top level, forcing every one of
+84K requests to render fresh instead of being cached. Fixed by moving
+personalization off the initial server render entirely — the cached page
+now serves one safe default (Santiago, family mode on), and the client
+fetches the visitor's real personalized view only when something might
+actually differ from it. **Follow-up bug in that same pattern, found and
+fixed 2026-08-08** (PR #223): the location-sharing consent banner
+flashed on for every visitor, including ones who'd already answered it,
+because the cached default couldn't tell the difference — now suppressed
+in the default and resolved independently on the client.
+
+**Small SEO/brand pass, 2026-08-07/08** (PRs #219-222, alongside the
+newsletter work above): a Search Console coverage-report review found
+zero structured data anywhere on the site — every `/eventos/[id]` page
+now emits a `VisualArtsEvent` JSON-LD block (see architecture.md's "SEO:
+structured data"). Same review also traced the report's "Not found
+(404)" pages to admin-removed events whose permalinks had already been
+indexed before removal (expected churn, not a bug — Google drops them on
+its next recrawl) and its "Page with redirect" pages to the intentional
+apex→www redirect (also expected, not a bug). The placeholder favicon
+(a plain dark square, in place since before launch) was also replaced
+with the real brand mark — magenta "C" on sage.
+
 ## Phase 0 — Definition (complete)
 
 Closed out the initial project brief, moved into a dedicated repo.
