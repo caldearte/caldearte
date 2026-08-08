@@ -798,8 +798,8 @@ const LATO_STACK = "'Lato',Helvetica,Arial,sans-serif";
 // redesign pass. "En otras regiones" is no longer in this map — it now
 // renders as its own plain black paragraph, not a magenta wordmark
 // heading (see buildDigestHtmlBody's per-section branch below). Any
-// section not in this map (e.g. "Expos nuevas esta semana") falls back to
-// its plain label on one unbroken line, still at the same big size.
+// section not in this map falls back to its plain label on one unbroken
+// line, still at the same big size.
 const SECTION_LABEL_LINES: Record<string, string[]> = {
   "Inauguraciones de esta semana": ["INAUGU", "RACIONES."],
   "Expos para visitar esta semana": ["EXPO", "SICIONES."],
@@ -922,8 +922,7 @@ export function buildDigestHtmlBody(
       // follow-up: 85px matched the CALDEARTE logo exactly, read as too
       // big for a section label) via SECTION_LABEL_LINES — falls back to
       // the plain label on one (still word-breaking) line for any section
-      // not in that map (e.g. "Expos nuevas esta semana", which wasn't
-      // given a specific break pattern).
+      // not in that map.
       const labelLines = SECTION_LABEL_LINES[section.label];
       const labelHtml = labelLines
         ? labelLines.map((line) => `<span style="display:block;">${escapeHtml(line)}</span>`).join("")

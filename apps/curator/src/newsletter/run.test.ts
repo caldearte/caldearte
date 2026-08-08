@@ -61,16 +61,8 @@ test("buildDigestSections: 'Inauguraciones de esta semana' still renders with an
   assert.match(inauguraciones.emptyMessage ?? "", /No hemos encontrado ninguna inauguración/);
 });
 
-test("buildDigestSections: an event whose run actually STARTS this week (run_start_date) goes in 'Expos nuevas esta semana' — curation timing (created_at) is irrelevant", () => {
+test("buildDigestSections: an event whose run actually STARTS this week (run_start_date) is NOT split into its own 'new' section — it's treated the same as any other non-opening event, in 'Expos para visitar esta semana' — removed 2026-08-08 (user feedback: a separate 'nuevas' bucket read as confusing, since an inauguración already IS how a new exhibition starts)", () => {
   const event = makeEvent({ created_at: "2026-06-01T00:00:00.000Z", run_start_date: "2026-08-04", opening_datetime: null });
-  const { sections } = buildDigestSections([event], REGION_A, WEEK);
-  const nuevas = sections.find((s) => s.label === "Expos nuevas esta semana");
-  assert.ok(nuevas);
-  assert.equal(nuevas.events.length, 1);
-});
-
-test("buildDigestSections: an event merely curated (created_at) this week but whose run started earlier does NOT count as 'new' — it's a plain visit reminder instead", () => {
-  const event = makeEvent({ created_at: "2026-08-04T00:00:00.000Z", run_start_date: "2026-07-01", opening_datetime: null });
   const { sections } = buildDigestSections([event], REGION_A, WEEK);
   assert.equal(sections.find((s) => s.label === "Expos nuevas esta semana"), undefined);
   const paraVisitar = sections.find((s) => s.label === "Expos para visitar esta semana");
@@ -287,6 +279,76 @@ test(
       });
 
       assert.deepEqual(sentTo, ["confirmado-con-eventos@example.com"]);
+    } finally {
+      await client.from("newsletter_subscribers").delete().eq("admin_region_name", TEST_ADMIN_REGION);
+      await client.from("events").delete().eq("region_id", regionId);
+      await client.from("regions").delete().eq("id", regionId);
+    }
+  },
+);
+
+test(
+  "run(): excludes an event soft-removed via the admin 'Quitar' action (events.removed_at set) even though curation_status is still 'approved' — real bug found 2026-08-08: the newsletter's own events query was missing the removed_at filter that events_public (what the site itself reads) already applies, so a removed event kept appearing in the digest with a permalink that 404s",
+  { skip: !hasLocalSupabase },
+  async () => {
+    const { getSupabaseClient } = await import("../lib/supabase-client.js");
+    const client = getSupabaseClient();
+
+    const { data: region, error: regionError } = await client
+      .from("regions")
+      .insert({ name: TEST_REGION, country: "Testland", language: "es", status: "active", admin_region_name: TEST_ADMIN_REGION })
+      .select("id")
+      .single();
+    if (regionError) throw new Error(`Failed to seed test region: ${regionError.message}`);
+    const regionId = region.id;
+
+    try {
+      const { error: eventsError } = await client.from("events").insert([
+        {
+          title: "Evento vigente",
+          freeform_location: TEST_REGION,
+          region_id: regionId,
+          curation_status: "approved",
+          source: "discovered",
+          opening_datetime: "2026-08-05T20:00:00.000Z",
+        },
+        {
+          title: "Evento quitado por el admin",
+          freeform_location: TEST_REGION,
+          region_id: regionId,
+          curation_status: "approved",
+          source: "discovered",
+          opening_datetime: "2026-08-06T20:00:00.000Z",
+          // removed_at isn't in the generated Database types yet (the
+          // schema has it, the checked-in types file is stale) — `as any`
+          // here, not in production code, just to seed the fixture.
+          ...({ removed_at: new Date().toISOString(), removed_reason: "prueba" } as any),
+        },
+      ]);
+      if (eventsError) throw new Error(`Failed to seed test events: ${eventsError.message}`);
+
+      const { error: subscriberError } = await client
+        .from("newsletter_subscribers")
+        .insert({ email: "removido@example.com", admin_region_name: TEST_ADMIN_REGION, confirm_token: "tok-removed", confirmed_at: new Date().toISOString() });
+      if (subscriberError) throw new Error(`Failed to seed test subscriber: ${subscriberError.message}`);
+
+      let sentTitles: string[] = [];
+      await run({
+        supabase: client,
+        now: new Date("2026-08-05T12:00:00.000Z"),
+        sendDigestEmailFn: async (_email, _token, sections) => {
+          sentTitles = sections.flatMap((s) => s.events.map((e) => e.title));
+        },
+        generateRegionIntroFn: async () => null,
+        generateOtherRegionsIntroFn: async () => null,
+      });
+
+      // Checks presence/absence rather than the exact full list — this
+      // shared local dev DB can carry unrelated leftover fixture events
+      // under the same real admin_region_name from other test files, and
+      // this test only cares about the removed/not-removed distinction.
+      assert.ok(sentTitles.includes("Evento vigente"), "expected the non-removed event to still appear");
+      assert.ok(!sentTitles.includes("Evento quitado por el admin"), "expected the removed event to be excluded");
     } finally {
       await client.from("newsletter_subscribers").delete().eq("admin_region_name", TEST_ADMIN_REGION);
       await client.from("events").delete().eq("region_id", regionId);

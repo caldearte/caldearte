@@ -118,7 +118,7 @@ export interface DigestSectionsResult {
   regionTotalThisWeek: number;
 }
 
-// Builds the four sections for one subscriber's región out of the full
+// Builds the (up to) three sections for one subscriber's región out of the full
 // approved/non-sensitive event pool already loaded for the run (avoids a
 // per-subscriber query — the pool is small enough, see docs/data-model.md).
 export function buildDigestSections(
@@ -132,25 +132,18 @@ export function buildDigestSections(
   const openings = runningThisWeek.filter((e) => isOpeningInWeek(e, week));
   const openingIds = new Set(openings.map((e) => e.id));
 
-  // "New" means the exhibition's own run actually STARTS this week
-  // (run_start_date), not when Haiku happened to curate it (created_at) —
-  // real feedback after the first send: the pipeline's own curation
-  // timing isn't what a reader means by "new," the exhibition's real
-  // start date is.
-  const newThisWeek = runningThisWeek.filter(
-    (e) => !openingIds.has(e.id) && e.run_start_date && e.run_start_date >= week.start && e.run_start_date <= week.end,
-  );
-  const newIds = new Set(newThisWeek.map((e) => e.id));
-
-  // Everything else already running (started before this week, still
-  // open) — a plain "browse what's still on" list, sorted ending-soonest
-  // first so it doubles as a nudge to catch it before it closes. Kept as
-  // two values: the full pool (for the "ver todas" count and the
-  // empty-state check) and the capped slice actually rendered as cards —
-  // a región like Región Metropolitana can easily have 40+ of these,
-  // showing all of them would bury everything else in the email.
+  // Everything not opening this week goes in one pool, treated equally —
+  // sorted ending-soonest first so it doubles as a nudge to catch it
+  // before it closes. No separate "Expos nuevas esta semana" split by
+  // run_start_date (removed 2026-08-08, user feedback: an inauguración
+  // already IS how a new exhibition starts — a second "new" bucket read
+  // as confusing, not clarifying). Kept as two values: the full pool (for
+  // the "ver todas" count and the empty-state check) and the capped slice
+  // actually rendered as cards — a región like Región Metropolitana can
+  // easily have 40+ of these, showing all of them would bury everything
+  // else in the email.
   const alsoVisitAll = runningThisWeek
-    .filter((e) => !openingIds.has(e.id) && !newIds.has(e.id))
+    .filter((e) => !openingIds.has(e.id))
     .sort((a, b) => (a.run_end_date ?? "9999-12-31").localeCompare(b.run_end_date ?? "9999-12-31"));
   const alsoVisit = diversifyByComuna(alsoVisitAll, VISIT_CAP);
 
@@ -171,14 +164,14 @@ export function buildDigestSections(
   // digest always sends, using emptyMessage below to say so explicitly
   // rather than just omitting a section and leaving the reader guessing
   // whether that's a bug or genuinely nothing this week.
-  const hasAnyContent = openings.length > 0 || newThisWeek.length > 0 || alsoVisitAll.length > 0 || otherRegionsAll.length > 0;
+  const hasAnyContent = openings.length > 0 || alsoVisitAll.length > 0 || otherRegionsAll.length > 0;
   if (!hasAnyContent) return { sections: [], regionTotalThisWeek: 0 };
 
   // Total across the whole country, not just the sample shown in "En
   // otras regiones" — the reader-facing count next to that section's
   // "explore everything" link.
   const nationwideActiveCount = events.filter((e) => isRunningOn(e, week.end)).length;
-  const regionTotalThisWeek = openings.length + newThisWeek.length + alsoVisitAll.length;
+  const regionTotalThisWeek = openings.length + alsoVisitAll.length;
 
   const sections: DigestSection[] = [];
 
@@ -188,10 +181,6 @@ export function buildDigestSections(
     emptyMessage:
       openings.length === 0 ? "No hemos encontrado ninguna inauguración para esta semana aún. Si sabes de una, avísanos." : undefined,
   });
-
-  if (newThisWeek.length > 0) {
-    sections.push({ label: "Expos nuevas esta semana", events: newThisWeek.map((e) => toDigestEvent(e, week)) });
-  }
 
   sections.push({
     label: "Expos para visitar esta semana",
@@ -229,7 +218,14 @@ export async function run(deps: RunDeps = {}): Promise<void> {
       .select("id, email, admin_region_name, confirm_token")
       .not("confirmed_at", "is", null)
       .is("unsubscribed_at", null),
-    supabase.from("events").select("*").eq("curation_status", "approved"),
+    // Real bug found 2026-08-08: this used to be missing the removed_at
+    // filter that events_public (what apps/web actually reads) already
+    // applies — an event soft-removed via the admin "Quitar" action (see
+    // docs/data-model.md) still had curation_status='approved', so it
+    // kept appearing in the newsletter (with a permalink that 404s, since
+    // the site itself does exclude it) even though it had already
+    // disappeared from the live site.
+    supabase.from("events").select("*").eq("curation_status", "approved").is("removed_at", null),
     supabase.from("regions").select("id, name, admin_region_name"),
   ]);
 
