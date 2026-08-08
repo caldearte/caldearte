@@ -502,6 +502,29 @@ export const KNOWN_SOURCES: KnownSource[] = [
         /Fecha de inicio:\s*<\/span>\s*(?<startDay>\d{1,2})\/(?<startMonth>\d{1,2})\/(?<startYear>\d{4})[\s\S]*?Fecha de t[eé]rmino:\s*<\/span>\s*(?<endDay>\d{1,2})\/(?<endMonth>\d{1,2})\/(?<endYear>\d{4})/i,
     },
   },
+  {
+    url: "https://www.cclm.cl/exposiciones/",
+    note: 'Centro Cultural La Moneda (CCLM), Santiago — a major, prominent national institution, evaluated at the user\'s request 2026-08-08. Single fixed venue (multiple internal salas — Sala Pacífico, Sala Andes, Galería de Patrimonio, etc — but placeName stays the museum\'s own name, same posture as museoregionalaysen.gob.cl\'s multi-sala precedent, not per-sala). WordPress, real "exposicion" custom post type exists via /wp-json/wp/v2/exposicion, but its REST fields never include the exhibition\'s own run dates (only WP\'s own post date/modified) — the real dates only exist as display text on THIS listing page, so this uses the plain HTML articleList path, not wordpressRestApi, despite the REST endpoint existing.\n\nEach exhibition sits in its own "module--asymmetric" wrapper alternating left/right layout (two markup variants for the title <h3>/<a> — one with them adjacent, one split across lines — titleLinkRegex tolerates both via \\s* between tags). blockRegex captures the OUTER wrapper (not just the inner <article class="module--asymmetric__content">) specifically to bring the thumbnail into scope — it renders as a CSS background-image on a sibling <figure>, not an <img> tag, which is why extractImgTags (extractors.ts) gained generic background-image:url() detection here (a real gap, not cclm.cl-specific — any future source with the same pattern benefits).\n\nDates: a "calendar" span states a real range but with THREE different separators across real sampled items ("Agosto 05 / Octubre 11, 2026", "Junio 19 - Nov 01, 2026", "Mayo 07 a Septiembre 27, 2026") and full Spanish month names (not the 3-letter abbreviations most other sources use) — dateRangeExtractor\'s month groups only capture the first 3 letters ([a-zé]{3}[a-zé]*) so resolveMonthGroup\'s existing abbreviation table still resolves them. One sampled item ("Junio 11, 2026 / mayo, 2027") has no end day at all — genuinely too irregular to regex, correctly falls through to null/Haiku\'s own interpretation of the raw daysRegex text rather than forcing a match.\n\nDescription: no prose on the listing itself — recovered from each detail page\'s `content__excerpt` div (confirmed against 2 real detail pages), which includes the full body (opening text + "Sobre el curador" + artist list for the sampled item) — same "capture the whole prose container" posture as mnba.gob.cl/museoregionalaysen.gob.cl\'s "text-long" div. "10:15 a 18:45 horas" on the listing is the museum\'s own daily opening hours, not a per-exhibition inauguración time (same distinction as parquecultural.cl\'s meta.hora_de_inicio) — no openingTimeExtractor, since no confirmed "Inauguración: <fecha> <hora>" phrasing was found on either sampled detail page.\n\nReal bug found building this against the live page (2026-08-08): the blockRegex\'s lookahead terminator was first guessed as `<section class="section--partners">`, which never actually appears on the real page — with no real terminator, the LAST exhibition\'s block silently swallowed the rest of the page (cclm.cl\'s trailing undated "Cine en Chile"/"Viajes en papel" thematic grid, `<article class="box ...">` cards) into its own non-greedy match. Harmless on this specific page (titleLinkRegex only takes the first match per block, so the last real exhibition still extracted correctly), but a real risk on principle for any future page shape. Fixed with the actual terminator confirmed against the live HTML (`<article class="box `, the real point where the asymmetric list ends) — verified all 6 real listed exhibitions extract as 6 separate items, not 5.',
+    lastReviewedAt: "2026-08-08",
+    extractor: {
+      kind: "articleList",
+      blockRegex:
+        /<div class="module--asymmetric(?: right)?"[^>]*>([\s\S]*?)(?=<div class="module--asymmetric(?: right)?"[^>]*>|<article class="box )/g,
+      titleLinkRegex: /<h3 class="module--asymmetric__title">\s*<a href="([^"]+)"[^>]*>\s*([^<]*?)\s*<\/a>\s*<\/h3>/,
+      daysRegex: /class="calendar">([^<]+)<\/span>/,
+      // Real markup, confirmed 2026-08-08: three separators across real
+      // sampled items ("/", "-", "a"), full Spanish month names (only the
+      // first 3 letters captured — see resolveMonthGroup, extractors.ts).
+      dateRangeExtractor: {
+        pattern:
+          /(?<startMonth>[a-zé]{3})[a-zé]*\s+(?<startDay>\d{1,2})\s+(?:\/|-|a)\s+(?<endMonth>[a-zé]{3})[a-zé]*\s+(?<endDay>\d{1,2}),?\s*(?<year>\d{4})/i,
+      },
+    },
+    fixedLocation: { location: "Santiago", placeName: "Centro Cultural La Moneda" },
+    descriptionExtractor: {
+      pattern: /<div class="content__excerpt">([\s\S]*?)<\/div>/,
+    },
+  },
 ];
 
 export function knownSourceDomain(url: string): string {

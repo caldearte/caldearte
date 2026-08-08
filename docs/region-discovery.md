@@ -2508,6 +2508,67 @@ mamchiloe.cl's unrelated "fetch failed" issue. No paid proxy/relay service
 pursued (would need to leave the free tier, which needs explicit sign-off
 per the project's own spend-approval rule, `CLAUDE.md`).
 
+### New source: cclm.cl (2026-08-08) — Centro Cultural La Moneda, and a real background-image extraction gap
+
+Evaluated at the user's request. A major, prominent national institution
+— stronger than most candidates evaluated so far. Single fixed venue
+(multiple internal salas — Sala Pacífico, Sala Andes, Galería de
+Patrimonio, etc — `fixedLocation.placeName` stays the museum's own name,
+same posture as museoregionalaysen.gob.cl's multi-sala precedent, not
+per-sala). WordPress, and a real `exposicion` custom post type exists via
+`/wp-json/wp/v2/exposicion` — but its REST fields never include the
+exhibition's own run dates (only WordPress's own post date/modified), so
+this uses the plain HTML `articleList` path against `/exposiciones/`
+instead, not `wordpressRestApi`, despite the REST endpoint existing.
+
+Each exhibition sits in its own `module--asymmetric` wrapper, alternating
+left/right layout — two real markup variants for the title `<h3>`/`<a>`
+(one with them adjacent, one split across lines), both handled by one
+`titleLinkRegex` tolerant of the whitespace either way. The listing's
+"calendar" span gives a real per-item date range, but with **three
+different separators** across real sampled items ("Agosto 05 / Octubre
+11, 2026", "Junio 19 - Nov 01, 2026", "Mayo 07 a Septiembre 27, 2026")
+and full Spanish month names rather than the 3-letter abbreviations most
+other sources use — the month capture groups only take the first 3
+letters, so `resolveMonthGroup`'s existing abbreviation table still
+resolves them without needing a new one. One sampled item ("Junio 11,
+2026 / mayo, 2027") has no end day stated at all — genuinely too
+irregular to regex reliably, correctly left to fall through to null/
+Haiku's own interpretation rather than forcing a wrong match.
+
+**Real gap found and fixed generically, not just for this source**: the
+thumbnail renders as a CSS `background-image` on a sibling `<figure>`,
+not an `<img>` tag — `extractImgTags` (`extractors.ts`) only ever looked
+for real `<img>` tags, so this source would have shipped with zero images
+otherwise. Gained a background-image `url()` detection pass (unquoted,
+single-, and double-quoted forms), appended after real `<img>` results so
+no existing source's behavior changes — any future source with the same
+CSS-background pattern now benefits too.
+
+**Real bug found building this against the live page**: `blockRegex`'s
+lookahead terminator was first guessed as `<section class="section--
+partners">`, which never actually appears anywhere on the real page —
+with no real terminator, the LAST exhibition's block silently swallowed
+the rest of the page (cclm.cl's own trailing undated "Cine en Chile"/
+"Viajes en papel" thematic grid, `<article class="box ...">` cards) into
+its own non-greedy match. Harmless on this specific page's content
+(`titleLinkRegex` only takes the first match per block, so the last real
+exhibition still extracted correctly) but a real risk on principle for
+any future page shape. Fixed with the actual terminator confirmed
+against the live HTML (`<article class="box `, the real point where the
+asymmetric list ends) — verified all 6 real listed exhibitions extract
+as 6 separate items, not 5.
+
+Description: no prose on the listing itself — recovered from each
+detail page's `content__excerpt` div (confirmed against 2 real detail
+pages), same "capture the whole prose container" posture as
+mnba.gob.cl/museoregionalaysen.gob.cl's `text-long` div. The listing's
+"10:15 a 18:45 horas" is the museum's own daily opening hours, not a
+per-exhibition inauguración time (same distinction as parquecultural.cl's
+`meta.hora_de_inicio`) — no `openingTimeExtractor`, since no confirmed
+"Inauguración: `<fecha>` `<hora>`" phrasing was found on either sampled
+detail page.
+
 ### Cross-source dedup: two more real gaps found by a manual curation audit (2026-07-29)
 
 A user-requested audit against real production data (`docs/roadmap.md`'s

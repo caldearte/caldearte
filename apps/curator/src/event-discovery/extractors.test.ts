@@ -39,6 +39,26 @@ test("extractImgTags falls back to src when there's no data-src (every other sou
   assert.deepEqual(extractImgTags(html), [{ url: "/real.jpg", description: "obra" }]);
 });
 
+// Real gap, found 2026-08-08 adding cclm.cl: its thumbnail is a CSS
+// background-image on a <figure>, not an <img> tag at all.
+test("extractImgTags also detects a CSS background-image:url() when there's no <img> tag at all (cclm.cl-style)", () => {
+  const html = `<figure class="module--asymmetric__figure" style="background-image:url(https://cdn.cclm.cl/photo.jpg);"></figure>`;
+  assert.deepEqual(extractImgTags(html), [{ url: "https://cdn.cclm.cl/photo.jpg", description: null }]);
+});
+
+test("extractImgTags: real <img> tags always come before background-image fallbacks, regardless of their actual position in the markup", () => {
+  const html = `<div style="background-image:url(/bg.jpg);"></div><img src="/real.jpg" alt="obra">`;
+  assert.deepEqual(extractImgTags(html), [
+    { url: "/real.jpg", description: "obra" },
+    { url: "/bg.jpg", description: null },
+  ]);
+});
+
+test("extractImgTags handles a single-quoted background-image url() form, not just the unquoted one cclm.cl uses", () => {
+  const html = `<div style="background-image:url('/single.jpg');"></div>`;
+  assert.deepEqual(extractImgTags(html), [{ url: "/single.jpg", description: null }]);
+});
+
 test("filterKnownSourceImages resolves relative URLs, drops chrome, nulls 'vacio' alts", () => {
   const images = [
     { url: " /dam/expo-prev.jpg", description: "vacio" },
@@ -200,6 +220,73 @@ test("extractArticleList is genuinely config-driven: a different site's markup w
   assert.equal(items[0].sourceUrl, "https://otro-sitio.cl/e/1");
   assert.equal(items[0].locationHint, "MAVI");
   assert.equal(items[0].rawDateText, "fecha no indicada");
+});
+
+// Matches cclm.cl's real markup — the same config known-sources.ts gives
+// it in production (added 2026-08-08). Two real structural quirks in one
+// fixture: the title <h3>/<a> markup has two variants (adjacent vs. split
+// across lines — real alternating left/right layout), and the thumbnail is
+// a CSS background-image on a sibling <figure>, not an <img> tag.
+const CCLM_CONFIG: ArticleListConfig = {
+  kind: "articleList",
+  blockRegex:
+    /<div class="module--asymmetric(?: right)?"[^>]*>([\s\S]*?)(?=<div class="module--asymmetric(?: right)?"[^>]*>|<article class="box )/g,
+  titleLinkRegex: /<h3 class="module--asymmetric__title">\s*<a href="([^"]+)"[^>]*>\s*([^<]*?)\s*<\/a>\s*<\/h3>/,
+  daysRegex: /class="calendar">([^<]+)<\/span>/,
+  dateRangeExtractor: {
+    pattern:
+      /(?<startMonth>[a-zé]{3})[a-zé]*\s+(?<startDay>\d{1,2})\s+(?:\/|-|a)\s+(?<endMonth>[a-zé]{3})[a-zé]*\s+(?<endDay>\d{1,2}),?\s*(?<year>\d{4})/i,
+  },
+};
+
+// Real bug found 2026-08-08 building this against the live site: the
+// FIRST version of this terminator guessed "<section class=\"section--
+// partners\">", which never actually appears on the real page — with no
+// real terminator, the last module--asymmetric block's non-greedy match
+// silently swallowed the entire rest of the page (including cclm.cl's
+// trailing undated "Cine en Chile"/"Viajes en papel" thematic grid,
+// `<article class="box ...">` cards) into ITS OWN block content, so that
+// last real exhibition still extracted correctly (titleLinkRegex only
+// takes the first match per block) but any exhibition-shaped block after
+// it — impossible on this specific page, but a real risk on principle —
+// would've been silently dropped. Fixed with the real terminator
+// (`<article class="box `, confirmed against the live page: the point
+// where the asymmetric list ends and the thematic grid begins). This
+// fixture's 3rd block reproduces that exact shape to guard against
+// regressing back to the guessed terminator.
+test("extractArticleList handles cclm.cl's real markup: both title-link variants, the background-image thumbnail, the date range, and correctly bounds the LAST dated block against the trailing undated thematic grid", () => {
+  const html = `
+    <div class="module--asymmetric right" data-equalize="target">
+      <figure class="module--asymmetric__figure" style="background-image:url(https://cdn.cclm.cl/tus-fantasmas.jpg);"></figure>
+      <article class="module--asymmetric__content">
+        <h3 class="module--asymmetric__title"><a href="https://www.cclm.cl/exposicion/tus-fantasmas-son-mios/" title="Ir a">Tus fantasmas son míos</a></h3>
+        <span class="module--asymmetric__date"><span class="calendar">Agosto 05 / Octubre 11, 2026</span></span>
+      </article>
+    </div>
+    <div class="module--asymmetric" data-equalize="target">
+      <figure class="module--asymmetric__figure" style="background-image:url(https://cdn.cclm.cl/vivir-archivo.jpg);"></figure>
+      <article class="module--asymmetric__content">
+        <h3 class="module--asymmetric__title">
+          <a href="https://www.cclm.cl/exposicion/vivir-el-archivo/" title="Ir a">
+            VIVIR EL ARCHIVO
+          </a>
+        </h3>
+        <span class="module--asymmetric__date"><span class="calendar">Junio 19 - Nov 01, 2026</span></span>
+      </article>
+    </div>
+    <article class="box box--cineteca">
+      <h3 class="box__title"><a href="https://www.cclm.cl/exposicion/cine-en-chile/" title="Ir a">Cine en Chile</a></h3>
+    </article>
+  `;
+  const items = extractArticleList(html, "https://www.cclm.cl/exposiciones/", CCLM_CONFIG);
+  assert.ok(items);
+  assert.equal(items.length, 2);
+  assert.equal(items[0].title, "Tus fantasmas son míos");
+  assert.equal(items[0].imageUrl, "https://cdn.cclm.cl/tus-fantasmas.jpg");
+  assert.deepEqual({ start: items[0].structuredStartDate, end: items[0].structuredEndDate }, { start: "2026-08-05", end: "2026-10-11" });
+  assert.equal(items[1].title, "VIVIR EL ARCHIVO");
+  assert.equal(items[1].imageUrl, "https://cdn.cclm.cl/vivir-archivo.jpg");
+  assert.deepEqual({ start: items[1].structuredStartDate, end: items[1].structuredEndDate }, { start: "2026-06-19", end: "2026-11-01" });
 });
 
 // Matches Parque Cultural Valparaíso's real WordPress meta-field names —
@@ -390,6 +477,33 @@ test("extractDateRange parses day + 3-letter Spanish-abbreviation + year ranges 
   };
   const result = extractDateRange("11 jul de 2026 - 11 oct de 2026", config);
   assert.deepEqual(result, { runStartDate: "2026-07-11", runEndDate: "2026-10-11" });
+});
+
+// Real markup, added 2026-08-08 for cclm.cl: full Spanish month names (not
+// 3-letter abbreviations like every other source above) across THREE
+// different real separators ("/", "-", "a") — the month groups only
+// capture the first 3 letters, matching resolveMonthGroup's existing
+// abbreviation table.
+test("extractDateRange parses full-month-name ranges across three different real separators (cclm.cl-style)", () => {
+  const config: DateRangeConfig = {
+    pattern:
+      /(?<startMonth>[a-zé]{3})[a-zé]*\s+(?<startDay>\d{1,2})\s+(?:\/|-|a)\s+(?<endMonth>[a-zé]{3})[a-zé]*\s+(?<endDay>\d{1,2}),?\s*(?<year>\d{4})/i,
+  };
+  assert.deepEqual(extractDateRange("Agosto 05 / Octubre 11, 2026", config), { runStartDate: "2026-08-05", runEndDate: "2026-10-11" });
+  assert.deepEqual(extractDateRange("Junio 19 - Nov 01, 2026", config), { runStartDate: "2026-06-19", runEndDate: "2026-11-01" });
+  assert.deepEqual(extractDateRange("Mayo 07 a Septiembre 27, 2026", config), { runStartDate: "2026-05-07", runEndDate: "2026-09-27" });
+});
+
+// Real markup, same source: one sampled item has no end day at all — too
+// irregular to regex reliably, correctly falls through to null rather than
+// guessing (Haiku's own interpretation of the raw daysRegex text is the
+// fallback, same posture as every other unmatched case in this file).
+test("extractDateRange returns null for cclm.cl's one genuinely irregular case (no end day stated)", () => {
+  const config: DateRangeConfig = {
+    pattern:
+      /(?<startMonth>[a-zé]{3})[a-zé]*\s+(?<startDay>\d{1,2})\s+(?:\/|-|a)\s+(?<endMonth>[a-zé]{3})[a-zé]*\s+(?<endDay>\d{1,2}),?\s*(?<year>\d{4})/i,
+  };
+  assert.equal(extractDateRange("Junio 11, 2026 / mayo, 2027", config), null);
 });
 
 test("extractDateRange returns null instead of a wrong date when the second slot isn't a real month (molinomachmar.cl single-day events show an hour there instead, e.g. '18 HRS')", () => {

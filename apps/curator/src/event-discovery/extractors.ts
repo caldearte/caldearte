@@ -103,6 +103,18 @@ export function extractImgTags(html: string): Array<{ url: string; description: 
     images.push({ url: decodeHtmlEntities(src), description: alt && alt.trim().length > 0 ? alt.trim() : null });
   }
 
+  // Fallback, appended after real <img> tags (never ahead of them — a
+  // source with genuine <img> markup keeps winning on tie): a source that
+  // renders its thumbnail as a CSS background-image instead of an <img>
+  // tag (cclm.cl, confirmed 2026-07-28 — a <figure style="background-
+  // image:url(...)"> with no <img> anywhere in the block at all, real
+  // gap this closes generically rather than one-off for that source).
+  // Unquoted, single-, and double-quoted url() forms are all valid CSS.
+  const backgroundImageRegex = /background-image:\s*url\(\s*['"]?([^'")]+)['"]?\s*\)/gi;
+  for (const match of html.matchAll(backgroundImageRegex)) {
+    images.push({ url: decodeHtmlEntities(match[1]), description: null });
+  }
+
   return images;
 }
 
