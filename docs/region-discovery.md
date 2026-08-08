@@ -2492,6 +2492,22 @@ source:
    numeric-or-abbreviation flexibility `extractDateRange`'s
    `resolveMonthGroup` already had).
 
+**Addendum (2026-07-28, same day): mssa.cl is blocked by Cloudflare
+specifically for GitHub Actions' IP/ASN.** First production run failed —
+`html source https://www.mssa.cl/exposiciones/ responded 403` — but a
+plain `curl`/Node `fetch()` from a home IP both return 200 with no special
+headers, so it's not a UA/TLS-fingerprint issue. Confirmed via `curl -I`:
+mssa.cl sits behind Cloudflare (`server: cloudflare`). Also tested whether
+a real headless Chromium (Playwright), launched FROM a GitHub Actions
+runner, could get past it (throwaway probe branch, never merged, deleted
+after) — still 403, page title "Just a moment..." (Cloudflare's own
+JS-challenge interstitial), confirming this is a hard IP/ASN block, not
+something a browser can solve. Decided: leave mssa.cl as-is, accept it'll
+keep silently failing every ~7-day cadence cycle — same posture as
+mamchiloe.cl's unrelated "fetch failed" issue. No paid proxy/relay service
+pursued (would need to leave the free tier, which needs explicit sign-off
+per the project's own spend-approval rule, `CLAUDE.md`).
+
 ### Cross-source dedup: two more real gaps found by a manual curation audit (2026-07-29)
 
 A user-requested audit against real production data (`docs/roadmap.md`'s

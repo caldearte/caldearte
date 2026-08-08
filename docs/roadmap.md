@@ -147,9 +147,11 @@ Closed out the initial project brief, moved into a dedicated repo.
     `newsletter-unsubscribe`, service-role, return JSON — Edge Functions
     can't serve HTML, see their own file comments), a new
     `apps/curator/src/newsletter/` module (`send-newsletter` script)
-    sending four sections per subscriber
-    (inauguraciones/nuevas/recordatorios/otras regiones, omitting any
-    that's empty), and its own weekly cron
+    sending per-subscriber sections (inauguraciones/expos para visitar/en
+    otras regiones — see the 2026-08-08 revision below for how this
+    settled; "expos nuevas esta semana" existed as a fourth section
+    briefly, then was folded back in), omitting any that's empty, and its
+    own weekly cron
     (`.github/workflows/weekly-newsletter.yml`, Monday 08:00 UTC).
     Deliberately does NOT depend on event-discovery.yml's discovery
     cadence changing — general comuna search stays monthly (an explicit,
@@ -190,6 +192,34 @@ Closed out the initial project brief, moved into a dedicated repo.
     threading); and several modal UX fixes (clearer double-opt-in copy,
     lighter mobile backdrop, branded header) from real subscriber
     feedback.
+    **"Rediseño 2.0.0" pass on the email itself, 2026-08-07/08** (PRs
+    #212-219, `apps/curator/src/lib/notify.ts`/`newsletter/`): the old
+    white-on-black template was rebuilt to match the real site's brand
+    (magenta wordmark in Lato Black, sage background, white list-style
+    event cards mirroring `EventHorizontalListItem`'s real markup, a big header
+    with the week range and the subscriber's own región name, responsive
+    stacking under ~400px). "Expos nuevas esta semana" removed as its own
+    section — a `run_start_date`-this-week event now gets the same
+    treatment as any other non-opening event, since an inauguración
+    already IS how a new exhibition starts; a separate "nuevas" bucket
+    read as confusing, not clarifying. "Expos para visitar" now
+    diversifies across comunas when capping at 10 (round-robin, not a
+    flat soonest-closing cut, so one comuna's closing-soon cluster can't
+    crowd out the rest of the región). "En otras regiones" cap raised
+    5 → 10, and its own AI intro went from 1 to 2 paragraphs. The main
+    AI intro's voice moved from "editorial redactor" to "art researcher
+    talking to a friend" (still grounded to titles/venue/comuna only,
+    same anti-fabrication posture) — real-Haiku testing during this pass
+    caught two fresh fabrication-adjacent bugs the tone rewrite
+    introduced (a made-up región name for an event with no comuna in the
+    data, and literal markdown asterisks leaking into the plain-text
+    email) and a refusal-on-a-single-item edge case, all fixed with
+    explicit prompt rules before shipping. Separately, a real production
+    bug was found and fixed: `run()`'s own events query was missing the
+    `removed_at` filter that `events_public` (what the site itself reads)
+    already applies, so an event manually removed via the admin "Quitar"
+    action kept appearing in the newsletter with a permalink that 404s on
+    the live site.
 
 ## Phase 1b — Inbound-mail flows
 
@@ -374,3 +404,12 @@ building infra" discipline the rest of this project has followed.
   already in motion, gated on Phase 2.1–2.4 building real community usage
   first. Anything beyond that stays unexplored until there's organic
   traction to build on.
+- **Data-analysis/dashboard on retained event data** — user's own idea
+  (2026-07-18): the ~1-year retention policy means a year of curated event
+  data keeps accumulating with no current use beyond the live calendar.
+  Idea: a data-analysis section (charts/stats) surfacing something
+  valuable from that history — which comunas/venues are most active,
+  seasonal patterns, curation approve/reject rates, etc. Explicitly not
+  decided or scoped — "habría que analizarlo" — needs its own analysis
+  pass (what's actually valuable to show, to whom, at what cost) before it
+  becomes a real roadmap phase.
