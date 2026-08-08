@@ -833,20 +833,26 @@ function isClosingSoon(runEndDate: string | null, todayStr: string | null, thres
 // the <td width> below is kept in sync with the image's own width so the
 // cell doesn't render narrower than its content in stricter email
 // clients.
+// Below ~400px (see the <style> block's @media rule in
+// buildDigestHtmlBody's <head>), the thumbnail and text stack — photo on
+// top at full width, text below at full width — instead of staying
+// side by side (2026-08-08 user request). Classes carry the override;
+// the inline styles below are the desktop default and the fallback for
+// any client that ignores the <style> block entirely.
 function eventCardHtml(e: DigestEvent, referenceYear: number, todayStr: string | null): string {
   const date = fmtDigestDate(e, referenceYear);
   const closingSoon = isClosingSoon(e.runEndDate, todayStr);
   const dateText = closingSoon ? `${escapeHtml("ÚLTIMOS DÍAS")} — ${escapeHtml(date)}` : escapeHtml(date);
   const badgeColor = e.isOpeningThisWeek || closingSoon ? BRAND_MAGENTA : TEXT_PRIMARY;
   const thumb = e.imageUrl
-    ? `<img src="${escapeHtml(e.imageUrl)}" width="150" height="150" alt="" style="display:block;width:150px;height:150px;object-fit:cover;" />`
-    : `<div style="width:150px;height:150px;background:#3a3a3a;"></div>`;
+    ? `<img src="${escapeHtml(e.imageUrl)}" width="150" height="150" alt="" class="ev-thumb-img" style="display:block;width:150px;height:150px;object-fit:cover;" />`
+    : `<div class="ev-thumb-ph" style="width:150px;height:150px;background:#3a3a3a;"></div>`;
   return `<a href="${eventUrl(e.id)}" style="display:block;text-decoration:none;margin:0 0 8px;background:#fff;">
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="padding:12px;">
       <tr>
-        <td width="150" valign="top" style="line-height:0;">${thumb}</td>
-        <td width="12"></td>
-        <td valign="middle">
+        <td width="150" valign="top" class="ev-thumb-td" style="line-height:0;">${thumb}</td>
+        <td width="12" class="ev-gap-td"></td>
+        <td valign="middle" class="ev-text-td">
           ${date ? `<p style="margin:0 0 4px;color:${badgeColor};font-size:18px;font-weight:800;">${dateText}</p>` : ""}
           <p style="margin:0 0 4px;color:${TEXT_PRIMARY};font-family:${MONO_STACK};font-size:21px;line-height:1.2;">${escapeHtml(e.title)}</p>
           <p style="margin:0;color:#767f82;font-size:15px;">${escapeHtml(e.placeName)}</p>
@@ -911,18 +917,19 @@ export function buildDigestHtmlBody(
       // Generous top margin (not just the h2's own padding) — real
       // feedback: sections read as cramped/jammed together without real
       // air between them, especially after a card grid. Label styled as
-      // its own big magenta wordmark now (26px mono -> 85px Lato, same
-      // size as the CALDEARTE logo, 2026-08-08 user's own manual redesign
-      // pass) via SECTION_LABEL_LINES — falls back to the plain label on
-      // one (still word-breaking) line for any section not in that map
-      // (e.g. "Expos nuevas esta semana", which wasn't given a specific
-      // break pattern).
+      // its own magenta wordmark (26px mono -> 85px Lato -> 55px Lato,
+      // 2026-08-08 user's own manual redesign pass then a same-day
+      // follow-up: 85px matched the CALDEARTE logo exactly, read as too
+      // big for a section label) via SECTION_LABEL_LINES — falls back to
+      // the plain label on one (still word-breaking) line for any section
+      // not in that map (e.g. "Expos nuevas esta semana", which wasn't
+      // given a specific break pattern).
       const labelLines = SECTION_LABEL_LINES[section.label];
       const labelHtml = labelLines
         ? labelLines.map((line) => `<span style="display:block;">${escapeHtml(line)}</span>`).join("")
         : escapeHtml(section.label);
       return `<div style="margin:48px 0 0;">
-      <h2 style="margin:0 0 16px;color:${BRAND_MAGENTA};font-family:${LATO_STACK};font-weight:900;font-size:85px;line-height:0.92;letter-spacing:0.01em;word-break:break-word;overflow-wrap:anywhere;">${labelHtml}</h2>
+      <h2 style="margin:0 0 16px;color:${BRAND_MAGENTA};font-family:${LATO_STACK};font-weight:900;font-size:55px;line-height:0.95;letter-spacing:0.01em;word-break:break-word;overflow-wrap:anywhere;">${labelHtml}</h2>
       ${bodyHtml}
       ${moreLinkHtml(section.moreLink)}
       </div>`;
@@ -968,6 +975,19 @@ export function buildDigestHtmlBody(
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link href="https://fonts.googleapis.com/css2?family=Lato:wght@900&display=swap" rel="stylesheet" />
+    <style>
+      /* Event cards stack under ~400px (2026-08-08 user request): photo
+         on top at full width, text below at full width, instead of side
+         by side. Clients that ignore <style> entirely (a real
+         possibility in email) just keep the desktop side-by-side inline
+         layout — a reasonable fallback, not broken. */
+      @media (max-width: 400px) {
+        .ev-thumb-td, .ev-text-td { display: block !important; width: 100% !important; }
+        .ev-gap-td { display: none !important; }
+        .ev-thumb-img { width: 100% !important; height: auto !important; }
+        .ev-thumb-ph { width: 100% !important; height: 220px !important; }
+      }
+    </style>
   </head>
   <body style="margin:0;padding:0;background:${SURFACE_SAGE};">
     <div style="font-family:Helvetica,Arial,sans-serif;max-width:640px;margin:0 auto;background:${SURFACE_SAGE};">

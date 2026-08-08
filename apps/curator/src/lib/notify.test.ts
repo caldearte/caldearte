@@ -563,6 +563,17 @@ test("eventCardHtml: the whole card is one link to caldearte.com's event page, w
   );
 });
 
+test("buildDigestHtmlBody: under ~400px, event cards stack (photo full width on top, text full width below) via a <style> media query — the classed thumb/gap/text cells and their <style> rule are present, for both a real photo and the no-image placeholder — 2026-08-08", () => {
+  const html = buildDigestHtmlBody(fixtureDigestSections, "unsub-token");
+  assert.match(html, /@media \(max-width: 400px\) \{[\s\S]*?\.ev-thumb-td, \.ev-text-td \{ display: block !important; width: 100% !important; \}/);
+  assert.match(html, /\.ev-gap-td \{ display: none !important; \}/);
+  assert.match(html, /class="ev-thumb-td"/);
+  assert.match(html, /class="ev-gap-td"/);
+  assert.match(html, /class="ev-text-td"/);
+  assert.match(html, /class="ev-thumb-img"/); // event-estrella-distante has a real imageUrl
+  assert.match(html, /class="ev-thumb-ph"/); // event-salafem has imageUrl: null
+});
+
 test("eventCardHtml: shows an ÚLTIMOS DÍAS badge when the run ends within 7 days of the digest's own week.start, never otherwise", () => {
   const closingSoonEvent: DigestSection[] = [
     {
@@ -605,18 +616,18 @@ test("buildDigestBody and buildDigestHtmlBody render the otherRegionsIntro right
   assert.doesNotMatch(withoutIntro, /destaca una muestra/);
 });
 
-test("buildDigestHtmlBody: the 2 mapped section labels render as hand-broken stacked lines at wordmark size (85px, matching the CALDEARTE logo), 'En otras regiones' renders as a plain black headline instead, and an unmapped label falls back to plain text at the same size — 2026-08-08", () => {
+test("buildDigestHtmlBody: the 2 mapped section labels render as hand-broken stacked lines at 55px (85px read as too big, same as the CALDEARTE logo — scaled down same-day follow-up), 'En otras regiones' renders as a plain black headline instead, and an unmapped label falls back to plain text at the same size — 2026-08-08", () => {
   const html = buildDigestHtmlBody(fixtureDigestSections, "unsub-token");
   assert.match(
     html,
-    /<h2[^>]*font-size:85px[^>]*><span style="display:block;">INAUGU<\/span><span style="display:block;">RACIONES\.<\/span><\/h2>/,
+    /<h2[^>]*font-size:55px[^>]*><span style="display:block;">INAUGU<\/span><span style="display:block;">RACIONES\.<\/span><\/h2>/,
   );
   assert.match(html, /<p[^>]*font-size:40px[^>]*>EN OTRAS REGIONES\.<\/p>/);
   assert.doesNotMatch(html, /<h2[^>]*>[\s\S]*?EN[\s\S]*?OTRAS[\s\S]*?<\/h2>/);
 
   const unmappedLabelSections: DigestSection[] = [{ label: "Sección sin mapear", events: [], emptyMessage: "vacía" }];
   const unmappedHtml = buildDigestHtmlBody(unmappedLabelSections, "unsub-token");
-  assert.match(unmappedHtml, /<h2[^>]*font-size:85px[^>]*>Sección sin mapear<\/h2>/);
+  assert.match(unmappedHtml, /<h2[^>]*font-size:55px[^>]*>Sección sin mapear<\/h2>/);
 });
 
 test("buildDigestHtmlBody: the week line and región line render right-aligned in the real Lato logo font under the fixed tagline — 2026-08-08", () => {
