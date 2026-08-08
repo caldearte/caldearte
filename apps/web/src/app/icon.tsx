@@ -3,9 +3,11 @@ import { ImageResponse } from "next/og";
 export const size = { width: 32, height: 32 };
 export const contentType = "image/png";
 
-// No brand logo asset exists yet — a plain wordmark-initial icon
-// (heading-gray background, matches the app's dark-pill/heading color
-// token) is a reasonable placeholder until a real one is designed.
+// Real brand favicon (2026-08-08, user-provided design) — magenta "C" on
+// sage, the same two tokens as everywhere else in the app
+// (--color-brand-magenta/--color-surface-sage, globals.css). Replaces the
+// old dark-pill placeholder this file's own comment used to describe as
+// provisional.
 export default function Icon() {
   return new ImageResponse(
     (
@@ -16,10 +18,10 @@ export default function Icon() {
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          background: "#111827",
-          color: "#ffffff",
-          fontSize: 22,
-          fontWeight: 800,
+          background: "#d7dfe2",
+          color: "#ff00fb",
+          fontSize: 24,
+          fontWeight: 900,
           borderRadius: 6,
         }}
       >
