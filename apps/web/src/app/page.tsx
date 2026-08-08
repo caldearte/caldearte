@@ -29,7 +29,17 @@ import HomeClient from "@/components/HomeClient";
 export const revalidate = 60;
 
 export default async function HomePage() {
-  const model = await computeHomeViewModel({ cookieStore: EMPTY_COOKIE_READER, headerStore: new Headers() });
+  const computed = await computeHomeViewModel({ cookieStore: EMPTY_COOKIE_READER, headerStore: new Headers() });
+  // Real bug found 2026-08-08: EMPTY_COOKIE_READER means
+  // showGeoConsentPrompt always comes back true here (it reads as "cookie
+  // absent" for every visitor, cached or not), so the banner flashed on
+  // for every single visitor — including ones who'd already answered it —
+  // then vanished once HomeClient's personalization fetch loaded the real
+  // answer. Forced false in the cached default instead; HomeClient now
+  // independently checks the real cookie client-side (not tied to
+  // whether a personalization fetch even runs) and flips it on only when
+  // it's actually still unanswered.
+  const model = { ...computed, showGeoConsentPrompt: false };
 
   return (
     <main className="min-h-screen w-full bg-surface-sage px-[20px] py-8 md:px-[61px] max-w-[1280px] mx-auto">
