@@ -145,6 +145,23 @@ test("extractArticleList decodes HTML entities in the title, same as it already 
   assert.equal(items[0].title, 'Exposición temporal "Visiones de Aysén"');
 });
 
+// Real gap, found 2026-08-08 adding dieecke.art: this function's decoder
+// only ever covered a handful of NAMED entities — a numeric reference
+// (dieecke.art's titles use "&#8211;" for an en dash) passed through
+// undecoded. lib/description-extract.ts already had this exact fix
+// (2026-07-28, centronacionaldearte.cultura.gob.cl) but it was never
+// backported to this sibling copy.
+test("extractArticleList decodes numeric HTML entity references in the title, both decimal and hex forms", () => {
+  const html = `
+    <article class="mod-cal-result__item">
+      <h4 class="mod__item-title"><a href="/agenda/evento-dos">COPELLO &#8211; 1993 &#x2014; retrospectiva</a></h4>
+    </article>
+  `;
+  const items = extractArticleList(html, "https://artes.uchile.cl/agenda/30dias/6", UCHILE_CONFIG);
+  assert.ok(items);
+  assert.equal(items[0].title, "COPELLO – 1993 — retrospectiva");
+});
+
 test("extractArticleList falls back to placeholder date text when days/place are missing, but skips a block with no title link", () => {
   const html = `
     <article class="mod-cal-result__item">
@@ -287,6 +304,49 @@ test("extractArticleList handles cclm.cl's real markup: both title-link variants
   assert.equal(items[1].title, "VIVIR EL ARCHIVO");
   assert.equal(items[1].imageUrl, "https://cdn.cclm.cl/vivir-archivo.jpg");
   assert.deepEqual({ start: items[1].structuredStartDate, end: items[1].structuredEndDate }, { start: "2026-06-19", end: "2026-11-01" });
+});
+
+// Matches dieecke.art's real markup — the same config known-sources.ts
+// gives it in production (added 2026-08-08).
+const DIEECKE_CONFIG: ArticleListConfig = {
+  kind: "articleList",
+  blockRegex: /<div class="col-sm-6">(?=[\s\S]*?Sede Santiago)([\s\S]*?)(?=<div class="col-sm-6">|<\/div>\s*<\/div>\s*<\/div>\s*<\/div>)/g,
+  titleLinkRegex: /<a href="([^"]+)"[^>]*>[\s\S]*?<h2>([^<]*)<\/h2>/,
+  daysRegex: /<p>[^<]*<br>([^<]+)<br>/,
+  dateRangeExtractor: {
+    pattern: /(?<startDay>\d{1,2})\s+de\s+(?<startMonth>[a-zé]{3})[a-zé]*\s+al\s+(?<endDay>\d{1,2})\s+de\s+(?<endMonth>[a-zé]{3})[a-zé]*\s+de\s+(?<year>\d{4})/i,
+  },
+};
+
+// Real finding, 2026-08-08: Die Ecke has TWO physical locations, Santiago
+// AND Barcelona — a Barcelona item must never be captured as an item at
+// all (out of country scope), not left to Haiku's own judgment to catch.
+// blockRegex's "Sede Santiago" lookahead is what enforces this — this
+// fixture reproduces the real page's exact shape (one Santiago item, one
+// Barcelona item back to back) to guard against a regression that lets a
+// Barcelona exhibition slip through.
+test("extractArticleList excludes a Barcelona 'Sede' item entirely and only extracts the Santiago one (dieecke.art-style, real country-scope filter)", () => {
+  const html = `
+    <div id="listado_exhibiciones">
+      <div class="col-sm-6">
+        <a href="https://dieecke.art/exhibiciones/copello-video-performances-1980-1993" title="Ir a"><div class="exhibicion" style="background-image:url(https://dieecke.art/toma.jpg)"></div><h2>COPELLO VIDEO PERFORMANCES  1980 &#8211; 1993</h2></a>
+        <p>Francisco Copello<br>23 de junio al 31 de agosto de 2026<br>Sede Santiago</p>
+      </div>
+      <div class="col-sm-6">
+        <a href="https://dieecke.art/exhibiciones/alerce" title="Ir a"><div class="exhibicion" style="background-image:url(https://dieecke.art/alerce.jpg)"></div><h2>Alerce</h2></a>
+        <p>Enrique Ramírez<br>7 de noviembre al 5 de diciembre de 2023<br>Sede Barcelona</p>
+      </div>
+    </div>
+  `;
+  const items = extractArticleList(html, "https://dieecke.art/exhibiciones/", DIEECKE_CONFIG);
+  assert.ok(items);
+  assert.equal(items.length, 1);
+  // Also confirms the real numeric-entity decoding bug fix (&#8211; -> –),
+  // found building this source — extractors.ts's own decodeHtmlEntities
+  // only covered a handful of named entities before this.
+  assert.equal(items[0].title, "COPELLO VIDEO PERFORMANCES 1980 – 1993");
+  assert.equal(items[0].imageUrl, "https://dieecke.art/toma.jpg");
+  assert.deepEqual({ start: items[0].structuredStartDate, end: items[0].structuredEndDate }, { start: "2026-06-23", end: "2026-08-31" });
 });
 
 // Matches Parque Cultural Valparaíso's real WordPress meta-field names —

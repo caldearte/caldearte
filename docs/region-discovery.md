@@ -2569,6 +2569,54 @@ per-exhibition inauguración time (same distinction as parquecultural.cl's
 "Inauguración: `<fecha>` `<hora>`" phrasing was found on either sampled
 detail page.
 
+### New source: dieecke.art (2026-08-08) — Die Ecke, a real two-country gallery, and a deterministic scope filter
+
+Evaluated at the user's request. Die Ecke, a real contemporary-art
+gallery in Providencia, Santiago. WordPress, real `exhibiciones` custom
+post type via `/wp-json/wp/v2/exhibiciones` — same shape as cclm.cl, the
+REST API never gives real run dates (only a coarse "year" taxonomy and
+WordPress's own post date/modified), so this uses the plain HTML
+`articleList` path against `/exhibiciones/` instead.
+
+**Real, important finding: Die Ecke has TWO physical locations, Santiago
+AND Barcelona** — not a simple single-comuna source without extra care.
+Each listing item states "Sede Santiago" or "Sede Barcelona" right after
+its date. A Barcelona exhibition would be genuinely out of scope
+(Caldearte is Chile-only, same country-scope precedent as
+casablancacentrocultural.com's Perú rejection) — rather than trust
+Haiku's own scope judgment to catch a country mismatch, `blockRegex`
+itself requires "Sede Santiago" via a lookahead right after the opening
+tag, so a Barcelona-sede block never gets captured as an item at all.
+Confirmed against the real live page: 1 real Santiago item extracted, 1
+real Barcelona item correctly excluded.
+
+Listing markup: `<div class="col-sm-6"><a href="..."><div class=
+"exhibicion" style="background-image:url(...)"></div><h2>Title</h2></a>
+<p>Artist<br>DD de MES al DD de MES de YYYY<br>Sede X</p></div>` — same
+CSS-background-image thumbnail pattern as cclm.cl (its `extractImgTags`
+fix applies here unchanged). Dates: "23 de junio al 31 de agosto de
+2026" — day + full Spanish month (first 3 letters captured) + "al" + day
++ full month + "de" + a single shared year — clean and consistent across
+every sampled item, no irregular cases found this time.
+
+Description: recovered from each detail page's `dieecke-overflow` div,
+matching the REST API's own `content.rendered` almost exactly. No
+`openingTimeExtractor` — no confirmed "Inauguración: `<fecha>` `<hora>`"
+phrasing found on the one sampled detail page.
+
+**Real bug found building this, fixed generically, not dieecke.art-
+specific**: `extractors.ts`'s own `decodeHtmlEntities` (used for titles
+and image URLs) only ever covered a handful of named entities (`&amp;`/
+`&quot;`/`&#39;`/`&lt;`/`&gt;`) — this source's titles use `&#8211;` (a
+numeric en-dash reference), which passed through undecoded.
+`lib/description-extract.ts` already had the fix for this exact class of
+bug (2026-07-28, centronacionaldearte.cultura.gob.cl's numeric entities)
+but it had never been backported to this sibling copy — same lesson as
+that fix's own comment: a decoding gap found in one copy doesn't
+automatically apply to a duplicate. Now both resolve numeric hex/decimal
+references generically, benefiting every source's titles/image URLs, not
+just this one.
+
 ### Cross-source dedup: two more real gaps found by a manual curation audit (2026-07-29)
 
 A user-requested audit against real production data (`docs/roadmap.md`'s
