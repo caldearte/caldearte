@@ -690,6 +690,30 @@ test("extractArticleList handles fundaciongasco.cl's real markup: title/href/ima
   assert.equal(items[0].rawDateText, "Mar 2026");
 });
 
+// Matches aldeaencuentro.cl's real markup — the same config
+// known-sources.ts gives it in production (added 2026-08-10). No date
+// field at all: no real exhibition run-date was found anywhere on the
+// site (see known-sources.ts's own note) — title/href/image are the only
+// deterministic fields here, description carries the real grounding text.
+const ALDEA_CONFIG: ArticleListConfig = {
+  kind: "articleList",
+  blockRegex: /<a[^>]*class="thumbnail item-thumbnail"[^>]*>([\s\S]*?)<div class="clear">/g,
+  titleLinkRegex: /<h3 class="item-title"><a href="([^"]+)"[^>]*>([^<]*)<\/a><\/h3>/,
+};
+
+test("extractArticleList handles aldeaencuentro.cl's real markup: title/href extracted, image resolved from the theme's own 'data-s' lazy-load attribute (not the more common data-src)", () => {
+  const html = `
+    <a style="height: 150px" href="https://aldeaencuentro.cl/siluetas-flora-nativa/" class="thumbnail item-thumbnail"><img width="1247" height="674" src="" class="attachment-full size-full" alt="Siluetas: Flora Nativa" data-s="https://aldeaencuentro.cl/wp-content/uploads/2026/07/3.png" data-ss="https://aldeaencuentro.cl/wp-content/uploads/2026/07/3.png 1247w"></a><div class="item-content"><div class="bg item-labels"><a href="https://aldeaencuentro.cl/category/catalogos-gae/">Catálogos GAE</a></div><h3 class="item-title"><a href="https://aldeaencuentro.cl/siluetas-flora-nativa/" title="Siluetas: Flora Nativa">Siluetas: Flora Nativa</a></h3><div class="meta-items"><a class="meta-item meta-item-date" href="https://aldeaencuentro.cl/siluetas-flora-nativa/"><span>Julio 28, 2026</span></a></div></div><div class="clear"></div>
+  `;
+  const items = extractArticleList(html, "https://aldeaencuentro.cl/category/catalogos-gae/", ALDEA_CONFIG);
+  assert.ok(items);
+  assert.equal(items.length, 1);
+  assert.equal(items[0].title, "Siluetas: Flora Nativa");
+  assert.equal(items[0].sourceUrl, "https://aldeaencuentro.cl/siluetas-flora-nativa/");
+  assert.equal(items[0].imageUrl, "https://aldeaencuentro.cl/wp-content/uploads/2026/07/3.png");
+  assert.equal(items[0].rawDateText, "fecha no indicada", "no daysRegex configured — no real exhibition date was found anywhere on the site");
+});
+
 test("extractDateRange (fundaciongasco.cl-style): reads the detail page's clean 'Fecha: DD/MM/YYYY - DD/MM/YYYY' spec line", () => {
   const config: DateRangeConfig = {
     pattern:

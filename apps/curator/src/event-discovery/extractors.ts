@@ -142,12 +142,19 @@ export function extractImgTags(html: string): Array<{ url: string; description: 
   // unconditionally would have stored the base64 placeholder itself as
   // imageUrl — a garbage multi-KB "URL" the frontend could never render.
   const dataSrcRegex = /\bdata-src=["']([^"']+)["']/i;
+  // Same lazy-load problem, different attribute name — aldeaencuentro.cl's
+  // theme (Sneeit) uses `data-s` instead of the more common `data-src`,
+  // confirmed 2026-08-10: `src=""` (empty) and no `data-src` at all, real
+  // image only in `data-s`. `\bdata-s=` requires the `=` immediately after
+  // the s, so it can't accidentally match a longer attribute like
+  // `data-sizes=`.
+  const dataSRegex = /\bdata-s=["']([^"']+)["']/i;
   const srcRegex = /\bsrc=["']([^"']+)["']/i;
   const altRegex = /\balt=["']([^"']*)["']/i;
 
   for (const match of html.matchAll(imgTagRegex)) {
     const tag = match[0];
-    const src = tag.match(dataSrcRegex)?.[1] ?? tag.match(srcRegex)?.[1];
+    const src = tag.match(dataSrcRegex)?.[1] ?? tag.match(dataSRegex)?.[1] ?? tag.match(srcRegex)?.[1];
     if (!src) continue;
     const alt = tag.match(altRegex)?.[1] ?? null;
     images.push({ url: decodeHtmlEntities(src), description: alt && alt.trim().length > 0 ? alt.trim() : null });

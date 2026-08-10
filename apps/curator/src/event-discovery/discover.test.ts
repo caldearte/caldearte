@@ -17,6 +17,7 @@ import {
   filterKnownExclusions,
   firstOfMonthIso,
   isCurrentOrUpcoming,
+  isJunkImage,
   logBareDomainSourceUrls,
   normalizeTitle,
   nullifyAggregatorSourceUrls,
@@ -86,6 +87,19 @@ test("filterImageCandidates drops junk, requires a description, caps at 4", () =
   const kept = filterImageCandidates(images);
   assert.equal(kept.length, 4);
   assert.equal(kept[0].url, "https://x.cl/obra2.jpg");
+});
+
+// Real bug found 2026-08-10 building the aldeaencuentro.cl bright source:
+// a genuine exhibition image named "Baner-catalogo.jpg" was silently
+// dropped as junk, because isJunkImage's old plain substring check found
+// "logo" inside "catalogo" (a real, common Spanish word — "catálogo").
+// \blogo\b fixes this while still catching real logo files.
+test("isJunkImage requires 'logo' as its own word, not just any substring — 'catalogo'/'catálogo' (a real Spanish word) must not false-positive", () => {
+  assert.equal(isJunkImage("https://x.cl/wp-content/uploads/2026/03/Baner-catalogo.jpg"), false);
+  assert.equal(isJunkImage("https://x.cl/Catálogo-Digital-Exposicion.png"), false);
+  assert.equal(isJunkImage("https://x.cl/site-logo.png"), true, "a real logo file must still be caught");
+  assert.equal(isJunkImage("https://x.cl/logo.svg"), true);
+  assert.equal(isJunkImage("https://x.cl/header-logo-2026.jpg"), true);
 });
 
 test("applyLocationFilter rejects approved candidates outside Chile, including the Recoleta/Buenos Aires collision", () => {
