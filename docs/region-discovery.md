@@ -2898,6 +2898,51 @@ class, disambiguated from the date fields by anchoring on the preceding
 "Descripción" heading — real prose, cleanly bounded, no bio-bleed the
 way galeriapready.cl/aninatgaleria.org both have.
 
+### New source: centex.cultura.gob.cl (2026-08-10) — Centex, a real density tradeoff the user accepted, and a description bound that needed real nesting-depth thinking
+
+Evaluated at the user's request, same session as the four sources above.
+Centex, Valparaíso, part of the Ministerio de las Culturas — same
+WordPress theme family as centronacionaldearte.cultura.gob.cl (CNAC,
+added 2026-07-28).
+
+**Real density tradeoff, flagged and accepted**: of 12 sampled posts in
+the "muestras-y-exposiciones" category, only ~7-8 were genuine exhibition
+announcements/recaps — the rest were coverage of a graphic-arts fair
+(Feria Sobreimpresiones), a crafts fair (Feria de Artes y Oficios), an
+interview about that fair, and a recap of a school group visiting an
+already-covered exhibition. Presented this to the user before building
+the extractor (mirroring the aecid.es/CCE Santiago rejection earlier the
+same session, which failed a similar but worse density check — 2-3/12);
+user confirmed "agrega" — Haiku's own scope judgment is relied on to
+filter the fair/interview/recap noise, same posture as any other source
+with imperfect density.
+
+No date field at all captured from the listing: `b2fecha` is confirmed
+to be the post's PUBLISH date, not the exhibition's — cross-checked
+directly, same trap as aninatgaleria.org's `<time>`: "Centex inaugura
+exposición póstuma de Juan Castillo" listed a July 5 publish date while
+its own detail page states the real opening as "sábado 11 de julio" —
+days later, same post.
+
+**No openingTimeExtractor either — a fourth same-session confirmation of
+the inconsistent-phrasing pattern**: one detail page has a clean
+`*Inauguración: sábado 11 de julio, 12:00 horas` line; a second sampled
+page has an entirely different shape with no "Inauguración" label at all
+("Desde este martes 4 y hasta el domingo 9 de agosto permanecerá
+abierta..."). Left to Haiku+grounding via descriptionExtractor, same as
+galeriapready.cl/aninatgaleria.org/estacionmapocho.cl above.
+
+Description: the real article body is NOT safely boundable by a simple
+"first closing `</div>`" rule — real testing found genuinely NESTED
+`<div>` blocks inside the prose itself (embedded `wp-block-media-text`
+image-with-caption blocks mid-article), so that naive bound would cut
+real content off far too early. Regex can't track arbitrary nesting
+depth, so this was bounded instead on the reliable `</main>` tag that
+closes the whole content area on every sampled page — confirmed (via a
+manual nesting-depth count) to land at exactly the real end-of-article
+point without ever sweeping into the site-wide footer/address block
+just outside `</main>`.
+
 ### Cross-source dedup: two more real gaps found by a manual curation audit (2026-07-29)
 
 A user-requested audit against real production data (`docs/roadmap.md`'s

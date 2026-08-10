@@ -581,6 +581,35 @@ test("extractDateRange (factoriasantarosa.cl-style): returns null, not a guess, 
   assert.equal(extractDateRange(html, config), null);
 });
 
+// Matches centex.cultura.gob.cl's real markup — the same config
+// known-sources.ts gives it in production (added 2026-08-10). No date
+// field at all: b2fecha (on the real page) turned out to be the post's
+// publish date, not the exhibition's — same trap as aninatgaleria.org.
+const CENTEX_CONFIG: ArticleListConfig = {
+  kind: "articleList",
+  blockRegex: /(<a class="b2" href="([^"]+)">[\s\S]*?<\/a>)/g,
+  titleLinkRegex: /href="([^"]+)"[\s\S]*?<\/span>([^<]*)<\/div>/,
+};
+
+test("extractArticleList handles centex.cultura.gob.cl's real markup: title/href/image from an 'a.b2' card, title text picked out from AFTER the date span rather than trusting the date span itself", () => {
+  const html = `
+    <a class="b2" href="https://centex.cultura.gob.cl/centex-inaugura-exposicion-postuma-de-juan-castillo-el-final-no-es-el-final/">
+      <img src="https://centex.cultura.gob.cl/wp-content/uploads/2026/07/Juan-Castillo-4-1024x683.jpg" class="card-img-top wp-post-image" alt="" />
+      <div class="info"><span class="b2fecha">5 julio, 2026</span>Centex inaugura exposición póstuma de Juan Castillo: El final no es el final</div>
+    </a>
+  `;
+  const items = extractArticleList(html, "https://centex.cultura.gob.cl/category/muestras-y-exposiciones/", CENTEX_CONFIG);
+  assert.ok(items);
+  assert.equal(items.length, 1);
+  assert.equal(items[0].title, "Centex inaugura exposición póstuma de Juan Castillo: El final no es el final");
+  assert.equal(
+    items[0].sourceUrl,
+    "https://centex.cultura.gob.cl/centex-inaugura-exposicion-postuma-de-juan-castillo-el-final-no-es-el-final/",
+  );
+  assert.equal(items[0].imageUrl, "https://centex.cultura.gob.cl/wp-content/uploads/2026/07/Juan-Castillo-4-1024x683.jpg");
+  assert.equal(items[0].rawDateText, "fecha no indicada", "no daysRegex configured — b2fecha is a publish date, not the exhibition's, never surfaced to Haiku");
+});
+
 test("extractDateRange (espacioo.com-style): a same-year range states the year once, at the end — falls back correctly for BOTH start and end via the shared 'year' group, not 'endYear'", () => {
   const config: DateRangeConfig = {
     pattern:
