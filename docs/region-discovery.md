@@ -3007,6 +3007,30 @@ description container wasn't found consistently across the different
 institutions' own sites in the time spent looking. Only the first page
 (`?page=0`) is fetched, no `additionalPages`.
 
+### New source: fundaciongasco.cl (2026-08-10) — Sala GASCO Arte Contemporáneo, and the cleanest source of the whole session
+
+Evaluated at the user's request. Sala GASCO Arte Contemporáneo, Santiago
+Centro (metro Plaza de Armas). WordPress with a real dedicated
+"exposicion" custom post type and a genuine "Temporada Actual" (current
+season) archive view — small (3 items at eval time) but fully in-scope,
+no density or discipline filtering needed at all.
+
+Listing gives real title/artist/image plus only a coarse "Mon YYYY" date
+(e.g. "Mar 2026") — left as `rawDateText`, not structurally parsed (a
+bare month+year can't build a real day without fabricating one, same
+reasoning as estacionmapocho.cl's own MM/YYYY field earlier the same
+session).
+
+**Real, fully deterministic date recovery** (`detailDateRangeExtractor`,
+matching mssa.cl/factoriasantarosa.cl's own precedent): the detail page
+has an explicit `<li><span class="key">Fecha:</span> <span
+class="value">DD/MM/YYYY - DD/MM/YYYY</span></li>` spec line — clean,
+confirmed consistent across all 3 sampled items with no per-item
+phrasing variance found. Description: `<div class="col-right">` on the
+detail page holds only the real curatorial write-up, confirmed no nested
+divs (same "first closing `</div>`" safety as mnba.gob.cl's own
+descriptionExtractor).
+
 ### Cross-source dedup: two more real gaps found by a manual curation audit (2026-07-29)
 
 A user-requested audit against real production data (`docs/roadmap.md`'s
