@@ -209,3 +209,21 @@ test("extractDescription reads centex.cultura.gob.cl's real markup, bounded on t
   assert.match(result ?? "", /Inauguración: sábado 11 de julio, 12:00 horas/);
   assert.doesNotMatch(result ?? "", /Política de Privacidad/, "stops at </main>, doesn't sweep in the site-wide footer/address block");
 });
+
+// Matches fundaciongasco.cl's real detail-page markup — the same config
+// known-sources.ts gives it in production (added 2026-08-10).
+const GASCO_CONFIG: DescriptionConfig = {
+  pattern: /<div class="col-right">([\s\S]*?)<\/div>/,
+};
+
+test("extractDescription reads fundaciongasco.cl's real markup, stopping at the first closing </div> (confirmed no nested divs inside the real prose)", () => {
+  const html =
+    '<div class="col-right"><p>La tierra es el eje central de "Tierra Velada", la nueva exposición de la artista iraní Hoda Madi.</p>' +
+    "<p>La muestra reúne una serie de pinturas y obras creadas en técnica mixta.</p></div>" +
+    '<div class="footer-col">Contacto</div>';
+
+  const result = extractDescription(html, GASCO_CONFIG);
+  assert.match(result ?? "", /La tierra es el eje central de "Tierra Velada"/);
+  assert.match(result ?? "", /pinturas y obras creadas en técnica mixta/);
+  assert.doesNotMatch(result ?? "", /Contacto/, "stops at the exhibition's own closing div, doesn't sweep in the footer");
+});

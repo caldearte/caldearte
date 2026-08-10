@@ -666,6 +666,25 @@ export const KNOWN_SOURCES: KnownSource[] = [
       },
     },
   },
+  {
+    url: "https://fundaciongasco.cl/estado/actual/",
+    note: 'Sala GASCO Arte Contemporáneo, Santiago Centro (metro Plaza de Armas) — evaluated at the user\'s request 2026-08-10. WordPress with a real dedicated "exposicion" custom post type, and a real "Temporada Actual" (current season) archive view — small (3 items at eval time) but fully in-scope, no density/discipline filtering needed at all (unlike museoschile.gob.cl\'s Red Nacional or centex.cultura.gob.cl earlier the same session).\n\nListing gives real title/artist/image plus only a coarse "Mon YYYY" date (e.g. "Mar 2026") — left as rawDateText, not structurally parsed (a bare month+year can\'t build a real day without fabricating one, same reasoning as estacionmapocho.cl\'s own MM/YYYY field).\n\n**Real, fully deterministic date recovery** (`detailDateRangeExtractor`, matching mssa.cl/factoriasantarosa.cl\'s own precedent): the detail page has an explicit `<li><span class="key">Fecha:</span> <span class="value">DD/MM/YYYY - DD/MM/YYYY</span></li>` spec line — clean DD/MM/YYYY range, confirmed consistent across all 3 sampled items (Tierra Velada, Jean Petitpas, Pintar en fragmentos), no per-item phrasing variance found this time.\n\nDescription: `<div class="col-right">` on the detail page holds only the real curatorial write-up (confirmed no nested divs, same "first closing </div>" safety as mnba.gob.cl\'s own descriptionExtractor).',
+    lastReviewedAt: "2026-08-10",
+    extractor: {
+      kind: "articleList",
+      blockRegex: /<div class="expo-item ">([\s\S]*?)<\/div>\s*<\/div>/g,
+      titleLinkRegex: /<h2><a href="([^"]+)"[^>]*>([^<]*)<\/a><\/h2>/,
+      daysRegex: /class="date">([^<]*)<\/p>/,
+    },
+    fixedLocation: { location: "Santiago", placeName: "Sala GASCO Arte Contemporáneo" },
+    detailDateRangeExtractor: {
+      pattern:
+        /Fecha:<\/span>\s*<span class="value">(?<startDay>\d{1,2})\/(?<startMonth>\d{1,2})\/(?<startYear>\d{4})\s*-\s*(?<endDay>\d{1,2})\/(?<endMonth>\d{1,2})\/(?<endYear>\d{4})/,
+    },
+    descriptionExtractor: {
+      pattern: /<div class="col-right">([\s\S]*?)<\/div>/,
+    },
+  },
 ];
 
 export function knownSourceDomain(url: string): string {

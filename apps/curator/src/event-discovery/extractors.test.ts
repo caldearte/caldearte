@@ -656,6 +656,49 @@ hasta el
   assert.deepEqual({ start: items[0].structuredStartDate, end: items[0].structuredEndDate }, { start: "2025-07-10", end: "2027-07-31" });
 });
 
+// Matches fundaciongasco.cl's real markup — the same config
+// known-sources.ts gives it in production (added 2026-08-10). Only a
+// coarse "Mon YYYY" date on the listing (left as rawDateText) — the real
+// full date range only exists on the detail page (see
+// detailDateRangeExtractor's own test in description-extract.test.ts's
+// sibling, extractDateRange, below).
+const GASCO_CONFIG: ArticleListConfig = {
+  kind: "articleList",
+  blockRegex: /<div class="expo-item ">([\s\S]*?)<\/div>\s*<\/div>/g,
+  titleLinkRegex: /<h2><a href="([^"]+)"[^>]*>([^<]*)<\/a><\/h2>/,
+  daysRegex: /class="date">([^<]*)<\/p>/,
+};
+
+test("extractArticleList handles fundaciongasco.cl's real markup: title/href/image/coarse-month extracted from an 'expo-item' card", () => {
+  const html = `
+    <div class="expo-item ">
+      <img width="2550" height="1496" src="https://fundaciongasco.cl/wp-content/uploads/2026/03/DSC_3809.jpg" class="attachment-post-thumbnail size-post-thumbnail wp-post-image" alt="DSC_3809" />
+      <div class="expo-info">
+        <p class="epigraph"><a href="https://fundaciongasco.cl/artista/hoda-madi">Hoda Madi</a></p>
+        <h2><a href="https://fundaciongasco.cl/exposicion/tierra-velada/" title="Tierra Velada">Tierra Velada</a></h2>
+        <p class="date">Mar 2026</p>
+        <p class="sub-head">Territorio, desarraigo y color se unen en la exposición de Hoda Madi en Sala GASCO Arte Contemporáneo <a class="more" href="https://fundaciongasco.cl/exposicion/tierra-velada/">Ver más</a></p>
+      </div>
+    </div>
+  `;
+  const items = extractArticleList(html, "https://fundaciongasco.cl/estado/actual/", GASCO_CONFIG);
+  assert.ok(items);
+  assert.equal(items.length, 1);
+  assert.equal(items[0].title, "Tierra Velada");
+  assert.equal(items[0].sourceUrl, "https://fundaciongasco.cl/exposicion/tierra-velada/");
+  assert.equal(items[0].imageUrl, "https://fundaciongasco.cl/wp-content/uploads/2026/03/DSC_3809.jpg");
+  assert.equal(items[0].rawDateText, "Mar 2026");
+});
+
+test("extractDateRange (fundaciongasco.cl-style): reads the detail page's clean 'Fecha: DD/MM/YYYY - DD/MM/YYYY' spec line", () => {
+  const config: DateRangeConfig = {
+    pattern:
+      /Fecha:<\/span>\s*<span class="value">(?<startDay>\d{1,2})\/(?<startMonth>\d{1,2})\/(?<startYear>\d{4})\s*-\s*(?<endDay>\d{1,2})\/(?<endMonth>\d{1,2})\/(?<endYear>\d{4})/,
+  };
+  const html = '<li><span class="key">Fecha:</span> <span class="value">10/03/2026 - 30/04/2026 </li></span>';
+  assert.deepEqual(extractDateRange(html, config), { runStartDate: "2026-03-10", runEndDate: "2026-04-30" });
+});
+
 test("extractDateRange (espacioo.com-style): a same-year range states the year once, at the end — falls back correctly for BOTH start and end via the shared 'year' group, not 'endYear'", () => {
   const config: DateRangeConfig = {
     pattern:
