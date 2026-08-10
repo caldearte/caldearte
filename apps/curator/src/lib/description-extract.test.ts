@@ -227,3 +227,23 @@ test("extractDescription reads fundaciongasco.cl's real markup, stopping at the 
   assert.match(result ?? "", /pinturas y obras creadas en técnica mixta/);
   assert.doesNotMatch(result ?? "", /Contacto/, "stops at the exhibition's own closing div, doesn't sweep in the footer");
 });
+
+// Matches aldeaencuentro.cl's real detail-page markup — the same config
+// known-sources.ts gives it in production (added 2026-08-10).
+const ALDEA_CONFIG: DescriptionConfig = {
+  pattern: /<div class="post-body-inner">([\s\S]*?)<\/div>/,
+};
+
+test("extractDescription reads aldeaencuentro.cl's real markup, anchored on the ACTUAL class attribute usage — real bug found 2026-08-10: the bare string 'post-body-inner' also appears as a CSS selector in the page's own <style> block in <head>, so an unanchored search finds that wrong, earlier occurrence instead of the real content div", () => {
+  const html =
+    '<html><head><style>.post-body-inner {font: normal normal 16px "Ubuntu"}</style></head><body>' +
+    '<div class="post-body-inner"><p>Chile alberga cerca de 5.500 especies de plantas vasculares.</p>' +
+    "<p>Siluetas: Flora Nativa propone una experiencia artística y sensible.</p></div>" +
+    '<div class="clear"></div><footer>Aldea del Encuentro. Todos los derechos reservados</footer>' +
+    "</body></html>";
+
+  const result = extractDescription(html, ALDEA_CONFIG);
+  assert.match(result ?? "", /Chile alberga cerca de 5\.500 especies/);
+  assert.match(result ?? "", /Siluetas: Flora Nativa propone una experiencia artística/);
+  assert.doesNotMatch(result ?? "", /Todos los derechos reservados/, "stops at the real content div's own close, doesn't sweep into the footer");
+});

@@ -115,12 +115,26 @@ const MIN_SCORE = 0.15;
 // text Haiku has nothing to judge by, and in practice these were almost
 // always profile pictures/generic site assets. Requiring a description
 // cut token volume ~60% with no observed quality loss.
-const JUNK_IMAGE_MARKERS = ["logo", "icon", "favicon", "footer", "nav-", "-nav", "sprite"];
+const JUNK_IMAGE_MARKERS = ["icon", "favicon", "footer", "nav-", "-nav", "sprite"];
 const MAX_IMAGES_PER_RESULT = 4;
+
+// "logo" needs a word-boundary check, not a plain substring one — real bug
+// found 2026-08-10 (aldeaencuentro.cl): a genuine exhibition image named
+// "Baner-catalogo.jpg" was silently dropped as junk, because "catalogo"
+// contains "logo" as a substring. Plain `\b` isn't enough here — JS regex
+// word boundaries only understand ASCII `\w`, so "Catálogo" (with the
+// accent Spanish actually uses) still false-positived: `\b` doesn't see
+// "á" as a letter, so it reads a boundary right before "logo" anyway.
+// `\p{L}` (Unicode "any letter", with the `u` flag) fixes this — "site-
+// logo.png"/"logo.svg" still correctly match (preceded/followed by a
+// non-letter), while "catalogo"/"catálogo" (a real, common Spanish word
+// in exhibition image filenames) no longer false-positives either way.
+const JUNK_LOGO_REGEX = /(?<!\p{L})logo(?!\p{L})/iu;
 
 export function isJunkImage(url: string): boolean {
   const lower = url.toLowerCase();
   if (lower.endsWith(".svg")) return true;
+  if (JUNK_LOGO_REGEX.test(url)) return true;
   return JUNK_IMAGE_MARKERS.some((marker) => lower.includes(marker));
 }
 

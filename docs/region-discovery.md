@@ -3031,6 +3031,56 @@ detail page holds only the real curatorial write-up, confirmed no nested
 divs (same "first closing `</div>`" safety as mnba.gob.cl's own
 descriptionExtractor).
 
+### New source: aldeaencuentro.cl (2026-08-10) — GAE, a genuinely dateless source, and two generic bugs found building it
+
+Evaluated at the user's request. GAE — Galería Aldea del Encuentro, La
+Reina, Santiago (Corporación Aldea del Encuentro). Real, dedicated
+"Catálogos GAE" category — good density, 10/10 sampled posts were
+genuine, distinct visual-art exhibitions with substantial curatorial
+write-ups.
+
+**No date extractor at all — searched extensively, found none to
+trust.** The listing's own post date is a WordPress publish date with no
+cross-validation either way (unlike aninatgaleria.org, where a real
+contradiction PROVED the field wrong — here there's simply no explicit
+exhibition date anywhere to compare it against). Also checked the site's
+"Próximas actividades" category hoping for real day-precision dates: it
+does have clean, deterministic emoji-labeled fields ("📅 15 de agosto 🕚
+11:00 a 13:00 hrs 📍 Galería GAE"), but that's a general activities feed
+(festivals, tournaments, convocatorias, one-off workshops) — the one
+art-adjacent item found there was a 2-hour companion workshop to an
+exhibition, not the exhibition's own run dates. No page states an
+exhibition's actual open/close dates. Left entirely to Haiku, grounded
+by the real, substantial description recovered from the detail page.
+
+Description: `<div class="post-body-inner">`. Real trap found building
+this: the bare string "post-body-inner" ALSO appears as a CSS selector
+in the page's own `<style>` block in `<head>` — an unanchored search
+finds that wrong, earlier occurrence. Anchored on the actual `class="post-
+body-inner"` attribute usage instead, which closes cleanly with no
+nested divs once anchored correctly (the false match earlier made it
+look like there were nested divs sweeping to the site footer, when the
+real content div was clean all along).
+
+**Real bug found and fixed generically, not aldeaencuentro.cl-specific
+(1 of 2)**: `extractImgTags` only ever checked `data-src` for a
+lazy-loaded image URL. This site's theme (Sneeit) uses `data-s` instead
+(`src=""`, no `data-src`, real URL only in `data-s`). Added as a second
+precedence tier.
+
+**Real bug found and fixed generically (2 of 2)**: `isJunkImage`
+(discover.ts) rejected a real, correctly-recovered exhibition image —
+`Baner-catalogo.jpg` — because its old plain substring check for "logo"
+matched inside "catalogo" (a common Spanish word, "catálogo"). Fixed
+with a word-boundary check instead of `.includes("logo")`. First attempt
+used `\blogo\b`, which still false-positived on the accented form —
+JS regex `\b`/`\w` only understand ASCII letters, so "á" isn't treated
+as a letter and a boundary gets read right before "logo" in "Catálogo"
+anyway. Fixed properly with Unicode-aware lookaround,
+`(?<!\p{L})logo(?!\p{L})` with the `u` flag — still catches real logo
+files (`site-logo.png`, `logo.svg`), no longer false-positives on
+`catalogo`/`catálogo` in either accented or unaccented form.
+
 ### Cross-source dedup: two more real gaps found by a manual curation audit (2026-07-29)
 
 A user-requested audit against real production data (`docs/roadmap.md`'s

@@ -685,6 +685,20 @@ export const KNOWN_SOURCES: KnownSource[] = [
       pattern: /<div class="col-right">([\s\S]*?)<\/div>/,
     },
   },
+  {
+    url: "https://aldeaencuentro.cl/category/catalogos-gae/",
+    note: 'GAE — Galería Aldea del Encuentro, La Reina, Santiago (Corporación Aldea del Encuentro) — evaluated at the user\'s request 2026-08-10. Real, dedicated "Catálogos GAE" category — good density, 10/10 sampled posts were genuine, distinct visual-art exhibitions with substantial curatorial write-ups.\n\n**No date extractor at all — searched extensively, found none to trust**: the listing\'s own post date ("Julio 28, 2026" style) is a WordPress publish date with no cross-validation either way (unlike aninatgaleria.org, where a real contradiction was found and proved the field wrong — here there was simply no explicit exhibition date ANYWHERE to compare it against). Also checked the site\'s "Próximas actividades" (upcoming activities) category, hoping for real day-precision dates: it DOES have clean, deterministic emoji-labeled fields ("📅 15 de agosto 🕚 11:00 a 13:00 hrs 📍 Galería GAE") — but that category is a general activities feed (festivals, tournaments, convocatorias, one-off workshops), not exhibition run-dates; the one art-adjacent item found there was a 2-hour companion workshop to an exhibition, not the exhibition\'s own opening/closing dates. No page on the site states an exhibition\'s actual run dates. Left entirely to Haiku, grounded by the real, substantial curatorial description recovered from the detail page.\n\nDescription: `<div class="post-body-inner">` on the detail page — real bug found while building this: the bare string "post-body-inner" also appears as a CSS selector in the page\'s own `<style>` block in `<head>`, so a naive `html.find("post-body-inner")` (or an unanchored regex) matches the WRONG, earlier occurrence. Anchored on the actual `class="post-body-inner"` attribute usage instead — confirmed this closes cleanly at its own first `</div>` with no nested divs (once anchored correctly; the earlier false match made it LOOK like there were nested divs sweeping all the way to the site footer, when the real content div was actually clean).\n\n**Real bug found and fixed generically, not aldeaencuentro.cl-specific**: `extractImgTags` (extractors.ts) only ever checked `data-src` for a lazy-loaded image URL — this site\'s theme (Sneeit) uses `data-s` instead (`src=""`, no `data-src`, real URL only in `data-s`). Added as a second precedence tier, benefiting any future source using this same convention.\n\n**Second real bug found and fixed generically, not aldeaencuentro.cl-specific**: `isJunkImage` (discover.ts) rejected a real, correctly-recovered exhibition image — `Baner-catalogo.jpg` — because its old plain substring check for "logo" matched inside "catalogo" (a common Spanish word, "catálogo"). Affected potentially any source whose real image filenames happen to contain a Spanish word with "logo" embedded. Fixed with a `\\blogo\\b` word-boundary check instead of `.includes("logo")` — still catches real logo files (`site-logo.png`, `logo.svg`), no longer false-positives on `catalogo`/`catálogo`.',
+    lastReviewedAt: "2026-08-10",
+    extractor: {
+      kind: "articleList",
+      blockRegex: /<a[^>]*class="thumbnail item-thumbnail"[^>]*>([\s\S]*?)<div class="clear">/g,
+      titleLinkRegex: /<h3 class="item-title"><a href="([^"]+)"[^>]*>([^<]*)<\/a><\/h3>/,
+    },
+    fixedLocation: { location: "La Reina", placeName: "GAE - Galería Aldea del Encuentro" },
+    descriptionExtractor: {
+      pattern: /<div class="post-body-inner">([\s\S]*?)<\/div>/,
+    },
+  },
 ];
 
 export function knownSourceDomain(url: string): string {
