@@ -81,6 +81,15 @@ export async function flagBudgetExceeded({ spend, budget }: FlagBudgetExceededIn
 // itself so notify.ts doesn't need to import the full discover.ts type
 // (dateQuote/locationQuote/etc grounding fields are irrelevant here, and
 // bright-source candidates never populate them at all).
+// What actually happened after curation — see run.ts's own InsertOutcome
+// doc comment for the real bug this fixes: the email used to show only
+// `status` (Haiku's "is this real art" verdict), so a row marked "✅
+// Aprobado" looked identical whether it became a NEW event on the site or
+// was silently recognized as a duplicate of one already there. Optional/
+// null because rejected candidates never reach insertCandidates at all —
+// there's nothing to report beyond `status` for those.
+export type CandidateOutcome = "inserted" | "replaced" | "duplicate_skipped" | "escalated" | "expired" | "insert_failed";
+
 export interface CandidateSummary {
   title: string;
   status: "approved" | "rejected";
@@ -90,6 +99,7 @@ export interface CandidateSummary {
   runEndDate: string | null;
   curationReasoning: string;
   sourceUrl: string | null;
+  outcome: CandidateOutcome | null;
 }
 
 // One row per comuna searched or bright source fetched — lets the email
@@ -138,6 +148,34 @@ function escapeHtml(s: string): string {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
 
+// Short, human label for the outcome badge — distinguishes "genuinely new
+// on the site" from every other approved-but-not-added case, so skimming
+// the ✅ column no longer overstates how many events actually showed up.
+// `emoji` and `text` kept separate so the plain-text email can render
+// "[APROBADO (NUEVO)]" without carrying the emoji glyph along.
+function outcomeParts(c: CandidateSummary): { emoji: string; text: string } {
+  if (c.status !== "approved") return { emoji: "❌", text: "Rechazado" };
+  switch (c.outcome) {
+    case "inserted":
+      return { emoji: "✅", text: "Aprobado (nuevo)" };
+    case "replaced":
+      return { emoji: "🔁", text: "Aprobado (actualizó existente)" };
+    case "duplicate_skipped":
+      return { emoji: "🔁", text: "Aprobado (ya existía)" };
+    case "escalated":
+      return { emoji: "⚠️", text: "Aprobado (conflicto, en revisión)" };
+    case "expired":
+      return { emoji: "⏳", text: "Aprobado (fecha ya pasada)" };
+    case "insert_failed":
+      return { emoji: "⚠️", text: "Aprobado (error al guardar)" };
+    default:
+      // No outcome recorded (older data, or a caller that never wired
+      // insertCandidates' result through) — same posture as before this
+      // fix, no worse than the old behavior.
+      return { emoji: "✅", text: "Aprobado" };
+  }
+}
+
 // Plain-text fallback for the per-source event tables — every email is
 // sent with both `text` and `html` (Resend requires at least one; both are
 // set so text-only clients still get the full event list, not just a
@@ -150,7 +188,7 @@ function buildEventGroupsText(eventGroups: EventGroup[]): string[] {
     if (group.candidates.length === 0) continue;
     lines.push(`-- ${group.label} (${group.candidates.length}) --`);
     for (const c of group.candidates) {
-      const icon = c.status === "approved" ? "OK" : "RECHAZADO";
+      const icon = outcomeParts(c).text.toUpperCase();
       const place = c.placeName ? `${c.placeName}, ${c.location}` : c.location;
       lines.push(`  [${icon}] ${c.title} — ${place} — ${fmtDateRange(c)}`);
       lines.push(`    ${c.curationReasoning}`);
@@ -171,10 +209,9 @@ function buildEventGroupsHtml(eventGroups: EventGroup[]): string {
     .map((group) => {
       const rows = group.candidates
         .map((c) => {
-          const statusCell =
-            c.status === "approved"
-              ? `<td style="color:#1a7f37;font-weight:600;white-space:nowrap;">✅ Aprobado</td>`
-              : `<td style="color:#b3261e;font-weight:600;white-space:nowrap;">❌ Rechazado</td>`;
+          const { emoji, text } = outcomeParts(c);
+          const isNewOrRejected = c.status !== "approved" || c.outcome === "inserted" || c.outcome === null;
+          const statusCell = `<td style="color:${isNewOrRejected ? (c.status === "approved" ? "#1a7f37" : "#b3261e") : "#8a6d1a"};font-weight:600;white-space:nowrap;">${emoji} ${escapeHtml(text)}</td>`;
           const titleCell = c.sourceUrl
             ? `<a href="${escapeHtml(c.sourceUrl)}" style="color:inherit;font-weight:500;">${escapeHtml(c.title)}</a>`
             : escapeHtml(c.title);
