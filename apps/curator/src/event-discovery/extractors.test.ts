@@ -610,6 +610,52 @@ test("extractArticleList handles centex.cultura.gob.cl's real markup: title/href
   assert.equal(items[0].rawDateText, "fecha no indicada", "no daysRegex configured — b2fecha is a publish date, not the exhibition's, never surfaced to Haiku");
 });
 
+// Matches museoschile.gob.cl's (Red Nacional de Museos) real markup — the
+// same config known-sources.ts gives it in production (added 2026-08-10).
+// blockRegex requires a real field--name-field-tematica of "Artes
+// visuales" or "Exposición" via a positive lookahead — a national
+// multi-discipline aggregator, so science/zoology/anthropology items must
+// never reach Haiku at all, not just get rejected by it downstream.
+const MUSEOSCHILE_CONFIG: ArticleListConfig = {
+  kind: "articleList",
+  blockRegex:
+    /<div class="views-row">(?=(?:(?!<div class="views-row">)[\s\S])*?field--name-field-tematica">(?:Artes visuales|Exposición)<)([\s\S]*?)(?=<div class="views-row">|$)/g,
+  titleLinkRegex: /<h2 class="destacado__title"><a href="([^"]+)">([^<]*)<\/a><\/h2>/,
+  placeRegex: /field--name-field-direccion">\s*([^<]*?)\s*<\/div>/,
+  dateRangeExtractor: {
+    pattern:
+      /<time>(?<startDay>\d{1,2})\/(?<startMonth>[a-zé]{3})[a-zé]*\/(?<startYear>\d{4})<\/time>\s*hasta el\s*<time>(?<endDay>\d{1,2})\/(?<endMonth>[a-zé]{3})[a-zé]*\/(?<endYear>\d{4})<\/time>/i,
+  },
+};
+
+test("extractArticleList (museoschile.gob.cl-style): keeps 'Artes visuales' and 'Exposición' items, deterministically excludes 'Zoología' — a national multi-discipline aggregator where science content must never reach Haiku at all", () => {
+  const html = `
+    <div class="views-row"><div class="grid__item--header"><div class="field--name-field-tematica">Zoología</div>
+<h2 class="destacado__title"><a href="https://www.mnhn.gob.cl/cartelera/mariposas">Mariposas y Polillas</a></h2></div><div class="grid__item--evento"><div class="date"><span class="day">24</span><span class="month">Abr</span><span class="year">2025</span></div>
+<div class="field--name-field-direccion">Parque Quinta Normal, Santiago, Chile. </div></div><div class="grid__item--institucion"><div class="field--name-field-fechas">
+<time>24/Abril/2025</time>
+hasta el
+<time>30/Agosto/2026</time>
+</div>
+<div class="field--name-institucion">Museo Nacional de Historia Natural</div></div><div class="field--name-field-image"><a href="https://www.mnhn.gob.cl/cartelera/mariposas"><img src="https://www.mnhn.gob.cl/mariposas.jpg"></a></div></div>
+    <div class="views-row"><div class="grid__item--header"><div class="field--name-field-tematica">Artes visuales</div>
+<h2 class="destacado__title"><a href="https://www.mnba.gob.cl/cartelera/roberto-matta-abrir-la-mirada">Roberto Matta. Abrir la mirada</a></h2></div><div class="grid__item--evento"><div class="date"><span class="day">10</span><span class="month">Jul</span><span class="year">2025</span></div>
+<div class="field--name-field-direccion">José Miguel de la Barra 650, Santiago, Chile. </div></div><div class="grid__item--institucion"><div class="field--name-field-fechas">
+<time>10/Julio/2025</time>
+hasta el
+<time>31/Julio/2027</time>
+</div>
+<div class="field--name-institucion">Museo Nacional de Bellas Artes</div></div><div class="field--name-field-image"><a href="https://www.mnba.gob.cl/cartelera/roberto-matta-abrir-la-mirada"><img src="https://www.mnba.gob.cl/matta.jpg"></a></div></div>
+  `;
+  const items = extractArticleList(html, "https://www.museoschile.gob.cl/cartelera/red-nacional", MUSEOSCHILE_CONFIG);
+  assert.ok(items);
+  assert.equal(items.length, 1, "the Zoología item must be excluded before curation, not just left for Haiku to reject");
+  assert.equal(items[0].title, "Roberto Matta. Abrir la mirada");
+  assert.equal(items[0].sourceUrl, "https://www.mnba.gob.cl/cartelera/roberto-matta-abrir-la-mirada");
+  assert.equal(items[0].locationHint, "José Miguel de la Barra 650, Santiago, Chile.");
+  assert.deepEqual({ start: items[0].structuredStartDate, end: items[0].structuredEndDate }, { start: "2025-07-10", end: "2027-07-31" });
+});
+
 test("extractDateRange (espacioo.com-style): a same-year range states the year once, at the end — falls back correctly for BOTH start and end via the shared 'year' group, not 'endYear'", () => {
   const config: DateRangeConfig = {
     pattern:

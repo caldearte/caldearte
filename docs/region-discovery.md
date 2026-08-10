@@ -2943,6 +2943,70 @@ manual nesting-depth count) to land at exactly the real end-of-article
 point without ever sweeping into the site-wide footer/address block
 just outside `</main>`.
 
+### New source: museoschile.gob.cl/cartelera/red-nacional (2026-08-10) — a national multi-discipline aggregator with a real deterministic scope filter, and a genuine lookahead-scope bug
+
+Evaluated at the user's request, same session as the sources above (and
+several rejected candidates that day). Red Nacional de Museos
+(Ministerio de las Culturas) — a national aggregator spanning many
+individual SNPC/Drupal-platform museum sites, the same underlying
+CMS/template already known from mnba.gob.cl, museoregionalaysen.gob.cl,
+and museodeancud.gob.cl. This specific "Red Nacional" view mixes
+disciplines, though — natural history, zoology, anthropology, and
+general archives alongside actual visual-art exhibitions, since it
+aggregates every museum in the national network, not just art ones.
+
+**Real, deterministic scope filter — not left to Haiku**: each item
+carries its own genuine, structured `field--name-field-tematica` tag
+("Ciencia", "Zoología", "Antropología", "Ciencias Naturales", "Archivos",
+"Artes visuales", "Exposición" — 7 distinct values sampled, 4 of 10
+sampled items "Artes visuales"/"Exposición"). `blockRegex` requires the
+tematica to be "Artes visuales" or the generic "Exposición" via a
+positive lookahead (same technique as dieecke.art's country-scope
+filter) — a real "Micromundos, ciencia y arte en tus manos" (tagged
+"Ciencia") and "Mariposas y Polillas, Colores en Movimiento" (tagged
+"Zoología") are both correctly excluded before ever reaching Haiku,
+rather than trusting its own scope judgment to catch obviously
+out-of-discipline content downstream.
+
+**Real bug found and fixed building this filter**: the first version's
+lookahead scanned forward UNBOUNDED — it matched if "Artes
+visuales"/"Exposición" appeared ANYWHERE later in the entire remaining
+document, including inside a completely different, LATER item's own
+block, not just the current one. Against the real page this barely
+filtered anything (an early Ciencia/Zoología item still passed as long
+as some later item in the feed happened to be real art — 6 items passed
+instead of the correct 4). Fixed by bounding the lookahead to stop at
+the next `<div class="views-row">`, so it only matches tematica text
+belonging to the CURRENT item. A test with two items (Zoología first,
+Artes visuales second) catches a regression to the unbounded version
+immediately.
+
+**Real, fully deterministic date range** — the cleanest of any source
+added this session: `<time>DD/MesCompleto/YYYY</time> hasta el
+<time>DD/MesCompleto/YYYY</time>`, full Spanish month names, always both
+start and end present, consistent across every sampled item — no
+inconsistent-phrasing problem here at all, unlike
+galeriapready.cl/aninatgaleria.org/estacionmapocho.cl/
+centex.cultura.gob.cl earlier the same session.
+
+No `fixedLocation` — a genuine multi-institution, multi-comuna aggregator
+(Valparaíso, Santiago, ...), same posture as
+arteinformado.com/chilecultura.gob.cl. Each item does carry a real
+per-item address (`field--name-field-direccion`), captured via
+`placeRegex` as real, grounded text for Haiku's own comuna judgment.
+
+**Known overlap, not a bug**: Museo Nacional de Bellas Artes items (e.g.
+"Roberto Matta. Abrir la mirada") appear both here AND via the existing
+dedicated mnba.gob.cl source — same real sourceUrl on both, so the
+existing cross-run dedup collapses them into one row. The real
+incremental value of this source is the OTHER institutions it surfaces
+that don't have their own dedicated entry yet (confirmed: Biblioteca
+Nacional). No `descriptionExtractor` — the listing itself already gives
+title + full real date range + real address, and a shared detail-page
+description container wasn't found consistently across the different
+institutions' own sites in the time spent looking. Only the first page
+(`?page=0`) is fetched, no `additionalPages`.
+
 ### Cross-source dedup: two more real gaps found by a manual curation audit (2026-07-29)
 
 A user-requested audit against real production data (`docs/roadmap.md`'s
