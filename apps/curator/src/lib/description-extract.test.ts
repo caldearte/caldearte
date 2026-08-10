@@ -50,6 +50,35 @@ test("extractDescription reads arteinformado.com's real markup shape — plain t
   assert.equal(result, "MAC celebra 50 años de su fototeca. 80 artistas son parte de la muestra.");
 });
 
+// Matches galeriapready.cl's real detail-page markup — the same config
+// known-sources.ts gives it in production (added 2026-08-10).
+const PREADY_CONFIG: DescriptionConfig = {
+  pattern: /class="[^"]*\bw-richtext\b[^"]*">([\s\S]*?)Contacto prensa/,
+};
+
+test("extractDescription reads galeriapready.cl's real markup, stopping before 'Contacto prensa' even when it's wrapped in <strong> — real bug found 2026-08-10: anchoring the terminator to '<p>' immediately before the text broke silently on a page where an intervening <strong> tag (present on some write-ups, absent on others) blocked the match entirely", () => {
+  // Reproduces the exact shape found on "Martín Daiber - Primavera"'s real
+  // page — <strong>-wrapped labels, a zero-width joiner (‍) before
+  // some paragraphs — that a naive '<p>[^<]*Contacto prensa' anchor missed.
+  const html =
+    '<div class="w-richtext"><p><strong>Martín Daiber </strong>‍</p>' +
+    '<p>‍<strong>Inauguración:</strong> miércoles 10 de junio 18:00 hrs</p>' +
+    '<p>‍<strong>Exposición abierta hasta:</strong> 13 de julio</p>' +
+    "<p>Galería Patricia Ready presenta la nueva exposición individual del artista.</p>" +
+    '<p>‍<strong>Contacto prensa:</strong> galeria@galeriapatriciaready.cl</p></div>' +
+    '<div class="spacer medium"></div><div class="exhib-artist-title">Sobre el artista</div>';
+
+  const result = extractDescription(html, PREADY_CONFIG);
+  assert.match(result ?? "", /Inauguración: miércoles 10 de junio 18:00 hrs/);
+  assert.match(result ?? "", /Exposición abierta hasta: 13 de julio/);
+  assert.doesNotMatch(result ?? "", /Contacto prensa/, "cut off before the press-contact line, not after");
+});
+
+test("extractDescription returns null for galeriapready.cl's own empty-richtext shape (an announced-but-not-yet-written-up exhibition — 'Próximamente', no Inauguración text at all)", () => {
+  const html = '<div class="w-richtext"></div><div class="spacer medium"></div>';
+  assert.equal(extractDescription(html, PREADY_CONFIG), null);
+});
+
 test("extractDescription returns null when the pattern doesn't match at all", () => {
   assert.equal(extractDescription("<div>algo distinto</div>", UCHILE_CONFIG), null);
 });
