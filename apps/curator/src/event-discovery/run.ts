@@ -542,15 +542,27 @@ async function recordEscalation(
   );
 }
 
+// What actually happened to an individual candidate after curation decided
+// it — distinct from `status` (Haiku's own "is this real, in-scope art"
+// verdict), which is all the email report used to show. Real bug found via
+// a user-requested audit (2026-08-10): a report showed "25 aprobados · 0
+// insertados" and the user couldn't tell from the per-row "✅ Aprobado"
+// badges alone which of the 25 were actually new — turned out ALL 25 were
+// re-approvals of events already on the site (see "duplicate_skipped"
+// below), but the badge gave no hint of that. This type lets the email
+// show the real per-row outcome instead of just Haiku's verdict.
+export type InsertOutcome = "inserted" | "replaced" | "duplicate_skipped" | "escalated" | "expired" | "insert_failed";
+
 export async function insertCandidates(
   candidates: EventCandidate[],
   regions: RegionLike[],
   seen: SeenKeys,
   now: Date,
   rehostImageFn: RehostImageFn = rehostImage,
-): Promise<number> {
+): Promise<{ insertedCount: number; outcomes: Map<EventCandidate, InsertOutcome> }> {
   const client = getSupabaseClient();
   let inserted = 0;
+  const outcomes = new Map<EventCandidate, InsertOutcome>();
 
   for (const c of candidates) {
     const regionId = matchRegionId(c.location, regions);
@@ -598,6 +610,7 @@ export async function insertCandidates(
           curation_reasoning: c.curationReasoning,
         };
         await recordEscalation(client, conflict, c, candidatePayload);
+        outcomes.set(c, "escalated");
         continue;
       }
     }
@@ -644,7 +657,10 @@ export async function insertCandidates(
       continue;
     }
 
-    if (!isCurrentOrUpcoming(c, now)) continue;
+    if (!isCurrentOrUpcoming(c, now)) {
+      outcomes.set(c, "expired");
+      continue;
+    }
 
     const titleKey = normalizeTitle(c.title);
     const locDateKey = locationDateKey(c.location, c.placeName, c);
@@ -666,6 +682,7 @@ export async function insertCandidates(
             ? " (same sourceUrl, different title)"
             : "";
       console.log(`[event-discovery] skipping duplicate: "${c.title}"${reason}`);
+      outcomes.set(c, "duplicate_skipped");
       continue;
     }
 
@@ -736,6 +753,7 @@ export async function insertCandidates(
       const bucket = seen.titlesByLocationDateOnly.get(locDateOnlyKey);
       if (bucket) bucket.push(updatedInfo);
       else seen.titlesByLocationDateOnly.set(locDateOnlyKey, [updatedInfo]);
+      outcomes.set(c, "replaced");
       continue;
     }
 
@@ -770,6 +788,7 @@ export async function insertCandidates(
       // candidate must not cost the whole month's data — log it and move
       // on; it's visible in the workflow's own logs for follow-up.
       console.error(`[event-discovery] failed to insert "${c.title}": ${error.message}`);
+      outcomes.set(c, "insert_failed");
       continue;
     }
 
@@ -797,10 +816,11 @@ export async function insertCandidates(
     const bucket = seen.titlesByLocationDateOnly.get(locDateOnlyKey);
     if (bucket) bucket.push(freshInfo);
     else seen.titlesByLocationDateOnly.set(locDateOnlyKey, [freshInfo]);
+    outcomes.set(c, "inserted");
     inserted += 1;
   }
 
-  return inserted;
+  return { insertedCount: inserted, outcomes };
 }
 
 const EVENT_RETENTION_MS = 365 * 24 * 60 * 60 * 1000;
@@ -959,7 +979,7 @@ export interface RunDeps {
   brightSourceUrlFilter?: string[];
 }
 
-export function toCandidateSummary(c: EventCandidate): CandidateSummary {
+export function toCandidateSummary(c: EventCandidate, outcome?: InsertOutcome): CandidateSummary {
   return {
     title: c.title,
     status: c.status,
@@ -969,6 +989,7 @@ export function toCandidateSummary(c: EventCandidate): CandidateSummary {
     runEndDate: c.runEndDate,
     curationReasoning: c.curationReasoning,
     sourceUrl: c.sourceUrl,
+    outcome: outcome ?? null,
   };
 }
 
@@ -1088,9 +1109,10 @@ export async function run(deps: RunDeps = {}): Promise<void> {
         summary.cost.anthropicUsd += estimateCostUsd(EVENT_DISCOVERY_MODEL, usage);
         await enrichCandidates(candidates, pageFetchFn, now, regions);
         allCandidates.push(...candidates);
-        summary.eventGroups.push({ label: unit.name, candidates: candidates.map(toCandidateSummary) });
-        inserted = await insertCandidates(candidates, regions, seenKeys, now, rehostImageFn);
-        summary.candidates.insertedCount += inserted;
+        const { insertedCount, outcomes } = await insertCandidates(candidates, regions, seenKeys, now, rehostImageFn);
+        summary.eventGroups.push({ label: unit.name, candidates: candidates.map((c) => toCandidateSummary(c, outcomes.get(c))) });
+        summary.candidates.insertedCount += insertedCount;
+        inserted = insertedCount;
       }
 
       // A comuna's first real run graduates it out of 'not_started' — restores
@@ -1174,10 +1196,10 @@ export async function run(deps: RunDeps = {}): Promise<void> {
         summary.cost.anthropicUsd += estimateCostUsd(EVENT_DISCOVERY_MODEL, usage);
         await enrichCandidates(candidates, pageFetchFn, now, regions);
         allCandidates.push(...candidates);
-        summary.eventGroups.push({ label: sourceUrl, candidates: candidates.map(toCandidateSummary) });
-        const inserted = await insertCandidates(candidates, regions, seenKeys, now, rehostImageFn);
-        summary.candidates.insertedCount += inserted;
-        console.log(`[event-discovery] bright source ${sourceUrl}: ${inserted} new approved event(s)`);
+        const { insertedCount, outcomes } = await insertCandidates(candidates, regions, seenKeys, now, rehostImageFn);
+        summary.eventGroups.push({ label: sourceUrl, candidates: candidates.map((c) => toCandidateSummary(c, outcomes.get(c))) });
+        summary.candidates.insertedCount += insertedCount;
+        console.log(`[event-discovery] bright source ${sourceUrl}: ${insertedCount} new approved event(s)`);
       } catch (err) {
         // Stack, not just message — a real production case (2026-07-23,
         // arteinformado.com: "Cannot read properties of null (reading

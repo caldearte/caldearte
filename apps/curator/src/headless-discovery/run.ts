@@ -136,11 +136,11 @@ export async function run(deps: HeadlessRunDeps = {}): Promise<void> {
       const regions = await loadAllRegions();
       await enrichCandidates(candidates, pageFetchFn, now, regions);
 
-      const inserted = await insertCandidates(candidates, regions, seenKeys, now);
+      const { insertedCount, outcomes } = await insertCandidates(candidates, regions, seenKeys, now);
 
       summary.candidates.total = candidates.length;
-      summary.candidates.insertedCount = inserted;
-      summary.eventGroups.push({ label: MAVI_SOURCE_URL, candidates: candidates.map(toCandidateSummary) });
+      summary.candidates.insertedCount = insertedCount;
+      summary.eventGroups.push({ label: MAVI_SOURCE_URL, candidates: candidates.map((c) => toCandidateSummary(c, outcomes.get(c))) });
       for (const c of candidates) {
         if (c.status === "approved") summary.candidates.approvedByCuration += 1;
         if (c.status === "rejected") summary.candidates.rejectedByCuration += 1;

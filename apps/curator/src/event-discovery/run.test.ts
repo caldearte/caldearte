@@ -535,8 +535,18 @@ test(
 
         const regions = await loadAllRegions();
         const seenBefore = await loadExistingKeys();
-        const insertedSamePlace = await insertCandidates([samePlaceRepost], regions, seenBefore, new Date(2026, 6, 1));
+        const { insertedCount: insertedSamePlace, outcomes: outcomesSamePlace } = await insertCandidates(
+          [samePlaceRepost],
+          regions,
+          seenBefore,
+          new Date(2026, 6, 1),
+        );
         assert.equal(insertedSamePlace, 0, "same place_name ('Balmaceda Arte Joven'): abbreviated-title repost recognized as a duplicate, not a fresh insert");
+        assert.equal(
+          outcomesSamePlace.get(samePlaceRepost),
+          "replaced",
+          "outcome map records WHY it wasn't a fresh insert — replaced an existing row, not silently skipped",
+        );
 
         // Both sides have a confirmed opening (tier 1 of
         // shouldReplaceExisting ties) — the seeded row came from
@@ -573,8 +583,14 @@ test(
         };
 
         const seenAfter = await loadExistingKeys();
-        const insertedDifferentPlace = await insertCandidates([differentPlaceRepost], regions, seenAfter, new Date(2026, 6, 1));
+        const { insertedCount: insertedDifferentPlace, outcomes: outcomesDifferentPlace } = await insertCandidates(
+          [differentPlaceRepost],
+          regions,
+          seenAfter,
+          new Date(2026, 6, 1),
+        );
         assert.equal(insertedDifferentPlace, 1, "different place_name ('Centro Cultural Otro Lugar'): inserted as a distinct event, not silently dropped");
+        assert.equal(outcomesDifferentPlace.get(differentPlaceRepost), "inserted");
 
         await client
           .from("events")
@@ -640,7 +656,7 @@ test(
 
         const regions = await loadAllRegions();
         const seen = await loadExistingKeys();
-        const inserted = await insertCandidates([candidate], regions, seen, new Date(2026, 3, 25));
+        const { insertedCount: inserted } = await insertCandidates([candidate], regions, seen, new Date(2026, 3, 25));
         assert.equal(inserted, 0, "recognized as a duplicate of the seeded row — not a fresh second insert");
 
         const { data: rows } = await client.from("events").select("title, place_name, source_url").eq("place_name", "MAC - Museo de Arte Contemporáneo").ilike("title", "__test__%");
@@ -698,8 +714,9 @@ test(
 
         try {
           const seen = await loadExistingKeys();
-          const inserted = await insertCandidates([candidate], regions, seen, new Date(2026, 6, 10));
+          const { insertedCount: inserted, outcomes } = await insertCandidates([candidate], regions, seen, new Date(2026, 6, 10));
           assert.equal(inserted, 0, "escalated, not inserted");
+          assert.equal(outcomes.get(candidate), "escalated");
 
           const { data: eventRows } = await client.from("events").select("id").ilike("title", "__test__ Escalación Conflicto");
           assert.equal(eventRows?.length ?? 0, 0, "never written to events — held for human review instead");
@@ -775,7 +792,7 @@ test(
         try {
           const regions = await loadAllRegions();
           const seen = await loadExistingKeys();
-          const inserted = await insertCandidates([candidate], regions, seen, new Date(2026, 6, 10));
+          const { insertedCount: inserted } = await insertCandidates([candidate], regions, seen, new Date(2026, 6, 10));
           assert.equal(inserted, 0);
 
           const { data: stillApproved } = await client
@@ -843,7 +860,7 @@ test(
         try {
           const regions = await loadAllRegions();
           const seen = await loadExistingKeys();
-          const inserted = await insertCandidates([candidate], regions, seen, new Date(2026, 6, 10));
+          const { insertedCount: inserted } = await insertCandidates([candidate], regions, seen, new Date(2026, 6, 10));
           assert.equal(inserted, 1, "no title match against the unrelated rejected candidate — inserted normally");
 
           const { data: escalation } = await client.from("curation_escalations").select("id").eq("new_source_url", candidate.sourceUrl).maybeSingle();
@@ -916,7 +933,7 @@ test(
         // "now" pinned to the candidate's own opening day — its only date
         // signal (no run range) — so isCurrentOrUpcoming doesn't filter
         // it out before the replace logic under test ever runs.
-        const inserted = await insertCandidates([withConfirmedOpening], regions, seen, new Date(2026, 6, 1));
+        const { insertedCount: inserted } = await insertCandidates([withConfirmedOpening], regions, seen, new Date(2026, 6, 1));
         assert.equal(inserted, 0, "not a fresh insert — replaced the existing row in place");
 
         const { data: replaced } = await client
@@ -978,7 +995,7 @@ test(
 
         const regions = await loadAllRegions();
         const seen = await loadExistingKeys();
-        const inserted = await insertCandidates([bareCandidate], regions, seen, new Date(2026, 6, 5));
+        const { insertedCount: inserted } = await insertCandidates([bareCandidate], regions, seen, new Date(2026, 6, 5));
         assert.equal(inserted, 0, "not a fresh insert — recognized as a duplicate");
 
         const { data: kept } = await client
@@ -1040,7 +1057,7 @@ test(
 
         const regions = await loadAllRegions();
         const seen = await loadExistingKeys();
-        const inserted = await insertCandidates([tiedCandidate], regions, seen, new Date(2026, 6, 5));
+        const { insertedCount: inserted } = await insertCandidates([tiedCandidate], regions, seen, new Date(2026, 6, 5));
         assert.equal(inserted, 0, "not a fresh insert — recognized as a duplicate");
 
         const { data: kept } = await client

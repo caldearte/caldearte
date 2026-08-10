@@ -67,6 +67,7 @@ const fixtureSummary: RunSummary = {
           runEndDate: "2026-08-30",
           curationReasoning: "Exposición de arte visual en espacio legítimo.",
           sourceUrl: "https://x.cl/expo-real",
+          outcome: "inserted",
         },
         {
           title: "Taller de cerámica",
@@ -77,6 +78,7 @@ const fixtureSummary: RunSummary = {
           runEndDate: null,
           curationReasoning: "Es un taller, no una exposición — fuera de alcance.",
           sourceUrl: "https://x.cl/taller",
+          outcome: null,
         },
       ],
     },
@@ -139,9 +141,30 @@ test("buildBody handles the no-failures, no-bright-sources-due edge case cleanly
 test("buildBody's text fallback lists both approved and rejected candidates, grouped by source", () => {
   const body = buildBody(fixtureSummary);
   assert.match(body, /-- Santiago \(2\) --/);
-  assert.match(body, /\[OK\] Expo real en el GAM/);
+  assert.match(body, /\[APROBADO \(NUEVO\)\] Expo real en el GAM/);
   assert.match(body, /\[RECHAZADO\] Taller de cerámica/);
   assert.match(body, /Es un taller, no una exposición — fuera de alcance\./);
+});
+
+// Real bug found via a user-requested audit (2026-08-10): a run report
+// showed "25 aprobados · 0 insertados" and the per-row badge gave no hint
+// which of the 25 were actually new vs. re-approvals of events already on
+// the site — every row just said "✅ Aprobado" regardless. Now the badge
+// (and its plain-text equivalent) reflects the real per-candidate outcome.
+test("buildBody's text fallback distinguishes a duplicate-skipped approval from a genuinely new one — the exact confusion a real user report surfaced", () => {
+  const body = buildBody({
+    ...fixtureSummary,
+    eventGroups: [
+      {
+        label: "artes.uchile.cl",
+        candidates: [
+          { ...fixtureSummary.eventGroups[0].candidates[0], title: "Ya existía", outcome: "duplicate_skipped" },
+        ],
+      },
+    ],
+  });
+  assert.match(body, /\[APROBADO \(YA EXISTÍA\)\] Ya existía/);
+  assert.doesNotMatch(body, /\[APROBADO \(NUEVO\)\] Ya existía/);
 });
 
 test("buildHtmlBody renders a table with both approved and rejected candidates, source link, and reasoning", () => {
