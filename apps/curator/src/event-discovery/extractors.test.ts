@@ -532,6 +532,55 @@ test("extractArticleList handles estacionmapocho.cl's real markup: title/href/im
   assert.equal(items[0].rawDateText, "03/2026");
 });
 
+// Matches factoriasantarosa.cl's real markup — the same config
+// known-sources.ts gives it in production (added 2026-08-10). No date
+// field on the listing at all — dates only exist on the detail page (see
+// extractDateRange's own detailDateRangeExtractor-style test below).
+const FACTORIA_CONFIG: ArticleListConfig = {
+  kind: "articleList",
+  blockRegex:
+    /(<a href="(https:\/\/factoriasantarosa\.cl\/exposiciones\/[^"]+)" class="jet-listing-dynamic-image__link">[\s\S]*?jet-listing-dynamic-link__label">[^<]*<\/span>\s*<\/a>)/g,
+  titleLinkRegex: /<a href="([^"]+)"[\s\S]*?jet-listing-dynamic-link__label">([^<]*)<\/span>/,
+};
+
+test("extractArticleList handles factoriasantarosa.cl's real markup: two adjacent JetEngine widgets sharing the same href (image link, then title link) captured as one block", () => {
+  const html = `
+    <a href="https://factoriasantarosa.cl/exposiciones/la-tercera-edad-del-mono" class="jet-listing-dynamic-image__link">
+      <img width="2560" height="1707" src="https://factoriasantarosa.cl/wp-content/uploads/2025/08/DSC_5881-scaled.webp" class="jet-listing-dynamic-image__img" alt="LA TERCERA EDAD DEL MONO" />
+    </a>
+    <a href="https://factoriasantarosa.cl/exposiciones/la-tercera-edad-del-mono" class="jet-listing-dynamic-link__link">
+      <span class="jet-listing-dynamic-link__label">LA TERCERA EDAD DEL MONO</span>
+    </a>
+  `;
+  const items = extractArticleList(html, "https://factoriasantarosa.cl/exposiciones", FACTORIA_CONFIG);
+  assert.ok(items);
+  assert.equal(items.length, 1);
+  assert.equal(items[0].title, "LA TERCERA EDAD DEL MONO");
+  assert.equal(items[0].sourceUrl, "https://factoriasantarosa.cl/exposiciones/la-tercera-edad-del-mono");
+  assert.equal(items[0].imageUrl, "https://factoriasantarosa.cl/wp-content/uploads/2025/08/DSC_5881-scaled.webp");
+});
+
+test("extractDateRange (factoriasantarosa.cl-style): reads two consecutive DD-MM-YYYY jet-listing-dynamic-field values as start/end, NOT anchored to the 'Inicio'/'Termino' label text — real bug found 2026-08-10: the site's own nav menu also has a link literally labeled 'Inicio' ('Home'), which a label-anchored regex matched first, on the wrong occurrence", () => {
+  const config: DateRangeConfig = {
+    pattern:
+      /jet-listing-dynamic-field__content"\s*>(?<startDay>\d{1,2})-(?<startMonth>\d{1,2})-(?<startYear>\d{4})<[\s\S]*?jet-listing-dynamic-field__content"\s*>(?<endDay>\d{1,2})-(?<endMonth>\d{1,2})-(?<endYear>\d{4})</,
+  };
+  const html =
+    '<a class="elementor-item menu-link">Inicio</a>' + // real nav-menu link, NOT a date — must not be matched
+    '<div class="jet-listing-dynamic-field__content" >28-06-2025</div>' +
+    '<div class="jet-listing-dynamic-field__content" >07-09-2025</div>';
+  assert.deepEqual(extractDateRange(html, config), { runStartDate: "2025-06-28", runEndDate: "2025-09-07" });
+});
+
+test("extractDateRange (factoriasantarosa.cl-style): returns null, not a guess, when the end-date field is genuinely empty (real case: 'diga-queer-con-la-lengua-afuera' has a start date but no Termino set)", () => {
+  const config: DateRangeConfig = {
+    pattern:
+      /jet-listing-dynamic-field__content"\s*>(?<startDay>\d{1,2})-(?<startMonth>\d{1,2})-(?<startYear>\d{4})<[\s\S]*?jet-listing-dynamic-field__content"\s*>(?<endDay>\d{1,2})-(?<endMonth>\d{1,2})-(?<endYear>\d{4})</,
+  };
+  const html = '<div class="jet-listing-dynamic-field__content" >26-08-2023</div><div class="jet-listing-dynamic-field__content" ></div>';
+  assert.equal(extractDateRange(html, config), null);
+});
+
 test("extractDateRange (espacioo.com-style): a same-year range states the year once, at the end — falls back correctly for BOTH start and end via the shared 'year' group, not 'endYear'", () => {
   const config: DateRangeConfig = {
     pattern:

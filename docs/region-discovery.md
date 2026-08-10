@@ -2855,6 +2855,49 @@ location/date/hours block for a mobile layout variant, so the captured
 text repeats the date fragment twice — doesn't affect grounding, Haiku
 isn't confused by the same true fact stated twice.
 
+### New source: factoriasantarosa.cl (2026-08-10) — Factoría Santa Rosa, and a genuinely fully-deterministic date recovery
+
+Evaluated at the user's request, same session as the three sources
+above. WordPress + Elementor + JetEngine — a genuinely clean, fully
+structured source, unlike galeriapready.cl/aninatgaleria.org/
+estacionmapocho.cl above, all three of which had to leave date
+interpretation to Haiku after finding real per-item inconsistencies.
+This one has neither problem: the listing has zero date info at all
+(nothing to mistake for a real one), and the detail page's date fields
+are fully structured, machine-readable, and consistent across every
+sampled item (4 real detail pages checked, including one —
+"diga-queer-con-la-lengua-afuera" — with a genuinely empty end-date
+field, which the extractor correctly returns null for rather than
+guessing at a range).
+
+Listing markup: two adjacent JetEngine widgets share the same href —
+an image-link anchor immediately followed by a title-link anchor,
+captured as one block spanning both (same "single anchor pair, shared
+href" shape as aninatgaleria.org's own listing). All 26 items live on
+one page (no pagination) — NOT chronologically ordered (a 2024
+exhibition appeared near the top, ahead of a 2025 one), so every item
+gets curated on the first run; acceptable at this size (unlike
+galeriapready.cl's ~67-item, 9-tab archive).
+
+**Real, fully deterministic date recovery** (`detailDateRangeExtractor`,
+matching mssa.cl's own precedent): the detail page has explicit
+"Inicio"/"Termino" labels next to `DD-MM-YYYY` values in a
+`jet-listing-dynamic-field__content` div. Deliberately does NOT anchor
+on the "Inicio" label text itself — real bug found building this: the
+site's own nav menu also has a link literally labeled "Inicio" ("Home"
+in Spanish), which a label-anchored regex matched first, on the wrong
+occurrence. Fixed by anchoring on two CONSECUTIVE
+`jet-listing-dynamic-field__content` values matching the `DD-MM-YYYY`
+shape instead — safe because the description field (recovered
+separately) uses the exact same CSS class but never starts with a bare
+date-shaped string (it opens with a `<p>` tag), so there's no risk of
+either field bleeding into the other.
+
+Description: recovered from that same `jet-listing-dynamic-field__content`
+class, disambiguated from the date fields by anchoring on the preceding
+"Descripción" heading — real prose, cleanly bounded, no bio-bleed the
+way galeriapready.cl/aninatgaleria.org both have.
+
 ### Cross-source dedup: two more real gaps found by a manual curation audit (2026-07-29)
 
 A user-requested audit against real production data (`docs/roadmap.md`'s

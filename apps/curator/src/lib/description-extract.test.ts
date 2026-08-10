@@ -164,3 +164,24 @@ test("extractDescription reads estacionmapocho.cl's real markup, folding the rea
   assert.match(result ?? "", /Centro Cultural Estación Mapocho recibe “Sueños”/);
   assert.doesNotMatch(result ?? "", /otro contenido no relacionado/, "stops at w40's own closing div, doesn't sweep in unrelated later sections");
 });
+
+// Matches factoriasantarosa.cl's real detail-page markup — the same config
+// known-sources.ts gives it in production (added 2026-08-10).
+const FACTORIA_CONFIG: DescriptionConfig = {
+  pattern: /Descripción<\/h5>[\s\S]*?jet-listing-dynamic-field__content"\s*>([\s\S]*?)<\/div><\/div><\/div>/,
+};
+
+test("extractDescription reads factoriasantarosa.cl's real markup, disambiguating the description's jet-listing-dynamic-field__content div from the date fields (same CSS class) by anchoring on the preceding 'Descripción' heading", () => {
+  const html =
+    '<div class="jet-listing-dynamic-field__content" >28-06-2025</div>' + // a date field, same class — must NOT be picked up as the description
+    '<h5 class="elementor-heading-title elementor-size-default">Descripción</h5>' +
+    '<div class="jet-listing-dynamic-field__content" ><p>Exposición individual de Alejandro “Mono” González</p>' +
+    "<p>Factoría Santa Rosa presenta una muestra que reúne el trabajo más reciente del artista.</p></div></div></div>" +
+    '<div class="elementor-element-next">contenido no relacionado</div>';
+
+  const result = extractDescription(html, FACTORIA_CONFIG);
+  assert.match(result ?? "", /Exposición individual de Alejandro "Mono" González|Exposición individual de Alejandro “Mono” González/);
+  assert.match(result ?? "", /Factoría Santa Rosa presenta una muestra/);
+  assert.doesNotMatch(result ?? "", /28-06-2025/, "the date field (same CSS class, appears earlier) must not leak into the description");
+  assert.doesNotMatch(result ?? "", /contenido no relacionado/, "stops at its own closing divs, doesn't sweep in later unrelated content");
+});
