@@ -185,3 +185,27 @@ test("extractDescription reads factoriasantarosa.cl's real markup, disambiguatin
   assert.doesNotMatch(result ?? "", /28-06-2025/, "the date field (same CSS class, appears earlier) must not leak into the description");
   assert.doesNotMatch(result ?? "", /contenido no relacionado/, "stops at its own closing divs, doesn't sweep in later unrelated content");
 });
+
+// Matches centex.cultura.gob.cl's real detail-page markup — the same
+// config known-sources.ts gives it in production (added 2026-08-10).
+const CENTEX_CONFIG: DescriptionConfig = {
+  pattern: /single-content fitvids">([\s\S]*?)<\/main>/,
+};
+
+test("extractDescription reads centex.cultura.gob.cl's real markup, bounded on the reliable </main> tag rather than 'first closing </div>' — real finding: the article body has genuinely NESTED <div> blocks inside the prose itself (embedded image-with-caption blocks), so a naive first-</div> bound would cut real content off early", () => {
+  const html =
+    '<div class="container single-content fitvids">' +
+    "<p>El próximo sábado 11 de julio, a las 12:00 horas, se inaugura la exposición.</p>" +
+    '<div class="wp-block-media-text"><figure><img src="https://example.cl/foto.jpg" /></figure><div class="wp-block-media-text__content">' +
+    "<p>Texto embebido dentro de un bloque de imagen anidado.</p>" +
+    "</div></div>" +
+    "<p>*Inauguración: sábado 11 de julio, 12:00 horas *Lugar: Galerías Regional y Nacional, Zócalo. *Centex, Sotomayor 233, Valparaíso</p>" +
+    "</div></main>" +
+    '<div id="side">Dirección Valparaíso: Plaza Sotomayor 233. Política de Privacidad</div>';
+
+  const result = extractDescription(html, CENTEX_CONFIG);
+  assert.match(result ?? "", /se inaugura la exposición/);
+  assert.match(result ?? "", /Texto embebido dentro de un bloque de imagen anidado/, "real content nested inside a sub-div must still be captured, not cut off at the first closing </div>");
+  assert.match(result ?? "", /Inauguración: sábado 11 de julio, 12:00 horas/);
+  assert.doesNotMatch(result ?? "", /Política de Privacidad/, "stops at </main>, doesn't sweep in the site-wide footer/address block");
+});

@@ -636,6 +636,20 @@ export const KNOWN_SOURCES: KnownSource[] = [
       pattern: /Descripción<\/h5>[\s\S]*?jet-listing-dynamic-field__content"\s*>([\s\S]*?)<\/div><\/div><\/div>/,
     },
   },
+  {
+    url: "https://centex.cultura.gob.cl/category/muestras-y-exposiciones/",
+    note: 'Centex, Valparaíso — Ministerio de las Culturas, evaluated at the user\'s request 2026-08-10 (same WordPress theme family as centronacionaldearte.cultura.gob.cl / CNAC, added 2026-07-28 — see that entry\'s own note). Added despite a real, flagged density concern: of 12 sampled posts in this category, only ~7-8 were genuine exhibition announcements/recaps — the rest were coverage of Feria Sobreimpresiones (a graphic-arts FAIR, not an exhibition), a Feria de Artes y Oficios (crafts fair), an interview about that fair, and a recap of a school group visiting an already-covered exhibition. User confirmed "agrega" after reviewing this density finding — Haiku\'s own scope judgment is relied on to filter the fair/interview/recap noise, same posture as any other source with imperfect density.\n\nListing markup: `<a class="b2" href="...">` wraps an image plus `<div class="info"><span class="b2fecha">DATE</span>TITLE</div>` — captured as one block. No dateRangeExtractor: `b2fecha` is confirmed to be the post\'s PUBLISH date, not the exhibition\'s own date (same trap as aninatgaleria.org\'s `<time>` — cross-checked directly: "Centex inaugura exposición póstuma de Juan Castillo" listed `7 julio, 2026`/`5 julio, 2026`-style publish text while its detail page states the real opening as "sábado 11 de julio" — days later, for the same post).\n\n**No openingTimeExtractor either — a fourth same-session confirmation of the inconsistent-phrasing pattern**: the Juan Castillo detail page has a clean `*Inauguración: sábado 11 de julio, 12:00 horas` line, but a second sampled page ("ParvuArt Gallery") has an entirely different shape with no "Inauguración" label at all — `"Desde este martes 4 y hasta el domingo 9 de agosto permanecerá abierta..."`. Same class of per-item inconsistency already found for galeriapready.cl/aninatgaleria.org/estacionmapocho.cl this session — left to Haiku+grounding via descriptionExtractor instead of a regex tuned to only the first shape sampled.\n\nDescription: the real article body (`<div class="container single-content fitvids">`) is NOT safely boundable by a simple "first closing </div>" rule — real testing found genuinely nested `<div>` blocks inside the prose itself (embedded `wp-block-media-text` image-with-caption blocks mid-article), so a naive bound would cut the real content off far too early. Properly closing this div requires actual nesting-depth tracking, which a single regex can\'t do — bounded instead on the reliable `</main>` tag that closes the whole content area on every sampled page, confirmed (via the same nesting-depth check, done manually) to land at exactly the same real end-of-article point without ever sweeping into the site-wide footer/address block that sits just outside `</main>`.',
+    lastReviewedAt: "2026-08-10",
+    extractor: {
+      kind: "articleList",
+      blockRegex: /(<a class="b2" href="([^"]+)">[\s\S]*?<\/a>)/g,
+      titleLinkRegex: /href="([^"]+)"[\s\S]*?<\/span>([^<]*)<\/div>/,
+    },
+    fixedLocation: { location: "Valparaíso", placeName: "Centex" },
+    descriptionExtractor: {
+      pattern: /single-content fitvids">([\s\S]*?)<\/main>/,
+    },
+  },
 ];
 
 export function knownSourceDomain(url: string): string {
