@@ -74,6 +74,33 @@ test("extractDescription reads galeriapready.cl's real markup, stopping before '
   assert.doesNotMatch(result ?? "", /Contacto prensa/, "cut off before the press-contact line, not after");
 });
 
+// Matches aninatgaleria.org's real detail-page markup — the same config
+// known-sources.ts gives it in production (added 2026-08-10).
+const ANINAT_CONFIG: DescriptionConfig = {
+  pattern: /data-sqsp-text-block-content>([\s\S]*?)BlogItem-share/,
+};
+
+test("extractDescription reads aninatgaleria.org's real markup, sweeping across multiple interleaved Squarespace text/image blocks to reach the real 'inauguración' sentence in a LATER block, not just the first (short title-header) one", () => {
+  // Reproduces the real shape found on "Magdalena Correa - KOS"'s page: a
+  // short title-header text block, THEN an unrelated image block, THEN the
+  // block with the real body text — no single div wraps just "the
+  // description", so the pattern must span from the first text block all
+  // the way to the stable end-of-article marker (BlogItem-share).
+  const html =
+    'data-sqsp-text-block-content><p><strong>ANINAT GALERÍA PRESENTA "KOS"</strong></p></div>' +
+    '<div class="sqs-block image-block"><img src="https://cdn.example.com/foto.jpg" alt="" /></div>' +
+    '<div class="sqs-block-content"><div class="sqs-html-content" data-sqsp-text-block-content>' +
+    "<p>Magdalena Correa expondr&aacute; en Aninat Galer&iacute;a.</p>" +
+    "<p><strong>La inauguraci&oacute;n se realizar&aacute; el jueves 13 de agosto a las 18:30 horas en Aninat Galer&iacute;a.</strong></p></div>" +
+    '<div class="Blog-meta"><time datetime="2026-08-05">5 de agosto de 2026</time></div>' +
+    '<div class="BlogItem-share"><a>Compartir</a></div>';
+
+  const result = extractDescription(html, ANINAT_CONFIG);
+  assert.match(result ?? "", /Magdalena Correa expondrá en Aninat Galería/);
+  assert.match(result ?? "", /La inauguración se realizará el jueves 13 de agosto a las 18:30 horas/);
+  assert.doesNotMatch(result ?? "", /Compartir/, "cut off at BlogItem-share, share widget text excluded");
+});
+
 test("extractDescription returns null for galeriapready.cl's own empty-richtext shape (an announced-but-not-yet-written-up exhibition — 'Próximamente', no Inauguración text at all)", () => {
   const html = '<div class="w-richtext"></div><div class="spacer medium"></div>';
   assert.equal(extractDescription(html, PREADY_CONFIG), null);
