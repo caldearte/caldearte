@@ -414,6 +414,19 @@ test("nullifyAggregatorSourceUrls ignores rejected candidates and null sourceUrl
   assert.equal(result[2].sourceUrl, null);
 });
 
+test("nullifyAggregatorSourceUrls does NOT null a sourceUrl shared by candidates reporting the SAME title — real bug (2026-08-10): a rolling 30-day agenda (artes.uchile.cl) lists one real exhibition once per open day, each block correctly resolving the identical per-event detail page; nulling it made enforceSourceUrlInvariant reject every real exhibition on that source, every run", () => {
+  const detailPage = "https://artes.uchile.cl/agenda/241838/materia-sensible";
+  const candidates = [
+    { ...baseCandidate, title: "Materia sensible", sourceUrl: detailPage },
+    { ...baseCandidate, title: "Materia sensible", sourceUrl: detailPage },
+    { ...baseCandidate, title: "MATERIA SENSIBLE", sourceUrl: detailPage }, // repeat listing, different casing — still the same event
+  ];
+  const result = nullifyAggregatorSourceUrls(candidates);
+  assert.equal(result[0].sourceUrl, detailPage);
+  assert.equal(result[1].sourceUrl, detailPage);
+  assert.equal(result[2].sourceUrl, detailPage);
+});
+
 test("enforceSourceUrlInvariant forces approved events without sourceUrl to rejected (Haiku prompt violation)", () => {
   const candidates = [
     { ...baseCandidate, title: "Aprobado con URL", status: "approved" as const, sourceUrl: "https://x.cl" },
