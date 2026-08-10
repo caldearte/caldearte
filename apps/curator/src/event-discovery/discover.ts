@@ -346,20 +346,38 @@ function parseCandidates(text: string): EventCandidate[] {
 }
 
 // Deterministic backstop over Haiku's own decision: a sourceUrl shared by
-// 2+ approved candidates in the same batch is structurally proof that page
-// hosts multiple events, not one — Haiku had only that one URL in the text
-// it saw (either a Tavily hit that happened to be a listing page, or a
-// bright-source page whose markup we don't have a per-event parser for
-// yet, so the whole page got flattened to one blob with one URL) and had
-// no way to report each event's own page. A wrong link is worse than no
-// link, so null it rather than pointing a card at the wrong event.
+// 2+ approved candidates in the same batch reporting DIFFERENT titles is
+// structurally proof that page hosts multiple events, not one — Haiku had
+// only that one URL in the text it saw (either a Tavily hit that happened
+// to be a listing page, or a bright-source page whose markup we don't have
+// a per-event parser for yet, so the whole page got flattened to one blob
+// with one URL) and had no way to report each event's own page. A wrong
+// link is worse than no link, so null it rather than pointing a card at
+// the wrong event.
+//
+// Requiring different titles (not just a shared URL) matters: real bug
+// found 2026-08-10, via a user-requested audit — a rolling 30-day agenda
+// (artes.uchile.cl, uchile.cl root) lists the SAME real exhibition once
+// per day it's open, and each repeated block's titleLinkRegex correctly
+// resolves the identical, correct per-event detail page. The old version
+// nulled that legitimately-shared URL anyway (2+ occurrences was treated
+// as proof of collision), which then made enforceSourceUrlInvariant
+// reject every one of those candidates — silently dropping ~13 real,
+// in-scope Universidad de Chile exhibitions every single run. Same title
+// repeated under the same URL is the SAME event, not an aggregator
+// collision; downstream dedup (run.ts) collapses the repeats into one
+// insert once the URL survives.
 export function nullifyAggregatorSourceUrls(candidates: EventCandidate[]): EventCandidate[] {
-  const counts = new Map<string, number>();
+  const titlesByUrl = new Map<string, Set<string>>();
   for (const c of candidates) {
     if (c.status !== "approved" || !c.sourceUrl) continue;
-    counts.set(c.sourceUrl, (counts.get(c.sourceUrl) ?? 0) + 1);
+    const titles = titlesByUrl.get(c.sourceUrl) ?? new Set<string>();
+    titles.add(normalizeTitle(c.title));
+    titlesByUrl.set(c.sourceUrl, titles);
   }
-  return candidates.map((c) => (c.sourceUrl && (counts.get(c.sourceUrl) ?? 0) >= 2 ? { ...c, sourceUrl: null } : c));
+  return candidates.map((c) =>
+    c.sourceUrl && (titlesByUrl.get(c.sourceUrl)?.size ?? 0) >= 2 ? { ...c, sourceUrl: null } : c,
+  );
 }
 
 // Backstop for known-out-of-scope events, applied AFTER curation (unlike
