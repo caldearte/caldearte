@@ -2617,6 +2617,57 @@ automatically apply to a duplicate. Now both resolve numeric hex/decimal
 references generically, benefiting every source's titles/image URLs, not
 just this one.
 
+### New source: espacioo.com (2026-08-08) — Espacio O, the first Artlogic source, and a real entity-decoding gap affecting every listing-description source
+
+Evaluated at the user's request. Espacio O, a real gallery in Santiago,
+Chile, running on **Artlogic** — a specialized art-gallery site
+platform, the first source on this platform (every other source so far
+is WordPress-based).
+
+**Real, unresolved caveat**: at evaluation time `/exhibitions/` had ZERO
+current exhibitions — the page goes straight to "Pasadas" (past), and
+the most recent one had already closed months earlier. Added anyway per
+the user's own explicit call. The extractor is built and fully verified
+against the real "Pasadas" markup (4 real past items) on the assumption
+that a "Current" section — once one exists again — renders with the same
+per-item template (reasonable for a templated CMS, but genuinely
+unverified; no live current example existed to check). Revisit once this
+gallery has a real current show, same posture as fme.cl's own "revisit
+once updated" note above.
+
+**Real bug found building this**: the LAST listed item's `<li>` also
+carried `class="last"` inserted before `data-width` — a rigid
+`<li\s+data-width="\d+">` blockRegex silently dropped it (3 items
+instead of 4). Fixed with a more tolerant `<li[^>]*data-width="\d+"
+[^>]*>` that allows other attributes/classes anywhere in the tag.
+
+Dates: `<span class="date">DD Mes[ YYYY] - DD Mes YYYY</span>` — the
+START year is only stated when it genuinely differs from the end year
+(a real cross-year exhibition states both; a same-year one states it
+once, at the end). Naming the trailing year `year` (not `endYear`) in
+`dateRangeExtractor` is what makes `extractDateRange` correctly fall
+back to it for BOTH the start and end date in the same-year case, while
+a real explicit `startYear` still wins when present — same shared-year
+mechanism molinomachmar.cl already established, just applied to an
+optional rather than always-present start year.
+
+**Real bug found and fixed generically, not espacioo.com-specific**:
+this source's real listing-level description (`span.description.prose`)
+surfaced that `collapseWhitespace` (`extractors.ts`) — used for every
+`articleList` field EXCEPT title (daysRegex/placeRegex/descriptionRegex)
+— never decoded HTML entities at all, unlike `title`'s own explicit
+`decodeHtmlEntities` wrap. Every source using `descriptionRegex` (e.g.
+molinomachmar.cl) or `placeRegex` was silently affected, not just this
+one. Fixed by having `collapseWhitespace` decode entities itself (strip
+tags first, decode after — same order `lib/description-extract.ts`'s own
+`stripTagsAndCollapse` already uses). While in there, also consolidated
+this file's own separate, now-redundant `SPANISH_HTML_ENTITIES`/
+`htmlToPlainText` (added 2026-07-28 for chilecultura.gob.cl's
+`wordpressRestApi` descriptions only) into the same `decodeHtmlEntities`
+table — one copy instead of two silently drifting ones, closing out the
+same "which copy did the fix land in" risk cclm.cl's own numeric-entity
+fix flagged the same day.
+
 ### Cross-source dedup: two more real gaps found by a manual curation audit (2026-07-29)
 
 A user-requested audit against real production data (`docs/roadmap.md`'s
