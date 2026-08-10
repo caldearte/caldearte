@@ -451,6 +451,45 @@ test("extractArticleList handles galeriapready.cl's real markup: title/link/imag
   assert.equal(items[1].rawDateText, "fecha no indicada", "empty w-dyn-bind-empty descr div — no real date to extract");
 });
 
+// Matches aninatgaleria.org's real markup — the same config known-sources.ts
+// gives it in production (added 2026-08-10). No daysRegex/dateRangeExtractor
+// at all: the listing's own <time datetime="..."> turned out to be a blog
+// publish timestamp, not the exhibition's real date (see known-sources.ts's
+// own note) — title/href/image are the only deterministic fields here.
+const ANINAT_CONFIG: ArticleListConfig = {
+  kind: "articleList",
+  blockRegex: /(<a\s+href="(\/exhibiciones[^"]+)"\s+class="\s*summary-thumbnail-container[\s\S]*?<\/a>)/g,
+  titleLinkRegex: /href="([^"]+)"[\s\S]*?data-title="([^"]*)"/,
+};
+
+test("extractArticleList handles aninatgaleria.org's real markup: title/href/image extracted from a single anchor tag's own data-title + nested img — no date field at all", () => {
+  const html = `
+    <a
+      href="/exhibiciones-2026-aux/magdalena-correa-kos"
+      class="
+        summary-thumbnail-container
+        sqs-gallery-image-container
+      "
+      data-title="Magdalena Correa | &quot;KOS&quot;"
+      data-description=""
+      aria-label="Magdalena Correa | &quot;KOS&quot;"
+    >
+      <div class="summary-thumbnail img-wrapper" data-animation-role="image">
+        <img data-src="https://images.squarespace-cdn.com/content/v1/kos.jpg" data-image="https://images.squarespace-cdn.com/content/v1/kos.jpg" alt="Magdalena Correa" data-load="false" class="summary-thumbnail-image" />
+      </div>
+    </a>
+    <!-- Timestamp shown elsewhere in the real page, NOT captured — see known-sources.ts's own note on why -->
+    <time class="summary-metadata-item summary-metadata-item--date" datetime="2026-08-05">5 de agosto de 2026</time>
+  `;
+  const items = extractArticleList(html, "https://www.aninatgaleria.org/2026-1", ANINAT_CONFIG);
+  assert.ok(items);
+  assert.equal(items.length, 1);
+  assert.equal(items[0].title, 'Magdalena Correa | "KOS"');
+  assert.equal(items[0].sourceUrl, "https://www.aninatgaleria.org/exhibiciones-2026-aux/magdalena-correa-kos");
+  assert.equal(items[0].imageUrl, "https://images.squarespace-cdn.com/content/v1/kos.jpg");
+  assert.equal(items[0].rawDateText, "fecha no indicada", "no daysRegex configured — the listing's <time> is a publish date, not the exhibition's, so it's never surfaced to Haiku at all");
+});
+
 test("extractDateRange (espacioo.com-style): a same-year range states the year once, at the end — falls back correctly for BOTH start and end via the shared 'year' group, not 'endYear'", () => {
   const config: DateRangeConfig = {
     pattern:

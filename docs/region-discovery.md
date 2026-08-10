@@ -2736,6 +2736,69 @@ boundary separating it from the exhibition's own description — the
 recovered text is real, not fabricated, but includes more than a strict
 "exhibition description" would.
 
+### New source: aninatgaleria.org (2026-08-10) — Aninat Galería, and a listing timestamp that turned out to be the wrong date entirely
+
+Evaluated at the user's request, same session as galeriapready.cl above.
+Aninat Galería, a real gallery in Vitacura, running on Squarespace (a
+"summary block" gallery grid). Markup is unusually convenient: the
+item's image-link anchor carries both the real title (`data-title="..."`,
+HTML-entity-encoded) and the detail-page href in one tag, so the whole
+block/title/link extraction collapses into a single anchor tag — no
+separate title-link hunting needed.
+
+**Real trap found and avoided**: the listing's own `<time datetime="...">`
+looked exactly like mnba.gob.cl/mallecoescultura.cl's reliable `dayIso`
+shorthand (`<time class="summary-metadata-item summary-metadata-item--date"
+datetime="2026-08-05">5 de agosto de 2026</time>`) — clean, machine-
+readable, textbook shape. Cross-checking against the exhibition's own
+detail page proved it's wrong: "Magdalena Correa | KOS" listed
+`datetime="2026-08-05"` on the gallery grid, but its own detail page
+states in real prose "La inauguración se realizará el jueves 13 de agosto
+a las 18:30 horas" — 8 days later. The listing timestamp is the
+Squarespace BLOG POST's publish date, not the exhibition's own date. Had
+this been trusted, every exhibition on this source would have shipped a
+systematically wrong date. No daysRegex/dateRangeExtractor at all —
+Haiku sees no listing-level date signal, deliberately: exposing the
+misleading timestamp risked Haiku confidently confirming the WRONG date
+itself, which would then skip `enrichCandidates`' own
+`openingTimeExtractor` recovery entirely (that only runs when
+`!c.openingTimeConfirmed`).
+
+**Also tried and reverted, a second real finding**: built an
+`openingTimeExtractor` for the detail page's real "inaugurará ... el
+[weekday] DD de MES a las HH:MM horas" sentence — verified the pattern
+itself works against 2 real pages, correctly resolving the CURRENT
+exhibition's year via `inferYear`. But this source's shows run on a
+roughly monthly cadence, and testing an OLDER, already-closed item (a
+March opening, tested against an August reference date — the realistic
+shape of the FIRST run, which curates every item on the page at once
+regardless of age) showed `inferYear`'s 60-day-past tolerance rolling it
+forward a full YEAR, to 2027 — turning a genuinely past, closed
+exhibition into what looks like a real upcoming one. Worse than
+galeriapready.cl's own `inferYear` finding above (a real quote silently
+landing on the wrong year for a still-open show): here it risked
+fabricating an entirely fake future event on the live site. Reverted —
+no `openingTimeExtractor` at all. The real "inaugurará..." sentence still
+reaches Haiku, just via `descriptionExtractor` below rather than a
+dedicated recovery mechanism proven unsafe for this source's cadence.
+
+**Worth remembering generically**: `inferYear`'s 60-day tolerance is
+tuned for rolling-agenda sources (uchile.cl) where nothing is ever more
+than a few weeks out — don't reuse it uncritically for a source whose
+first run curates a full historical backlog at once, since an old item
+can land arbitrarily far in the past relative to the run date.
+
+Description: the detail page's real prose is split across MULTIPLE
+Squarespace text blocks interleaved with image blocks (a short
+title-header block first, THEN the block with the real "inauguración..."
+sentence, THEN more prose) — no single div wraps just "the description".
+Captured from the first `data-sqsp-text-block-content` marker through to
+`BlogItem-share` (a stable end-of-article marker, confirmed present on
+every sampled page), sweeping in every interleaved block — image tags
+contribute no stray text once stripped, so this is safe. Same known,
+unfixed limitation as galeriapready.cl: also includes the artist's full
+bio, not just the exhibition write-up.
+
 ### Cross-source dedup: two more real gaps found by a manual curation audit (2026-07-29)
 
 A user-requested audit against real production data (`docs/roadmap.md`'s
