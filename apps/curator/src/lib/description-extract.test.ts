@@ -143,3 +143,24 @@ test("extractDescription decodes decimal numeric HTML entities (&#241; etc.) the
   const html = 'class="info-box2">' + "<p>Dise&#241;o y curadur&#237;a.</p>" + "<!-- /Section: contenido-->";
   assert.equal(extractDescription(html, CNAC_CONFIG), "Diseño y curaduría.");
 });
+
+// Matches estacionmapocho.cl's real detail-page markup — the same config
+// known-sources.ts gives it in production (added 2026-08-10).
+const MAPOCHO_CONFIG: DescriptionConfig = {
+  pattern: /(bi-calendar4-week[\s\S]*?<div class="w40">[\s\S]*?<\/div>)/,
+};
+
+test("extractDescription reads estacionmapocho.cl's real markup, folding the real day-level date text (next to the calendar icon) in alongside the curatorial write-up (w40) — deliberate: this source's date phrasing is too inconsistent across items for a dedicated dateRangeExtractor, so the real quotable text is left for Haiku instead", () => {
+  const html =
+    '<div class="row"><div class="w10"><p><i class="bi bi-calendar4-week"></i></p></div>' +
+    '<div class="w90"><p>Del 12 de marzo al 24 de mayo</p></div></div>' +
+    '<div class="row"><div class="w10"><p><i class="bi bi-clock"></i></p></div>' +
+    '<div class="w90"><p>De 11:00 a 14:00 hrs.</p></div></div>' +
+    '<div class="w40"><p class="wp-block-paragraph">En marzo, el Centro Cultural Estación Mapocho recibe “Sueños”.</p></div>' +
+    '<section><div class="w50">otro contenido no relacionado</div></section>';
+
+  const result = extractDescription(html, MAPOCHO_CONFIG);
+  assert.match(result ?? "", /Del 12 de marzo al 24 de mayo/);
+  assert.match(result ?? "", /Centro Cultural Estación Mapocho recibe “Sueños”/);
+  assert.doesNotMatch(result ?? "", /otro contenido no relacionado/, "stops at w40's own closing div, doesn't sweep in unrelated later sections");
+});
