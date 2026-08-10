@@ -2799,6 +2799,62 @@ contribute no stray text once stripped, so this is safe. Same known,
 unfixed limitation as galeriapready.cl: also includes the artist's full
 bio, not just the exhibition write-up.
 
+### New source: estacionmapocho.cl (2026-08-10) — Centro Cultural Estación Mapocho, a coarse-but-genuine listing date, and a third confirmation of the same inconsistent-phrasing pattern
+
+Evaluated at the user's request, same session as the two sources above.
+A dedicated "Artes Visuales" listing (`?page_id=16`, not a mixed cultura
+category) — good density: 5 of 6 sampled items were real exhibitions,
+only 1 a workshop ("Escuela de Arte Textil Ad Llallín"), which Haiku's
+own scope judgment should catch on its own merits like any other
+real-but-out-of-scope candidate. Custom WordPress theme.
+
+Only page 1 of the listing's pagination (7 pages total) is fetched —
+deliberately not walking all 7 the way artes.uchile.cl's
+`additionalPages` does for its own rolling agenda: items are roughly
+chronological, and page 1 alone already covered 6 months of real shows
+(Jan-Jun 2026 at evaluation time) — matches this project's posture
+against pulling in a full historical archive when a source's own
+default ordering already surfaces what's current (contrast
+galeriapready.cl above, whose Webflow tabs render every year at once
+with no such natural bound).
+
+The listing gives a real title, image, and a coarse `MM/YYYY` month
+field — cross-checked against 2 real detail pages and confirmed
+genuine (NOT a repeat of aninatgaleria.org's blog-publish-date trap):
+"Sueños" listed `03/2026`, its detail page opens "En marzo, el Centro
+Cultural Estación Mapocho recibe... — Del 12 de marzo al 24 de mayo";
+"Kadogo..." listed `01/2026`, detail page confirms a January-into-March
+run ("hasta el 8 de marzo"). Left as `rawDateText` only — a month alone
+can't build a real day-precision ISO date without fabricating a day.
+
+**No openingTimeExtractor/detailDateRangeExtractor — the third real
+instance this session of the same inconsistent-phrasing pattern.**
+Sampled 4 real detail pages: no "Inauguración: fecha hora" phrasing on
+any of them (consistent with an unrelated real finding from the SAME
+day's audit — a Tavily-discovered candidate from this exact domain,
+"Tiempo entre puntadas," whose own Haiku curation reasoning already
+noted "inauguración el 8 de agosto sin hora exacta"). The real
+day-level date text does exist next to a calendar icon
+(`<div class="w90">`), but its phrasing is genuinely inconsistent
+across items — a full "Del D de MES al D de MES" range for one
+exhibition, just "hasta el D de MES" (no start at all) for another —
+the same class of cross-item inconsistency that already ruled out a
+dateRangeExtractor for galeriapready.cl and an openingTimeExtractor for
+aninatgaleria.org, both earlier the same session. Rather than risk a
+pattern that silently mishandles whichever shape it wasn't built
+against, that real day-level text is folded into `descriptionExtractor`
+instead, so Haiku still sees and can ground a quote from it —
+interpretation, not extraction, absorbs the shape variance.
+
+Description: captured from the calendar-icon row through the end of the
+real prose block (`<div class="w40">`, confirmed to hold ONLY the
+curatorial write-up — no nested divs, no artist-bio bleed the way
+galeriapready.cl/aninatgaleria.org both have, a genuinely cleaner source
+on this front). Harmless real noise: the page duplicates this same
+location/date/hours block for a mobile layout variant, so the captured
+text repeats the date fragment twice — doesn't affect grounding, Haiku
+isn't confused by the same true fact stated twice.
+
 ### Cross-source dedup: two more real gaps found by a manual curation audit (2026-07-29)
 
 A user-requested audit against real production data (`docs/roadmap.md`'s

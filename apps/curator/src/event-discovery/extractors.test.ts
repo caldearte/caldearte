@@ -490,6 +490,48 @@ test("extractArticleList handles aninatgaleria.org's real markup: title/href/ima
   assert.equal(items[0].rawDateText, "fecha no indicada", "no daysRegex configured — the listing's <time> is a publish date, not the exhibition's, so it's never surfaced to Haiku at all");
 });
 
+// Matches estacionmapocho.cl's real markup — the same config known-sources.ts
+// gives it in production (added 2026-08-10). daysRegex captures a coarse
+// MM/YYYY month field (cross-checked against real detail pages and confirmed
+// genuine, unlike aninatgaleria.org's misleading <time>) — no
+// dateRangeExtractor, since a month alone can't build a real day without
+// fabricating one.
+const MAPOCHO_CONFIG: ArticleListConfig = {
+  kind: "articleList",
+  blockRegex: /(<div class="eventosPosts">[\s\S]*?<\/a>\s*<\/div>)/g,
+  titleLinkRegex: /<a href="([^"]+)">[\s\S]*?<h2>([^<]*)<\/h2>/,
+  daysRegex: /bi-calendar4-week[\s\S]*?w90"><p>([^<]*)<\/p>/,
+};
+
+test("extractArticleList handles estacionmapocho.cl's real markup: title/href/image/month extracted from the 'eventosPosts' card, the calendar-icon row picked out from among the icon rows around it", () => {
+  const html = `
+    <div class="eventosPosts">
+      <a href="https://www.estacionmapocho.cl/?artvis=suenos">
+        <div class="eventosPostsImg">
+          <img src="https://www.estacionmapocho.cl/wp-content/uploads/2026/03/canon-09-scaled.jpg" class="" alt="">
+        </div>
+        <div class="eventosPostsB">
+          <h2>Sueños</h2>
+          <hr>
+          <p>Una exposición de fotografía subacuática.</p>
+          <hr>
+          <div class="row">
+            <div class="w10"><p><i class="bi bi-calendar4-week"></i></p></div>
+            <div class="w90"><p>03/2026</p></div>
+          </div>
+        </div>
+      </a>
+    </div>
+  `;
+  const items = extractArticleList(html, "https://www.estacionmapocho.cl/?page_id=16", MAPOCHO_CONFIG);
+  assert.ok(items);
+  assert.equal(items.length, 1);
+  assert.equal(items[0].title, "Sueños");
+  assert.equal(items[0].sourceUrl, "https://www.estacionmapocho.cl/?artvis=suenos");
+  assert.equal(items[0].imageUrl, "https://www.estacionmapocho.cl/wp-content/uploads/2026/03/canon-09-scaled.jpg");
+  assert.equal(items[0].rawDateText, "03/2026");
+});
+
 test("extractDateRange (espacioo.com-style): a same-year range states the year once, at the end — falls back correctly for BOTH start and end via the shared 'year' group, not 'endYear'", () => {
   const config: DateRangeConfig = {
     pattern:

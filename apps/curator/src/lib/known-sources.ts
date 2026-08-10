@@ -602,6 +602,21 @@ export const KNOWN_SOURCES: KnownSource[] = [
       pattern: /data-sqsp-text-block-content>([\s\S]*?)BlogItem-share/,
     },
   },
+  {
+    url: "https://www.estacionmapocho.cl/?page_id=16",
+    note: 'Centro Cultural Estación Mapocho, Santiago — evaluated at the user\'s request 2026-08-10. Custom WordPress theme, a dedicated "Artes Visuales" listing (not a mixed cultura category — good density: 5/6 sampled items were real exhibitions, only 1 a workshop, which Haiku\'s own scope judgment should catch on its own merits like any other real-but-out-of-scope candidate). Only page 1 of the listing\'s pagination (7 pages total) is fetched — deliberately NOT walking all 7 pages the way artes.uchile.cl\'s additionalPages does: items are already roughly chronological, and page 1 alone covers 6 months of real shows (Jan-Jun 2026 at eval time), matching this project\'s posture against pulling in a full historical archive when a source\'s own default ordering already surfaces what\'s current.\n\nListing gives a real title, image, and a coarse `MM/YYYY` date field (e.g. "03/2026", captured via daysRegex) — cross-checked against 2 real detail pages and confirmed to be a genuine editorially-set "month this exhibition happens" field (not a CMS/blog-publish-date trap like aninatgaleria.org\'s own `<time>` turned out to be): "Sueños" listed 03/2026, its detail page opens "En marzo, el Centro Cultural Estación Mapocho recibe...— Del 12 de marzo al 24 de mayo"; "Kadogo..." listed 01/2026, detail page confirms a January-into-March run ("hasta el 8 de marzo"). Left as rawDateText only (no dateRangeExtractor) — a month alone can\'t build a real day-precision ISO date without fabricating a day.\n\n**No openingTimeExtractor/detailDateRangeExtractor**: sampled 4 real detail pages, found no "Inauguración: <fecha> <hora>" phrasing on any of them (consistent with a real Tavily-discovered candidate from this same domain, curated earlier the same day via the regular per-comuna path — "Tiempo entre puntadas" — which Haiku itself noted had "inauguración el 8 de agosto sin hora exacta"). The real day-level date text DOES exist on the detail page (next to a calendar icon, `<div class="w90">`), but its phrasing is genuinely inconsistent across items — a full "Del D de MES al D de MES" range for one exhibition, just "hasta el D de MES" (no start at all) for another — the same class of cross-item inconsistency that ruled out a rigid dateRangeExtractor for galeriapready.cl and an openingTimeExtractor for aninatgaleria.org. Rather than risk a pattern that silently mishandles whichever shape it wasn\'t built against, that real day-level text is folded into descriptionExtractor below instead, so Haiku still sees and can ground a quote from it — interpretation, not extraction, handles the shape variance.\n\nDescription: captured from the calendar-icon row through the end of the real prose block (`<div class="w40">`, confirmed to hold ONLY the curatorial write-up — no nested divs, no artist-bio bleed the way galeriapready.cl/aninatgaleria.org both have). Real, harmless noise: the page duplicates this same location/date/hours block for a mobile layout variant, so the captured text repeats "Del 12 de marzo al 24 de mayo"-style fragments twice — not a bug, doesn\'t affect grounding (a real quote still matches; Haiku isn\'t confused by the same true fact stated twice).',
+    lastReviewedAt: "2026-08-10",
+    extractor: {
+      kind: "articleList",
+      blockRegex: /(<div class="eventosPosts">[\s\S]*?<\/a>\s*<\/div>)/g,
+      titleLinkRegex: /<a href="([^"]+)">[\s\S]*?<h2>([^<]*)<\/h2>/,
+      daysRegex: /bi-calendar4-week[\s\S]*?w90"><p>([^<]*)<\/p>/,
+    },
+    fixedLocation: { location: "Santiago", placeName: "Centro Cultural Estación Mapocho" },
+    descriptionExtractor: {
+      pattern: /(bi-calendar4-week[\s\S]*?<div class="w40">[\s\S]*?<\/div>)/,
+    },
+  },
 ];
 
 export function knownSourceDomain(url: string): string {
