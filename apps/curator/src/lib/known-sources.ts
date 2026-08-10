@@ -617,6 +617,25 @@ export const KNOWN_SOURCES: KnownSource[] = [
       pattern: /(bi-calendar4-week[\s\S]*?<div class="w40">[\s\S]*?<\/div>)/,
     },
   },
+  {
+    url: "https://factoriasantarosa.cl/exposiciones",
+    note: 'Factoría Santa Rosa, Santiago — evaluated at the user\'s request 2026-08-10. WordPress + Elementor + JetEngine (a common combo for CMS-driven listing grids) — a genuinely clean, fully-structured source, unlike the three sources added earlier the same session (galeriapready.cl, aninatgaleria.org, estacionmapocho.cl), all of which had to leave date interpretation to Haiku after finding real inconsistencies. This one has NEITHER problem: the listing itself has zero date info at all (title/image/link only — nothing to mistake for a real date), and the detail page\'s date fields are fully structured, machine-readable, and consistent across every sampled item (4 real detail pages checked, including one — "diga-queer-con-la-lengua-afuera" — with a genuinely empty end-date field, which the extractor correctly returns null for rather than guessing).\n\nListing markup: two adjacent JetEngine widgets share the same href — `<a href="/exposiciones/slug" class="jet-listing-dynamic-image__link"><img src="..."></a>` immediately followed by `<a href="/exposiciones/slug" class="jet-listing-dynamic-link__link"><span class="jet-listing-dynamic-link__label">TITLE</span></a>` — captured as one block spanning both, same "single anchor pair, same href" shape as aninatgaleria.org\'s own listing. All 26 items live on one page (no pagination) — NOT chronologically ordered (a 2024 exhibition appeared near the top, ahead of a 2025 one), so every item gets curated on the first run; acceptable at this size (unlike galeriapready.cl\'s ~67-item, 9-tab archive).\n\n**Real, fully deterministic date recovery** (`detailDateRangeExtractor`, matching mssa.cl\'s own precedent): the detail page has explicit "Inicio"/"Termino" labels next to `<div class="jet-listing-dynamic-field__content">DD-MM-YYYY</div>` values. Deliberately does NOT anchor on the "Inicio" label text itself — the site\'s own nav menu also contains a link literally labeled "Inicio" ("Home" in Spanish), which a naive label-anchored regex matched first, on the wrong occurrence, in real testing. Anchors on two CONSECUTIVE `jet-listing-dynamic-field__content` values matching the `DD-MM-YYYY` shape instead — safe because the description field (recovered separately, see below) also uses this exact CSS class but never starts with a bare date-shaped string (it opens with a `<p>` tag), so there\'s no risk of the date pattern accidentally matching into the description or vice versa.\n\nDescription: recovered from the SAME `jet-listing-dynamic-field__content` class, disambiguated from the date fields by anchoring on the "Descripción" heading that precedes it (`<h5>...Descripción</h5>`) — real prose, cleanly bounded (closes at its own `</div></div></div>`, no bio-bleed the way galeriapready.cl/aninatgaleria.org both have).',
+    lastReviewedAt: "2026-08-10",
+    extractor: {
+      kind: "articleList",
+      blockRegex:
+        /(<a href="(https:\/\/factoriasantarosa\.cl\/exposiciones\/[^"]+)" class="jet-listing-dynamic-image__link">[\s\S]*?jet-listing-dynamic-link__label">[^<]*<\/span>\s*<\/a>)/g,
+      titleLinkRegex: /<a href="([^"]+)"[\s\S]*?jet-listing-dynamic-link__label">([^<]*)<\/span>/,
+    },
+    fixedLocation: { location: "Santiago", placeName: "Factoría Santa Rosa" },
+    detailDateRangeExtractor: {
+      pattern:
+        /jet-listing-dynamic-field__content"\s*>(?<startDay>\d{1,2})-(?<startMonth>\d{1,2})-(?<startYear>\d{4})<[\s\S]*?jet-listing-dynamic-field__content"\s*>(?<endDay>\d{1,2})-(?<endMonth>\d{1,2})-(?<endYear>\d{4})</,
+    },
+    descriptionExtractor: {
+      pattern: /Descripción<\/h5>[\s\S]*?jet-listing-dynamic-field__content"\s*>([\s\S]*?)<\/div><\/div><\/div>/,
+    },
+  },
 ];
 
 export function knownSourceDomain(url: string): string {
