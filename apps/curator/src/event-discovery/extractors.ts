@@ -66,8 +66,22 @@ export interface BrightSourceItem {
   placeName: string | null;
 }
 
+// Entities decoded AFTER tags are stripped, never before — decoding
+// first would turn a real "&lt;script&gt;" into a live-looking "<script>"
+// tag right before the tag-strip regex runs, same ordering
+// lib/description-extract.ts's own stripTagsAndCollapse already uses.
+//
+// Real bug found 2026-08-08 (espacioo.com): this never decoded entities
+// at all, unlike the `title` field a few lines below (which explicitly
+// wraps its own collapseWhitespace call in decodeHtmlEntities) — every
+// OTHER field an articleList source pulls through this function
+// (daysRegex, placeRegex, descriptionRegex) shipped with raw "&oacute;"-
+// style entities still in it. espacioo.com's own listing-level
+// description (span.description.prose) is what surfaced it, but the gap
+// applied to every source using descriptionRegex/placeRegex, not just
+// this one — decoding now happens once, here, for all of them.
 export function collapseWhitespace(text: string): string {
-  return text.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+  return decodeHtmlEntities(text.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim());
 }
 
 // Pull <img src/alt> pairs out BEFORE stripping tags — the original crude
@@ -90,6 +104,22 @@ export function collapseWhitespace(text: string): string {
 // backported to this sibling function — same lesson as that fix's own
 // comment: a decoding gap found in one copy doesn't automatically apply
 // to a duplicate.
+// Named Spanish-language entities — merged in 2026-08-08 from this same
+// file's own now-removed `htmlToPlainText`/`SPANISH_HTML_ENTITIES`
+// (originally added 2026-07-28 for chilecultura.gob.cl's WordPress REST
+// description field, "&oacute;n", "&iacute;a", etc). Now that
+// collapseWhitespace (above) decodes entities for every articleList
+// field, that separate copy was pure duplication — consolidated into
+// this one table instead of drifting further apart.
+const NAMED_ENTITIES: Record<string, string> = {
+  aacute: "á", eacute: "é", iacute: "í", oacute: "ó", uacute: "ú",
+  Aacute: "Á", Eacute: "É", Iacute: "Í", Oacute: "Ó", Uacute: "Ú",
+  ntilde: "ñ", Ntilde: "Ñ", uuml: "ü", Uuml: "Ü",
+  iexcl: "¡", iquest: "¿", ldquo: "“", rdquo: "”",
+  lsquo: "‘", rsquo: "’", hellip: "…", nbsp: " ",
+  deg: "°", ordm: "º", ordf: "ª", ndash: "–", mdash: "—",
+};
+
 function decodeHtmlEntities(text: string): string {
   return text
     .replace(/&#x([0-9A-Fa-f]+);/g, (_, hex: string) => String.fromCodePoint(parseInt(hex, 16)))
@@ -98,7 +128,8 @@ function decodeHtmlEntities(text: string): string {
     .replace(/&quot;/g, '"')
     .replace(/&#0?39;/g, "'")
     .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">");
+    .replace(/&gt;/g, ">")
+    .replace(/&(\w+);/g, (full, name: string) => NAMED_ENTITIES[name] ?? full);
 }
 
 export function extractImgTags(html: string): Array<{ url: string; description: string | null }> {
@@ -400,34 +431,6 @@ function formatWpDate(raw: string | undefined): string | null {
   return null;
 }
 
-// Decodes the common named entities that show up in real Spanish-language
-// rich-text HTML (chilecultura.gob.cl's `description` field, confirmed
-// 2026-07-28: "&oacute;n", "&iacute;a", etc. — a genuinely different case
-// from decodeHtmlEntities above, which only ever needed to handle
-// "&amp;" inside image-style query strings) — then strips tags via
-// collapseWhitespace. Applied only to WordpressRestApi description fields
-// so far; parquecultural.cl's own extracto_corto is already plain text,
-// so this is a harmless no-op for it (no tags, no named entities).
-const SPANISH_HTML_ENTITIES: Record<string, string> = {
-  aacute: "á", eacute: "é", iacute: "í", oacute: "ó", uacute: "ú",
-  Aacute: "Á", Eacute: "É", Iacute: "Í", Oacute: "Ó", Uacute: "Ú",
-  ntilde: "ñ", Ntilde: "Ñ", uuml: "ü", Uuml: "Ü",
-  iexcl: "¡", iquest: "¿", ldquo: "“", rdquo: "”",
-  lsquo: "‘", rsquo: "’", hellip: "…", nbsp: " ",
-  deg: "°", ordm: "º", ordf: "ª", ndash: "–", mdash: "—",
-};
-
-function htmlToPlainText(html: string): string {
-  const withEntities = html
-    .replace(/&amp;/g, "&")
-    .replace(/&quot;/g, '"')
-    .replace(/&#0?39;/g, "'")
-    .replace(/&(aacute|eacute|iacute|oacute|uacute|Aacute|Eacute|Iacute|Oacute|Uacute|ntilde|Ntilde|uuml|Uuml|iexcl|iquest|ldquo|rdquo|lsquo|rsquo|hellip|nbsp|deg|ordm|ordf|ndash|mdash);/g, (_, name: string) => SPANISH_HTML_ENTITIES[name])
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">");
-  return collapseWhitespace(withEntities);
-}
-
 // A WordPress REST API response is already structured — no HTML parsing,
 // no guessing which image belongs to which event, no need for Haiku to
 // interpret startDate/endDate at all when the source gives them exactly
@@ -440,7 +443,7 @@ export function extractWordpressItems(items: unknown[], config: WordpressRestCon
   return items.map((item) => {
     const title = getStringPath(item, config.titleField) ?? "(sin título)";
     const rawDescription = getStringPath(item, config.descriptionField);
-    const description = rawDescription ? htmlToPlainText(rawDescription) || null : null;
+    const description = rawDescription ? collapseWhitespace(rawDescription) || null : null;
     return {
       title,
       sourceUrl: getStringPath(item, config.linkField) ?? fallbackUrl,

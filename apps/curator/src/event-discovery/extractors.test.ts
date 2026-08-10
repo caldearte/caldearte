@@ -349,6 +349,74 @@ test("extractArticleList excludes a Barcelona 'Sede' item entirely and only extr
   assert.deepEqual({ start: items[0].structuredStartDate, end: items[0].structuredEndDate }, { start: "2026-06-23", end: "2026-08-31" });
 });
 
+// Matches espacioo.com's real markup — the same config known-sources.ts
+// gives it in production (added 2026-08-08).
+const ESPACIOO_CONFIG: ArticleListConfig = {
+  kind: "articleList",
+  blockRegex: /<li[^>]*data-width="\d+"[^>]*>([\s\S]*?)<\/li>/g,
+  titleLinkRegex: /<a href="([^"]+)"[^>]*>[\s\S]*?<h2>([^<]*)<\/h2>/,
+  daysRegex: /<span class="date">([^<]+)<\/span>/,
+  descriptionRegex: /<span class="description prose">([\s\S]*?)<\/span>/,
+  dateRangeExtractor: {
+    pattern:
+      /(?<startDay>\d{1,2})\s+(?<startMonth>[a-zé]{3})[a-zé]*(?:\s+(?<startYear>\d{4}))?\s+-\s+(?<endDay>\d{1,2})\s+(?<endMonth>[a-zé]{3})[a-zé]*\s+(?<year>\d{4})/i,
+  },
+};
+
+// Real bug found 2026-08-08 building this: a rigid `<li data-width="N">`
+// blockRegex silently dropped the site's LAST listed item, whose <li> also
+// carried `class="last"` before data-width — this fixture reproduces that
+// exact shape to guard against regressing to a rigid attribute-order
+// assumption.
+test("extractArticleList handles espacioo.com's real markup: an <li> with an extra class before data-width, the lazy-loaded image, listing-level description, and both cross-year and same-year date shapes", () => {
+  const html = `
+    <li data-width="1000" data-height="1000">
+      <a href="/exhibitions/39-albergue-transitorio/overview/">
+        <span class="image"><span><img src="data:image/gif;base64,tiny" data-src="https://static-assets.artlogic.net/albergue.jpg" alt="Albergue" /></span></span>
+        <div class="content">
+          <h2>Albergue Transitorio</h2>
+          <span class="subtitle">Exposición Colectiva</span>
+          <span class="date">3 Diciembre 2025 - 31 Marzo 2026</span>
+          <span class="description prose">Una muestra sobre la noci&oacute;n de refugio...</span>
+        </div>
+      </a>
+    </li>
+    <li  class="last"  data-width="2000" data-height="2000">
+      <a href="/exhibitions/36-destiempo/overview/">
+        <span class="image"><span><img src="data:image/gif;base64,tiny" data-src="https://static-assets.artlogic.net/destiempo.jpg" alt="Destiempo" /></span></span>
+        <div class="content">
+          <h2>Destiempo</h2>
+          <span class="subtitle">Virginia Guilisasti</span>
+          <span class="date">28 Noviembre 2024 - 28 Febrero 2025</span>
+          <span class="description prose">Sobre la rutina incontrolada...</span>
+        </div>
+      </a>
+    </li>
+  `;
+  const items = extractArticleList(html, "https://www.espacioo.com/exhibitions/", ESPACIOO_CONFIG);
+  assert.ok(items);
+  assert.equal(items.length, 2);
+  assert.equal(items[0].title, "Albergue Transitorio");
+  assert.equal(items[0].imageUrl, "https://static-assets.artlogic.net/albergue.jpg");
+  // Cross-year: both years stated explicitly.
+  assert.deepEqual({ start: items[0].structuredStartDate, end: items[0].structuredEndDate }, { start: "2025-12-03", end: "2026-03-31" });
+  // Confirms the real entity-decoding bug fix (collapseWhitespace now
+  // decodes, not just title) — "noci&oacute;n" -> "noción".
+  assert.match(items[0].description ?? "", /noción de refugio/);
+  assert.equal(items[1].title, "Destiempo");
+  assert.equal(items[1].imageUrl, "https://static-assets.artlogic.net/destiempo.jpg");
+  // Cross-year again, both years stated.
+  assert.deepEqual({ start: items[1].structuredStartDate, end: items[1].structuredEndDate }, { start: "2024-11-28", end: "2025-02-28" });
+});
+
+test("extractDateRange (espacioo.com-style): a same-year range states the year once, at the end — falls back correctly for BOTH start and end via the shared 'year' group, not 'endYear'", () => {
+  const config: DateRangeConfig = {
+    pattern:
+      /(?<startDay>\d{1,2})\s+(?<startMonth>[a-zé]{3})[a-zé]*(?:\s+(?<startYear>\d{4}))?\s+-\s+(?<endDay>\d{1,2})\s+(?<endMonth>[a-zé]{3})[a-zé]*\s+(?<year>\d{4})/i,
+  };
+  assert.deepEqual(extractDateRange("29 Mayo - 31 Agosto 2025", config), { runStartDate: "2025-05-29", runEndDate: "2025-08-31" });
+});
+
 // Matches Parque Cultural Valparaíso's real WordPress meta-field names —
 // the same config known-sources.ts gives it in production.
 const PARQUE_CULTURAL_CONFIG: WordpressRestConfig = {

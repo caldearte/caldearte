@@ -550,6 +550,29 @@ export const KNOWN_SOURCES: KnownSource[] = [
       pattern: /<div class="dieecke-overflow">([\s\S]*?)<\/div>/,
     },
   },
+  {
+    url: "https://www.espacioo.com/exhibitions/",
+    note: 'Espacio O, a real gallery in Santiago, Chile — evaluated at the user\'s request 2026-08-08, added anyway per their own explicit call despite the caveat below. Runs on Artlogic (a specialized art-gallery site platform — the first source on this platform, not WordPress like every other source so far).\n\n**Real caveat, not yet resolved**: at evaluation time, `/exhibitions/` had ZERO current exhibitions — the page goes straight to "Pasadas" (past), and the most recent one had already closed months before. This extractor is built and verified against the real "Pasadas" markup (4 real past items, fully confirmed), on the assumption that a "Current" section — once Espacio O has one again — renders with the same per-item card template (a reasonable inference for a templated CMS, not custom code, but genuinely UNVERIFIED — no live current example existed to check against). Revisit once this gallery has a real current show, same posture as fme.cl\'s "revisit once updated" note.\n\nMarkup: `<li ... data-width="N" data-height="N">...</li>` per item (blockRegex tolerates OTHER attributes/classes anywhere in the tag — real bug found building this: the LAST item\'s `<li>` also had `class="last"` inserted before data-width, and a rigid `<li\\s+data-width=...` pattern silently dropped it, extracting 3 items instead of 4). Title/link: `<a href="...">...<h2>Title</h2></a>`. Image: a real `<img>` with `data-src` (lazy-load, already handled by extractImgTags\'s existing data-src precedence — no new capability needed). Date: `<span class="date">DD Mes[ YYYY] - DD Mes YYYY</span>` — the START year is only stated when it differs from the end year (cross-year exhibitions state both; same-year ones state it once, at the end) — dateRangeExtractor\'s `year` group (not `endYear`) is what makes both shapes resolve correctly, same shared-year-fallback mechanism molinomachmar.cl already established. Description: real prose already in the listing (`<span class="description prose">`, truncated with "..." — same tradeoff molinomachmar.cl\'s own listing excerpt already accepts), no detail-page fetch needed. No openingTimeExtractor — no "Inauguración" phrasing found on the one sampled detail page.\n\n**Real bug found and fixed generically, not espacioo.com-specific**: this source\'s description surfaced that `collapseWhitespace` (used for every articleList field except title — daysRegex/placeRegex/descriptionRegex) never decoded HTML entities at all, unlike `title`\'s own explicit decodeHtmlEntities wrap — espacioo.com\'s real description shipped literal "&oacute;n"/"&iacute;a" text. Fixed by having collapseWhitespace decode entities itself (strip tags first, decode after — same order lib/description-extract.ts\'s own stripTagsAndCollapse already uses), and consolidated this file\'s own separate, now-redundant SPANISH_HTML_ENTITIES/htmlToPlainText (added 2026-07-28 for chilecultura.gob.cl, wordpressRestApi descriptions only) into the same decodeHtmlEntities table — one copy instead of two silently drifting ones.',
+    lastReviewedAt: "2026-08-08",
+    extractor: {
+      kind: "articleList",
+      blockRegex: /<li[^>]*data-width="\d+"[^>]*>([\s\S]*?)<\/li>/g,
+      titleLinkRegex: /<a href="([^"]+)"[^>]*>[\s\S]*?<h2>([^<]*)<\/h2>/,
+      daysRegex: /<span class="date">([^<]+)<\/span>/,
+      descriptionRegex: /<span class="description prose">([\s\S]*?)<\/span>/,
+      // The start year is only stated for a real cross-year exhibition
+      // ("3 Diciembre 2025 - 31 Marzo 2026") — a same-year one states it
+      // once, at the end, only ("29 Mayo - 31 Agosto 2025"). Naming the
+      // trailing year "year" (not "endYear") is what makes extractDateRange
+      // correctly fall back to it for BOTH the start and end date in the
+      // same-year case, while a real startYear still wins when present.
+      dateRangeExtractor: {
+        pattern:
+          /(?<startDay>\d{1,2})\s+(?<startMonth>[a-zé]{3})[a-zé]*(?:\s+(?<startYear>\d{4}))?\s+-\s+(?<endDay>\d{1,2})\s+(?<endMonth>[a-zé]{3})[a-zé]*\s+(?<year>\d{4})/i,
+      },
+    },
+    fixedLocation: { location: "Santiago", placeName: "Espacio O" },
+  },
 ];
 
 export function knownSourceDomain(url: string): string {
