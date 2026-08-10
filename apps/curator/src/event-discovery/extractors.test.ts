@@ -409,6 +409,48 @@ test("extractArticleList handles espacioo.com's real markup: an <li> with an ext
   assert.deepEqual({ start: items[1].structuredStartDate, end: items[1].structuredEndDate }, { start: "2024-11-28", end: "2025-02-28" });
 });
 
+// Matches galeriapready.cl's real markup — the same config known-sources.ts
+// gives it in production (added 2026-08-10). No dateRangeExtractor: the
+// listing states dates in ENGLISH ("August 26, 2026"), which Spanish-only
+// ES_MONTH_ABBR can't parse — rawDateText (with its real year) is left for
+// Haiku to interpret instead.
+const PREADY_CONFIG: ArticleListConfig = {
+  kind: "articleList",
+  blockRegex: /(<a href="\/exhibition\/[^"]+" class="exhib-tabs-item w-inline-block">[\s\S]*?<\/a>)/g,
+  titleLinkRegex: /<a href="([^"]+)"[^>]*>[\s\S]*?exhib-tab-title">([^<]*)</,
+  daysRegex: /class="exhib-tab-descr">([^<]*)</,
+};
+
+test("extractArticleList handles galeriapready.cl's real markup: title/link/image/date extracted, and an item whose only descr div is the empty w-dyn-bind-empty variant yields no rawDateText", () => {
+  const html = `
+    <div role="listitem" class="w-dyn-item">
+      <a href="/exhibition/elvira-valenzuela---sobre-peso" class="exhib-tabs-item w-inline-block">
+        <img src="https://cdn.prod.website-files.com/elvira.jpg" class="exhib-tabs-img"/>
+        <div class="exhib-tab-title">Elvira Valenzuela - Sobre / peso</div>
+        <div class="exhib-tab-descr">July 22, 2026</div>
+        <div class="exhib-tab-descr">En curso</div>
+        <div class="exhib-tab-descr">Sala Araucaria</div>
+      </a>
+    </div>
+    <div role="listitem" class="w-dyn-item">
+      <a href="/exhibition/caicoi" class="exhib-tabs-item w-inline-block">
+        <img src="https://cdn.prod.website-files.com/caicoi.jpg" class="exhib-tabs-img"/>
+        <div class="exhib-tab-title">Raquel Aguilar - Caicoi</div>
+        <div class="exhib-tab-descr w-dyn-bind-empty"></div>
+      </a>
+    </div>
+  `;
+  const items = extractArticleList(html, "https://galeriapready.cl/exhibiciones", PREADY_CONFIG);
+  assert.ok(items);
+  assert.equal(items.length, 2);
+  assert.equal(items[0].title, "Elvira Valenzuela - Sobre / peso");
+  assert.equal(items[0].sourceUrl, "https://galeriapready.cl/exhibition/elvira-valenzuela---sobre-peso");
+  assert.equal(items[0].imageUrl, "https://cdn.prod.website-files.com/elvira.jpg");
+  assert.equal(items[0].rawDateText, "July 22, 2026");
+  assert.equal(items[1].title, "Raquel Aguilar - Caicoi");
+  assert.equal(items[1].rawDateText, "fecha no indicada", "empty w-dyn-bind-empty descr div — no real date to extract");
+});
+
 test("extractDateRange (espacioo.com-style): a same-year range states the year once, at the end — falls back correctly for BOTH start and end via the shared 'year' group, not 'endYear'", () => {
   const config: DateRangeConfig = {
     pattern:

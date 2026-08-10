@@ -2668,6 +2668,74 @@ table — one copy instead of two silently drifting ones, closing out the
 same "which copy did the fix land in" risk cclm.cl's own numeric-entity
 fix flagged the same day.
 
+### New source: galeriapready.cl (2026-08-10) — Galería Patricia Ready, and a real date-source conflict that ruled out openingTimeExtractor
+
+Evaluated at the user's request. Galería Patricia Ready, a real gallery
+in Vitacura with two rooms (Sala Ginkgo / Sala Araucaria), running on
+Webflow. The listing renders as a "Tabs" widget — one tab per YEAR
+(2018–2026) — but Webflow renders every tab's content into the raw HTML
+at once (not JS-loaded on click), so a single fetch of `/exhibiciones`
+yields all ~67 items across every year, not just the current one.
+
+Deliberately **not** bounded to just the active/current tab: the only
+real option found was an unbounded-length lookbehind spanning the whole
+page to reject any item appearing after the first tab-pane boundary —
+exactly the kind of fragile cleverness this codebase avoids elsewhere.
+Accepted as a one-time cost instead: old items get correctly rejected by
+Haiku for being years in the past (same as any other real-but-outdated
+candidate), and the pre-curation `excludedSourceUrls` cache means every
+subsequent weekly run only ever sees genuinely new items.
+
+The listing's own date field is in **English** ("August 26, 2026", "July
+22, 2026") — `extractDateRange`'s Spanish-only `ES_MONTH_ABBR` table can't
+parse it, so no `dateRangeExtractor` is set; the raw text (with its real,
+reliable year) is left as `rawDateText` for Haiku to interpret, backed by
+the mandatory quote-grounding check.
+
+**Real inconsistency found, tried and reverted — the reason there's no
+`openingTimeExtractor`/`detailDateRangeExtractor` here**: the detail
+page's own rich-text write-up states a real "Inauguración: [weekday] DD
+de MES HH:MM hrs" / "Exposición abierta hasta: DD de MES" pair — day and
+month only, no year, in Spanish — that looked like a clean fit for the
+existing `openingTimeExtractor` + its `inferYear` fallback (the same
+mechanism uchile.cl's own "esperamos este miércoles..." phrasing already
+uses). Built it, verified against 2 real detail pages, and found:
+
+1. The detail page's own inauguración date can flatly **disagree** with
+   the listing's own date field for the same exhibition — "Martín Daiber
+   - Primavera": the listing said `July 13, 2026`, the detail page said
+   `Inauguración: miércoles 10 de junio 18:00 hrs` (June 10 — a full
+   month earlier).
+2. `inferYear`'s 60-day-past tolerance (tuned for uchile.cl's rolling
+   30-day agenda, where an event is never more than a few weeks out)
+   rolled that real, currently-running ("En curso") exhibition's June
+   opening forward to **2027** when tested against an August reference
+   date — a multi-week-long exhibition can easily still be running 60+
+   days after its own opening, a materially different temporal profile
+   than the rolling-agenda sources this inference was built for.
+
+Given the source's own two fields can disagree, and the shared
+year-inference heuristic doesn't fit this gallery's longer exhibition-run
+length, deterministically merging them risked writing a confidently-wrong
+date into the database. Left the full date interpretation (including
+reconciling the listing-vs-detail-page discrepancy) to Haiku instead,
+backed by the same grounding check that already catches fabrication —
+safer than a deterministic path that can silently corrupt a real date.
+
+Description: recovered from the detail page's `<div class="w-richtext">`
+block, cut off right before "Contacto prensa" (present on every real
+write-up, absent on an announced-but-not-yet-written-up one). Real bug
+found building this: anchoring the terminator to `<p>` immediately before
+the text broke silently on "Martín Daiber - Primavera" specifically,
+because that page wraps "Contacto prensa:" in `<strong>` while others
+don't — some paragraphs also lead with a zero-width joiner (‍). Fixed by
+matching "Contacto prensa" directly, without anchoring to the preceding
+tag. **Known, unfixed limitation**: this same richtext block also
+contains the artist's full biography/CV and contact info with no HTML
+boundary separating it from the exhibition's own description — the
+recovered text is real, not fabricated, but includes more than a strict
+"exhibition description" would.
+
 ### Cross-source dedup: two more real gaps found by a manual curation audit (2026-07-29)
 
 A user-requested audit against real production data (`docs/roadmap.md`'s
