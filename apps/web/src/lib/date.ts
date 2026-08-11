@@ -85,17 +85,22 @@ export function fmtUntilDate(runEndDate: string | null, anchorDate: string, toda
   return `Hasta el ${d.getDate()} de ${monthCap}${yearSuffix}`;
 }
 
-// "Closing soon" — within `thresholdDays` (inclusive) of runEndDate,
-// never in the past (an already-closed exhibition wouldn't be in
+// "Closing soon" — ends within the current calendar week (through this
+// Sunday), never in the past (an already-closed exhibition wouldn't be in
 // "Exposiciones actuales" at all, but this stays defensive rather than
-// assuming upstream filtering). No runEndDate at all (still-open,
-// undated run) is never "closing soon" — there's nothing to warn about.
-export function isClosingSoon(runEndDate: string | null, todayStr: string, thresholdDays = 7): boolean {
+// assuming upstream filtering). No runEndDate at all (still-open, undated
+// run) is never "closing soon" — there's nothing to warn about. A fixed
+// week boundary rather than a rolling N-day window — user request
+// 2026-08-11: matches the "esta semana" mental model (an event closing
+// this Sunday is "closing soon" all week, not just once it's 7 days out),
+// and — since it's just runEndDate + today's own calendar week, both
+// pure/local to this call — the result can never disagree with whichever
+// events list happens to be on screen, regardless of cache timing.
+export function isClosingSoon(runEndDate: string | null, todayStr: string): boolean {
   if (!runEndDate) return false;
-  const today = parseDateOnly(todayStr);
-  const end = parseDateOnly(runEndDate);
-  const diffDays = Math.round((end.getTime() - today.getTime()) / (24 * 60 * 60 * 1000));
-  return diffDays >= 0 && diffDays <= thresholdDays;
+  if (runEndDate < todayStr) return false;
+  const { end: weekEnd } = weekBoundsInSantiago(todayStr);
+  return runEndDate <= weekEnd;
 }
 
 // Single opening date, e.g. "15 de julio" — reuses fmtPeriod's own
