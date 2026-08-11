@@ -256,13 +256,14 @@ test("fmtUntilDate: appends a 2-digit year only when the end date is in a later 
   assert.equal(fmtUntilDate("2026-12-31", "2026-07-01", "2026-08-01"), "Hasta el 31 de Diciembre");
 });
 
-test("isClosingSoon: within the 7-day default threshold (inclusive)", () => {
-  assert.equal(isClosingSoon("2026-08-10", "2026-08-03"), true);
+// 2026-08-03 is a Monday; that week runs through Sunday 2026-08-09.
+test("isClosingSoon: ends within the current calendar week (inclusive)", () => {
+  assert.equal(isClosingSoon("2026-08-09", "2026-08-03"), true);
   assert.equal(isClosingSoon("2026-08-03", "2026-08-03"), true);
 });
 
-test("isClosingSoon: beyond the threshold, or already past, is not closing soon", () => {
-  assert.equal(isClosingSoon("2026-08-11", "2026-08-03"), false);
+test("isClosingSoon: ends next week, or already past, is not closing soon", () => {
+  assert.equal(isClosingSoon("2026-08-10", "2026-08-03"), false);
   assert.equal(isClosingSoon("2026-08-01", "2026-08-03"), false);
 });
 
@@ -270,7 +271,9 @@ test("isClosingSoon: no runEndDate at all is never closing soon", () => {
   assert.equal(isClosingSoon(null, "2026-08-03"), false);
 });
 
-test("isClosingSoon: respects a custom threshold", () => {
-  assert.equal(isClosingSoon("2026-08-05", "2026-08-03", 2), true);
-  assert.equal(isClosingSoon("2026-08-06", "2026-08-03", 2), false);
+// Regardless of which day of the week "today" is, the boundary is always
+// this Sunday — not a rolling N-day window from today.
+test("isClosingSoon: boundary stays the same calendar week end from any day within it", () => {
+  assert.equal(isClosingSoon("2026-08-09", "2026-08-07"), true);
+  assert.equal(isClosingSoon("2026-08-09", "2026-08-09"), true);
 });
