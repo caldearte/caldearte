@@ -723,6 +723,41 @@ test("extractDateRange (fundaciongasco.cl-style): reads the detail page's clean 
   assert.deepEqual(extractDateRange(html, config), { runStartDate: "2026-03-10", runEndDate: "2026-04-30" });
 });
 
+// Matches isabelcroxattogaleria.com's real markup — the same config
+// known-sources.ts gives it in production (added 2026-08-10). Real bug
+// found building this: a bounded lookahead (checking only the gap
+// between an item's own anchor and its own <h2>, the museoschile.gob.cl
+// technique) can't see a GLOBAL section boundary that sits BEFORE later
+// items' own anchors, not inside their own block — it let all 87 items
+// through (CURRENT + PAST + ONLINE) instead of just the 2 real CURRENT
+// ones. Fixed with an unbounded negative lookbehind instead, asserting
+// no PAST-section marker has appeared anywhere earlier in the document.
+const CROXATTO_CONFIG: ArticleListConfig = {
+  kind: "articleList",
+  blockRegex: /(?<!exhibitions-grid-past[\s\S]*)(<a href="\/exhibitions\/[^"]+"[^>]*>[\s\S]*?<\/a>)/g,
+  titleLinkRegex: /<a href="([^"]+)"[^>]*>[\s\S]*?<h2>([^<]*)<\/h2>/,
+  placeRegex: /<span class="subtitle">([^<]*)<\/span>/,
+  daysRegex: /<span class="date">([^<]*)<\/span>/,
+};
+
+test("extractArticleList (isabelcroxattogaleria.com-style): the unbounded lookbehind correctly keeps items before the PAST-section marker and drops everything after it, regardless of how many items follow", () => {
+  const html = `
+    <div id="exhibitions-grid-current">
+      <a href="/exhibitions/104-current-item/overview/"><h2>Current Show</h2><span class="subtitle">MUSEO DE ARTE CONTEMPORANEO</span><span class="date">24 April - 23 August 2026</span></a>
+    </div>
+    <div id="exhibitions-grid-past">
+      <a href="/exhibitions/103-past-item-1/overview/"><h2>Past Show One</h2><span class="date">1 January - 1 February 2025</span></a>
+      <a href="/exhibitions/102-past-item-2/overview/"><h2>Past Show Two</h2><span class="subtitle">La Embajada | Madrid</span><span class="date">1 March - 1 April 2024</span></a>
+    </div>
+  `;
+  const items = extractArticleList(html, "https://isabelcroxattogaleria.com/artists-exhibitions/", CROXATTO_CONFIG);
+  assert.ok(items);
+  assert.equal(items.length, 1, "only the CURRENT-section item should survive — both PAST items, including the international one, must be excluded before curation");
+  assert.equal(items[0].title, "Current Show");
+  assert.equal(items[0].sourceUrl, "https://isabelcroxattogaleria.com/exhibitions/104-current-item/overview/");
+  assert.equal(items[0].locationHint, "MUSEO DE ARTE CONTEMPORANEO");
+});
+
 test("extractDateRange (espacioo.com-style): a same-year range states the year once, at the end — falls back correctly for BOTH start and end via the shared 'year' group, not 'endYear'", () => {
   const config: DateRangeConfig = {
     pattern:

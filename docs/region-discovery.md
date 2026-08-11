@@ -3081,6 +3081,62 @@ anyway. Fixed properly with Unicode-aware lookaround,
 files (`site-logo.png`, `logo.svg`), no longer false-positives on
 `catalogo`/`catálogo` in either accented or unaccented form.
 
+### New source: isabelcroxattogaleria.com (2026-08-10) — a real scope problem solved by finding a deterministic filter, and a lookahead-vs-lookbehind lesson
+
+Evaluated at the user's request. Isabel Croxatto Galería, Santiago —
+Artlogic (same platform as espacioo.com), but a much more active gallery
+(87 total items vs. espacioo.com's 4).
+
+**Real scope problem, presented to the user before building**: this
+listing represents the gallery's ARTISTS wherever their work shows, not
+just the gallery's own space — international venues genuinely appear
+("PROXYCO Gallery | New York", "La Embajada | Madrid", "ZAZ Corner |
+Times Square, New York"), alongside pure online/virtual shows ("Virtual
+Exhibition", "Online Exclusive") and items whose "subtitle" field isn't
+even a venue at all (curator/writer credits: "Curator | Leonardo Casas",
+"Text | César Gabler"). No single reliable per-item field distinguishes
+Chile-physical from international/virtual/credit-only — unlike Die
+Ecke's clean "Sede Santiago" marker, there's no consistent
+country/format label to positive-match on.
+
+**Real, deterministic scope filter found when the user asked "can this
+be filtered before Haiku sees it?"**: the page is organized into three
+named sections via real container IDs —
+`id="exhibitions-grid-current"`, `id="exhibitions-grid-past"`,
+`id="exhibitions-grid-online"` — same sectioning convention as mssa.cl's
+own "actuales"/"anteriores" split. Scoping to CURRENT only solves both
+problems at once: it excludes 85 of 87 items as historical noise AND, in
+practice, excludes the international/virtual residue too (both sampled
+CURRENT items were real, current, plausibly-Chile shows) — since CURRENT
+is specifically what the gallery is now actively promoting. The small
+residual risk (a CURRENT item happening to be international) is left to
+Haiku's own country-scope check, same backstop every other
+non-fixedLocation aggregator source already relies on.
+
+**Real regex lesson**: a per-item bounded lookahead (checking only the
+gap between an item's own anchor and its own `<h2>` — the
+museoschile.gob.cl technique) can't see a GLOBAL section boundary that
+sits BEFORE later items' own anchors, not inside their own block. First
+attempt matched 60 items instead of 2 — completely failed to exclude
+PAST, since the boundary marker sits before each PAST item's anchor
+tag, never between an item's own anchor and its own title. Fixed with an
+unbounded negative LOOKBEHIND instead —
+`(?<!exhibitions-grid-past[\s\S]*)` before the block — asserting no
+PAST-section marker has appeared ANYWHERE earlier in the whole document,
+which is exactly what "still inside CURRENT" means. Confirmed fast in
+practice (~10ms against the full ~440KB page) despite being
+unbounded-length — worth revisiting for galeriapready.cl's own
+unsolved tab-boundary problem sometime, since that was ruled out earlier
+the same session as "too fragile" without actually testing this exact
+technique.
+
+No `dateRangeExtractor` (English month names, same reason as
+galeriapready.cl — left as `rawDateText`). No `fixedLocation` — a
+genuine mixed-venue source even within CURRENT (own space + partner
+venues); real per-item subtitle text captured via `placeRegex` when
+present. No detail-page description fetch — the listing's own truncated
+excerpt is accepted as sufficient, same posture as espacioo.com.
+
 ### Cross-source dedup: two more real gaps found by a manual curation audit (2026-07-29)
 
 A user-requested audit against real production data (`docs/roadmap.md`'s
