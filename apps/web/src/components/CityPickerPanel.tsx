@@ -358,15 +358,20 @@ export default function CityPickerPanel({
                     );
                   })}
                 </div>
-                {regionFact && (
-                  <div className="bg-[#ebedee] border-l-4 border-brand-magenta rounded-[8px] p-[16px] flex flex-col gap-[10px] mt-[8px]">
-                    <p className="font-fragment-mono font-bold text-[12px] text-brand-magenta">{esCL.citySelector.sabiasQue}</p>
-                    <p className="font-geist text-[13px] text-text-primary">{regionFact}</p>
-                  </div>
-                )}
               </div>
             )}
           </div>
+
+          {/* To the RIGHT of the región list on desktop (sibling column in
+              the same flex row), not stacked below it — per the user
+              2026-08-12. Falls below on mobile, same as every other column
+              here (md:flex-row -> flex-col). */}
+          {!isSearching && regionFact && (
+            <div className="w-full md:w-[280px] bg-[#ebedee] border-l-4 border-brand-magenta rounded-[8px] p-[16px] flex flex-col gap-[10px]">
+              <p className="font-fragment-mono font-bold text-[12px] text-brand-magenta">{esCL.citySelector.sabiasQue}</p>
+              <p className="font-geist text-[13px] text-text-primary">{regionFact}</p>
+            </div>
+          )}
         </div>
 
         {!isSearching && (currentLocationRegion || recentRegions.length > 0) && (

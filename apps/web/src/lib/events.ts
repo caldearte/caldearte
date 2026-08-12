@@ -257,20 +257,32 @@ export interface InauguracionesYExpos {
 // Intentionally OVERLAPPING, not mutually exclusive: an event with a
 // confirmed opening within [start, end] is highlighted in "Inauguraciones"
 // AND still shown in "Expos Actuales" — a visitor shouldn't have to guess
-// which section a today-opening exhibition landed in. `exposActuales` is
-// simply every event in the (already range-filtered) input; `inauguraciones`
-// is the subset whose opening falls in the window. Caller must already
-// have narrowed `events` to the active window (filterActiveInRange) — this
-// only splits/highlights, doesn't filter.
+// which section a today-opening exhibition landed in. `inauguraciones` is
+// the subset whose opening falls in the window. `exposActuales` is every
+// event in the (already range-filtered) input that has a REAL run range
+// (both runStartDate and runEndDate) — real bug, found 2026-08-12: an
+// event with only a confirmed openingDatetime and no run range (e.g.
+// "KOS: Entre la oscuridad...", Aninat Galería) rendered correctly under
+// Inauguraciones, but ALSO showed up under Exposiciones Actuales with
+// untilDateLine falling back to its own opening date as if that were the
+// closing date too — "Hasta el 13 de Agosto" on an exhibition that opens
+// the 13th, implying (wrongly) that it closes the same day it opens. An
+// inauguración alone is a real, complete thing to show under
+// Inauguraciones; showing it as an "actual" exhibition with a knowable
+// closing date, sortable by that date, requires actually knowing both
+// ends of the run — caller must already have narrowed `events` to the
+// active window (filterActiveInRange) — this only splits/highlights/
+// filters exposActuales' own completeness requirement, nothing else.
 export function splitInauguracionesYExpos(events: EventRecord[], start: string, end: string): InauguracionesYExpos {
   const inauguraciones = events.filter((e) => {
     if (e.openingDatetime === null) return false;
     const openingDate = dateOnlyFromIso(e.openingDatetime);
     return openingDate >= start && openingDate <= end;
   });
+  const exposActuales = events.filter((e) => e.runStartDate !== null && e.runEndDate !== null);
   return {
     inauguraciones: sortByAnchorDesc(inauguraciones),
-    exposActuales: sortByRunEndAsc(events),
+    exposActuales: sortByRunEndAsc(exposActuales),
   };
 }
 
@@ -296,14 +308,18 @@ export interface CityCounts {
 // (cities.ts) naturally offers exactly "the cities with something to show",
 // whichever real comunas those turn out to be. Overlap-counted, matching
 // splitInauguracionesYExpos: an opening-in-range event increments BOTH
-// tallies, since it's rendered in both sections.
+// tallies, since it's rendered in both sections. exposActuales only counts
+// events with a real run range (both runStartDate and runEndDate) — same
+// completeness requirement as splitInauguracionesYExpos' own exposActuales,
+// so a picker badge ("N expos") always matches the length of the list it
+// promises.
 export function countByCity(events: EventRecord[], start: string, end: string): Record<string, CityCounts> {
   const counts: Record<string, CityCounts> = {};
   for (const e of events) {
     const cityId = resolveCityId(e);
     if (cityId === OTHER_CITY.id) continue; // "otro" isn't shown in the carousel
     if (!(cityId in counts)) counts[cityId] = { inauguraciones: 0, exposActuales: 0 };
-    counts[cityId].exposActuales += 1;
+    if (e.runStartDate !== null && e.runEndDate !== null) counts[cityId].exposActuales += 1;
     const openingDate = e.openingDatetime !== null ? dateOnlyFromIso(e.openingDatetime) : null;
     if (openingDate !== null && openingDate >= start && openingDate <= end) {
       counts[cityId].inauguraciones += 1;

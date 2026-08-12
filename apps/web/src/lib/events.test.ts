@@ -125,6 +125,21 @@ test("splitInauguracionesYExpos: an opening anywhere within the Mon-Sun window a
   assert.ok(inauguraciones.every((e) => exposIds.has(e.id)), "inauguraciones must be a subset of exposActuales");
 });
 
+// Real bug, found 2026-08-12: "KOS: Entre la oscuridad..." (Aninat
+// Galería) had only a confirmed openingDatetime, no run range at all —
+// rendered correctly under Inauguraciones, but ALSO appeared under
+// Exposiciones Actuales with "Hasta el 13 de Agosto" (its own opening
+// date, wrongly implied as the closing date too, since untilDateLine
+// falls back to the anchor when runEndDate is null).
+test("splitInauguracionesYExpos: an opening with NO run range at all appears only in inauguraciones, not exposActuales", () => {
+  const openingOnly = event({ id: "opening-only", openingDatetime: "2026-07-11T22:00:00+00:00", runStartDate: null, runEndDate: null });
+  const realExpo = event({ id: "real-expo", runStartDate: "2026-06-01", runEndDate: "2026-07-20" });
+
+  const { inauguraciones, exposActuales } = splitInauguracionesYExpos([openingOnly, realExpo], TODAY, TODAY);
+  assert.deepEqual(inauguraciones.map((e) => e.id), ["opening-only"]);
+  assert.deepEqual(exposActuales.map((e) => e.id), ["real-expo"]);
+});
+
 test("sortByRunEndAsc: soonest-closing first, falls back to the anchor date, unknown end sorts last", () => {
   const closesLast = event({ id: "closes-last", runEndDate: "2026-09-01" });
   const closesFirst = event({ id: "closes-first", runEndDate: "2026-07-15" });
@@ -153,6 +168,12 @@ test("countByCity tallies per city, dropping 'otro', for ANY comuna a real event
   assert.deepEqual(counts.valparaiso, { inauguraciones: 0, exposActuales: 1 });
   assert.deepEqual(counts["las-condes"], { inauguraciones: 0, exposActuales: 1 });
   assert.equal(counts.otro, undefined);
+});
+
+test("countByCity: an opening with no run range counts toward inauguraciones but not exposActuales — same completeness rule as splitInauguracionesYExpos", () => {
+  const events = [event({ id: "a", freeformLocation: "Sala Y, Santiago", openingDatetime: "2026-07-11T22:00:00+00:00", runStartDate: null, runEndDate: null })];
+  const counts = countByCity(events, TODAY, TODAY);
+  assert.deepEqual(counts.santiago, { inauguraciones: 1, exposActuales: 0 });
 });
 
 test("thumbnailsByCity groups by comuna, newest anchor date first, capped at maxPerCity, dropping 'otro'", () => {
