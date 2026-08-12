@@ -8,8 +8,22 @@ import {
   type RegionMeta,
   type CityCounts,
 } from "@/lib/events";
-import { DEFAULT_CITY_ID, buildRegionMetaByCityId, resolveDefaultCityId, resolveGeoCityId, nearestCityIdByCoords } from "@/lib/cities";
-import { CITY_COOKIE, PRECISE_CITY_COOKIE } from "@/lib/cookies";
+import {
+  buildRegionMetaByCityId,
+  resolveDefaultCityId,
+  resolveGeoCityId,
+  nearestCityIdByCoords,
+  adminRegionNameByRegionId,
+  regionIdFromAdminRegionName,
+} from "@/lib/cities";
+import { REGION_COOKIE, PRECISE_CITY_COOKIE } from "@/lib/cookies";
+
+// Last-resort fallback if a comuna somehow has no admin_region_name yet
+// (shouldn't happen in practice — DEFAULT_CITY_ID's own comuna, "santiago",
+// is always seeded with this exact región) — same posture as
+// regionNames.ts/the old zones.ts, which also hardcode the 16 canonical
+// admin_region_name strings.
+const DEFAULT_ADMIN_REGION_NAME = "Región Metropolitana de Santiago";
 
 // Narrow structural subset of next/headers' cookies() return type — real
 // cookies() satisfies this, but so does a plain object, which is what
@@ -24,6 +38,11 @@ export interface CookieReader {
 export const EMPTY_COOKIE_READER: CookieReader = { get: () => undefined };
 
 export interface CityPickerContext {
+  // The site's actual selection unit — a región slug (see cities.ts's
+  // regionIdFromAdminRegionName). `cityId`/`cityNames`/`cityCounts`/
+  // `cityThumbnails` below stay comuna-level: still needed to derive each
+  // event's own comuna label on cards, and to resolve régionId itself.
+  regionId: string;
   cityId: string;
   cityNames: Record<string, string>;
   cityCounts: Record<string, CityCounts>;
@@ -65,22 +84,23 @@ export async function resolveCityPickerContext({
   const cityThumbnails = thumbnailsByCity(activeInRange, 4);
   const metaByCityId = buildRegionMetaByCityId(regions);
 
-  const cityCookieValue = cookieStore.get(CITY_COOKIE)?.value;
   const geoCity = headerStore.get("x-vercel-ip-city") ?? undefined;
   const geoCountry = headerStore.get("x-vercel-ip-country") ?? undefined;
-  // Validated against the real comuna list (`regions`, all 346 seeded
-  // comunas regardless of events), not `cityNames` — real bug, found
-  // 2026-08-06: cityNames only has an entry for a comuna with at least one
-  // event RIGHT NOW, so a comuna that still has a valid CITY_COOKIE but
-  // currently zero events (e.g. right after removing its last event) used
-  // to silently bounce to DEFAULT_CITY_ID on every page load, not just
-  // when re-selecting it in the picker.
-  const cityId =
-    cityCookieValue !== undefined
-      ? metaByCityId.has(cityCookieValue) || cityCookieValue === DEFAULT_CITY_ID
-        ? cityCookieValue
-        : DEFAULT_CITY_ID
-      : resolveDefaultCityId(geoCity, geoCountry, metaByCityId, cityCounts);
+  // Still resolved — needed to derive each event's own comuna label on
+  // cards, and as the geo-fallback path for régionId below. No longer the
+  // site's own selection unit (see régionId), so not read from a cookie
+  // anymore.
+  const cityId = resolveDefaultCityId(geoCity, geoCountry, metaByCityId, cityCounts);
+
+  const regionNameById = adminRegionNameByRegionId(regions);
+  const regionCookieValue = cookieStore.get(REGION_COOKIE)?.value;
+  // regionId: REGION_COOKIE if it's a real, recognized región -> else the
+  // admin región of wherever cityId resolved to (IP-geo comuna or
+  // DEFAULT_CITY_ID) -> else a hardcoded last resort.
+  const regionId =
+    regionCookieValue !== undefined && regionNameById.has(regionCookieValue)
+      ? regionCookieValue
+      : regionIdFromAdminRegionName(metaByCityId.get(cityId)?.adminRegionName ?? DEFAULT_ADMIN_REGION_NAME);
 
   const geoLatHeader = headerStore.get("x-vercel-ip-latitude");
   const geoLngHeader = headerStore.get("x-vercel-ip-longitude");
@@ -94,5 +114,5 @@ export async function resolveCityPickerContext({
     (hasGeoCoords ? nearestCityIdByCoords(geoLat, geoLng, regions) : null) ??
     resolveGeoCityId(geoCity, geoCountry, metaByCityId);
 
-  return { cityId, cityNames, cityCounts, cityThumbnails, actualCityId, hasPreciseLocation, activeInRange };
+  return { regionId, cityId, cityNames, cityCounts, cityThumbnails, actualCityId, hasPreciseLocation, activeInRange };
 }

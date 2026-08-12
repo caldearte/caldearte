@@ -86,33 +86,22 @@ export const esCL = {
   cityPickerLocatingExact: "Buscando...",
   cityPickerExactLocationError: "No pudimos obtener tu ubicación.",
 
-  // Rediseño 2.0.0 — selector de lugar en 3 pasos (Zona -> Región ->
-  // Comuna), reemplaza el árbol colapsable único de arriba
-  // (caldearte-web-selector-paso-{1,2,3}-v2.0.0). "back" es literal:
-  // vuelve un paso, o cierra el selector si ya está en el paso 1 (no hay
-  // paso 0 al que volver). Elegir una comuna sigue siendo instantáneo
-  // (navega y cierra) — confirmado con el usuario 2026-08-04, sin botón
-  // de confirmar pese a que el mock de Figma lo mostraba.
+  // Rediseño 2.0.0 selector de lugar, ahora de un solo paso (2026-08-12:
+  // el wizard Zona -> Región -> Comuna se simplificó a una lista plana de
+  // las 16 regiones — elegir una región ES seleccionar, sin drill-down a
+  // comuna). "back" cierra el selector directamente, ya no hay pasos
+  // intermedios a los que volver. Elegir sigue siendo instantáneo (navega
+  // y cierra) — confirmado con el usuario 2026-08-04, sin botón de
+  // confirmar pese a que el mock de Figma lo mostraba.
   citySelector: {
     country: "Chile",
-    stepLabel: (step: number) => `${step} / 3`,
     back: "Volver",
-    // Two clean words per line — the Figma mock force-wrapped "REGION"/
-    // "COMUNA" mid-word ("REG"/"ION", "COM"/"UNA") because its text box
-    // was too narrow at 96px; that reads as a Figma sizing artifact, not
-    // deliberate typography, so this wraps on the word boundary instead.
-    // Also fixes "REGION" -> "REGIÓN" (missing accent in the mock).
-    eligeZonaLines: ["ELIGE", "ZONA"],
+    // Two clean words per line — the Figma mock force-wrapped "REGION"
+    // mid-word ("REG"/"ION") because its text box was too narrow at 96px;
+    // this wraps on the word boundary instead, and fixes "REGION" ->
+    // "REGIÓN" (missing accent in the mock).
     eligeRegionLines: ["ELIGE", "REGIÓN"],
-    eligeComunaLines: ["ELIGE", "COMUNA"],
-    zonasLabel: "ZONAS",
-    zonaBreadcrumb: (zoneLabel: string) => `ZONA ${zoneLabel.toUpperCase()}`,
-    zonaRegionBreadcrumb: (zoneLabel: string, regionShortName: string) =>
-      `ZONA ${zoneLabel.toUpperCase()} / ${regionShortName.toUpperCase()}`,
-    regionesEnZona: (zoneLabel: string) =>
-      `REGIONES EN ZONA ${zoneLabel.toUpperCase()}`,
-    comunasDe: (regionShortName: string) =>
-      `COMUNAS DE ${regionShortName.toUpperCase()}`,
+    regionsLabel: "REGIONES",
     sabiasQue: "¿SABÍAS QUÉ?",
   },
   // Per-región trivia for the step-2 "¿SABÍAS QUÉ?" card — real content,
@@ -315,29 +304,6 @@ export const esCL = {
   eventPagePosition: (current: number, total: number, cityName: string) => `${current} de ${total} eventos en ${cityName} para esta semana`,
   eventPagePrevAriaLabel: "Evento anterior",
   eventPageNextAriaLabel: "Siguiente evento",
-
-  archiveLink: "Revisa expos anteriores",
-  archiveMonthTitle: (label: string) => `Expos anteriores — ${label}`,
-  archiveMonthDescription: (count: number, label: string, sample: string) =>
-    count > 0
-      ? `${count} ${pluralize(count, "exposición", "exposiciones")} que abrieron en Chile en ${label}: ${sample}${count > 5 ? "…" : "."}`
-      : `Exposiciones que abrieron en Chile en ${label}.`,
-  archiveSearchPlaceholder: "Buscar por título, artista o lugar...",
-  archiveFiltersAriaLabel: "Filtros",
-  archiveFilters: {
-    title: "Filtros",
-    desde: "Desde",
-    hasta: "Hasta",
-    lugar: "Lugar",
-    comuna: "Comuna",
-    comunaAll: "Todas",
-    clear: "Limpiar filtros",
-  },
-  archiveNoResults: "No encontramos expos con esos filtros este mes.",
-  archiveResultsCount: (n: number) =>
-    `${n} ${pluralize(n, "resultado", "resultados")}`,
-  archivePrevMonth: "← Mes anterior",
-  archiveNextMonth: "Mes siguiente →",
 
   cityStats: (inauguracionesCount: number, exposCount: number) =>
     countsPhrase(inauguracionesCount, exposCount, " · "),

@@ -1,4 +1,11 @@
+// Superseded by REGION_COOKIE below (2026-08-12) — selection is now
+// región-level everywhere, this stops being written entirely. Kept
+// defined (not deleted) only in case any stray old-format cookie value
+// needs to be recognized/ignored somewhere; no code should write it again.
 export const CITY_COOKIE = "caldearte_city";
+// The site's actual location-selection cookie — a región slug (see
+// cities.ts's regionIdFromAdminRegionName), not a comuna id.
+export const REGION_COOKIE = "caldearte_region";
 export const FAMILY_MODE_COOKIE = "caldearte_family_mode";
 // Filtros pills (FiltersSection) — both simple on/off, empty-string vs "1",
 // same pattern as FAMILY_MODE_COOKIE. Everything always operates on the
@@ -7,9 +14,9 @@ export const FAMILY_MODE_COOKIE = "caldearte_family_mode";
 export const TODAY_FILTER_COOKIE = "caldearte_filter_today";
 export const VIGENTES_FILTER_COOKIE = "caldearte_filter_vigentes";
 // City picker "Últimas visitadas" row (CityPickerPanel) — JSON array of
-// city ids, most-recent-first. See pushRecentCityId below.
-export const RECENT_CITIES_COOKIE = "caldearte_recent_cities";
-export const MAX_RECENT_CITIES = 3;
+// región ids, most-recent-first. See pushRecentRegionId below.
+export const RECENT_REGIONS_COOKIE = "caldearte_recent_regions";
+export const MAX_RECENT_REGIONS = 3;
 // "granted" | "denied" — whether the visitor has already answered the
 // first-visit GeoConsentBanner prompt (GeoConsentBanner.tsx). Set on
 // EITHER answer, including a native browser permission denial or a
@@ -38,7 +45,7 @@ export function setCookie(name: string, value: string): void {
 // Client-side counterpart to setCookie — used by HomeClient.tsx to check
 // whether the visitor's real cookies differ from the default page.tsx
 // rendered (see that file's own comment). Same regex-parse approach as
-// getRecentCityIds below. Returns undefined both when the cookie is
+// getRecentRegionIds below. Returns undefined both when the cookie is
 // genuinely absent and when document isn't available yet (SSR) — callers
 // only ever run this client-side, post-mount.
 export function getCookie(name: string): string | undefined {
@@ -48,15 +55,15 @@ export function getCookie(name: string): string | undefined {
 }
 
 // Deliberately dumb/mechanical — no domain filtering here (excluding
-// "otro", excluding the city being navigated TO, deduping against the
-// city being navigated FROM) — that's CalendarView.tsx's job, the one
+// "otro", excluding the región being navigated TO, deduping against the
+// región being navigated FROM) — that's CalendarView.tsx's job, the one
 // place that actually knows what "a real visit" means. Malformed/tampered
 // cookie content degrades to an empty list rather than throwing — this
 // only ever feeds an optional convenience row in the city picker, never
 // worth crashing the page over.
-export function getRecentCityIds(): string[] {
+export function getRecentRegionIds(): string[] {
   if (typeof document === "undefined") return [];
-  const match = document.cookie.match(new RegExp(`(?:^|;\\s*)${RECENT_CITIES_COOKIE}=([^;]*)`));
+  const match = document.cookie.match(new RegExp(`(?:^|;\\s*)${RECENT_REGIONS_COOKIE}=([^;]*)`));
   if (!match) return [];
   try {
     const parsed = JSON.parse(decodeURIComponent(match[1]));
@@ -66,7 +73,7 @@ export function getRecentCityIds(): string[] {
   }
 }
 
-export function pushRecentCityId(cityId: string): void {
-  const next = [cityId, ...getRecentCityIds().filter((id) => id !== cityId)].slice(0, MAX_RECENT_CITIES);
-  setCookie(RECENT_CITIES_COOKIE, JSON.stringify(next));
+export function pushRecentRegionId(regionId: string): void {
+  const next = [regionId, ...getRecentRegionIds().filter((id) => id !== regionId)].slice(0, MAX_RECENT_REGIONS);
+  setCookie(RECENT_REGIONS_COOKIE, JSON.stringify(next));
 }

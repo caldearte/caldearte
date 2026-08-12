@@ -3,39 +3,44 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { esCL } from "@/i18n/es-CL";
-import { buildRegionMetaByCityId, citiesWithEvents, groupCitiesByRegion, matchesQuery, cityById, cityIdFromRegionName, OTHER_CITY, type City } from "@/lib/cities";
+import {
+  buildRegionMetaByCityId,
+  citiesWithEvents,
+  matchesQuery,
+  allAdminRegions,
+  adminRegionNameByRegionId,
+  regionIdFromAdminRegionName,
+  countByRegion,
+  type AdminRegion,
+} from "@/lib/cities";
 import { shortRegionName } from "@/lib/regionNames";
-import { ZONES, zoneKeyForRegion, zoneByKey, type ZoneKey } from "@/lib/zones";
-import { getRecentCityIds, setCookie, PRECISE_CITY_COOKIE } from "@/lib/cookies";
+import { getRecentRegionIds, setCookie, PRECISE_CITY_COOKIE } from "@/lib/cookies";
 import { requestPreciseCityId } from "@/lib/geolocation";
-import { sumCounts, type CityCounts, type RegionMeta } from "@/lib/events";
+import { type CityCounts, type RegionMeta } from "@/lib/events";
 
 interface CityPickerPanelProps {
   open: boolean;
-  cityId: string; // the currently CONFIRMED city
-  actualCityId: string | null; // geolocated comuna — feeds "Tu ubicación actual"; null when there's no real geo signal
+  regionId: string; // the currently CONFIRMED región
+  // Geolocated COMUNA — región selection is derived from it (its own
+  // admin región), same as everywhere else in the app. null when there's
+  // no real geo signal at all.
+  actualCityId: string | null;
   hasPreciseLocation: boolean; // true once a real geolocation reading is already known — hides the "usar ubicación exacta" prompt
   cityCounts: Record<string, CityCounts>;
   cityNames: Record<string, string>;
   regions: RegionMeta[];
   onClose: () => void;
-  // Clicking a comuna (anywhere — step 3, search results, or a bottom
-  // shortcut) commits and navigates immediately, same instant pattern the
-  // rest of the app already uses — confirmed with the user 2026-08-04,
-  // no separate "confirm" step despite the Figma mock showing a
-  // CONFIRMAR SELECCIÓN button.
-  onSelectCity: (cityId: string) => void;
+  // Clicking a región (the list, a search result, or a bottom shortcut)
+  // commits and navigates immediately, same instant pattern the rest of
+  // the app already uses — confirmed with the user 2026-08-04, no
+  // separate "confirm" step despite the Figma mock showing a CONFIRMAR
+  // SELECCIÓN button.
+  onSelectRegion: (regionId: string) => void;
 }
 
 const ZERO_COUNTS: CityCounts = { inauguraciones: 0, exposActuales: 0 };
 const SEARCH_DEBOUNCE_MS = 200;
 const MAX_RECENT_SHORTCUTS = 2;
-
-type Step = "zona" | "region" | "comuna";
-
-function countsFor(cities: City[], cityCounts: Record<string, CityCounts>): CityCounts {
-  return sumCounts(cities.map((c) => cityCounts[c.id] ?? ZERO_COUNTS));
-}
 
 // Magenta "N inaug" + dark "N expos", each only shown when > 0 — same
 // badge pair used throughout the redesign's cards.
@@ -57,100 +62,82 @@ function Badges({ counts }: { counts: CityCounts }) {
   );
 }
 
-// A single selectable row shared by the zona/región/comuna steps and
-// search results — bordered + normal weight by default, filled dark with
-// bigger/bolder text when it's the visitor's own current comuna's zona/
-// región/comuna (same "you are here" treatment Figma uses for CENTRAL /
-// SANTIAGO / PROVIDENCIA across the three mocks).
+// A single selectable row — bordered + normal weight by default, filled
+// dark with bigger/bolder text when it's the visitor's own current región
+// (same "you are here" treatment Figma uses).
 function OptionRow({
   label,
   counts,
-  showChevron,
   current,
-  disabled = false,
   onClick,
 }: {
   label: string;
   counts?: CityCounts;
-  showChevron: boolean;
   current: boolean;
-  // Zonas only, for now (2026-08-06) — a zone with nothing this week
-  // stays visible but unselectable, rather than disappearing like an
-  // empty región/comuna does. Removing a whole zone from the map would
-  // read as "this part of Chile doesn't exist," not "nothing here right
-  // now" — the distinction régiones/comunas don't need since there are
-  // dozens of them and losing one from a list reads as pruning, not
-  // erasure.
-  disabled?: boolean;
   onClick: () => void;
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      disabled={disabled}
-      className={`w-full flex items-center justify-between gap-[12px] p-[16px] rounded-input text-left ${
-        disabled ? "cursor-default opacity-40" : "cursor-pointer"
-      } ${current ? "bg-text-primary" : "border border-border-default"}`}
+      className={`w-full flex items-center justify-between gap-[12px] p-[16px] rounded-input text-left cursor-pointer ${
+        current ? "bg-text-primary" : "border border-border-default"
+      }`}
     >
       <span
         className={`font-lato whitespace-nowrap ${current ? "font-extrabold text-[22px] text-surface-sage-dark" : "font-bold text-[16px] text-text-primary"}`}
       >
         {label}
       </span>
-      <div className="flex items-center gap-[16px] shrink-0">
-        {counts && <Badges counts={counts} />}
-        {showChevron && !disabled && (
-          // eslint-disable-next-line @next/next/no-img-element -- Figma-exported asset, verbatim per design decision
-          <img src={current ? "/icons/chevron-right-selected.svg" : "/icons/chevron-right-default.svg"} alt="" width={16} height={16} />
-        )}
-      </div>
+      {counts && <Badges counts={counts} />}
     </button>
   );
 }
 
 // Compact, border-only shortcut row — "Tu ubicación actual"/"Últimas
 // visitadas" always use this style (never the dark "current" fill
-// OptionRow uses), since they sit outside the zona/región/comuna
-// drill-down as instant shortcuts, not part of the step being browsed.
-function ShortcutRow({ city, counts, onClick }: { city: City; counts: CityCounts; onClick: () => void }) {
+// OptionRow uses), since they sit outside the región list as instant
+// shortcuts, not part of the list being browsed.
+function ShortcutRow({ label, counts, onClick }: { label: string; counts: CityCounts; onClick: () => void }) {
   return (
     <button
       type="button"
       onClick={onClick}
       className="w-full flex items-center justify-between gap-[12px] border border-text-primary rounded-input px-[10px] py-[10px] text-left cursor-pointer"
     >
-      <span className="font-lato text-[14px] text-text-primary whitespace-nowrap">{city.name.toUpperCase()}</span>
+      <span className="font-lato text-[14px] text-text-primary whitespace-nowrap">{label}</span>
       <Badges counts={counts} />
     </button>
   );
 }
 
-// Rediseño 2.0.0 — location selector rebuilt as a 3-step wizard (Zona ->
-// Región -> Comuna: caldearte-web-selector-paso-{1,2,3}-v2.0.0),
-// replacing the old single-panel collapsible país/región/comuna tree.
-// Chile-only for now — a second real country would need its own zona
-// scheme (or none), not worth generalizing before there's real data for
-// one (see zones.ts's own comment). Desktop-only pixel values for now;
-// mobile mocks weren't selected yet, so small screens get a simple
-// stacked fallback rather than a second pixel-matched layout.
+// Rediseño 2.0.0 — location selector, single step (2026-08-12: simplified
+// from a 3-step Zona -> Región -> Comuna wizard down to one flat,
+// scrollable list of Chile's 16 real regions — selecting a región IS the
+// whole flow now, no comuna drill-down). Selection everywhere in the app
+// now operates at región granularity (see cities.ts's own "Región-level
+// selection" section) — a comuna's own name still shows next to each
+// event's venue (useEventCardActions.ts's cityName), just not as the
+// thing being picked here. Search still matches comuna names too (typing
+// "Vitacura" finds and selects Región Metropolitana), per the user's own
+// confirmed choice 2026-08-12. Chile-only for now — a second real country
+// isn't in scope yet. Desktop-only pixel values for now; mobile mocks
+// weren't selected yet, so small screens get a simple stacked fallback
+// rather than a second pixel-matched layout.
 export default function CityPickerPanel({
   open,
-  cityId,
+  regionId,
   actualCityId,
   hasPreciseLocation,
   cityCounts,
   cityNames,
   regions,
   onClose,
-  onSelectCity,
+  onSelectRegion,
 }: CityPickerPanelProps) {
-  const [step, setStep] = useState<Step>("zona");
-  const [selectedZoneKey, setSelectedZoneKey] = useState<ZoneKey | null>(null);
-  const [selectedRegionName, setSelectedRegionName] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [filterQuery, setFilterQuery] = useState("");
-  const [recentCityIds, setRecentCityIds] = useState<string[]>([]);
+  const [recentRegionIds, setRecentRegionIds] = useState<string[]>([]);
   const [locatingState, setLocatingState] = useState<"idle" | "locating" | "error">("idle");
   // Same-session freshening of actualCityId, display-only — see
   // GeoLocationChangedBanner's own silent re-check for the durable half.
@@ -158,17 +145,17 @@ export default function CityPickerPanel({
   const router = useRouter();
 
   const metaByCityId = useMemo(() => buildRegionMetaByCityId(regions), [regions]);
+  const regionCounts = useMemo(() => countByRegion(cityCounts, regions), [cityCounts, regions]);
+  const regionNameById = useMemo(() => adminRegionNameByRegionId(regions), [regions]);
+  const chileRegions = useMemo(() => allAdminRegions(regions), [regions]);
 
-  // Resets to the wizard's first step + clears search whenever the panel
-  // transitions to open — adjusting state during render (React's own
-  // documented pattern for this), not an effect.
+  // Resets search + geo-freshening whenever the panel transitions to
+  // open — adjusting state during render (React's own documented pattern
+  // for this), not an effect.
   const [wasOpen, setWasOpen] = useState(open);
   if (open !== wasOpen) {
     setWasOpen(open);
     if (open) {
-      setStep("zona");
-      setSelectedZoneKey(null);
-      setSelectedRegionName(null);
       setQuery("");
       setFilterQuery("");
       setLocatingState("idle");
@@ -179,7 +166,7 @@ export default function CityPickerPanel({
           setCookie(PRECISE_CITY_COOKIE, id);
         });
       }
-      setRecentCityIds(getRecentCityIds());
+      setRecentRegionIds(getRecentRegionIds());
     }
   }
 
@@ -215,88 +202,55 @@ export default function CityPickerPanel({
 
   const allCities = useMemo(() => citiesWithEvents(cityCounts, cityNames), [cityCounts, cityNames]);
 
-  // Zonas always stay visible (unlike regiones/comunas, which disappear
-  // entirely when empty) — just disabled when none of their regiones have
-  // anything this week. Computed from the full `regions` list, not
-  // `allCities`, since a zone needs to know about every comuna it could
-  // ever contain, not just the ones currently passing citiesWithEvents'
-  // own filter.
-  const zonesWithEvents = useMemo(() => {
-    const withEvents = new Set<ZoneKey>();
-    for (const region of regions) {
-      if (!region.adminRegionName) continue;
-      const zoneKey = zoneKeyForRegion(region.adminRegionName);
-      if (!zoneKey || withEvents.has(zoneKey)) continue;
-      const counts = cityCounts[cityIdFromRegionName(region.name)];
-      if ((counts?.inauguraciones ?? 0) > 0 || (counts?.exposActuales ?? 0) > 0) withEvents.add(zoneKey);
-    }
-    return withEvents;
-  }, [regions, cityCounts]);
-
   const trimmedQuery = filterQuery.trim();
   const isSearching = trimmedQuery !== "";
 
-  // Search is a flat comuna shortcut, not part of the step flow — same
-  // instant pattern as the bottom shortcuts. Clarified with the user
-  // 2026-08-04: cards here are comunas (styled like step 3's rows), not
-  // events.
+  // Matches a región's own name directly, OR any comuna's name (resolved
+  // up to its parent región) — confirmed with the user 2026-08-12:
+  // typing "Vitacura" should still find and select Región Metropolitana.
   const searchResults = useMemo(() => {
     if (!trimmedQuery) return [];
-    return allCities.filter((c) => {
-      if (matchesQuery(c.name, trimmedQuery)) return true;
-      const adminRegionName = metaByCityId.get(c.id)?.adminRegionName;
-      return adminRegionName ? matchesQuery(adminRegionName, trimmedQuery) : false;
-    });
-  }, [allCities, trimmedQuery, metaByCityId]);
+    const matched = new Map<string, AdminRegion>();
+    for (const region of chileRegions) {
+      if (matchesQuery(region.adminRegionName, trimmedQuery)) {
+        matched.set(regionIdFromAdminRegionName(region.adminRegionName), region);
+      }
+    }
+    for (const city of allCities) {
+      if (!matchesQuery(city.name, trimmedQuery)) continue;
+      const adminRegionName = metaByCityId.get(city.id)?.adminRegionName;
+      if (!adminRegionName) continue;
+      const rid = regionIdFromAdminRegionName(adminRegionName);
+      if (matched.has(rid)) continue;
+      const region = chileRegions.find((r) => r.adminRegionName === adminRegionName);
+      if (region) matched.set(rid, region);
+    }
+    return [...matched.values()].sort((a, b) => a.adminRegionOrder - b.adminRegionOrder);
+  }, [trimmedQuery, chileRegions, allCities, metaByCityId]);
 
-  const chileRegions = useMemo(() => groupCitiesByRegion(allCities, metaByCityId)[0]?.regions ?? [], [allCities, metaByCityId]);
+  const currentAdminRegionName = regionNameById.get(regionId) ?? null;
 
-  const currentMeta = metaByCityId.get(cityId);
-  const currentZoneKey = currentMeta?.adminRegionName ? zoneKeyForRegion(currentMeta.adminRegionName) : null;
-
-  const regionsInSelectedZone = useMemo(
-    () => (selectedZoneKey ? chileRegions.filter((r) => zoneKeyForRegion(r.adminRegionName) === selectedZoneKey) : []),
-    [chileRegions, selectedZoneKey],
-  );
-
-  const selectedRegionGroup = useMemo(
-    () => chileRegions.find((r) => r.adminRegionName === selectedRegionName) ?? null,
-    [chileRegions, selectedRegionName],
-  );
-
-  const currentLocationCity: City | null =
-    !isSearching && freshActualCityId && freshActualCityId !== cityId && freshActualCityId !== OTHER_CITY.id
-      ? cityById(freshActualCityId, cityNames)
+  const actualAdminRegionName = freshActualCityId ? (metaByCityId.get(freshActualCityId)?.adminRegionName ?? null) : null;
+  const actualRegionId = actualAdminRegionName ? regionIdFromAdminRegionName(actualAdminRegionName) : null;
+  const currentLocationRegion: AdminRegion | null =
+    !isSearching && actualRegionId && actualRegionId !== regionId
+      ? (chileRegions.find((r) => regionIdFromAdminRegionName(r.adminRegionName) === actualRegionId) ?? null)
       : null;
-  const recentCities: City[] = useMemo(
+
+  const recentRegions: AdminRegion[] = useMemo(
     () =>
       isSearching
         ? []
-        : recentCityIds
-            .filter((id) => id !== cityId && id !== freshActualCityId && id !== OTHER_CITY.id)
+        : recentRegionIds
+            .filter((id) => id !== regionId && id !== actualRegionId)
             .slice(0, MAX_RECENT_SHORTCUTS)
-            .map((id) => cityById(id, cityNames)),
-    [isSearching, recentCityIds, cityId, freshActualCityId, cityNames],
+            .map((id) => chileRegions.find((r) => regionIdFromAdminRegionName(r.adminRegionName) === id))
+            .filter((r): r is AdminRegion => r !== undefined),
+    [isSearching, recentRegionIds, regionId, actualRegionId, chileRegions],
   );
 
-  function selectCity(id: string) {
-    onSelectCity(id);
-  }
-
-  function handleBack() {
-    if (step === "comuna") setStep("region");
-    else if (step === "region") setStep("zona");
-    else onClose();
-  }
-
-  function handleZoneClick(key: ZoneKey) {
-    setSelectedZoneKey(key);
-    setStep("region");
-  }
-
-  function handleRegionClick(adminRegionName: string) {
-    setSelectedRegionName(adminRegionName);
-    setStep("comuna");
+  function selectRegion(id: string) {
+    onSelectRegion(id);
   }
 
   // Opt-in only — never called automatically. A denial or lack of support
@@ -315,32 +269,7 @@ export default function CityPickerPanel({
     );
   }
 
-  const zoneLabel = selectedZoneKey ? zoneByKey(selectedZoneKey).label : "";
-  const regionShortName = selectedRegionName ? shortRegionName(selectedRegionName) : "";
-
-  // Desktop only — mobile shows just the back arrow, no breadcrumb text
-  // (per the user 2026-08-04).
-  const breadcrumbDesktop =
-    step === "comuna" && selectedZoneKey
-      ? esCL.citySelector.zonaRegionBreadcrumb(zoneLabel, regionShortName)
-      : step === "region" && selectedZoneKey
-        ? esCL.citySelector.zonaBreadcrumb(zoneLabel)
-        : null;
-
-  const headingLines =
-    step === "zona"
-      ? esCL.citySelector.eligeZonaLines
-      : step === "region"
-        ? esCL.citySelector.eligeRegionLines
-        : esCL.citySelector.eligeComunaLines;
-  const stepNumber = step === "zona" ? 1 : step === "region" ? 2 : 3;
-
-  // Tied to the visitor's own current región (the one shown highlighted
-  // in the step-2 list), not `selectedRegionName` — that navigation state
-  // only gets set once a región is actually clicked (advancing to step
-  // 3), so it's never set while step 2 itself is still on screen.
-  const currentRegionShownHere = regionsInSelectedZone.some((r) => r.adminRegionName === currentMeta?.adminRegionName);
-  const regionFact = step === "region" && currentRegionShownHere && currentMeta?.adminRegionName ? esCL.regionFacts[currentMeta.adminRegionName] : undefined;
+  const regionFact = !isSearching && currentAdminRegionName ? esCL.regionFacts[currentAdminRegionName] : undefined;
 
   return (
     <div
@@ -356,41 +285,22 @@ export default function CityPickerPanel({
     >
       <div className="max-w-[1160px] mx-auto px-5 md:px-0 py-[40px] md:py-[60px] min-h-full flex flex-col">
         <div className="flex items-center justify-between mb-[40px] md:mb-[60px]">
-          <div className="flex items-center gap-[20px]">
-            <button
-              type="button"
-              onClick={handleBack}
-              aria-label={step === "zona" ? esCL.closeCityPicker : esCL.citySelector.back}
-              className="cursor-pointer"
-            >
-              {/* eslint-disable-next-line @next/next/no-img-element -- Figma-exported asset, verbatim per design decision */}
-              <img src="/icons/selector-back-arrow.svg" alt="" width={140} height={19} />
-            </button>
-            {/* Desktop only, per the user 2026-08-04: mobile shows just the
-                back arrow, no breadcrumb text. */}
-            {breadcrumbDesktop && (
-              <button
-                type="button"
-                onClick={handleBack}
-                className="hidden md:block font-lato font-semibold text-[20px] text-brand-magenta whitespace-nowrap cursor-pointer"
-              >
-                {breadcrumbDesktop}
-              </button>
-            )}
-          </div>
+          <button type="button" onClick={onClose} aria-label={esCL.closeCityPicker} className="cursor-pointer">
+            {/* eslint-disable-next-line @next/next/no-img-element -- Figma-exported asset, verbatim per design decision */}
+            <img src="/icons/selector-back-arrow.svg" alt="" width={140} height={19} />
+          </button>
           <p className="font-lato text-[40px] md:text-[64px] text-brand-magenta whitespace-nowrap">{esCL.citySelector.country.toUpperCase()}</p>
         </div>
 
         <div className="flex-1 flex flex-col md:flex-row md:items-start gap-[40px] md:gap-[120px]">
           <div className="flex flex-col gap-[10px] shrink-0">
             <h1 className="font-lato font-extrabold leading-none text-brand-magenta text-[56px] md:text-[96px]">
-              {headingLines.map((line) => (
+              {esCL.citySelector.eligeRegionLines.map((line) => (
                 <span key={line} className="block">
                   {line}
                 </span>
               ))}
             </h1>
-            <p className="font-fragment-mono font-bold text-[14px] text-brand-magenta">{esCL.citySelector.stepLabel(stepNumber)}</p>
           </div>
 
           <div className="w-full md:w-[319px] flex flex-col gap-[16px]">
@@ -413,45 +323,41 @@ export default function CityPickerPanel({
                 {searchResults.length === 0 ? (
                   <p className="text-sm text-text-muted text-center py-6">{esCL.noCityResults}</p>
                 ) : (
-                  searchResults.map((c) => (
-                    <OptionRow
-                      key={c.id}
-                      label={c.name.toUpperCase()}
-                      counts={cityCounts[c.id] ?? ZERO_COUNTS}
-                      showChevron={false}
-                      current={c.id === cityId}
-                      onClick={() => selectCity(c.id)}
-                    />
-                  ))
+                  searchResults.map((region) => {
+                    const rid = regionIdFromAdminRegionName(region.adminRegionName);
+                    return (
+                      <OptionRow
+                        key={rid}
+                        label={shortRegionName(region.adminRegionName).toUpperCase()}
+                        counts={regionCounts[rid] ?? ZERO_COUNTS}
+                        current={rid === regionId}
+                        onClick={() => selectRegion(rid)}
+                      />
+                    );
+                  })
                 )}
               </div>
-            ) : step === "zona" ? (
+            ) : (
               <div className="flex flex-col gap-[8px]">
-                <p className="font-fragment-mono font-bold text-[14px] text-text-primary">{esCL.citySelector.zonasLabel}</p>
-                {ZONES.map((zone) => (
-                  <OptionRow
-                    key={zone.key}
-                    label={zone.label.toUpperCase()}
-                    showChevron
-                    current={zone.key === currentZoneKey}
-                    disabled={!zonesWithEvents.has(zone.key)}
-                    onClick={() => handleZoneClick(zone.key)}
-                  />
-                ))}
-              </div>
-            ) : step === "region" ? (
-              <div className="flex flex-col gap-[8px]">
-                <p className="font-fragment-mono font-bold text-[14px] text-text-primary">{esCL.citySelector.regionesEnZona(zoneLabel)}</p>
-                {regionsInSelectedZone.map((region) => (
-                  <OptionRow
-                    key={region.adminRegionName}
-                    label={shortRegionName(region.adminRegionName).toUpperCase()}
-                    counts={countsFor(region.cities, cityCounts)}
-                    showChevron
-                    current={region.adminRegionName === currentMeta?.adminRegionName}
-                    onClick={() => handleRegionClick(region.adminRegionName)}
-                  />
-                ))}
+                <p className="font-fragment-mono font-bold text-[14px] text-text-primary">{esCL.citySelector.regionsLabel}</p>
+                {/* Scrollable so every región fits — same pattern the old
+                    step-3 comuna list used, per the user's explicit
+                    request 2026-08-04/2026-08-12 (16 regiones don't all
+                    fit on one mobile screen). */}
+                <div className="md:border md:border-text-primary md:p-[8px] flex flex-col gap-[4px] max-h-[400px] overflow-y-auto">
+                  {chileRegions.map((region) => {
+                    const rid = regionIdFromAdminRegionName(region.adminRegionName);
+                    return (
+                      <OptionRow
+                        key={rid}
+                        label={shortRegionName(region.adminRegionName).toUpperCase()}
+                        counts={regionCounts[rid] ?? ZERO_COUNTS}
+                        current={rid === regionId}
+                        onClick={() => selectRegion(rid)}
+                      />
+                    );
+                  })}
+                </div>
                 {regionFact && (
                   <div className="bg-[#ebedee] border-l-4 border-brand-magenta rounded-[8px] p-[16px] flex flex-col gap-[10px] mt-[8px]">
                     <p className="font-fragment-mono font-bold text-[12px] text-brand-magenta">{esCL.citySelector.sabiasQue}</p>
@@ -459,34 +365,13 @@ export default function CityPickerPanel({
                   </div>
                 )}
               </div>
-            ) : (
-              <div className="flex flex-col gap-[8px]">
-                <p className="font-fragment-mono font-bold text-[14px] text-text-primary">
-                  {esCL.citySelector.comunasDe(selectedRegionGroup ? shortRegionName(selectedRegionGroup.adminRegionName) : "")}
-                </p>
-                {/* Scrollable so every comuna fits, per the user's explicit
-                    request 2026-08-04 (Región Metropolitana alone has far
-                    more comunas than fit in one screen). */}
-                <div className="md:border md:border-text-primary md:p-[8px] flex flex-col gap-[4px] max-h-[400px] overflow-y-auto">
-                  {(selectedRegionGroup?.cities ?? []).map((city) => (
-                    <OptionRow
-                      key={city.id}
-                      label={city.name.toUpperCase()}
-                      counts={cityCounts[city.id] ?? ZERO_COUNTS}
-                      showChevron={false}
-                      current={city.id === cityId}
-                      onClick={() => selectCity(city.id)}
-                    />
-                  ))}
-                </div>
-              </div>
             )}
           </div>
         </div>
 
-        {!isSearching && (currentLocationCity || recentCities.length > 0) && (
+        {!isSearching && (currentLocationRegion || recentRegions.length > 0) && (
           <div className="mt-[60px] flex flex-col md:flex-row gap-[24px] md:gap-[80px]">
-            {currentLocationCity && (
+            {currentLocationRegion && (
               <div className="flex flex-col gap-[6px] w-full md:w-[258px]">
                 <div className="flex items-center justify-between gap-[8px]">
                   <p className="font-fragment-mono font-bold text-[10px] text-text-muted whitespace-nowrap">
@@ -504,24 +389,27 @@ export default function CityPickerPanel({
                   )}
                 </div>
                 <ShortcutRow
-                  city={currentLocationCity}
-                  counts={cityCounts[currentLocationCity.id] ?? ZERO_COUNTS}
-                  onClick={() => selectCity(currentLocationCity.id)}
+                  label={shortRegionName(currentLocationRegion.adminRegionName).toUpperCase()}
+                  counts={regionCounts[regionIdFromAdminRegionName(currentLocationRegion.adminRegionName)] ?? ZERO_COUNTS}
+                  onClick={() => selectRegion(regionIdFromAdminRegionName(currentLocationRegion.adminRegionName))}
                 />
                 {locatingState === "error" && <p className="text-[10px] text-red-600">{esCL.cityPickerExactLocationError}</p>}
               </div>
             )}
-            {recentCities.length > 0 && (
+            {recentRegions.length > 0 && (
               <div className="flex flex-col gap-[6px] flex-1">
                 <p className="font-fragment-mono font-bold text-[10px] text-text-muted whitespace-nowrap">
                   {esCL.cityPickerRecentlyVisited.toUpperCase()}
                 </p>
                 <div className="flex flex-col md:flex-row gap-[8px]">
-                  {recentCities.map((c) => (
-                    <div key={c.id} className="md:w-[258px]">
-                      <ShortcutRow city={c} counts={cityCounts[c.id] ?? ZERO_COUNTS} onClick={() => selectCity(c.id)} />
-                    </div>
-                  ))}
+                  {recentRegions.map((r) => {
+                    const rid = regionIdFromAdminRegionName(r.adminRegionName);
+                    return (
+                      <div key={rid} className="md:w-[258px]">
+                        <ShortcutRow label={shortRegionName(r.adminRegionName).toUpperCase()} counts={regionCounts[rid] ?? ZERO_COUNTS} onClick={() => selectRegion(rid)} />
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             )}

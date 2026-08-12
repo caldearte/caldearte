@@ -1,7 +1,7 @@
 import {
   fetchApprovedEvents,
   filterFamilyMode,
-  filterByCity,
+  filterByRegion,
   filterActiveInRange,
   splitInauguracionesYExpos,
   filterUpcomingInauguraciones,
@@ -10,6 +10,7 @@ import {
   type EventRecord,
   type RegionMeta,
 } from "@/lib/events";
+import { buildRegionMetaByCityId, adminRegionNameByRegionId } from "@/lib/cities";
 import { resolveCityPickerContext, type CookieReader } from "@/lib/cityPickerContext";
 import { todayInSantiago, currentWeekInSantiago, weekBoundsInSantiago, addWeeks, weekNumberSince, isCurrentOrUpcoming } from "@/lib/date";
 import { FAMILY_MODE_COOKIE, TODAY_FILTER_COOKIE, VIGENTES_FILTER_COOKIE, GEO_CONSENT_COOKIE } from "@/lib/cookies";
@@ -20,6 +21,10 @@ const NEWSLETTER_STATUSES: NewsletterStatus[] = ["confirmed", "already_confirmed
 export interface HomeViewModel {
   inauguraciones: EventRecord[];
   exposActuales: EventRecord[];
+  // The site's own selection unit — see cities.ts's "Región-level
+  // selection" section. cityId/cityNames below stay comuna-level, only
+  // for deriving each event's own comuna label and for geo resolution.
+  regionId: string;
   cityId: string;
   actualCityId: string | null;
   hasPreciseLocation: boolean;
@@ -81,7 +86,7 @@ export async function computeHomeViewModel({
   const visible = filterFamilyMode(allEvents, familyMode);
   const searchableEvents = visible.filter((e) => isCurrentOrUpcoming(e, today));
 
-  const { cityId, cityNames, cityCounts, cityThumbnails, actualCityId, hasPreciseLocation, activeInRange } = await resolveCityPickerContext({
+  const { regionId, cityId, cityNames, cityCounts, cityThumbnails, actualCityId, hasPreciseLocation, activeInRange } = await resolveCityPickerContext({
     cookieStore,
     headerStore,
     allEvents,
@@ -93,18 +98,22 @@ export async function computeHomeViewModel({
 
   const showGeoConsentPrompt = cookieStore.get(GEO_CONSENT_COOKIE) === undefined;
 
-  const cityEventsInRange = filterByCity(activeInRange, cityId);
+  const metaByCityId = buildRegionMetaByCityId(regions);
+  const adminRegionName = adminRegionNameByRegionId(regions).get(regionId) ?? regionId;
+
+  const cityEventsInRange = filterByRegion(activeInRange, adminRegionName, metaByCityId);
   const split = splitInauguracionesYExpos(cityEventsInRange, rangeStart, rangeEnd);
   const inauguracionesForCity = todayFilterOn ? filterActiveInRange(split.inauguraciones, today, today) : split.inauguraciones;
   const exposActualesForCity = todayFilterOn ? filterActiveInRange(split.exposActuales, today, today) : split.exposActuales;
   const inauguraciones = vigentesFilterOn ? filterUpcomingInauguraciones(inauguracionesForCity, today) : inauguracionesForCity;
   const exposActuales = exposActualesForCity;
 
-  const nextEvent = findNextEvent(filterByCity(visible, cityId), today, rangeEnd);
+  const nextEvent = findNextEvent(filterByRegion(visible, adminRegionName, metaByCityId), today, rangeEnd);
 
   return {
     inauguraciones,
     exposActuales,
+    regionId,
     cityId,
     actualCityId,
     hasPreciseLocation,

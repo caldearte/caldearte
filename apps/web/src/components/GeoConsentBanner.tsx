@@ -3,7 +3,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { esCL } from "@/i18n/es-CL";
-import { CITY_COOKIE, GEO_CONSENT_COOKIE, PRECISE_CITY_COOKIE, setCookie } from "@/lib/cookies";
+import { buildRegionMetaByCityId, regionIdFromAdminRegionName } from "@/lib/cities";
+import { REGION_COOKIE, GEO_CONSENT_COOKIE, PRECISE_CITY_COOKIE, setCookie } from "@/lib/cookies";
 import { requestPreciseCityId } from "@/lib/geolocation";
 import type { RegionMeta } from "@/lib/events";
 
@@ -42,8 +43,13 @@ export default function GeoConsentBanner({ show, regions }: GeoConsentBannerProp
       regions,
       (id) => {
         setCookie(GEO_CONSENT_COOKIE, "granted");
-        setCookie(CITY_COOKIE, id);
         setCookie(PRECISE_CITY_COOKIE, id);
+        // The site's own selection unit is región now — geolocation still
+        // resolves a comuna first (nearest centroid), then that comuna's
+        // own admin región is what actually gets selected.
+        const metaByCityId = buildRegionMetaByCityId(regions);
+        const adminRegionName = metaByCityId.get(id)?.adminRegionName;
+        if (adminRegionName) setCookie(REGION_COOKIE, regionIdFromAdminRegionName(adminRegionName));
         setDismissed(true);
         router.refresh();
       },

@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { esCL } from "@/i18n/es-CL";
-import { searchEvents, sortByRunEndAsc, displayNameForCity, type EventRecord } from "@/lib/events";
+import { searchEvents, sortByRunEndAsc, type EventRecord } from "@/lib/events";
 import { dateOnlyFromIso, todayInSantiago } from "@/lib/date";
 import EventHorizontalListItem from "./EventHorizontalListItem";
 
@@ -153,7 +153,7 @@ export default function SearchPanel({ open, events, onClose }: SearchPanelProps)
                   </p>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-[12px]">
                     {inauguracionResults.map((e) => (
-                      <EventHorizontalListItem key={e.id} event={e} variant="inauguracion" cityName={displayNameForCity(e)} />
+                      <EventHorizontalListItem key={e.id} event={e} variant="inauguracion" />
                     ))}
                   </div>
                 </div>
@@ -165,7 +165,7 @@ export default function SearchPanel({ open, events, onClose }: SearchPanelProps)
                   </p>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-[12px]">
                     {expoResults.map((e) => (
-                      <EventHorizontalListItem key={e.id} event={e} variant="expo" cityName={displayNameForCity(e)} />
+                      <EventHorizontalListItem key={e.id} event={e} variant="expo" />
                     ))}
                   </div>
                 </div>

@@ -2,8 +2,9 @@
 
 import { useRef, useState } from "react";
 import { esCL } from "@/i18n/es-CL";
-import { cityById, OTHER_CITY } from "@/lib/cities";
-import { CITY_COOKIE, FAMILY_MODE_COOKIE, setCookie, pushRecentCityId } from "@/lib/cookies";
+import { adminRegionNameByRegionId } from "@/lib/cities";
+import { shortRegionName } from "@/lib/regionNames";
+import { REGION_COOKIE, FAMILY_MODE_COOKIE, setCookie, pushRecentRegionId } from "@/lib/cookies";
 import { fmtShort } from "@/lib/date";
 import type { CityCounts, EventRecord, RegionMeta } from "@/lib/events";
 import Header from "./Header";
@@ -22,8 +23,8 @@ import NewsletterStatusModal, { type NewsletterStatus } from "./NewsletterStatus
 interface CalendarViewProps {
   inauguraciones: EventRecord[];
   exposActuales: EventRecord[];
-  cityId: string;
-  actualCityId: string | null; // IP-geolocated comuna, recomputed every render regardless of cityId — CityPickerPanel's "Tu ubicación actual" row; null when there's no real signal (outside Chile, no geo header)
+  regionId: string; // the site's own selection unit — see cities.ts's "Región-level selection"
+  actualCityId: string | null; // IP-geolocated comuna, recomputed every render regardless of región — CityPickerPanel's "Tu ubicación actual" row; null when there's no real signal (outside Chile, no geo header)
   hasPreciseLocation: boolean; // true once a real geolocation reading (banner or picker button) has been granted — hides the picker's redundant "Usar mi ubicación exacta" button
   showGeoConsentPrompt: boolean; // true only when the visitor has never answered GeoConsentBanner's prompt
   cityNames: Record<string, string>; // real observed comuna names, id -> name — see cities.ts
@@ -58,7 +59,7 @@ interface CalendarViewProps {
 export default function CalendarView({
   inauguraciones,
   exposActuales,
-  cityId,
+  regionId,
   actualCityId,
   hasPreciseLocation,
   showGeoConsentPrompt,
@@ -91,22 +92,20 @@ export default function CalendarView({
     setDrawerOpen(true);
   }
 
-  const city = cityById(cityId, cityNames);
+  const regionName = shortRegionName(adminRegionNameByRegionId(regions).get(regionId) ?? regionId);
 
-  // Records the city being LEFT (not the destination) into "Últimas
-  // visitadas" — a self-visit (re-confirming the same city) and "otro"
-  // (not a real memorable place) are never worth remembering.
-  function recordDeparture(nextCityId: string) {
-    if (nextCityId !== cityId && cityId !== OTHER_CITY.id) pushRecentCityId(cityId);
+  // Records the región being LEFT (not the destination) into "Últimas
+  // visitadas" — re-confirming the same región is never worth remembering.
+  function recordDeparture(nextRegionId: string) {
+    if (nextRegionId !== regionId) pushRecentRegionId(regionId);
   }
 
-  // Commits + navigates immediately — used by both the carousel and the
-  // city picker (clicking a row, or pressing Enter on one), mirroring
-  // CityCarousel's own instant-navigate pattern. No more pending-selection
-  // + separate "Explorar" confirm step.
-  function goToCity(nextCityId: string) {
-    recordDeparture(nextCityId);
-    setCookie(CITY_COOKIE, nextCityId);
+  // Commits + navigates immediately — used by the city picker (clicking a
+  // row, or pressing Enter on one). No pending-selection + separate
+  // "Explorar" confirm step.
+  function goToRegion(nextRegionId: string) {
+    recordDeparture(nextRegionId);
+    setCookie(REGION_COOKIE, nextRegionId);
     setLocationOpen(false);
     window.scrollTo(0, 0);
     onRefreshNeeded();
@@ -126,12 +125,11 @@ export default function CalendarView({
       <GeoLocationChangedBanner
         hasPreciseLocation={hasPreciseLocation}
         actualCityId={actualCityId}
-        cityNames={cityNames}
         regions={regions}
       />
 
       <Header
-        city={city}
+        regionName={regionName}
         rangeStart={rangeStart}
         rangeEnd={rangeEnd}
         weekNumber={weekNumber}
@@ -151,7 +149,7 @@ export default function CalendarView({
           {nextEvent ? (
             <p className="text-sm text-heading-gray">
               {esCL.emptyWithNextEvent(
-                city.name,
+                regionName,
                 todayFilterOn ? esCL.todaySuffix : esCL.thisWeekSuffix,
                 nextEvent.openingDatetime ? fmtShort(nextEvent.openingDatetime.slice(0, 10)) : fmtShort(nextEvent.runStartDate ?? today),
                 nextEvent.title,
@@ -159,7 +157,7 @@ export default function CalendarView({
             </p>
           ) : (
             <>
-              <p className="text-sm text-heading-gray mb-2">{esCL.emptyNoEventsYet(city.name)}</p>
+              <p className="text-sm text-heading-gray mb-2">{esCL.emptyNoEventsYet(regionName)}</p>
               <p className="text-xs text-muted-gray mb-3">{esCL.doYouKnowOne}</p>
               <button className="text-xs px-3 py-1.5 rounded-full bg-city-pill-bg text-city-pill-fg">{esCL.tellUs}</button>
             </>
@@ -210,7 +208,7 @@ export default function CalendarView({
 
       <CityPickerPanel
         open={locationOpen}
-        cityId={cityId}
+        regionId={regionId}
         actualCityId={actualCityId}
         hasPreciseLocation={hasPreciseLocation}
         cityCounts={cityCounts}
@@ -220,7 +218,7 @@ export default function CalendarView({
           setLocationOpen(false);
           cityPickerTriggerRef.current?.focus();
         }}
-        onSelectCity={goToCity}
+        onSelectRegion={goToRegion}
       />
 
       <MenuDrawer

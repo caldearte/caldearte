@@ -5,15 +5,16 @@ import { notFound } from "next/navigation";
 import {
   fetchApprovedEvents,
   truncateDescription,
-  resolveCityId,
   displayNameForCity,
-  filterByCity,
+  resolveAdminRegionName,
+  filterByRegion,
   splitInauguracionesYExpos,
   filterActiveInRange,
   filterUpcomingInauguraciones,
 } from "@/lib/events";
 import { resolveCityPickerContext } from "@/lib/cityPickerContext";
-import { cityById } from "@/lib/cities";
+import { buildRegionMetaByCityId, adminRegionNameByRegionId, regionIdFromAdminRegionName } from "@/lib/cities";
+import { shortRegionName } from "@/lib/regionNames";
 import { currentWeekInSantiago, weekBoundsInSantiago, addWeeks, weekNumberSince, todayInSantiago } from "@/lib/date";
 import { FAMILY_MODE_COOKIE, TODAY_FILTER_COOKIE, VIGENTES_FILTER_COOKIE } from "@/lib/cookies";
 import { extractDomain, resolveCardImage } from "@/lib/image-source";
@@ -103,11 +104,14 @@ export default async function EventPage({
   if (!event) notFound();
 
   const domain = event.sourceUrl ? extractDomain(event.sourceUrl) : null;
-  // The EVENT's own city (standalone mode's "go to this comuna" pill) —
-  // distinct from the VIEWER's currently-selected city below, which list
-  // mode needs instead.
-  const eventCityId = resolveCityId(event);
+  const metaByCityId = buildRegionMetaByCityId(regions);
+  // The EVENT's own comuna/región (standalone mode's "go to this comuna"
+  // pill — still shows the specific comuna, but selects its whole región)
+  // — distinct from the VIEWER's currently-selected región below, which
+  // list mode needs instead.
   const eventCityName = displayNameForCity(event);
+  const eventAdminRegionName = resolveAdminRegionName(event, metaByCityId);
+  const eventRegionId = regionIdFromAdminRegionName(eventAdminRegionName ?? "");
 
   const cookieStore = await cookies();
   const headerStore = await headers();
@@ -126,7 +130,7 @@ export default async function EventPage({
   const weekNumber = weekNumberSince(rangeStart);
 
   const {
-    cityId: viewerCityId,
+    regionId: viewerRegionId,
     cityNames,
     cityCounts,
     actualCityId,
@@ -134,7 +138,8 @@ export default async function EventPage({
     activeInRange,
   } = await resolveCityPickerContext({ cookieStore, headerStore, allEvents: events, regions, rangeStart, rangeEnd, familyMode });
 
-  const cityEventsInRange = filterByCity(activeInRange, viewerCityId);
+  const viewerAdminRegionName = adminRegionNameByRegionId(regions).get(viewerRegionId) ?? viewerRegionId;
+  const cityEventsInRange = filterByRegion(activeInRange, viewerAdminRegionName, metaByCityId);
   const split = splitInauguracionesYExpos(cityEventsInRange, rangeStart, rangeEnd);
   const inauguracionesForCity = todayFilterOn ? filterActiveInRange(split.inauguraciones, today, today) : split.inauguraciones;
   const exposActualesForCity = todayFilterOn ? filterActiveInRange(split.exposActuales, today, today) : split.exposActuales;
@@ -147,14 +152,14 @@ export default async function EventPage({
   // Inauguraciones itself — confirmed with the user 2026-08-06.
   const listIndex = exposActuales.findIndex((e) => e.id === event.id);
   const listMode = listIndex !== -1;
-  const viewerCityName = cityById(viewerCityId, cityNames).name;
+  const viewerRegionName = shortRegionName(viewerAdminRegionName);
   // Week nav can't just change a query param in place like Header.tsx's
   // own links do (there's no calendar data on this page to re-render) —
   // redirects through the same api/eventos/go-to-city mechanism
-  // EventPageCityPicker's own city switch already uses, city unchanged,
-  // only `semana` moves.
-  const prevWeekHref = `/api/eventos/go-to-city?cityId=${encodeURIComponent(viewerCityId)}&semana=${addWeeks(rangeStart, -1)}`;
-  const nextWeekHref = `/api/eventos/go-to-city?cityId=${encodeURIComponent(viewerCityId)}&semana=${addWeeks(rangeStart, 1)}`;
+  // EventPageCityPicker's own región switch already uses, región
+  // unchanged, only `semana` moves.
+  const prevWeekHref = `/api/eventos/go-to-city?regionId=${encodeURIComponent(viewerRegionId)}&semana=${addWeeks(rangeStart, -1)}`;
+  const nextWeekHref = `/api/eventos/go-to-city?regionId=${encodeURIComponent(viewerRegionId)}&semana=${addWeeks(rangeStart, 1)}`;
 
   const topNav = listMode ? (
     <EventPageTopNav
@@ -163,8 +168,8 @@ export default async function EventPage({
       rangeEnd={rangeEnd}
       prevWeekHref={prevWeekHref}
       nextWeekHref={nextWeekHref}
-      cityId={viewerCityId}
-      cityName={viewerCityName}
+      regionId={viewerRegionId}
+      regionName={viewerRegionName}
       actualCityId={actualCityId}
       hasPreciseLocation={hasPreciseLocation}
       cityCounts={cityCounts}
@@ -172,7 +177,7 @@ export default async function EventPage({
       regions={regions}
     />
   ) : (
-    <EventCityLink cityId={eventCityId} cityName={eventCityName} />
+    <EventCityLink regionId={eventRegionId} cityName={eventCityName} />
   );
 
   return (
@@ -213,7 +218,7 @@ export default async function EventPage({
             ? {
                 current: listIndex + 1,
                 total: exposActuales.length,
-                cityName: viewerCityName,
+                cityName: viewerRegionName,
                 prevHref: listIndex > 0 ? `/eventos/${exposActuales[listIndex - 1].id}?semana=${rangeStart}` : null,
                 nextHref: listIndex < exposActuales.length - 1 ? `/eventos/${exposActuales[listIndex + 1].id}?semana=${rangeStart}` : null,
               }
