@@ -26,7 +26,13 @@ import { estimateCostUsd } from "../lib/pricing.js";
 import { knownSourceDomain, isAggregatorSource } from "../lib/known-sources.js";
 import { KNOWN_LOW_QUALITY_SOURCE_DOMAINS } from "../lib/known-exclusions.js";
 import { matchRegionId, type RegionLike } from "../lib/locations.js";
-import { normalizeLocation, isLikelySameTitle, placeNamesLikelySame, isWithinAnchorWindow } from "../lib/event-filters.js";
+import {
+  normalizeLocation,
+  isLikelySameTitle,
+  isLikelySameTitleIgnoringPlaceName,
+  placeNamesLikelySame,
+  isWithinAnchorWindow,
+} from "../lib/event-filters.js";
 import { enrichCandidates, enrichBrightSourceItemDetails, isSocialMediaUrl, type FetchLike as PageFetchLike } from "../lib/page-fetch.js";
 import { rehostImage, type RehostImageFn } from "../lib/image-rehost.js";
 import { sendRunSummaryEmail, sendEscalationEmail, type RunSummary, type CandidateSummary } from "../lib/notify.js";
@@ -211,10 +217,29 @@ export async function recordBrightSourcesFetched(urls: string[], now: Date): Pro
 //   applies — safe for both real shapes: a repost with a garbled title
 //   still needs the title to be at least somewhat similar to get merged
 //   (true for real reposts, false for e.g. "Vestiario" vs "Materia
-//   sensible"), while a PAST run's already-stored event is still caught
-//   unconditionally on the exact fingerprint alone, no title check
-//   needed — that's what the San Felipe case itself actually was: a
-//   re-run finding an event already in the calendar from days earlier.
+//   sensible").
+//
+//   Real production bug, found 2026-08-12 (via a user-requested audit):
+//   the SAME thing can happen ACROSS runs, not just within one batch — a
+//   venue running a whole "temporada" of concurrent shows that all open
+//   and close on the museum's shared season dates. MAC - Parque Forestal
+//   had 3 genuinely different real exhibitions ("Nazca/Sudamericana",
+//   "Obras extraordinarias", "El ángel de la historia") all sharing the
+//   exact same placeName + 11-jul-to-11-oct run. "Nazca/Sudamericana" was
+//   inserted first (a prior week's run); the other two, discovered later,
+//   collided on the exact fingerprint against it and got silently dropped
+//   as "duplicates". `seen.locationDates` is now list-valued (one
+//   venue+date combo can legitimately hold several real events) and
+//   requires a title match too — but plain isLikelySameTitle isn't safe
+//   here: uchile.cl/artes.uchile.cl bakes the venue name straight into
+//   every title ("... en el MAC Parque Forestal"), so ALL THREE of these
+//   titles share enough words (the venue name itself) to pass isLikelySameTitle
+//   even though they're unrelated exhibitions — confirmed by this fix's own
+//   first attempt, caught by its regression test. Uses
+//   isLikelySameTitleIgnoringPlaceName instead (event-filters.ts), which
+//   strips placeName's own words from both titles first. The San Felipe
+//   case above still passes fine (its titles don't embed a venue name at
+//   all), so this only closes the gap, doesn't reopen it.
 // placeName joined the fingerprint (2026-07-28, alongside comuna and
 // title): a real cross-source case (chilecultura.gob.cl vs. the venue's
 // own site both listing "Balmaceda Arte Joven" / "Estado de Posibilidad")
@@ -303,7 +328,17 @@ export interface ExistingEventInfo {
 export interface SeenKeys {
   titles: Map<string, ExistingEventInfo>;
   sourceUrls: Map<string, ExistingEventInfo>;
-  locationDates: Map<string, ExistingEventInfo>;
+  // List-valued (2026-08-12, real production bug): a venue running a whole
+  // "temporada" of concurrent exhibitions can have several genuinely
+  // DIFFERENT shows sharing the exact same placeName + run dates (found via
+  // MAC - Parque Forestal, 3 real 11-jul-to-11-oct exhibitions —
+  // "Nazca/Sudamericana", "Obras extraordinarias", "El ángel de la
+  // historia"). Treating the fingerprint alone as proof of "same event"
+  // (the original single-value map) silently dropped the other 2 as
+  // duplicates of the first one inserted. See the title-similarity check
+  // at the call site below — same fix shape as titlesByLocationDateOnly's
+  // own fuzzy tier, applied to this stricter exact-fingerprint tier too.
+  locationDates: Map<string, ExistingEventInfo[]>;
   // Real bug (found 2026-07-20, via a user-requested audit): none of the
   // three exact-match signals above catch two DIFFERENT sources reporting
   // the SAME real event with different exact hours ("19:00" vs "19:30")
@@ -353,19 +388,22 @@ export async function loadExistingKeys(): Promise<SeenKeys> {
     else titlesByLocationDateOnly.set(key, [toInfo(row)]);
   }
 
+  const locationDates = new Map<string, ExistingEventInfo[]>();
+  for (const row of rows) {
+    const key = locationDateKey(row.freeform_location, row.place_name, {
+      openingDatetime: row.opening_datetime,
+      runStartDate: row.run_start_date,
+      runEndDate: row.run_end_date,
+    });
+    const existing = locationDates.get(key);
+    if (existing) existing.push(toInfo(row));
+    else locationDates.set(key, [toInfo(row)]);
+  }
+
   return {
     titles: new Map(rows.map((row) => [normalizeTitle(row.title), toInfo(row)])),
     sourceUrls: new Map(rows.flatMap((row) => (row.source_url ? [[row.source_url, toInfo(row)] as const] : []))),
-    locationDates: new Map(
-      rows.map((row) => [
-        locationDateKey(row.freeform_location, row.place_name, {
-          openingDatetime: row.opening_datetime,
-          runStartDate: row.run_start_date,
-          runEndDate: row.run_end_date,
-        }),
-        toInfo(row),
-      ]),
-    ),
+    locationDates,
     titlesByLocationDateOnly,
   };
 }
@@ -667,9 +705,19 @@ export async function insertCandidates(
     const locDateOnlyKey = locationDateOnlyKey(c.location, c);
     const titleMatch = seen.titles.get(titleKey);
     const sourceUrlMatch = c.sourceUrl !== null ? seen.sourceUrls.get(c.sourceUrl) : undefined;
-    const locationDateMatch = seen.locationDates.get(locDateKey);
+    const locationDateMatch = (seen.locationDates.get(locDateKey) ?? []).find((existing) =>
+      isLikelySameTitleIgnoringPlaceName(existing.title, c.title, c.placeName),
+    );
+    // isLikelySameTitleIgnoringPlaceName here too (2026-08-12, same MAC -
+    // Parque Forestal bug as locationDateMatch above) — this bucket's own
+    // placeNamesLikelySame check confirms the venues are alike separately,
+    // but without stripping placeName's words from the title comparison
+    // first, a source that bakes its venue name into every title (uchile.cl/
+    // artes.uchile.cl) still passes on the venue name alone.
     const fuzzyMatch = (seen.titlesByLocationDateOnly.get(locDateOnlyKey) ?? []).find(
-      (existing) => isLikelySameTitle(existing.title, c.title) && placeNamesLikelySame(existing.placeName, c.placeName),
+      (existing) =>
+        isLikelySameTitleIgnoringPlaceName(existing.title, c.title, c.placeName) &&
+        placeNamesLikelySame(existing.placeName, c.placeName),
     );
     const existingMatch = titleMatch ?? sourceUrlMatch ?? locationDateMatch ?? fuzzyMatch;
 

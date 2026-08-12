@@ -1,6 +1,12 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { normalizeLocation, isLikelySameTitle, placeNamesLikelySame, isWithinAnchorWindow } from "./event-filters.js";
+import {
+  normalizeLocation,
+  isLikelySameTitle,
+  isLikelySameTitleIgnoringPlaceName,
+  placeNamesLikelySame,
+  isWithinAnchorWindow,
+} from "./event-filters.js";
 
 test("normalizeLocation collapses a trailing ', Chile'/region suffix — real bug, found 2026-07-20: the same festival got inserted 3x in one run because 'Valparaíso, Chile' vs 'Valparaíso' produced different dedup fingerprints", () => {
   assert.equal(normalizeLocation("Valparaíso, Chile"), normalizeLocation("Valparaíso"));
@@ -42,6 +48,33 @@ test("isLikelySameTitle: the exact real trio from the ARTEPUERTO audit finding i
 
 test("isLikelySameTitle: identical titles are trivially similar", () => {
   assert.equal(isLikelySameTitle("Dejar Atrás", "Dejar Atrás"), true);
+});
+
+// Real production bug, found 2026-08-12: run.ts's strict location+date
+// dedup tier used plain isLikelySameTitle, which passed for 2 genuinely
+// different MAC - Parque Forestal exhibitions purely because uchile.cl/
+// artes.uchile.cl bakes the venue name into every title.
+test("isLikelySameTitleIgnoringPlaceName: plain isLikelySameTitle wrongly flags 2 different exhibitions sharing a venue baked into both titles, but ignoring placeName's own words correctly tells them apart", () => {
+  const a = 'Muestra "Nazca/Sudamericana" en el MAC Parque Forestal';
+  const b = 'Exposición "Obras extraordinarias" en el MAC Parque Forestal';
+  assert.equal(isLikelySameTitle(a, b), true, "sanity check: this is the actual bug — plain isLikelySameTitle is fooled");
+  assert.equal(isLikelySameTitleIgnoringPlaceName(a, b, "MAC - Parque Forestal"), false);
+});
+
+test("isLikelySameTitleIgnoringPlaceName still flags a real repost once the venue's own words are set aside", () => {
+  assert.equal(
+    isLikelySameTitleIgnoringPlaceName(
+      "Inauguración de la muestra 'Raíces del Sur' en el MAC Parque Forestal",
+      "Raíces del Sur: exposición fotográfica en el MAC Parque Forestal",
+      "MAC - Parque Forestal",
+    ),
+    true,
+  );
+});
+
+test("isLikelySameTitleIgnoringPlaceName with a null placeName behaves exactly like isLikelySameTitle", () => {
+  assert.equal(isLikelySameTitleIgnoringPlaceName("Dejar Atrás", "Dejar Atrás", null), true);
+  assert.equal(isLikelySameTitleIgnoringPlaceName("El color y la forma", "El agua y la tierra", null), false);
 });
 
 // Real case, found 2026-07-28 evaluating balmacedartejoven.cl as a

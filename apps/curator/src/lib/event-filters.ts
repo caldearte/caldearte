@@ -77,9 +77,10 @@ function tokenizeSignificantWords(title: string): Set<string> {
   );
 }
 
-export function isLikelySameTitle(a: string, b: string): boolean {
-  const wordsA = tokenizeSignificantWords(a);
-  const wordsB = tokenizeSignificantWords(b);
+// Shared comparator behind isLikelySameTitle/isLikelySameTitleIgnoringPlaceName
+// — both need the identical Jaccard-or-overlap decision, just over
+// different word sets.
+function wordSetsLikelySameTitle(wordsA: Set<string>, wordsB: Set<string>): boolean {
   if (wordsA.size === 0 || wordsB.size === 0) return false;
 
   const shared = [...wordsA].filter((w) => wordsB.has(w));
@@ -101,6 +102,27 @@ export function isLikelySameTitle(a: string, b: string): boolean {
   // ARTEPUERTO case below) never qualifies on its own.
   const overlap = shared.length / Math.min(wordsA.size, wordsB.size);
   return jaccard >= 0.6 || overlap >= 0.6;
+}
+
+export function isLikelySameTitle(a: string, b: string): boolean {
+  return wordSetsLikelySameTitle(tokenizeSignificantWords(a), tokenizeSignificantWords(b));
+}
+
+// Used by run.ts's strict location+date dedup tier (2026-08-12, real
+// production bug): a source like uchile.cl/artes.uchile.cl bakes its own
+// venue name straight into every title ("Exposición 'X' en el MAC Parque
+// Forestal") — when a venue runs several genuinely different concurrent
+// exhibitions sharing one placeName + season-wide run dates, that shared
+// "en el MAC Parque Forestal" suffix alone is enough to pass plain
+// isLikelySameTitle (3 of 4-5 significant words shared, purely from the
+// venue name), which would falsely treat 2 different real exhibitions as
+// the same event. Strips placeName's own significant words from both
+// titles before comparing, so only the part of the title that actually
+// describes the exhibition counts.
+export function isLikelySameTitleIgnoringPlaceName(a: string, b: string, placeName: string | null): boolean {
+  const placeWords = placeName ? tokenizeSignificantWords(placeName) : new Set<string>();
+  const withoutPlaceWords = (title: string) => new Set([...tokenizeSignificantWords(title)].filter((w) => !placeWords.has(w)));
+  return wordSetsLikelySameTitle(withoutPlaceWords(a), withoutPlaceWords(b));
 }
 
 // Used by run.ts's fuzzy cross-run dedup ALONGSIDE isLikelySameTitle, not
