@@ -2,7 +2,7 @@ import { unstable_cache } from "next/cache";
 import type { Database } from "@caldearte/shared-types";
 import { getSupabaseClient } from "./supabase-client";
 import { cityIdFromRegionName, deriveCityId, OTHER_CITY } from "./cities";
-import { activeRange, anchorDateOnly, dateOnlyFromIso, isArchivableMonth, isCurrentOrUpcoming, rangesOverlap, type EventDates } from "./date";
+import { activeRange, anchorDateOnly, dateOnlyFromIso, isCurrentOrUpcoming, rangesOverlap, type EventDates } from "./date";
 import { matchesQuery } from "./cities";
 
 export interface EventRecord extends EventDates {
@@ -109,8 +109,8 @@ export interface RegionMeta {
 // Doesn't depend on the visitor's city/week cookie — only the filtering
 // callers do afterwards — so it's wrapped in unstable_cache (60s) instead
 // of re-hitting Supabase on every request. Every page that reads events
-// (home, /eventos/[id], /expos-anteriores, sitemap, go-to-city) shares
-// this one cache entry. No client argument — always the same anon
+// (home, /eventos/[id], sitemap, go-to-city) shares this one cache entry.
+// No client argument — always the same anon
 // singleton (getSupabaseClient()), keeping this cacheable without needing
 // to serialize a client object into the cache key.
 async function fetchApprovedEventsFromDb(): Promise<{ events: EventRecord[]; regions: RegionMeta[] }> {
@@ -189,6 +189,19 @@ export function filterFamilyMode(events: EventRecord[], familyModeOn: boolean): 
 
 export function filterByCity(events: EventRecord[], cityId: string): EventRecord[] {
   return events.filter((e) => resolveCityId(e) === cityId);
+}
+
+// Región-level counterpart (2026-08-12) — the site's actual selection/
+// filtering unit now (see cities.ts's own "Región-level selection"
+// section). Resolves each event's own comuna (resolveCityId) up to its
+// admin región via the same metaByCityId map cities.ts's
+// buildRegionMetaByCityId already builds from `regions` — no new query.
+export function resolveAdminRegionName(event: EventRecord, metaByCityId: Map<string, RegionMeta>): string | null {
+  return metaByCityId.get(resolveCityId(event))?.adminRegionName ?? null;
+}
+
+export function filterByRegion(events: EventRecord[], adminRegionName: string, metaByCityId: Map<string, RegionMeta>): EventRecord[] {
+  return events.filter((e) => resolveAdminRegionName(e, metaByCityId) === adminRegionName);
 }
 
 export function eventsActiveInRange(events: EventRecord[], start: string, end: string): EventRecord[] {
@@ -339,61 +352,6 @@ export function findNextEvent(events: EventRecord[], todayStr: string, windowEnd
     .filter((x): x is { e: EventRecord; anchor: string } => x.anchor !== null && x.anchor > windowEnd)
     .sort((a, b) => (a.anchor > b.anchor ? 1 : a.anchor < b.anchor ? -1 : 0));
   return upcoming[0]?.e ?? null;
-}
-
-// --- "Expos anteriores" archive ---------------------------------------
-
-export interface MonthKey {
-  year: number;
-  month: number; // 1-12
-}
-
-function monthKeyOf(dateStr: string): string {
-  return dateStr.slice(0, 7); // "YYYY-MM"
-}
-
-// Every approved event with a resolvable anchor date, keyed to exactly one
-// month — its own anchor's month — never repeated across the months a
-// multi-month run happens to span. This is what keeps each archive page's
-// content unique (no duplicate cards across pages, which would dilute
-// SEO), per the confirmed "opening month is canonical" rule.
-export function groupEventsByAnchorMonth(events: EventRecord[]): Map<string, EventRecord[]> {
-  const groups = new Map<string, EventRecord[]>();
-  for (const e of events) {
-    const anchor = anchorDateOnly(e);
-    if (!anchor) continue;
-    const key = monthKeyOf(anchor);
-    const bucket = groups.get(key);
-    if (bucket) bucket.push(e);
-    else groups.set(key, [e]);
-  }
-  return groups;
-}
-
-// Distinct past months (strictly before todayStr's Santiago month) that
-// have at least one event, most-recent-first — the source list for both
-// generateStaticParams and the sitemap.
-export function listArchiveMonths(events: EventRecord[], todayStr: string): MonthKey[] {
-  const groups = groupEventsByAnchorMonth(events);
-  const months: MonthKey[] = [];
-  for (const key of groups.keys()) {
-    const [year, month] = key.split("-").map(Number);
-    if (isArchivableMonth(year, month, todayStr)) months.push({ year, month });
-  }
-  return months.sort((a, b) => b.year * 12 + b.month - (a.year * 12 + a.month));
-}
-
-// Events anchored to exactly this year/month, earliest opening first — an
-// archive page reads as a timeline of the month, unlike the home page's
-// "newest first" ordering (sortByAnchorDesc).
-export function eventsForMonth(events: EventRecord[], year: number, month: number): EventRecord[] {
-  const key = `${year}-${String(month).padStart(2, "0")}`;
-  const bucket = groupEventsByAnchorMonth(events).get(key) ?? [];
-  return [...bucket].sort((a, b) => {
-    const aAnchor = anchorDateOnly(a) ?? "";
-    const bAnchor = anchorDateOnly(b) ?? "";
-    return aAnchor < bAnchor ? -1 : aAnchor > bAnchor ? 1 : 0;
-  });
 }
 
 // Free-text search over title/artist/placeName — accent-insensitive via

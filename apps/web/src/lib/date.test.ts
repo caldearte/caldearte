@@ -13,9 +13,6 @@ import {
   weekBoundsInSantiago,
   fmtWeekHeader,
   fmtWeekRange,
-  fmtMonthYear,
-  isArchivableMonth,
-  monthBounds,
   fmtInauguracionDate,
   buildGoogleCalendarUrl,
   addWeeks,
@@ -216,34 +213,6 @@ test("weekNumberSince: counts sequential weeks after the epoch", () => {
 test("weekNumberSince: clamps to 1 for any week before the epoch", () => {
   assert.equal(weekNumberSince("2026-07-20"), 1);
   assert.equal(weekNumberSince("2020-01-06"), 1);
-});
-
-test("fmtMonthYear formats a capitalized month name and year", () => {
-  assert.equal(fmtMonthYear(2026, 7), "Julio 2026");
-  assert.equal(fmtMonthYear(2026, 1), "Enero 2026");
-});
-
-test("isArchivableMonth: strictly before the current Santiago month is archivable", () => {
-  assert.equal(isArchivableMonth(2026, 6, "2026-07-19"), true);
-  assert.equal(isArchivableMonth(2026, 7, "2026-07-19"), false, "the current month itself is not archivable yet");
-  assert.equal(isArchivableMonth(2026, 8, "2026-07-19"), false, "a future month is not archivable");
-});
-
-test("isArchivableMonth: a year boundary is handled correctly", () => {
-  assert.equal(isArchivableMonth(2025, 12, "2026-01-15"), true);
-  assert.equal(isArchivableMonth(2026, 1, "2026-01-15"), false);
-});
-
-test("monthBounds: a 31-day month", () => {
-  assert.deepEqual(monthBounds(2026, 7), { start: "2026-07-01", end: "2026-07-31" });
-});
-
-test("monthBounds: February in a non-leap year", () => {
-  assert.deepEqual(monthBounds(2026, 2), { start: "2026-02-01", end: "2026-02-28" });
-});
-
-test("monthBounds: February in a leap year", () => {
-  assert.deepEqual(monthBounds(2028, 2), { start: "2028-02-01", end: "2028-02-29" });
 });
 
 test("fmtUntilDate: capitalized month, falls back to the anchor when there's no runEndDate", () => {

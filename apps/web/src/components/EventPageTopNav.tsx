@@ -10,8 +10,8 @@ interface EventPageTopNavProps {
   rangeEnd: string;
   prevWeekHref: string;
   nextWeekHref: string;
-  cityId: string;
-  cityName: string;
+  regionId: string;
+  regionName: string;
   actualCityId: string | null;
   hasPreciseLocation: boolean;
   cityCounts: Record<string, CityCounts>;
@@ -26,16 +26,16 @@ interface EventPageTopNavProps {
 // bar instead of a full hero. Week prev/next here can't just change a
 // query param in place like Header.tsx's own links do (there's no
 // calendar data on this page to re-render) — they redirect through
-// api/eventos/go-to-city, same mechanism EventPageCityPicker's own city
-// switch already uses, just varying `semana` instead of `cityId`.
+// api/eventos/go-to-city, same mechanism EventPageCityPicker's own región
+// switch already uses, just varying `semana` instead of `regionId`.
 export default function EventPageTopNav({
   weekNumber,
   rangeStart,
   rangeEnd,
   prevWeekHref,
   nextWeekHref,
-  cityId,
-  cityName,
+  regionId,
+  regionName,
   actualCityId,
   hasPreciseLocation,
   cityCounts,
@@ -46,8 +46,8 @@ export default function EventPageTopNav({
     <div className="flex flex-col items-end gap-[4px]">
       <p className="font-fragment-mono text-[11px] text-border-default tracking-[-0.4px] whitespace-nowrap">{esCL.weekNumberLabel(weekNumber)}</p>
       <EventPageCityPicker
-        cityId={cityId}
-        cityName={cityName}
+        regionId={regionId}
+        regionName={regionName}
         actualCityId={actualCityId}
         hasPreciseLocation={hasPreciseLocation}
         cityCounts={cityCounts}

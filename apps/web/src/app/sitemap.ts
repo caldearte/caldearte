@@ -1,21 +1,13 @@
 import type { MetadataRoute } from "next";
-import { fetchApprovedEvents, listArchiveMonths } from "@/lib/events";
-import { todayInSantiago } from "@/lib/date";
+import { fetchApprovedEvents } from "@/lib/events";
 
-export const revalidate = 3600; // matches the archive pages' own revalidate window
+export const revalidate = 3600;
 
-// Data-dependent since the "Expos anteriores" archive shipped — enumerates
-// one URL per archived month, on top of the app's static routes.
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // www, not the apex — see robots.ts's comment. Every <loc> here must be
   // the final URL Google actually lands on, not one that 308-redirects.
   const base = "https://www.caldearte.com";
   const { events } = await fetchApprovedEvents();
-  const archiveUrls: MetadataRoute.Sitemap = listArchiveMonths(events, todayInSantiago()).map(({ year, month }) => ({
-    url: `${base}/expos-anteriores/${year}/${String(month).padStart(2, "0")}`,
-    changeFrequency: "monthly",
-    priority: 0.5,
-  }));
   // One URL per event's own shareable/indexable permalink (see
   // app/eventos/[id]/page.tsx) — "weekly" since a row can still change
   // after being written (e.g. an opening hour confirmed later).
@@ -28,7 +20,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: base, changeFrequency: "daily", priority: 1 },
     { url: `${base}/privacidad`, changeFrequency: "yearly", priority: 0.3 },
     { url: `${base}/curatoria`, changeFrequency: "yearly", priority: 0.3 },
-    ...archiveUrls,
     ...eventUrls,
   ];
 }

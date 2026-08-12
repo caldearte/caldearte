@@ -17,12 +17,6 @@ import type { EventRecord } from "@/lib/events";
 interface EventHorizontalListItemProps {
   event: EventRecord;
   variant: "inauguracion" | "expo";
-  // Only passed by SearchPanel — results span every comuna, so the venue
-  // line alone isn't enough location context. Not passed by the home
-  // page's own list view, which is already scoped to one selected city.
-  // Appended only when not already visible inside venueLine (which itself
-  // sometimes already carries a Gran Santiago comuna, via deriveComuna).
-  cityName?: string;
 }
 
 // Compact "list view" card (toggle-list in the Inauguraciones/
@@ -32,7 +26,7 @@ interface EventHorizontalListItemProps {
 // full-width row. No exact Figma node for this variant existed at build
 // time; sized/spaced to match the density of the reference screenshot
 // the user provided.
-export default function EventHorizontalListItem({ event, variant, cityName }: EventHorizontalListItemProps) {
+export default function EventHorizontalListItem({ event, variant }: EventHorizontalListItemProps) {
   const {
     dateLine,
     untilDateLine,
@@ -64,7 +58,6 @@ export default function EventHorizontalListItem({ event, variant, cityName }: Ev
   // policy ExpoBentoCard/InauguracionBentoCard already use (this card was
   // the one outlier still hardcoding magenta for every date).
   const badgeColorClass = variant === "inauguracion" || closingSoon ? "text-brand-magenta" : "text-text-primary";
-  const cityAlreadyShown = cityName && venueLine.toLowerCase().includes(cityName.toLowerCase());
 
   return (
     <div className="relative flex items-center gap-[12px] bg-surface-white p-[12px] cursor-pointer">
@@ -91,10 +84,7 @@ export default function EventHorizontalListItem({ event, variant, cityName }: Ev
           </p>
         )}
         <p className="font-fragment-mono text-[14px] leading-[1.2] text-text-primary truncate">{event.title}</p>
-        <p className="font-geist text-[11px] text-text-muted truncate">
-          {venueLine}
-          {cityName && !cityAlreadyShown ? ` — ${cityName}` : ""}
-        </p>
+        <p className="font-geist text-[11px] text-text-muted truncate">{venueLine}</p>
       </div>
 
       <div className="relative z-10 shrink-0">

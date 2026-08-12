@@ -3,11 +3,10 @@
 import Link from "next/link";
 import { useEffect, useRef, useState, type RefObject } from "react";
 import { esCL } from "@/i18n/es-CL";
-import type { City } from "@/lib/cities";
 import { fmtWeekRange } from "@/lib/date";
 
 interface HeaderProps {
-  city: City;
+  regionName: string; // display name of the currently selected región, e.g. "Santiago" (shortRegionName's own shortened form)
   rangeStart: string; // YYYY-MM-DD — the current week's Monday
   rangeEnd: string; // YYYY-MM-DD — the current week's Sunday
   weekNumber: number; // "SEMANA N°X"
@@ -88,7 +87,7 @@ function TopNavContent({
 }
 
 export default function Header({
-  city,
+  regionName,
   rangeStart,
   rangeEnd,
   weekNumber,
@@ -199,20 +198,20 @@ export default function Header({
                 height={18}
                 className="shrink-0"
               />
-              {/* Mobile drops ", CHILE" to save space — just the comuna
+              {/* Mobile drops ", CHILE" to save space — just the región
                   name, truncated with an ellipsis past max-w so a long
-                  comuna name can't blow out the pill/viewport. `p` nested
+                  región name can't blow out the pill/viewport. `p` nested
                   inside `span` is invalid HTML (block inside inline) and
                   was why the whole button disappeared; ellipsis also needs
                   a display other than plain inline plus an actual width to
                   overflow against — text-ellipsis alone does nothing on a
                   box that just grows to fit its content. Desktop keeps the
-                  full "COMUNA, CHILE" label, untruncated. */}
+                  full "REGIÓN, CHILE" label, untruncated. */}
               <span className="md:hidden inline-block max-w-[200px] overflow-hidden text-ellipsis font-fragment-mono text-[20px] whitespace-nowrap">
-                {city.name.toUpperCase()}
+                {regionName.toUpperCase()}
               </span>
               <span className="hidden md:inline font-fragment-mono text-[20px] whitespace-nowrap">
-                {esCL.locationPillSuffix(city.name)}
+                {esCL.locationPillSuffix(regionName)}
               </span>
               {/* eslint-disable-next-line @next/next/no-img-element -- Figma-exported asset, verbatim per design decision */}
               <img

@@ -20,7 +20,7 @@
 // file is already a real, validated Chilean comuna — trusting it directly
 // is safe, no separate frontend whitelist needed.
 
-import type { CityCounts, RegionMeta } from "./events";
+import { sumCounts, type CityCounts, type RegionMeta } from "./events";
 
 export interface City {
   id: string;
@@ -106,11 +106,11 @@ function hasEvents(counts: CityCounts | undefined): boolean {
 // either (real bug, found 2026-08-06: after removing every Antofagasta
 // event, its own now-empty entry kept lingering in the picker via the
 // previous alwaysIncludeCityId safety net — removed). The safety net this
-// used to need is now handled upstream instead: resolveCityPickerContext
-// validates the CITY_COOKIE against the real comuna list (regions), not
-// against "has events right now", so a comuna with zero current events is
-// still a valid selection — it just doesn't show up as a browsable
-// destination in the picker until it has something again.
+// used to need is now handled upstream instead: región selection
+// (cityPickerContext.ts) is validated against the real 16-región list
+// (allAdminRegions), not against "has events right now" — same posture
+// this file's own comuna-level resolution already had before región
+// became the site's own selection unit.
 //
 // Built entirely from `cityCounts`' own keys, not a static list —
 // `countByCity` (events.ts) only ever creates an entry for a city that
@@ -128,8 +128,11 @@ export function citiesWithEvents(
     .sort((a, b) => a.name.localeCompare(b.name, "es"));
 }
 
-// Default-city resolution for a first-time visitor (no CITY_COOKIE yet),
-// from Vercel's IP geolocation. Runs in page.tsx (a server component that
+// Default-city resolution for a first-time visitor (no región cookie yet),
+// from Vercel's IP geolocation — still comuna-level internally, since IP
+// geo only ever resolves to one comuna; cityPickerContext.ts is the one
+// that then derives that comuna's own admin región for actual selection.
+// Runs in page.tsx (a server component that
 // already has live `regions`/`cityCounts` data), NOT the edge proxy —
 // there's no whitelist here, any of the 346 real seeded comunas is a
 // valid match, same "trust the real data" philosophy as the rest of this
@@ -282,6 +285,72 @@ export function narrowCitiesByRegion(
 // lookup step.
 export function buildRegionMetaByCityId(regions: RegionMeta[]): Map<string, RegionMeta> {
   return new Map(regions.map((r) => [slugify(r.name), r]));
+}
+
+// --- Región-level selection (2026-08-12) --------------------------------
+// The site's location selector/filter used to operate on a single comuna
+// (a "City" above); it now operates on the comuna's own admin región
+// instead (16 real Chilean regions), since two comunas in the same región
+// are realistically visitable the same day — see docs/roadmap or the PR
+// description for the full rationale. A comuna's own name is still shown
+// next to each event's venue (see useEventCardActions.ts's cityName), but
+// SELECTION now happens at this coarser level everywhere in the app.
+
+export interface AdminRegion {
+  adminRegionName: string;
+  adminRegionOrder: number;
+  adminRegionNumeral: string | null;
+}
+
+export function regionIdFromAdminRegionName(adminRegionName: string): string {
+  return slugify(adminRegionName);
+}
+
+// All 16 real regions, always — deduped from the FULL `regions` table (346
+// comuna rows, each carrying its own admin_region_name), sorted north to
+// south. Deliberately independent of which comunas currently have events
+// (unlike citiesWithEvents' own comuna-level list) — a región some of
+// whose comunas are between exhibitions right now should still be a valid,
+// visible destination in the picker, just with a zero/low count badge.
+export function allAdminRegions(regions: RegionMeta[]): AdminRegion[] {
+  const byName = new Map<string, AdminRegion>();
+  for (const r of regions) {
+    if (r.adminRegionName === null || r.adminRegionOrder === null) continue;
+    if (!byName.has(r.adminRegionName)) {
+      byName.set(r.adminRegionName, {
+        adminRegionName: r.adminRegionName,
+        adminRegionOrder: r.adminRegionOrder,
+        adminRegionNumeral: r.adminRegionNumeral,
+      });
+    }
+  }
+  return [...byName.values()].sort((a, b) => a.adminRegionOrder - b.adminRegionOrder);
+}
+
+// regionId (cookie/URL value) -> the real admin_region_name string that
+// filterByRegion/resolveAdminRegionName actually compare against.
+export function adminRegionNameByRegionId(regions: RegionMeta[]): Map<string, string> {
+  return new Map(allAdminRegions(regions).map((r) => [regionIdFromAdminRegionName(r.adminRegionName), r.adminRegionName]));
+}
+
+// Per-región badge counts for the picker — sums each región's own
+// comunas' already-computed cityCounts (countByCity, events.ts). A comuna
+// with no entry in cityCounts (zero events right now) contributes nothing,
+// same as it already does for citiesWithEvents.
+export function countByRegion(cityCounts: Record<string, CityCounts>, regions: RegionMeta[]): Record<string, CityCounts> {
+  const byRegion = new Map<string, CityCounts[]>();
+  for (const r of regions) {
+    if (r.adminRegionName === null) continue;
+    const counts = cityCounts[slugify(r.name)];
+    if (!counts) continue;
+    const regionId = regionIdFromAdminRegionName(r.adminRegionName);
+    const bucket = byRegion.get(regionId);
+    if (bucket) bucket.push(counts);
+    else byRegion.set(regionId, [counts]);
+  }
+  const result: Record<string, CityCounts> = {};
+  for (const [regionId, list] of byRegion) result[regionId] = sumCounts(list);
+  return result;
 }
 
 export interface AdminRegionGroup {

@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import CalendarView from "./CalendarView";
-import { getCookie, CITY_COOKIE, FAMILY_MODE_COOKIE, TODAY_FILTER_COOKIE, VIGENTES_FILTER_COOKIE, PRECISE_CITY_COOKIE, GEO_CONSENT_COOKIE } from "@/lib/cookies";
+import { getCookie, REGION_COOKIE, FAMILY_MODE_COOKIE, TODAY_FILTER_COOKIE, VIGENTES_FILTER_COOKIE, PRECISE_CITY_COOKIE, GEO_CONSENT_COOKIE } from "@/lib/cookies";
 import type { HomeViewModel } from "@/lib/homeViewModel";
 
 interface HomeClientProps {
@@ -20,7 +20,7 @@ interface HomeClientProps {
 // traffic stays a single cached response, no origin round-trip at all.
 function hasPersonalizationSignal(searchParams: URLSearchParams): boolean {
   if (searchParams.get("semana") || searchParams.get("newsletter")) return true;
-  return [CITY_COOKIE, FAMILY_MODE_COOKIE, TODAY_FILTER_COOKIE, VIGENTES_FILTER_COOKIE, PRECISE_CITY_COOKIE, GEO_CONSENT_COOKIE].some(
+  return [REGION_COOKIE, FAMILY_MODE_COOKIE, TODAY_FILTER_COOKIE, VIGENTES_FILTER_COOKIE, PRECISE_CITY_COOKIE, GEO_CONSENT_COOKIE].some(
     (name) => getCookie(name) !== undefined,
   );
 }
