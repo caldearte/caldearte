@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { esCL } from "@/i18n/es-CL";
 import { searchEvents, sortByRunEndAsc, displayNameForCity, type EventRecord } from "@/lib/events";
 import { dateOnlyFromIso, todayInSantiago } from "@/lib/date";
@@ -39,6 +39,7 @@ function variantFor(event: EventRecord): "inauguracion" | "expo" {
 export default function SearchPanel({ open, events, onClose }: SearchPanelProps) {
   const [query, setQuery] = useState("");
   const [filterQuery, setFilterQuery] = useState("");
+  const inputRef = useRef<HTMLInputElement>(null);
 
   // Same render-time reset pattern as CityPickerPanel: clears the query the
   // moment the panel transitions to open, not via an effect.
@@ -58,6 +59,14 @@ export default function SearchPanel({ open, events, onClose }: SearchPanelProps)
     return () => {
       document.body.style.overflow = previousOverflow;
     };
+  }, [open]);
+
+  // Focus the input every time the panel opens, not just once on mount —
+  // this panel stays mounted the whole time (inert/opacity toggle, not a
+  // conditional render), so the plain `autoFocus` attribute below only
+  // ever fires the very first time it appears in the DOM.
+  useEffect(() => {
+    if (open) inputRef.current?.focus();
   }, [open]);
 
   useEffect(() => {
@@ -114,13 +123,13 @@ export default function SearchPanel({ open, events, onClose }: SearchPanelProps)
 
         <div className="relative max-w-[600px]">
           <input
+            ref={inputRef}
             type="text"
             role="searchbox"
             aria-label={esCL.searchAriaLabel}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder={esCL.searchPlaceholder}
-            autoFocus
             className="w-full bg-surface-white rounded-input pl-[46px] pr-[16px] py-[16px] font-geist text-[16px] text-text-primary placeholder:text-icon-default focus:outline-none"
           />
           {/* eslint-disable-next-line @next/next/no-img-element -- Figma-exported asset, verbatim per design decision */}
