@@ -602,6 +602,71 @@ test(
           ]);
       });
 
+      // Real production bug, found 2026-08-12 via a user-requested audit:
+      // MAC - Parque Forestal runs a whole "temporada" of concurrent
+      // exhibitions sharing the museum's season-wide open/close dates.
+      // "Nazca/Sudamericana" (inserted from a prior week's run) and "Obras
+      // extraordinarias" (discovered later) share the exact same placeName
+      // + run dates, but are genuinely different exhibitions — the exact
+      // location+date fingerprint alone treated the second as a duplicate
+      // of the first and silently dropped it. Fixed by requiring
+      // isLikelySameTitle on this tier too (see run.ts's own doc comment).
+      await t.test("same venue + exact same run dates does NOT dedupe when the titles are unrelated (real MAC - Parque Forestal 'temporada' case)", async () => {
+        const { insertCandidates, loadExistingKeys, loadAllRegions } = await import("./run.js");
+
+        await client.from("events").insert({
+          title: '__test__ Muestra "Nazca/Sudamericana" en el MAC Parque Forestal',
+          freeform_location: "Santiago",
+          place_name: "MAC - Parque Forestal",
+          run_start_date: "2026-07-11",
+          run_end_date: "2026-10-11",
+          opening_time_confirmed: false,
+          medium_type: "tradicional",
+          sensitivity_tags: [],
+          source: "discovered",
+          source_url: "https://artes.uchile.cl/__test__/nazca-sudamericana",
+          curation_status: "approved",
+          curation_reasoning: "seed",
+        });
+
+        const differentExhibitionSameSeason = {
+          description: null,
+          artist: null,
+          openingDatetime: null,
+          openingTimeConfirmed: false,
+          mediumType: "tradicional" as const,
+          sensitivityTags: [],
+          curationReasoning: "ok",
+          imageUrl: null,
+          status: "approved" as const,
+          location: "Santiago",
+          dateQuote: null,
+          locationQuote: null,
+          runStartDateQuote: null,
+          runEndDateQuote: null,
+          title: '__test__ Exposición "Obras extraordinarias" en el MAC Parque Forestal',
+          placeName: "MAC - Parque Forestal",
+          runStartDate: "2026-07-11",
+          runEndDate: "2026-10-11",
+          sourceUrl: "https://artes.uchile.cl/__test__/obras-extraordinarias",
+        };
+
+        const regions = await loadAllRegions();
+        const seen = await loadExistingKeys();
+        const { insertedCount, outcomes } = await insertCandidates([differentExhibitionSameSeason], regions, seen, new Date(2026, 6, 20));
+
+        assert.equal(insertedCount, 1, "a genuinely different exhibition sharing the venue's season dates must be inserted, not dropped as a duplicate");
+        assert.equal(outcomes.get(differentExhibitionSameSeason), "inserted");
+
+        await client
+          .from("events")
+          .delete()
+          .in("title", [
+            '__test__ Muestra "Nazca/Sudamericana" en el MAC Parque Forestal',
+            '__test__ Exposición "Obras extraordinarias" en el MAC Parque Forestal',
+          ]);
+      });
+
       // Real bug, found 2026-07-29 running a manual curation audit against
       // production: 8 exhibitions at the same physical MAC - Quinta Normal
       // venue were inserted TWICE, once from arteinformado.com
