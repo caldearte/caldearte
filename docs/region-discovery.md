@@ -1474,6 +1474,18 @@ fail an otherwise-successful run, same posture as `pruneOldRawSearchResults`/
 `persistNewBrightSources`) — and it no-ops with a warning, not an error, if
 `RESEND_API_KEY` isn't set.
 
+**Ambiguous "✅ Aprobado" badge fixed (2026-08-10, found via the same audit
+below):** a candidate approved by curation but then dropped before insert
+(stale, or a cross-run duplicate) still showed a plain "✅ Aprobado" badge
+in the per-event table — indistinguishable, at a glance, from one that
+actually landed on the live site. `CandidateSummary` gained a real
+`outcome: "inserted" | "duplicate_skipped" | "replaced" | "escalated" |
+"expired" | null` (the same outcome `insertCandidates`/`resolveAndInsertCandidates`
+already track internally, now threaded through to the email), and the
+badge reads that outcome instead of just `status` — "✅ Aprobado y
+agregado" vs. "✅ Aprobado (ya existía)" etc., so the email actually
+answers "did this reach the site" without cross-referencing the database.
+
 ---
 
 ## bright_sources_only manual mode (2026-07-23)
@@ -3190,6 +3202,72 @@ via the existing tier-1 rule (confirmed opening wins) — all 8
 arteinformado.com copies had one, none of the 8 uchile.cl copies did, so
 the 8 uchile.cl rows were deleted directly (not a code path, a one-time
 manual SQL cleanup after the audit).
+
+### `nullifyAggregatorSourceUrls` silently dropped ~13 real Universidad de Chile exhibitions every run (2026-08-10)
+
+Found via a user-requested audit of a real production run. The heuristic
+(`discover.ts`) nulls a candidate's `sourceUrl` whenever 2+ approved
+candidates in the same batch share it — meant to catch a bright-source
+page whose markup lacks a per-event parser (Haiku only had one shared
+listing URL to cite, no way to point at each event's own page). But
+`artes.uchile.cl`/`uchile.cl` are a rolling 30-day agenda that lists the
+SAME real exhibition once per day it's still open — each repeated block's
+`titleLinkRegex` correctly resolves the identical, correct per-event
+detail page, not a collision. The old version nulled that legitimately-
+shared URL anyway (2+ occurrences alone was treated as proof of a
+collision), which then made `enforceSourceUrlInvariant` reject every one
+of those candidates — silently, since `rejected_candidates` only records
+a row when `sourceUrl` is non-null, so this didn't even show up as a
+visible rejection anywhere.
+
+**Fix**: only null the shared URL when the candidates sharing it report
+DIFFERENT titles (`normalizeTitle`-compared) — the actual signal that a
+page hosts multiple distinct events, not just a shared URL by itself. The
+same real title repeated under the same URL is the same event reported
+multiple times, not an aggregator collision; the existing cross-run dedup
+(`run.ts`) already collapses the repeats into one insert once the URL
+survives.
+
+### Cross-source dedup: same venue + same season dates isn't always the same event (2026-08-12)
+
+A user-requested audit found two more real, distinct MAC - Parque
+Forestal exhibitions ("Obras extraordinarias", "El ángel de la historia"
+de Eugenio Téllez, both artes.uchile.cl) silently dropped as "duplicates"
+of an earlier-inserted third one ("Nazca/Sudamericana") — all three
+genuinely different shows, sharing only the fact that MAC runs a whole
+"temporada" where several exhibitions open and close on the same
+institutional dates (11 jul → 11 oct 2026). Two independent dedup tiers
+in `run.ts` both had the same underlying vulnerability:
+
+1. **`seen.locationDates`** (the STRICT location+date fingerprint,
+   scoped to events already stored from a PAST run — see the 2026-07-23
+   comment above it) treated an exact venue+date match as sufficient
+   proof of "same event," no title check at all. Fine when only one real
+   event can plausibly hold a given venue+date combo; false when a venue
+   runs several concurrent shows on the same season dates. Fixed:
+   `seen.locationDates` is now list-valued (`Map<string,
+   ExistingEventInfo[]>`, since one venue+date combo can legitimately
+   hold several real events) and requires `isLikelySameTitle` too, same
+   posture the fuzzy tier already had.
+2. **The fuzzy tier itself** (`titlesByLocationDateOnly`) has the exact
+   same vulnerability for a subtler reason: `isLikelySameTitle` alone
+   isn't safe here, because uchile.cl/artes.uchile.cl bakes the venue's
+   own name straight into every title ("Exposición 'X' en el MAC Parque
+   Forestal") — that shared venue-name text alone is enough to pass the
+   ≥2-shared-word/Jaccard-or-overlap threshold even for two completely
+   unrelated exhibitions, confirmed directly: `isLikelySameTitle` returns
+   `true` for "Nazca/Sudamericana" vs. "Obras extraordinarias" once both
+   titles carry "... en el MAC Parque Forestal".
+
+**Fix**: new `isLikelySameTitleIgnoringPlaceName(a, b, placeName)`
+(`lib/event-filters.ts`) strips `placeName`'s own significant words from
+both titles before running the same Jaccard-or-overlap comparison
+`isLikelySameTitle` already uses — both dedup tiers now call this instead
+of plain `isLikelySameTitle`. The San Felipe case that originally
+motivated the strict fingerprint tier (2026-07-18, three differently-
+punctuated titles for the same real event, no venue name embedded in any
+of them) still passes fine, confirmed by a regression test — this closes
+a real gap without reopening that one.
 
 ## Cross-source curation conflict escalation (2026-07-30)
 

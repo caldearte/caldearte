@@ -20,8 +20,12 @@ regions (one row per COMUNA despite the table name — 346 Chile rows as of
     this data exists for them. Backfilled for all 346 Chile rows in
     20260717030000_add_admin_region_to_regions.sql and
     20260717040000_fix_admin_region_order_add_numeral.sql. Used by the
-    frontend city picker to group comunas as país -> región -> comuna —
-    see apps/web/src/lib/cities.ts's groupCitiesByRegion),
+    frontend to derive the flat 16-región selector list
+    (apps/web/src/lib/cities.ts's allAdminRegions) — see architecture.md's
+    "User location detection" section for the 2026-08-12 comuna->región
+    selection-unit change; groupCitiesByRegion (país -> región -> comuna)
+    still exists too, used internally by the picker to sum a región's own
+    comunas' event counts),
   expansion_rank (position in the precalculated global population/distance
     ranking — see region-discovery.md for the log-compressed formula; not
     read by the weekly-batch rollout, kept as historical/observational),
@@ -101,10 +105,13 @@ events
   -- called from Event Discovery's own weekly run, not a separate cron.
   -- Revised 2026-07-19 (supabase/migrations/20260719060000_prune_expired_events_excludes_approved.sql):
   -- only applies to rejected/pending_review rows now — approved events
-  -- are never pruned, since every approved event eventually lands on a
-  -- statically generated "Expos anteriores" archive page
-  -- (apps/web/src/app/expos-anteriores/[year]/[month]) that must stay
-  -- accurate indefinitely for SEO.
+  -- are never pruned. Originally justified by the "Expos anteriores"
+  -- static archive needing every approved event to stay available
+  -- indefinitely for SEO; that archive was removed 2026-08-12 (dropped
+  -- from the menu earlier, route+code deleted outright in the same pass
+  -- as the región-selector change), but the exclusion itself stayed —
+  -- there's no reason to start pruning approved history again just
+  -- because the one feature that originally justified it is gone.
 
 system_config
   key (primary key), value, updated_at
