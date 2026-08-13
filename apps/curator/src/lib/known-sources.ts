@@ -712,6 +712,24 @@ export const KNOWN_SOURCES: KnownSource[] = [
       descriptionRegex: /<span class="description prose">([\s\S]*?)<\/span>/,
     },
   },
+  {
+    url: "https://noticias.udec.cl/wp-json/wp/v2/posts?categories=12&per_page=20&_embed=1",
+    note:
+      'Universidad de Concepción — portal de noticias institucional, categoría "Cultura" (id 12) — evaluada a pedido del usuario 2026-08-13. Plain wp/v2/posts, no un feed curado de eventos (a diferencia de parquecultural.cl/chilecultura.gob.cl): mezcla teatro, orquesta/coral, cine, literatura, deportes y noticias institucionales con las exposiciones de arte visual reales — densidad cruda medida contra un año completo de posts (200 reales, 2026-08-13): solo ~17% son exposiciones dentro de alcance.\n\n**Prefiltro determinístico de keywords (includeFilter), propuesto por el usuario y verificado contra los mismos 200 posts reales**: "exposición"/"exposiciones" y "arte" (palabra completa) capturan 42/200 con precisión altísima (~93% de los que matchean "exposición" son exposiciones reales; "arte" solo tiene más ruido pero rescata hallazgos genuinos que "exposición" sola se pierde, ej. "Un lugar habitual", arte textil, que nunca dice "exposición"). Se agregó "expone/exponen" y "exhib*" para cerrar un hueco real encontrado en la misma verificación (una exposición real, "Lorena Villablanca expone en Cecal UdeC…", no matcheaba ninguna de las otras 3 formas) — con las 4 formas combinadas: 48/200 (24% del volumen crudo), tasa de falso-negativo medida de ~1 en 30. No es una decisión de alcance en sí misma — Haiku sigue juzgando todo lo que pasa el filtro con el mismo criterio de siempre; el filtro solo reduce el volumen antes de llegar a Haiku, ver extractors.ts\'s WordpressRestConfig.includeFilter.\n\nSin fixedLocation — agregador real entre 3 sedes (Concepción/Casa del Arte, Campus Chillán/Cecal, Campus Los Ángeles), cada una en su propia comuna; Haiku infiere la ubicación del texto igual que arteinformado.com/uchile.cl. Contenido real bien escrito, con fecha de inauguración explícita en prosa cuando existe (ej. "que será inaugurada este jueves 13 de agosto") — sin fecha estructurada (no hay meta fields de evento en este WordPress genérico), dejado a rawDateText como la mayoría de fuentes. Imagen vía `_embed=1` + `_embedded.wp:featuredmedia.0.source_url` (WordPress\'s built-in embedded-media expansion, no fetch de detalle aparte).\n\n`per_page=20`: ~4 posts/semana promedio medido en el mismo año de datos, 20 da ~5x margen sobre la cadencia semanal del pipeline.\n\n**Real hueco encontrado en la primera corrida real (2026-08-13)**: esta fuente reporta seguido una inauguración como historia ya pasada, sin decir cuándo exactamente abrió, pero SÍ confirma una fecha de cierre real en la prosa (ej. "permanece abierta hasta el 23 de septiembre") — enforceDateCompleteness rechazaba esto porque un cierre sin apertura no cumple ninguna de sus dos formas aceptadas. Resuelto con `publishedDateField: "date"` + discover.ts\'s fillRunStartFromPublishedDate: cuando falta runStartDate pero hay runEndDate real, usa la fecha de PUBLICACIÓN del post como inicio aproximado — dato real ya conocido, no una fecha inventada.',
+    lastReviewedAt: "2026-08-13",
+    extractor: {
+      kind: "wordpressRestApi",
+      titleField: "title.rendered",
+      linkField: "link",
+      imageField: "_embedded.wp:featuredmedia.0.source_url",
+      descriptionField: "content.rendered",
+      publishedDateField: "date",
+      includeFilter: {
+        pattern: /\bexposici[oó]n(es)?\b|\barte\b|\bexpon(e|en|ga)\b|\bexhib/i,
+        fields: ["title.rendered", "content.rendered"],
+      },
+    },
+  },
 ];
 
 export function knownSourceDomain(url: string): string {

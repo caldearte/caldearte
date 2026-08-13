@@ -3149,6 +3149,86 @@ venues); real per-item subtitle text captured via `placeRegex` when
 present. No detail-page description fetch — the listing's own truncated
 excerpt is accepted as sufficient, same posture as espacioo.com.
 
+### New source: noticias.udec.cl/categoria/cultura (2026-08-13) — a general strategy for noisy news-category sources: measure a keyword prefilter against real history before adding
+
+Evaluated at the user's request. Universidad de Concepción's institutional
+news portal, "Cultura" category — a genuinely different shape from every
+other bright source added so far: not a curated events/exhibitions feed
+(unlike parquecultural.cl/chilecultura.gob.cl, both already event-only
+APIs), but a general-interest news category mixing theater, orchestra/
+choir, cinema, literature, sports, and institutional news in with the
+real visual-art exhibitions. Raw density measured against 30 recent
+posts: only ~17% were real, in-scope exhibitions — sending everything to
+Haiku would mean rejecting ~5 of every 6 items, every run, forever.
+
+**The general strategy, proposed by the user and now the playbook for any
+future source with this same problem**: before adding a noisy
+news-category source, pull a FULL YEAR of its real history (here: 200
+real posts via the WordPress REST API, `per_page=100&page=1/2` — a
+one-time evaluation query, never repeated once the source is live; the
+actual `KNOWN_SOURCES` entry uses `per_page=20`, sized to the real
+posting cadence measured in that same pull, not the evaluation sample
+size) and test a deterministic keyword prefilter against ALL of it,
+measuring real precision and recall before committing to anything:
+
+1. Try tags/categories first (a built-in discipline filter, if the CMS
+   has one) — checked here first (`Exposición`, `Galería Tránsitos
+   Visuales` tags existed) but both were abandoned since 2023/April 2025,
+   missing every real recent exhibition. Dead end for this source, but
+   worth checking first every time — museoschile.gob.cl's `tematica`
+   field and chilecultura.gob.cl's `disciplines=4` param are the cases
+   where this DID work and no keyword heuristic was even needed.
+2. With no reliable structured filter, build a keyword `includeFilter`
+   (new `WordpressRestConfig` field, `extractors.ts`) and test it against
+   the full real history: `exposici[oó]n(es)?` alone caught 27/200 posts
+   at ~93% precision (nearly every hit was a genuine exhibition); adding
+   whole-word `arte` (word-boundary regex — NOT a bare substring match,
+   which would false-positive on `cuarteto`/`aparte`/`departamento`)
+   raised recall by catching real exhibitions that never say the word
+   "exposición" (e.g. "Un lugar habitual", textile art) at the cost of
+   more noise (concerts, theater, podcasts also mention "arte" via venue
+   names like "Casa del Arte").
+3. Scan the NON-matching remainder for anything that looks like a missed
+   exhibition (`muestra|galería|pinacoteca|obras de|fotografía|escultura
+   |pintura|dibujo|cerámica|inaugura`-style heuristic scan, by hand, over
+   the rejects) — found one real, confirmed miss this way ("Lorena
+   Villablanca expone en Cecal UdeC…", which used neither "exposición"
+   nor "arte"). Added `expon(e|en|ga)`/`exhib` to close it. Final
+   4-pattern filter: 48/200 posts (24% of raw volume), a measured
+   false-negative rate of ~1 in 30 — good enough to ship, not chased to
+   zero.
+
+This is NOT a scope decision and doesn't touch curation logic at all —
+Haiku still judges every item that passes the filter with the exact same
+criteria as any other source; `includeFilter` only decides what volume
+reaches Haiku in the first place, same spirit as the density-vs-cost
+trade-off already accepted explicitly for centex.cultura.gob.cl (~58-67%
+density, no filter available there) but solved differently here because
+a real filter turned out to exist.
+
+**Real downstream finding, same run, fixed same day**: two of the real
+exhibitions this filter correctly surfaced (`enforceDateCompleteness`,
+discover.ts) still got rejected — both had a confirmed **closing** date
+stated in prose ("permanecerá abierta hasta el 23 de septiembre") but no
+confirmed **opening** date anywhere in the article (institutional news
+here tends to report an inauguración as already-happened history,
+without ever stating exactly when). Current policy requires either a
+confirmed `openingDatetime` or a complete `runStartDate`+`runEndDate`
+pair — an end date with no start satisfies neither. Mirror case of the
+2026-08-13 `isCurrentOrUpcoming` grace-window fix (opening confirmed, no
+end), but solved differently per Daniel's explicit call: rather than a
+grace window, backfill the missing `runStartDate` from the SOURCE POST'S
+OWN publish date — real, already-known data (a new
+`WordpressRestConfig.publishedDateField` → `BrightSourceItem.publishedDate`
+→ `discover.ts`'s `fillRunStartFromPublishedDate`, which only fires when
+`runStartDate` is genuinely missing, a real `runEndDate` exists, and the
+publish date doesn't land after it). Not a fabricated date — the article
+is reporting the show as already open around when it was published, a
+defensible approximation, not an invented one. Verified against real
+data: both exhibitions ("Un lugar habitual", "Exposición aborda la
+historia y protección de la niñez…") now insert correctly, with the
+`[FILTRO DE CÓDIGO]` tag left in `curation_reasoning` for transparency.
+
 ### Cross-source dedup: two more real gaps found by a manual curation audit (2026-07-29)
 
 A user-requested audit against real production data (`docs/roadmap.md`'s
