@@ -13,11 +13,19 @@
 // new thing here is HOW the content gets fetched (Apify, keyed by
 // username) and mapped to a BrightSourceItem, not how it gets curated.
 //
-// bright_source_fetch_state (the same table/7-day cadence every other
-// bright source already uses) is keyed by each account's own profile URL
-// — one row per account, so a newly-added account is due immediately
-// while an already-fetched one waits out its own cadence, independent of
-// its neighbors.
+// bright_source_fetch_state (the same table every other bright source
+// already uses) is keyed by each account's own profile URL — one row per
+// account, so a newly-added account is due immediately while an
+// already-fetched one waits out its own cadence, independent of its
+// neighbors.
+//
+// Cadence is 14 days, NOT the shared 7-day BRIGHT_SOURCE_INTERVAL_MS
+// (event-discovery/run.ts's isSourceDue) — Daniel's explicit request
+// (2026-08-13): Instagram content turns over slower than a real listing
+// page, and this is a real-money-per-fetch source (Apify), so a longer
+// per-account cadence is worth it. Deliberately its own local due-check
+// rather than reusing isSourceDue, which has no way to take a custom
+// interval.
 import Anthropic from "@anthropic-ai/sdk";
 import { recordUsage, getConfigNumber, getCurrentMonthSpend } from "../lib/usage-tracking.js";
 import { estimateCostUsd } from "../lib/pricing.js";
@@ -34,10 +42,16 @@ import {
   loadBrightSourceFetchState,
   loadExistingKeys,
   loadRecentlyRejectedSourceUrls,
-  isSourceDue,
   recordBrightSourcesFetched,
   toCandidateSummary,
 } from "../event-discovery/run.js";
+
+const INSTAGRAM_SOURCE_INTERVAL_MS = 14 * 24 * 60 * 60 * 1000;
+
+export function isInstagramSourceDue(lastFetchedAt: string | undefined, now: Date): boolean {
+  if (!lastFetchedAt) return true;
+  return now.getTime() - new Date(lastFetchedAt).getTime() >= INSTAGRAM_SOURCE_INTERVAL_MS;
+}
 
 function accountProfileUrl(account: InstagramAccountConfig): string {
   return `https://www.instagram.com/${account.username}/`;
@@ -58,7 +72,7 @@ export async function run(deps: InstagramRunDeps = {}): Promise<void> {
   const pageFetchFn = deps.pageFetchFn ?? fetch;
 
   const fetchState = await loadBrightSourceFetchState();
-  const dueAccounts = INSTAGRAM_ACCOUNTS.filter((account) => isSourceDue(fetchState.get(accountProfileUrl(account)), now));
+  const dueAccounts = INSTAGRAM_ACCOUNTS.filter((account) => isInstagramSourceDue(fetchState.get(accountProfileUrl(account)), now));
 
   const summary: InstagramRunSummary = {
     startedAt: now,

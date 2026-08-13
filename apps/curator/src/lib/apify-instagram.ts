@@ -25,9 +25,15 @@ export interface ApifyInstagramPost {
 }
 
 const RESULTS_LIMIT_PER_ACCOUNT = 5;
-// Margin over the weekly run cadence, so a late/skipped run doesn't lose
-// a post that was posted just before last week's cutoff.
-const LOOKBACK_DAYS = 8;
+// Margin over the run cadence, so a late/skipped run doesn't lose a post
+// that was posted just before the previous cutoff. Must stay >= the
+// per-account due-check interval (instagram-discovery/run.ts's
+// INSTAGRAM_SOURCE_INTERVAL_MS, 14 days as of 2026-08-13) — otherwise a
+// real post posted between the lookback window and the actual last-fetch
+// date would never be seen by either run. Confirmed as a real gap the day
+// the cadence changed from weekly to every 2 weeks (this constant wasn't
+// widened at the same time as the cadence, until now).
+const LOOKBACK_DAYS = 15;
 
 // Pure and separately exported so the real output shape can be verified
 // against a captured sample without hitting the real API — same pattern

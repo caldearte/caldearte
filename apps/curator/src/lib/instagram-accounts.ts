@@ -35,6 +35,16 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
       "ya no están vivas.",
     addedAt: "2026-08-12",
   },
+  {
+    username: "satva.arte.arica",
+    note: "Aportada por Daniel, 2026-08-13 — pendiente de auditoría de calidad tras la primera corrida real.",
+    addedAt: "2026-08-13",
+  },
+  {
+    username: "tallerdeartes_autismoarica",
+    note: "Aportada por Daniel, 2026-08-13 — pendiente de auditoría de calidad tras la primera corrida real.",
+    addedAt: "2026-08-13",
+  },
   // El resto de la lista la aporta Daniel — una decisión editorial, igual
   // que cada fuente brillante nueva se evaluó una por una. Confirmar
   // pública y activa antes de agregar cada cuenta.
