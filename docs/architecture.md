@@ -112,75 +112,102 @@ sign-in to regular visitors.
   a separate column from the AI-owned ones (`curation_status`,
   `sensitivity_tags`).
 
-## User city detection
+## User location detection: región, not comuna
 
 **Chosen approach: Vercel's native IP geolocation as a silent default (SSR) +
-a manual city selector as a cookie-persisted override. The Browser
+a manual región selector as a cookie-persisted override. The Browser
 Geolocation API is an optional enhancement, not the default.**
 
-Key finding: Vercel injects IP-geolocation headers (`x-vercel-ip-city`,
-country, region, approximate lat/lng) on every request to Vercel
-Functions/Edge Middleware, for free, with no external service call, available
-in SSR. This makes contracting a third-party IP-geolocation service
-unnecessary: the ones evaluated (ipapi.co, ipinfo.io) are either not
-production-viable on their free tier, or their free tier only gives
-country-level precision, not city.
+**Selection unit changed from comuna to región, 2026-08-12** (real
+feedback: picking "Santiago" as a comuna hid real events in Vitacura,
+Providencia, etc. — comunas within Región Metropolitana that are
+realistically visitable the same day; separating them by comuna felt
+arbitrary). The site's own location-selection cookie is now a **región**
+slug (16 real Chilean admin regions), not one of the 346 comunas — a
+comuna's own name is still shown next to its venue on every card
+(`useEventCardActions.ts`'s `venueLine`, via `deriveComuna`/
+`displayNameForCity`), it's just no longer the thing being filtered/
+selected. This is the same architecture the newsletter already used
+(región-scoped subscriptions, comuna kept only as a display detail on
+each digest item) — the site's own navigation just hadn't caught up to it
+until now.
+
+Key finding (unchanged): Vercel injects IP-geolocation headers
+(`x-vercel-ip-city`, country, region, approximate lat/lng) on every
+request to Vercel Functions/Edge Middleware, for free, with no external
+service call, available in SSR. This makes contracting a third-party
+IP-geolocation service unnecessary: the ones evaluated (ipapi.co,
+ipinfo.io) are either not production-viable on their free tier, or their
+free tier only gives country-level precision, not city.
 
 Actual implementation:
 
 1. `resolveCityPickerContext` (`apps/web/src/lib/cityPickerContext.ts`,
    extracted 2026-08-06 once both the home page and the event detail page
-   needed the exact same city-resolution + picker-sidebar-data logic — a
-   server-only function, reads `cookies()`/`headers()` directly, no edge
-   middleware) is the single place a visitor's active city gets resolved,
-   for every page that needs it.
-2. If a `caldearte_city` cookie is set, it wins — **validated against the
-   real comuna list** (`buildRegionMetaByCityId(regions)`, all 346 seeded
-   comunas regardless of whether any currently has an event), not against
-   which comunas happen to have an event right now. Real bug, found
-   2026-08-06: this used to validate against `cityNames` (built only from
-   comunas with at least one CURRENT event) — so removing the last event
-   from a comuna silently invalidated its own visitor's cookie on every
-   subsequent page load, bouncing them to `DEFAULT_CITY_ID` (Santiago)
-   even though they never touched the city picker. A valid comuna with
-   zero current events now stays a visitor's real selection; it just
-   doesn't offer itself as a browsable destination in the picker (below)
-   until it has something again.
-3. With no cookie at all (first-time visitor), `resolveDefaultCityId`
-   (`apps/web/src/lib/cities.ts`) reads the raw `x-vercel-ip-city`/
-   `x-vercel-ip-country` headers and matches three tiers in order: (a) if
-   the geo country isn't Chile, Santiago immediately, no city matching
-   attempted; (b) if the geo city is a real seeded comuna AND has events
-   today, use it directly — any of the 346 comunas, not a hardcoded
-   whitelist; (c) else, a comuna in the same admin región that has events
-   today ("una cercana de la misma región"); (d) else Santiago.
-4. **The manual city selector** (`CityPickerPanel.tsx`) — rebuilt
-   2026-08-03 as a 3-step wizard (Zona → Región → Comuna, replacing the
-   earlier single-panel collapsible tree) — sets the `caldearte_city`
-   cookie client-side on selection, taking precedence over IP resolution
-   on every later visit. Only comunas/regiones with at least one event for
-   the currently selected week are offered as browsable destinations at
-   steps 2/3 (`citiesWithEvents`, `groupCitiesByRegion`) — an empty one
-   simply doesn't appear, no exception for the visitor's own current
-   selection (removed 2026-08-06 alongside the cookie-validation fix
-   above, once that fix made the exception unnecessary as a safety net).
-   The 5 zonas at step 1 are the one exception to "hide if empty": they
-   always stay visible, just disabled (non-clickable) when none of their
-   regiones has anything this week — collapsing a whole geographic zone
-   out of the map would read as "this part of Chile doesn't exist," not
-   "nothing here right now."
+   needed the exact same location-resolution + picker-sidebar-data logic
+   — a server-only function, reads `cookies()`/`headers()` directly, no
+   edge middleware) is the single place a visitor's active región gets
+   resolved, for every page that needs it. It still resolves a comuna
+   internally too (`cityId`) — geolocation and comuna-level dedup/display
+   logic both still work at comuna granularity — but that comuna is only
+   ever used to DERIVE the visitor's admin región, never exposed as a
+   separate selection.
+2. If a `caldearte_region` cookie is set, it wins — validated against the
+   real 16-región list (`allAdminRegions(regions)`, deduped from all 346
+   seeded comunas' own `admin_region_name`). The old comuna-level
+   `caldearte_city` cookie is no longer written or read anywhere;
+   `CITY_COOKIE` stays defined in `lib/cookies.ts` only so a stray old
+   cookie value from before this change doesn't collide with anything —
+   a returning visitor just resolves through step 3 below once, same as
+   any fresh visitor.
+3. With no `caldearte_region` cookie, the visitor's región is derived from
+   `resolveDefaultCityId` (`apps/web/src/lib/cities.ts`, unchanged) — the
+   IP-geolocated comuna's own admin región wins; with no geo signal at
+   all, falls back to Región Metropolitana de Santiago.
+4. **The manual location selector** (`CityPickerPanel.tsx`) — collapsed
+   2026-08-12 from a 3-step wizard (Zona → Región → Comuna, shipped
+   2026-08-03) down to a **single step**: a flat, scrollable list of all
+   16 regions (same `max-h` + `overflow-y-auto` pattern the old step-3
+   comuna list used, since 16 regions plus badges still don't all fit on
+   one mobile screen). Selecting a región sets `caldearte_region` client-
+   side, taking precedence over IP resolution on every later visit. Every
+   región stays visible regardless of whether it currently has an event
+   (unlike the old per-comuna list, which only ever listed comunas with
+   something to show) — a whole región disappearing from the map would
+   read as "this part of Chile doesn't exist," the same reasoning that
+   used to keep the now-removed 5 zonas always visible. Search inside the
+   picker still matches a comuna's own name (e.g. typing "Vitacura"), but
+   resolves and selects that comuna's parent región, not the comuna
+   itself — there's no comuna-level selection left anywhere in the picker.
 5. Browser Geolocation API as an optional action ("Usar ubicación exacta")
-   is built and opt-in only (`requestPreciseCityId`,
-   `PRECISE_CITY_COOKIE`) — never automatic, surfaced inside the picker
-   and via `GeoLocationChangedBanner`'s own silent re-check.
+   is still built and opt-in only (`requestPreciseCityId`,
+   `PRECISE_CITY_COOKIE`, still comuna-level internally since lat/lng
+   naturally resolves to a comuna centroid first) — never automatic,
+   surfaced inside the picker and via `GeoLocationChangedBanner`'s own
+   silent re-check, which now compares at RÉGIÓN level too (moving
+   between two comunas in the same región no longer re-triggers the
+   "tu ubicación cambió" prompt — the whole point of the comuna→región
+   change was that this shouldn't matter).
 6. `/privacidad` (`apps/web/src/app/privacidad/page.tsx`) explains IP-based
-   city inference in plain terms, without tying it to an account or storing
-   it beyond the preference cookie.
+   location inference in plain terms, without tying it to an account or
+   storing it beyond the preference cookie.
 
 Limitation to keep in mind: IP geolocation doesn't work on `localhost` in
-development — the geo headers are absent there, so `resolveDefaultCityId`
-always falls through to Santiago locally; real geo-detection only happens
-on an actual Vercel deploy.
+development — the geo headers are absent there, so location resolution
+always falls through to Región Metropolitana de Santiago locally; real
+geo-detection only happens on an actual Vercel deploy.
+
+**"Expos Anteriores" removed, 2026-08-12** — the statically generated
+past-events archive (`/expos-anteriores/[year]/[month]`, shipped
+2026-07-19) had already been dropped from the menu earlier; the route,
+components, and now-orphaned helper functions (`listArchiveMonths`,
+`eventsForMonth`, `isArchivableMonth`, `monthBounds`, `fmtMonthYear`) were
+deleted outright in the same pass as the región selector change, per an
+explicit request rather than as a side effect of it. `events` retention
+(~1 year past close, approved rows never pruned) is unaffected — see
+data-model.md, whose own comment explaining *why* approved rows are
+exempt needed a matching update since it used to cite this archive as the
+reason.
 
 Sources: [Vercel — geolocation IP headers](https://vercel.com/kb/guide/geo-ip-headers-geolocation-vercel-functions), [ipapi.co pricing](https://ipapi.co/pricing/), [IPinfo pricing](https://ipinfo.io/pricing), [IPinfo Lite](https://ipinfo.io/lite).
 
@@ -198,15 +225,16 @@ exists specifically to close that gap.
 
 **Fix, still in place**: `page.tsx` now calls neither `cookies()`,
 `headers()`, nor reads `searchParams` — it computes exactly ONE default
-view (`computeHomeViewModel` with `EMPTY_COOKIE_READER`: Santiago, the
-current week, family mode ON — the same fallback a cookie-less
-first-time visitor already got) and lets Next.js serve that from
-cache/ISR (`revalidate = 60`) to most visitors. Personalization moves to
-the client: `HomeClient.tsx` reads the visitor's real cookies/URL params
-in a `useEffect` after the cached HTML has already painted, and — only
-when `hasPersonalizationSignal` finds something that could differ from
-the default (a city cookie, family-mode-off, `?semana=`/`?newsletter=`,
-etc.) — fetches `/api/home-data` (same `computeHomeViewModel`
+view (`computeHomeViewModel` with `EMPTY_COOKIE_READER`: Región
+Metropolitana de Santiago, the current week, family mode ON — the same
+fallback a cookie-less first-time visitor already got) and lets Next.js
+serve that from cache/ISR (`revalidate = 60`) to most visitors.
+Personalization moves to the client: `HomeClient.tsx` reads the visitor's
+real cookies/URL params in a `useEffect` after the cached HTML has
+already painted, and — only when `hasPersonalizationSignal` finds
+something that could differ from the default (a región cookie,
+family-mode-off, `?semana=`/`?newsletter=`, etc.) — fetches
+`/api/home-data` (same `computeHomeViewModel`
 computation, real `cookies()`/`headers()`, just a small JSON response
 instead of a full page render) and swaps the personalized view in.
 

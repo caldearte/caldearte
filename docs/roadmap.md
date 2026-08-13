@@ -21,17 +21,18 @@ deprecated.
 **Frontend (`apps/web`) is built and live** at `caldearte.com` (Vercel
 Hobby, launched 2026-07-17/18) — the design decisions this section used to
 describe as blocking are resolved and shipped: the full calendar view,
-región-grouped city picker, family-mode content filtering (defaults ON for
-first-time visitors), a real contact form, and standard SEO/analytics
-basics. See [architecture.md](architecture.md) for the shipped city-picker
-and geo-detection design, and `apps/web/src/components/` for the actual
-component tree.
+región-based location selector, family-mode content filtering (defaults ON
+for first-time visitors), a real contact form, and standard SEO/analytics
+basics. See [architecture.md](architecture.md) for the shipped location
+selector and geo-detection design, and `apps/web/src/components/` for the
+actual component tree.
 
 **"Rediseño 2.0.0" (2026-08-03 through 2026-08-06, PRs #182–#208) fully
 shipped and merged to `main`** — a visual and structural overhaul on top of the
 July launch, not a separate phase: new event/exposición cards (bento +
 list view toggle), a rebuilt 3-step location selector (Zona → Región →
-Comuna, see architecture.md), a redesigned search panel, `/curatoria` and
+Comuna — simplified further to a single región-only step 2026-08-12, see
+architecture.md), a redesigned search panel, `/curatoria` and
 `/privacidad` split into their own pages, a per-event page "modo lista"
 (stays inside the visitor's current city+week list, with position/prev-
 next nav), and — the first genuinely new capability, not just a visual
@@ -119,23 +120,25 @@ Closed out the initial project brief, moved into a dedicated repo.
   entirely (`supabase/migrations/20260719060000_prune_expired_events_excludes_approved.sql`)
   — the new "Expos anteriores" archive (below) needs every approved
   event's data to stay available indefinitely.
-- **Shipped 2026-07-19**: "Expos anteriores" — a statically generated
-  archive at `/expos-anteriores/[year]/[month]`, one page per past
-  calendar month, grouping every approved event under its opening month
-  (never repeated across months for multi-month runs). Built for SEO: the
-  homepage is fully dynamic and the sitemap previously had only 3 URLs, so
-  this is the site's first source of unique, indexable, growing content.
-  Linked from the homepage next to "EXPOS ACTUALES". Includes a search box
-  and a filter drawer (date range, lugar, comuna) scoped to the viewed
-  month only.
+- **Shipped 2026-07-19, removed 2026-08-12**: "Expos anteriores" — a
+  statically generated archive at `/expos-anteriores/[year]/[month]`, one
+  page per past calendar month, grouping every approved event under its
+  opening month (never repeated across months for multi-month runs).
+  Built for SEO: the homepage is fully dynamic and the sitemap previously
+  had only 3 URLs, so this was the site's first source of unique,
+  indexable, growing content. Had already been dropped from the menu
+  earlier; removed outright (route, components, orphaned helper
+  functions) by explicit request, in the same pass as the región-selector
+  change below — not a side effect of it.
 - **Shipped**: Next.js frontend (`apps/web`) showing the calendar, deployed
-  on Vercel (Hobby) at `caldearte.com`, with a región-grouped city picker,
+  on Vercel (Hobby) at `caldearte.com`, with a región-based location
+  selector (comuna-level selection removed 2026-08-12, see architecture.md),
   and family-mode content filtering (defaults ON for first-time visitors,
   toggle to see everything) for `sensitivity_tags` content. Also shipped as
   part of the production-launch pass: a real contact form (Resend), a
   `/privacidad` page, RLS tightened to column-restricted views
-  (`events_public`/`regions_public`), and IP-geolocation-based default city
-  detection (own comuna → same región → Santiago if outside Chile).
+  (`events_public`/`regions_public`), and IP-geolocation-based default
+  location detection (own comuna's región → Santiago if outside Chile).
 - Punch list before pushing real distribution/marketing, decided
   2026-07-28 after a UX audit of the live site plus a PO/BA read on
   promotion-readiness — **all items now closed**:
@@ -415,14 +418,17 @@ building infra" discipline the rest of this project has followed.
 ## Phase 5 — Parked / optional, doesn't block anything above
 
 - **Geo/temporal personalization** (moved here 2026-07-28, formerly Phase
-  2) — user city detection is already implemented and live (2026-07-17,
-  manual + auto-detected comuna selection), which already covers most of
-  the practical need this was meant to solve. PostGIS-based distance
-  ranking on top would be a marginal refinement, not a missing essential
-  — deprioritized until there's a real usage signal (e.g. users in a
-  large región complaining events far within their own comuna's región
-  feel undifferentiated). Geocoding mechanism also not yet designed: the
-  original plan cached lat/lng once per venue on the (now-retired)
+  2) — user location detection is already implemented and live
+  (2026-07-17, manual + auto-detected selection; comuna-level selection
+  replaced by región-level 2026-08-12, see architecture.md — the exact
+  "events far within their own comuna's región feel undifferentiated"
+  complaint this item used to flag as a future trigger is what actually
+  prompted that change, not a hypothetical anymore), which already covers
+  most of the practical need this was meant to solve. PostGIS-based
+  distance ranking on top of a selected región would be a further, finer-
+  grained refinement, not a missing essential — still deprioritized until
+  there's a real usage signal asking for it. Geocoding mechanism also not
+  yet designed: the original plan cached lat/lng once per venue on the (now-retired)
   `venues` table; with location as freeform text per event, there's no
   venue entity to cache coordinates against — needs a rethink if this is
   ever picked back up.
