@@ -1059,6 +1059,39 @@ function rejectBrightSourceConvocatorias(candidates: EventCandidate[], items: Br
   });
 }
 
+// Real gap found 2026-08-13 (noticias.udec.cl): institutional news often
+// reports an inauguración as already-past history ("ya inaugurada...")
+// without ever stating an exact opening date, while separately
+// confirming a real closing date in prose ("permanece abierta hasta el
+// 23 de septiembre"). enforceDateCompleteness (below) would otherwise
+// drop this outright — a runEndDate alone satisfies neither of its two
+// accepted shapes (confirmed opening, or a complete start+end pair) —
+// losing a genuinely real, in-scope exhibition. Daniel's explicit call:
+// backfill the missing runStartDate from the SOURCE POST'S OWN publish
+// date (BrightSourceItem.publishedDate, only populated when the source
+// config provides it) — real, already-known data, not an invented date.
+// The article is reporting the show as already open around when it was
+// published, so this is a defensible (if approximate) stand-in for "when
+// it opened," a different posture from fabricating a date Haiku merely
+// guesses at (the exact trap the 2026-07-22 grounding work exists to
+// prevent). Only fires when runStartDate is genuinely missing and both a
+// real runEndDate and a real publishedDate exist; never overrides a
+// runStartDate Haiku already found in the text, and never fires if
+// publishedDate would land after runEndDate (a clearly inconsistent
+// signal — left alone for enforceDateCompleteness to reject as usual).
+export function fillRunStartFromPublishedDate(candidates: EventCandidate[], items: BrightSourceItem[]): EventCandidate[] {
+  return candidates.map((c, i) => {
+    if (c.status !== "approved" || c.runStartDate || c.openingDatetime || !c.runEndDate) return c;
+    const publishedDate = items[i]?.publishedDate;
+    if (!publishedDate || publishedDate > c.runEndDate) return c;
+    return {
+      ...c,
+      runStartDate: publishedDate,
+      curationReasoning: `${c.curationReasoning} [FILTRO DE CÓDIGO: sin fecha de inicio confirmada en el texto; usada la fecha de publicación de la fuente (${publishedDate}) como inicio aproximado]`,
+    };
+  });
+}
+
 export interface BrightSourceCurateOpts {
   fixedLocation?: { location: string; placeName: string };
 }
@@ -1117,7 +1150,8 @@ export async function curateBrightSourceItems(
   }
 
   const convocatoriaFiltered = rejectBrightSourceConvocatorias(merged, items);
-  const locationFiltered = opts.fixedLocation ? convocatoriaFiltered : applyLocationFilter(convocatoriaFiltered);
+  const dateBackfilled = fillRunStartFromPublishedDate(convocatoriaFiltered, items);
+  const locationFiltered = opts.fixedLocation ? dateBackfilled : applyLocationFilter(dateBackfilled);
   const filteredCandidates = logBareDomainSourceUrls(
     enforceSourceUrlInvariant(
       applyKnownExclusionsFilter(

@@ -64,6 +64,16 @@ export interface BrightSourceItem {
   // as before).
   location: string | null;
   placeName: string | null;
+  // Real, already-known date — the SOURCE POST'S OWN publish date, not an
+  // event date at all. Optional (undefined for every existing source
+  // shape, no other constructor site needs updating): only populated by
+  // extractWordpressItems when config.publishedDateField is set (so far
+  // just noticias.udec.cl, 2026-08-13). Used exactly once, by
+  // discover.ts's fillRunStartFromPublishedDate, as a defensible
+  // stand-in for a genuinely missing runStartDate when the source states
+  // a real runEndDate but never says when the show opened — see that
+  // function's own doc comment.
+  publishedDate?: string | null;
 }
 
 // Entities decoded AFTER tags are stripped, never before — decoding
@@ -399,6 +409,23 @@ export interface WordpressRestConfig {
   // as titleField etc.) to the array within the response body; absent
   // means the body itself is the array, unchanged default behavior.
   resultsField?: string; // e.g. "results"
+  // Real need, noticias.udec.cl (2026-08-13): a general-interest news
+  // category (unlike parquecultural.cl/chilecultura.gob.cl, both
+  // already-curated events feeds) mixes real visual-art exhibitions with
+  // a lot of unrelated content (theater, concerts, cinema, sports,
+  // institutional news) — sending everything to Haiku meant rejecting
+  // ~5 out of 6 items every run. A deterministic keyword prefilter on
+  // title+content, applied BEFORE Haiku ever sees the item (not a scope
+  // decision itself — Haiku still judges everything that passes this),
+  // cut real volume ~75% with a measured false-negative rate of ~1 in 30
+  // (tested against a full year of real posts, 2026-08-13). Absent means
+  // no prefilter — unchanged default behavior for every other source.
+  includeFilter?: { pattern: RegExp; fields: string[] }; // fields are dotted paths, e.g. ["title.rendered", "content.rendered"]
+  // Dotted path to the source post's own publish date (e.g. "date" —
+  // WordPress's standard field, "YYYY-MM-DDTHH:mm:ss"). Feeds
+  // BrightSourceItem.publishedDate — see that field's own doc comment.
+  // Absent means publishedDate stays null, unchanged default behavior.
+  publishedDateField?: string;
 }
 
 // Same traversal as getStringPath below, but returns the raw value
@@ -447,7 +474,14 @@ function formatWpDate(raw: string | undefined): string | null {
 // one, lives in the description field's free text (rawDateText), so
 // Haiku still reads that for openingDatetime specifically.
 export function extractWordpressItems(items: unknown[], config: WordpressRestConfig, fallbackUrl: string): BrightSourceItem[] {
-  return items.map((item) => {
+  const filteredItems = config.includeFilter
+    ? items.filter((item) => {
+        const text = config.includeFilter!.fields.map((field) => getStringPath(item, field) ?? "").join(" ");
+        return config.includeFilter!.pattern.test(text);
+      })
+    : items;
+
+  return filteredItems.map((item) => {
     const title = getStringPath(item, config.titleField) ?? "(sin título)";
     const rawDescription = getStringPath(item, config.descriptionField);
     const description = rawDescription ? collapseWhitespace(rawDescription) || null : null;
@@ -464,6 +498,7 @@ export function extractWordpressItems(items: unknown[], config: WordpressRestCon
       rawDateText: description ?? "",
       structuredStartDate: formatWpDate(getStringPath(item, config.startDateField)),
       structuredEndDate: formatWpDate(getStringPath(item, config.endDateField)),
+      publishedDate: formatWpDate(getStringPath(item, config.publishedDateField)),
       location: getStringPath(item, config.locationField) ?? null,
       placeName: getStringPath(item, config.placeNameField) ?? null,
     };

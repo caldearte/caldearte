@@ -8,6 +8,7 @@ import {
   currentMonthLabel,
   curateBrightSourceItems,
   enforceDateCompleteness,
+  fillRunStartFromPublishedDate,
   enforceGroundedQuotes,
   enforceLocationMatchesQuote,
   looksLikeConvocatoria,
@@ -647,6 +648,66 @@ test("enforceDateCompleteness leaves already-rejected candidates untouched", () 
     { ...baseCandidate, status: "rejected", openingDatetime: null, runStartDate: null, runEndDate: null },
   ]);
   assert.equal(filtered[0].status, "rejected");
+});
+
+// --- fillRunStartFromPublishedDate: real gap found 2026-08-13 (noticias.udec.cl) ---
+
+const itemWithPublishedDate: BrightSourceItem = {
+  title: "Muestra brillante",
+  sourceUrl: "https://fuente.cl/expo-1",
+  imageUrl: null,
+  description: null,
+  locationHint: null,
+  rawDateText: "",
+  structuredStartDate: null,
+  structuredEndDate: null,
+  location: null,
+  placeName: null,
+  publishedDate: "2026-07-27",
+};
+
+test("fillRunStartFromPublishedDate backfills a missing runStartDate from the source's own publish date, when a real runEndDate exists", () => {
+  const candidate = { ...baseCandidate, runStartDate: null, runEndDate: "2026-09-23", openingDatetime: null };
+  const [result] = fillRunStartFromPublishedDate([candidate], [itemWithPublishedDate]);
+  assert.equal(result.runStartDate, "2026-07-27");
+  assert.match(result.curationReasoning, /fecha de publicación de la fuente/);
+});
+
+test("fillRunStartFromPublishedDate never overrides a runStartDate Haiku already found in the text", () => {
+  const candidate = { ...baseCandidate, runStartDate: "2026-08-01", runEndDate: "2026-09-23", openingDatetime: null };
+  const [result] = fillRunStartFromPublishedDate([candidate], [itemWithPublishedDate]);
+  assert.equal(result.runStartDate, "2026-08-01");
+});
+
+test("fillRunStartFromPublishedDate does nothing when there's a confirmed openingDatetime instead — that's a different, already-valid shape", () => {
+  const candidate = { ...baseCandidate, runStartDate: null, runEndDate: null, openingDatetime: "2026-08-13T19:00:00-04:00" };
+  const [result] = fillRunStartFromPublishedDate([candidate], [itemWithPublishedDate]);
+  assert.equal(result.runStartDate, null);
+});
+
+test("fillRunStartFromPublishedDate does nothing when there's no runEndDate at all — nothing to anchor a start against", () => {
+  const candidate = { ...baseCandidate, runStartDate: null, runEndDate: null, openingDatetime: null };
+  const [result] = fillRunStartFromPublishedDate([candidate], [itemWithPublishedDate]);
+  assert.equal(result.runStartDate, null);
+});
+
+test("fillRunStartFromPublishedDate does nothing when the item has no publishedDate (every non-udec.cl source today)", () => {
+  const candidate = { ...baseCandidate, runStartDate: null, runEndDate: "2026-09-23", openingDatetime: null };
+  const [result] = fillRunStartFromPublishedDate([candidate], [{ ...itemWithPublishedDate, publishedDate: null }]);
+  assert.equal(result.runStartDate, null);
+});
+
+test("fillRunStartFromPublishedDate refuses an inconsistent signal — a publishedDate AFTER the runEndDate is left alone, not used", () => {
+  const candidate = { ...baseCandidate, runStartDate: null, runEndDate: "2026-07-01", openingDatetime: null };
+  const [result] = fillRunStartFromPublishedDate([candidate], [{ ...itemWithPublishedDate, publishedDate: "2026-07-27" }]);
+  assert.equal(result.runStartDate, null);
+});
+
+test("fillRunStartFromPublishedDate leaves already-rejected candidates untouched", () => {
+  const candidate = { ...baseCandidate, status: "rejected" as const, runStartDate: null, runEndDate: "2026-09-23" };
+  const [result] = fillRunStartFromPublishedDate([candidate], [itemWithPublishedDate]);
+  assert.equal(result.runStartDate, null);
+  assert.equal(result.status, "rejected");
 });
 
 test("normalizeTitle strips accents, quotes, and collapses whitespace", () => {

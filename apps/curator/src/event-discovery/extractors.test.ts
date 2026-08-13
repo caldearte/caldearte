@@ -802,6 +802,7 @@ test("extractWordpressItems maps title/image/description/dates/link by configure
       rawDateText: "Inauguración 20 de julio a las 19h.",
       structuredStartDate: "2026-07-01",
       structuredEndDate: "2026-08-30",
+      publishedDate: null,
       location: null,
       placeName: null,
     },
@@ -821,6 +822,7 @@ test("extractWordpressItems falls back gracefully: missing link uses fallbackUrl
       rawDateText: "",
       structuredStartDate: null,
       structuredEndDate: null,
+      publishedDate: null,
       location: null,
       placeName: null,
     },
@@ -887,6 +889,7 @@ test("extractWordpressItems reads YYYY-MM-DD dates directly, maps location/place
       rawDateText: "Segundo piso — obras de artistas de la Región, 20° muestra – entrada liberada.",
       structuredStartDate: "2026-08-01",
       structuredEndDate: "2026-08-30",
+      publishedDate: null,
       location: "Valparaíso",
       placeName: "Parque Cultural de Valparaíso",
     },
@@ -898,6 +901,47 @@ test("extractWordpressItems leaves location/placeName null when locationField/pl
   const result = extractWordpressItems(items, PARQUE_CULTURAL_CONFIG, "https://parquecultural.cl/agenda");
   assert.equal(result[0].location, null);
   assert.equal(result[0].placeName, null);
+});
+
+// --- includeFilter: deterministic keyword prefilter (noticias.udec.cl, 2026-08-13) ---
+
+test("extractWordpressItems: includeFilter drops items whose configured fields don't match the pattern", () => {
+  const config = { ...PARQUE_CULTURAL_CONFIG, includeFilter: { pattern: /\bexposici[oó]n(es)?\b/i, fields: ["title.rendered"] } };
+  const items = [
+    { title: { rendered: "Inaugura exposición de fotografía" } },
+    { title: { rendered: "Concierto de la Orquesta Sinfónica" } },
+  ];
+  const result = extractWordpressItems(items, config, "https://example.cl/agenda");
+  assert.equal(result.length, 1);
+  assert.equal(result[0].title, "Inaugura exposición de fotografía");
+});
+
+test("extractWordpressItems: includeFilter checks every configured field, not just the first", () => {
+  const config = { ...PARQUE_CULTURAL_CONFIG, includeFilter: { pattern: /\barte\b/i, fields: ["title.rendered", "content.rendered"] } };
+  const items = [{ title: { rendered: "Un lugar habitual" }, content: { rendered: "<p>a través del arte textil</p>" } }];
+  const result = extractWordpressItems(items, config, "https://example.cl/agenda");
+  assert.equal(result.length, 1);
+});
+
+test("extractWordpressItems: with no includeFilter configured, every item passes through unchanged (every existing source, unaffected)", () => {
+  const items = [{ title: { rendered: "Cualquier cosa" } }];
+  const result = extractWordpressItems(items, PARQUE_CULTURAL_CONFIG, "https://parquecultural.cl/agenda");
+  assert.equal(result.length, 1);
+});
+
+// --- publishedDateField: the source post's own publish date (noticias.udec.cl, 2026-08-13) ---
+
+test("extractWordpressItems reads publishedDate from the configured field when set", () => {
+  const config = { ...PARQUE_CULTURAL_CONFIG, publishedDateField: "date" };
+  const items = [{ title: { rendered: "X" }, date: "2026-07-27T19:01:14" }];
+  const result = extractWordpressItems(items, config, "https://example.cl/agenda");
+  assert.equal(result[0].publishedDate, "2026-07-27");
+});
+
+test("extractWordpressItems leaves publishedDate null when publishedDateField isn't configured (every existing source, unaffected)", () => {
+  const items = [{ title: { rendered: "X" } }];
+  const result = extractWordpressItems(items, PARQUE_CULTURAL_CONFIG, "https://parquecultural.cl/agenda");
+  assert.equal(result[0].publishedDate, null);
 });
 
 // --- extractDateRange: deterministic parsing of a source's own date text ---
