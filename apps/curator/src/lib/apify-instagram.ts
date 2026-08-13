@@ -8,10 +8,20 @@
 //
 // Input schema below is the REAL one, confirmed directly against Apify's
 // own actor UI (2026-08-12), not inferred from docs. `resultsLimit: 5` +
-// `skipPinnedPosts: true` + a computed `onlyPostsNewerThan` together are
-// the cost control: only the newest few posts, never a pinned post
-// (usually old, already seen), never further back than this pipeline's
-// own run cadence needs.
+// `skipPinnedPosts: true` + `onlyPostsNewerThan` together are the cost
+// control: only the newest few posts, never a pinned post (usually old,
+// already seen), never further back than the caller decides is needed.
+//
+// `onlyPostsNewerThan` is passed in by the caller, not computed here —
+// instagram-fetch-state.ts's accountCutoffDate derives it from each
+// account's own real last-fetch date (Daniel's explicit request,
+// 2026-08-13: "el onlyPostsNewerThan debe traer la fecha de la última vez
+// que se consultó esa fuente"), not a fixed rolling window. When several
+// due accounts have different cutoffs (adaptive cadence means they will),
+// the caller passes the OLDEST one — a single Apify call stays cheaper
+// than one call per account, and any extra older posts a fresher-cadence
+// account's cutoff didn't strictly need get filtered out anyway by the
+// existing pre-curation dedup (already-seen sourceUrls).
 import { ApifyClient } from "apify-client";
 
 const ACTOR_ID = "apify/instagram-post-scraper";
@@ -25,15 +35,6 @@ export interface ApifyInstagramPost {
 }
 
 const RESULTS_LIMIT_PER_ACCOUNT = 5;
-// Margin over the run cadence, so a late/skipped run doesn't lose a post
-// that was posted just before the previous cutoff. Must stay >= the
-// per-account due-check interval (instagram-discovery/run.ts's
-// INSTAGRAM_SOURCE_INTERVAL_MS, 14 days as of 2026-08-13) — otherwise a
-// real post posted between the lookback window and the actual last-fetch
-// date would never be seen by either run. Confirmed as a real gap the day
-// the cadence changed from weekly to every 2 weeks (this constant wasn't
-// widened at the same time as the cadence, until now).
-const LOOKBACK_DAYS = 15;
 
 // Pure and separately exported so the real output shape can be verified
 // against a captured sample without hitting the real API — same pattern
@@ -54,10 +55,8 @@ export function parseApifyInstagramPosts(items: unknown[]): ApifyInstagramPost[]
 // Never throws — a broken actor/account or an Apify outage must not take
 // down the whole instagram-discovery run, same defensive posture as
 // lib/mavi-headless.ts's fetchMaviActivities.
-export async function fetchInstagramPosts(usernames: string[], now: Date): Promise<ApifyInstagramPost[]> {
+export async function fetchInstagramPosts(usernames: string[], onlyPostsNewerThan: string): Promise<ApifyInstagramPost[]> {
   if (usernames.length === 0) return [];
-
-  const onlyPostsNewerThan = new Date(now.getTime() - LOOKBACK_DAYS * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
 
   try {
     const client = new ApifyClient({ token: process.env.APIFY_TOKEN });

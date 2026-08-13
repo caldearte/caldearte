@@ -37,11 +37,25 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
   },
   {
     username: "satva.arte.arica",
-    note: "Aportada por Daniel, 2026-08-13 — pendiente de auditoría de calidad tras la primera corrida real.",
+    note:
+      "Aportada por Daniel, 2026-08-13. Pública y real, pero de baja " +
+      "frecuencia: su último post confirmado (2026-06-17) quedó fuera de " +
+      "la ventana de la primera corrida real — exactamente el caso que la " +
+      "cadencia adaptativa (14→21→28 días) está pensada para manejar.",
     addedAt: "2026-08-13",
   },
   {
     username: "tallerdeartes_autismoarica",
+    note:
+      "Aportada por Daniel, 2026-08-13. Pública, pero de muy baja " +
+      "frecuencia — su único post reciente detectado (2026-07-22) ni " +
+      "siquiera aparece con su propio username como ownerUsername (llegó " +
+      "atribuido a otra cuenta, probablemente una colaboración/repost). " +
+      "Vigilar si de verdad publica contenido propio con regularidad.",
+    addedAt: "2026-08-13",
+  },
+  {
+    username: "atacama_artgallery",
     note: "Aportada por Daniel, 2026-08-13 — pendiente de auditoría de calidad tras la primera corrida real.",
     addedAt: "2026-08-13",
   },

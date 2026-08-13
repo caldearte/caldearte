@@ -93,14 +93,17 @@ export type Database = {
       }
       bright_source_fetch_state: {
         Row: {
+          interval_days: number | null
           last_fetched_at: string
           url: string
         }
         Insert: {
+          interval_days?: number | null
           last_fetched_at: string
           url: string
         }
         Update: {
+          interval_days?: number | null
           last_fetched_at?: string
           url?: string
         }
@@ -217,6 +220,7 @@ export type Database = {
       }
       events: {
         Row: {
+          admin_sensitive_marked_at: string | null
           artist: string | null
           created_at: string
           curation_reasoning: string | null
@@ -233,6 +237,8 @@ export type Database = {
           place_name: string | null
           public_explanation: string | null
           region_id: string | null
+          removed_at: string | null
+          removed_reason: string | null
           run_end_date: string | null
           run_start_date: string | null
           sensitivity_tags: string[]
@@ -241,6 +247,7 @@ export type Database = {
           title: string
         }
         Insert: {
+          admin_sensitive_marked_at?: string | null
           artist?: string | null
           created_at?: string
           curation_reasoning?: string | null
@@ -257,6 +264,8 @@ export type Database = {
           place_name?: string | null
           public_explanation?: string | null
           region_id?: string | null
+          removed_at?: string | null
+          removed_reason?: string | null
           run_end_date?: string | null
           run_start_date?: string | null
           sensitivity_tags?: string[]
@@ -265,6 +274,7 @@ export type Database = {
           title: string
         }
         Update: {
+          admin_sensitive_marked_at?: string | null
           artist?: string | null
           created_at?: string
           curation_reasoning?: string | null
@@ -281,6 +291,8 @@ export type Database = {
           place_name?: string | null
           public_explanation?: string | null
           region_id?: string | null
+          removed_at?: string | null
+          removed_reason?: string | null
           run_end_date?: string | null
           run_start_date?: string | null
           sensitivity_tags?: string[]
@@ -540,7 +552,7 @@ export type Database = {
           region_id?: string | null
           run_end_date?: string | null
           run_start_date?: string | null
-          sensitivity_tags?: string[] | null
+          sensitivity_tags?: never
           source_url?: string | null
           title?: string | null
         }
@@ -556,7 +568,7 @@ export type Database = {
           region_id?: string | null
           run_end_date?: string | null
           run_start_date?: string | null
-          sensitivity_tags?: string[] | null
+          sensitivity_tags?: never
           source_url?: string | null
           title?: string | null
         }
