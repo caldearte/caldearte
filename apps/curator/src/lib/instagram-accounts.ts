@@ -29,11 +29,21 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
     note:
       "Cuenta de prueba para la primera verificación end-to-end del " +
       "pipeline: pública, activa (último post hace ~5 días, de una " +
-      "exposición real) — confirmado por Daniel el 2026-08-12. Los otros " +
-      "2 candidatos evaluados antes (la_playa_galeria, casachagual.cl) " +
-      "se descartaron: última publicación de 2025 y 2024 respectivamente, " +
-      "ya no están vivas.",
+      "exposición real) — confirmado por Daniel el 2026-08-12. El otro " +
+      "candidato evaluado antes, la_playa_galeria, se descartó: última " +
+      "publicación de 2025, ya no está viva. (casachagual.cl también " +
+      "había sido descartada en esa primera revisión por el mismo motivo, " +
+      "pero era un error — Daniel la confundió con otra cuenta; sí está " +
+      "viva, ver su propia entrada más abajo.)",
     addedAt: "2026-08-12",
+  },
+  {
+    username: "casachagual.cl",
+    note:
+      "Corrección de Daniel, 2026-08-13: en la revisión inicial (2026-08-10) " +
+      "se había descartado por confundirla con otra cuenta distinta — sí es " +
+      "pública y válida, se agrega ahora.",
+    addedAt: "2026-08-13",
   },
   {
     username: "satva.arte.arica",
