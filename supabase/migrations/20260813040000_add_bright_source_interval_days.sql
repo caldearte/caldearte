@@ -1,0 +1,15 @@
+-- Adaptive per-source fetch cadence, added for Instagram bright sources
+-- (apps/curator/src/lib/instagram-fetch-state.ts): a nullable column on
+-- the existing bright_source_fetch_state table rather than a new table —
+-- same identity (url), same table every bright source already tracks
+-- itself in. NULL means "use the shared default cadence"
+-- (event-discovery/run.ts's BRIGHT_SOURCE_INTERVAL_MS, 7 days) — every
+-- non-Instagram row stays untouched by this migration, only Instagram's
+-- own rows ever set a real value.
+--
+-- Daniel's explicit request (2026-08-13): a new Instagram account starts
+-- at 14 days; if a fetch finds nothing genuinely new for that account,
+-- push it out to 21, then 28 (capped there) — an account that posts
+-- rarely shouldn't burn an Apify fetch every 2 weeks for nothing. A
+-- fetch that DOES find something new resets the account back to 14.
+alter table bright_source_fetch_state add column interval_days integer;
