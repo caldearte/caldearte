@@ -457,6 +457,111 @@ export async function sendHeadlessRunSummaryEmail(summary: HeadlessRunSummary): 
   }
 }
 
+// Instagram bright sources (2026-08-12, see
+// instagram-discovery/run.ts) — same shape as HeadlessRunSummary
+// (sourcesFetched holds account usernames here, not URLs), kept as its
+// own type/functions rather than reused as-is so the subject/body read
+// correctly as Instagram, not "(headless)".
+export interface InstagramRunSummary {
+  startedAt: Date;
+  sourcesFetched: string[]; // Instagram usernames due this run
+  candidates: RunSummary["candidates"];
+  eventGroups: EventGroup[];
+  cost: RunSummary["cost"];
+}
+
+export function buildInstagramSubject(summary: InstagramRunSummary): string {
+  const dateStr = summary.startedAt.toISOString().slice(0, 10).split("-").reverse().join("/");
+  return `Caldearte — resumen de fuentes brillantes (Instagram) (${dateStr}, ${summary.sourcesFetched.length} cuenta(s))`;
+}
+
+export function buildInstagramBody(summary: InstagramRunSummary): string {
+  const { sourcesFetched, candidates, cost } = summary;
+
+  const lines = [
+    `Resumen de la corrida de fuentes brillantes (Instagram, vía Apify) — ${summary.startedAt.toISOString()}`,
+    "",
+    `CUENTAS CONSULTADAS (${sourcesFetched.length})`,
+    sourcesFetched.length > 0 ? sourcesFetched.join(", ") : "(ninguna debida esta corrida)",
+    "",
+    "EVENTOS",
+    `Total candidatos: ${candidates.total}`,
+    `Aprobados por curatoría: ${candidates.approvedByCuration}`,
+    `Rechazados por curatoría: ${candidates.rejectedByCuration}`,
+    `Insertados en el calendario: ${candidates.insertedCount}`,
+    `Con tag de sensibilidad: ${candidates.sensitivityTagged}`,
+    "",
+    "Por tipo de medio:",
+    ...Object.entries(candidates.byMediumType).map(([type, count]) => `  ${type}: ${count}`),
+    "",
+    "COSTO ESTIMADO DE ESTA CORRIDA",
+    `Anthropic (Haiku): ${fmtUsd(cost.anthropicUsd)}`,
+    `Total: ${fmtUsd(cost.totalUsd)}`,
+    "(el gasto de Apify no se registra acá — se vigila desde su propio dashboard)",
+    "",
+    "GASTO DEL MES A LA FECHA (Anthropic)",
+    `$${cost.monthToDateUsd.toFixed(2)} de $${cost.monthlyBudgetUsd.toFixed(2)} (techo mensual, system_config.monthly_budget_usd)`,
+    "",
+    ...buildEventGroupsText(summary.eventGroups),
+  ];
+
+  return lines.join("\n");
+}
+
+// HTML counterpart of buildInstagramBody.
+export function buildInstagramHtmlBody(summary: InstagramRunSummary): string {
+  const { sourcesFetched, candidates, cost } = summary;
+
+  return `<div style="font-family:-apple-system,Helvetica,Arial,sans-serif;max-width:720px;margin:0 auto;color:#1a1a1a;">
+    <h1 style="font-size:18px;margin:0 0 4px;">Caldearte — resumen de fuentes brillantes (Instagram)</h1>
+    <p style="font-size:13px;color:#666;margin:0 0 20px;">${escapeHtml(summary.startedAt.toISOString())}</p>
+
+    <p><b>Cuentas consultadas (${sourcesFetched.length}):</b> ${sourcesFetched.length > 0 ? escapeHtml(sourcesFetched.join(", ")) : "(ninguna debida esta corrida)"}</p>
+
+    <p>
+      <b>${candidates.total}</b> candidatos totales &middot;
+      <b>${candidates.approvedByCuration}</b> aprobados &middot;
+      <b>${candidates.rejectedByCuration}</b> rechazados &middot;
+      <b>${candidates.insertedCount}</b> insertados &middot;
+      <b>${candidates.sensitivityTagged}</b> con sensibilidad
+    </p>
+
+    ${buildEventGroupsHtml(summary.eventGroups)}
+
+    <h2 style="font-size:14px;text-transform:uppercase;letter-spacing:0.04em;color:#888;margin:24px 0 10px;border-bottom:1px solid #e2e0da;padding-bottom:6px;">Costo</h2>
+    <p>
+      Anthropic (Haiku): ${fmtUsd(cost.anthropicUsd)}<br>
+      Total corrida: ${fmtUsd(cost.totalUsd)} <span style="color:#888;">(gasto de Apify no incluido — ver su propio dashboard)</span><br>
+      Mes a la fecha (Anthropic): $${cost.monthToDateUsd.toFixed(2)} de $${cost.monthlyBudgetUsd.toFixed(2)}
+    </p>
+  </div>`;
+}
+
+// Same defensive posture as sendRunSummaryEmail: ancillary, last step,
+// must never throw.
+export async function sendInstagramRunSummaryEmail(summary: InstagramRunSummary): Promise<void> {
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) {
+    console.warn(
+      "sendInstagramRunSummaryEmail: RESEND_API_KEY not set — skipping run-summary email (expected outside CI or before the secret is configured).",
+    );
+    return;
+  }
+
+  const resend = new Resend(apiKey);
+  const { error } = await resend.emails.send({
+    from: "Caldearte <contacto@caldearte.com>",
+    to: RUN_SUMMARY_RECIPIENT,
+    subject: buildInstagramSubject(summary),
+    text: buildInstagramBody(summary),
+    html: buildInstagramHtmlBody(summary),
+  });
+
+  if (error) {
+    console.error("[notify] Instagram run-summary email send failed", error);
+  }
+}
+
 // Cross-source curation conflict escalation (2026-07-30) — see
 // docs/curation-policy.md's "Cross-source conflict escalation" section.
 // Both `existing`/`newCandidate` are pre-formatted display data (title,

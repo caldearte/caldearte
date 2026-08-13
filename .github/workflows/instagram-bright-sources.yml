@@ -1,0 +1,42 @@
+name: Run Instagram Bright Sources
+
+# Separate, deferred workflow for Instagram bright sources — public
+# accounts fetched via Apify (apps/curator/src/lib/apify-instagram.ts),
+# since Instagram blocks anonymous/headless fetch of profile pages (see
+# apps/curator/src/lib/page-fetch.ts). Deliberately its OWN workflow, same
+# reasoning as headless-bright-sources.yml (MAVI): keeps this off the main
+# run's already-tight GitHub Actions budget, AND — specific to this
+# source — makes it trivial to pause/disable entirely (just disable this
+# workflow) without touching anything else, given this source's different
+# risk profile (third-party scraping of a social platform).
+#
+# No TAVILY_API_KEY: this flow never searches, only fetches + curates
+# already-known accounts, same as headless-bright-sources.yml.
+on:
+  workflow_dispatch: {}
+  schedule:
+    - cron: "0 8 * * 1" # Every Monday, 08:00 UTC — 1h after headless
+
+jobs:
+  discover-instagram:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Run Instagram bright sources
+        run: pnpm --filter @caldearte/curator run discover-instagram-sources
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          APIFY_TOKEN: ${{ secrets.APIFY_TOKEN }}
