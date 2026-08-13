@@ -696,6 +696,12 @@ export async function insertCandidates(
     }
 
     if (!isCurrentOrUpcoming(c, now)) {
+      // Was previously silent (no log, no DB write at all) — a real,
+      // approved candidate could vanish here with zero trace anywhere,
+      // found 2026-08-13 tracing a genuinely missing Instagram event that
+      // turned out to be exactly this case. Ancillary logging only, same
+      // posture as the "rejected"/"duplicate_skipped" branches around it.
+      console.log(`[event-discovery] expired before insertion: "${c.title}" (opening/run dates already past)`);
       outcomes.set(c, "expired");
       continue;
     }

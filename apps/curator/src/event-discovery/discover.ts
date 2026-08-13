@@ -823,7 +823,32 @@ function dayOnly(date: Date): number {
   return Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate());
 }
 
+// Real miss found 2026-08-13 (a casachagual.cl Instagram post, an
+// "inauguración" with a confirmed opening date+time but no run range at
+// all — genuinely common for informal/self-organized spaces, which often
+// confirm an opening night without ever stating how long the show stays
+// up): with no grace window, this function only ever treated
+// openingDatetime-only events as current on their exact opening day —
+// the very next day, silently expired and dropped (approved by curation,
+// then lost with zero log line and zero DB trace, since the "expired"
+// outcome below writes nothing). Daniel's explicit call (2026-08-13):
+// a 7-day grace window after the opening, applied globally (this filter
+// is shared by every bright source, not Instagram-specific — the
+// underlying gap is the same regardless of source). Deliberately a
+// windowing decision only, never written back as a fabricated
+// run_end_date in the DB — the stored data stays exactly what the source
+// actually confirmed.
+const OPENING_ONLY_GRACE_DAYS = 7;
+
 export function isCurrentOrUpcoming(c: EventCandidate, now: Date): boolean {
+  if (!c.runEndDate && !c.runStartDate && c.openingDatetime) {
+    const opening = new Date(c.openingDatetime);
+    if (Number.isNaN(opening.getTime())) return false;
+    const cutoff = new Date(opening.getTime());
+    cutoff.setUTCDate(cutoff.getUTCDate() + OPENING_ONLY_GRACE_DAYS);
+    return dayOnly(cutoff) >= dayOnly(now);
+  }
+
   const dateStr = c.runEndDate ?? c.runStartDate ?? c.openingDatetime;
   if (!dateStr) return false;
   const d = new Date(dateStr);

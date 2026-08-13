@@ -582,6 +582,38 @@ test("isCurrentOrUpcoming applies the day-level rule", () => {
   assert.equal(isCurrentOrUpcoming({ ...baseCandidate, runStartDate: null, runEndDate: null, openingDatetime: null }, now), false);
 });
 
+// Real miss found 2026-08-13 (a casachagual.cl Instagram post, "Reliquia"):
+// Haiku approved it correctly (confirmed opening date+time, no run range
+// at all — common for informal/self-organized spaces that never state how
+// long a show stays up), but it was silently dropped here since the old
+// rule only counted the exact opening day as current. Daniel's explicit
+// call: a 7-day grace window after the opening, applied globally (this
+// filter is shared by every bright source).
+test("isCurrentOrUpcoming: an opening-only candidate (no run range at all) stays current for 7 days after the opening", () => {
+  const now = new Date(Date.UTC(2026, 7, 13)); // August 13, 2026
+
+  // Opened today → current.
+  assert.equal(isCurrentOrUpcoming({ ...baseCandidate, runStartDate: null, runEndDate: null, openingDatetime: "2026-08-13T19:00:00-04:00" }, now), true);
+  // Opened 6 days ago → still within the 7-day grace window.
+  assert.equal(isCurrentOrUpcoming({ ...baseCandidate, runStartDate: null, runEndDate: null, openingDatetime: "2026-08-07T19:00:00-04:00" }, now), true);
+  // Opened exactly 7 days ago → still current (grace window boundary is inclusive).
+  assert.equal(isCurrentOrUpcoming({ ...baseCandidate, runStartDate: null, runEndDate: null, openingDatetime: "2026-08-06T19:00:00-04:00" }, now), true);
+  // Opened 8 days ago → past the grace window, expired.
+  assert.equal(isCurrentOrUpcoming({ ...baseCandidate, runStartDate: null, runEndDate: null, openingDatetime: "2026-08-05T19:00:00-04:00" }, now), false);
+  // Opens in the future → still valid (unaffected by the grace window, same as before).
+  assert.equal(isCurrentOrUpcoming({ ...baseCandidate, runStartDate: null, runEndDate: null, openingDatetime: "2026-08-20T19:00:00-04:00" }, now), true);
+});
+
+test("isCurrentOrUpcoming: the grace window only applies when there's genuinely no run range — a real runEndDate is never overridden by it", () => {
+  const now = new Date(Date.UTC(2026, 7, 13)); // August 13, 2026
+  // Opened 8 days ago (past the grace window) but has an explicit
+  // runEndDate today — the real end date wins, not the opening-only rule.
+  assert.equal(
+    isCurrentOrUpcoming({ ...baseCandidate, openingDatetime: "2026-08-05T19:00:00-04:00", runStartDate: "2026-08-05", runEndDate: "2026-08-13" }, now),
+    true,
+  );
+});
+
 test("enforceDateCompleteness keeps an approved candidate with a confirmed openingDatetime, even with no run dates at all", () => {
   const filtered = enforceDateCompleteness([
     { ...baseCandidate, openingDatetime: "2026-07-12T19:00:00.000Z", runStartDate: null, runEndDate: null },
