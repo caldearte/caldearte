@@ -95,6 +95,19 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
     addedAt: "2026-08-14",
     fixedLocation: { location: "Providencia", placeName: "D21" },
   },
+  {
+    username: "hifas.galeria",
+    note:
+      "Encontrada revisando @artistasyungay (2026-08-14) — Galería Hifas, " +
+      "Libertad 304, Barrio Yungay, Santiago. La más limpia evaluada esta " +
+      "sesión: el anuncio original de \"Cartografía del Fuego\" (Ignacio " +
+      "Gutiérrez Crocco) trae fecha de inauguración Y de cierre completas " +
+      "en el mismo post (1 de agosto 19:00 hrs, disponible hasta el 13 de " +
+      "septiembre). Confirmado independientemente vía Google Alerts el " +
+      "mismo día. fixedLocation.",
+    addedAt: "2026-08-14",
+    fixedLocation: { location: "Santiago", placeName: "Galería Hifas" },
+  },
   // El resto de la lista la aporta Daniel — una decisión editorial, igual
   // que cada fuente brillante nueva se evaluó una por una. Confirmar
   // pública y activa antes de agregar cada cuenta.

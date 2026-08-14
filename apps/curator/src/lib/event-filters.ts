@@ -152,26 +152,31 @@ export function placeNamesLikelySame(a: string | null, b: string | null): boolea
   return [...wordsA].some((w) => wordsB.has(w));
 }
 
-// Real gap found 2026-08-14 (factor__f, "BOTÁNICA"): two Instagram posts
-// about the SAME real opening (same fixedLocation venue, same exact
-// date) but almost entirely different wording beyond the exhibition
-// name itself — "Mañana es el día..." vs "Anota la fecha... inauguramos
-// BOTÁNICA..." — share only 3 of ~9 significant words each (jaccard
-// ~0.21, overlap ~0.37), both well under isLikelySameTitle's 0.6
-// threshold (tuned for more consistently-worded aggregator titles, not
-// two independently-written informal social captions). run.ts's fuzzy
-// dedup tier already requires an EXACT venue name match (not just
-// placeNamesLikelySame's looser "some shared word") before calling this
-// — that's already strong independent evidence the location+date match
-// alone doesn't carry for a fixedLocation-less aggregator source, so
-// title similarity only needs a single genuinely shared significant word
-// here, no jaccard/overlap ratio required.
-export function isLikelySameTitleSharingAnyWord(a: string, b: string, placeName: string | null): boolean {
+// Real gap found 2026-08-14 (factor__f, "BOTÁNICA"; hifas.galeria,
+// "Cartografía del Fuego"): posts about the SAME real opening, worded
+// almost entirely differently beyond the exhibition name itself —
+// "Mañana es el día..." vs "Anota la fecha... inauguramos BOTÁNICA...",
+// or "Registro de mediación de la exposición Cartografía del Fuego" vs
+// "Registro de la inauguración Cartografía del Fuego" — share only 3 of
+// ~9 significant words each (jaccard ~0.2-0.3, overlap ~0.3-0.4), both
+// well under isLikelySameTitle's 0.6 threshold (tuned for more
+// consistently-worded aggregator titles, not independently-written
+// informal social captions). run.ts's dedup tier already requires an
+// EXACT venue name match (not just placeNamesLikelySame's looser "some
+// shared word") plus an exact date signal before calling this — that's
+// already strong independent evidence, so the ratio requirement is
+// dropped here. STILL requires >=2 shared significant words, same floor
+// as isLikelySameTitle — real regression found writing this function's
+// own test (MAC - Parque Forestal, two genuinely different exhibitions
+// sharing a venue+season): dropping the word-count floor too, not just
+// the ratio, let a single incidental shared word falsely merge them.
+export function isLikelySameTitleWithoutRatio(a: string, b: string, placeName: string | null): boolean {
   const placeWords = placeName ? tokenizeSignificantWords(placeName) : new Set<string>();
   const withoutPlaceWords = (title: string) => new Set([...tokenizeSignificantWords(title)].filter((w) => !placeWords.has(w)));
   const wordsA = withoutPlaceWords(a);
   const wordsB = withoutPlaceWords(b);
-  return [...wordsA].some((w) => wordsB.has(w));
+  const shared = [...wordsA].filter((w) => wordsB.has(w));
+  return shared.length >= 2;
 }
 
 // Used by run.ts's cross-source conflict escalation (2026-07-30, found via

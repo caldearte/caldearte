@@ -30,7 +30,7 @@ import {
   normalizeLocation,
   isLikelySameTitle,
   isLikelySameTitleIgnoringPlaceName,
-  isLikelySameTitleSharingAnyWord,
+  isLikelySameTitleWithoutRatio,
   placeNamesLikelySame,
   isWithinAnchorWindow,
 } from "../lib/event-filters.js";
@@ -324,6 +324,11 @@ export interface ExistingEventInfo {
   sourceUrl: string | null;
   openingDatetime: string | null;
   openingTimeConfirmed: boolean;
+  // Added 2026-08-14 for titlesByPlaceName's own venue+end-date dedup tier
+  // — see that map's doc comment for why runStartDate alone isn't a
+  // reliable match key here.
+  runStartDate: string | null;
+  runEndDate: string | null;
 }
 
 export interface SeenKeys {
@@ -355,6 +360,21 @@ export interface SeenKeys {
   // count) since a false merge here silently drops a real, distinct
   // event, which is worse than an occasional missed duplicate.
   titlesByLocationDateOnly: Map<string, ExistingEventInfo[]>;
+  // Real bug found 2026-08-14 (hifas.galeria, "Cartografía del Fuego"):
+  // two Instagram posts about the same real exhibition, both missing an
+  // explicit opening date in their OWN text — fillRunStartFromPublishedDate
+  // (discover.ts) backfills runStartDate from each POST'S OWN publish
+  // date, which genuinely differs post to post, so locationDateOnlyKey
+  // (which keys on the full runStartDate+runEndDate pair) puts them in
+  // DIFFERENT buckets even though they're the same real event with the
+  // same real runEndDate. Bucketed by exact placeName alone (normalized),
+  // independent of any date — the dedup check at the call site below
+  // additionally requires a matching runEndDate (the one date signal
+  // that's actually grounded in the source text here, not backfilled)
+  // plus isLikelySameTitleWithoutRatio, so this stays narrow: it only
+  // fires for the exact-venue-exact-enddate case, never a blanket
+  // same-venue merge.
+  titlesByPlaceName: Map<string, ExistingEventInfo[]>;
 }
 
 export async function loadExistingKeys(): Promise<SeenKeys> {
@@ -375,7 +395,18 @@ export async function loadExistingKeys(): Promise<SeenKeys> {
     sourceUrl: row.source_url,
     openingDatetime: row.opening_datetime,
     openingTimeConfirmed: row.opening_time_confirmed,
+    runStartDate: row.run_start_date,
+    runEndDate: row.run_end_date,
   });
+
+  const titlesByPlaceName = new Map<string, ExistingEventInfo[]>();
+  for (const row of rows) {
+    if (!row.place_name) continue;
+    const key = normalizeTitle(row.place_name);
+    const existing = titlesByPlaceName.get(key);
+    if (existing) existing.push(toInfo(row));
+    else titlesByPlaceName.set(key, [toInfo(row)]);
+  }
 
   const titlesByLocationDateOnly = new Map<string, ExistingEventInfo[]>();
   for (const row of rows) {
@@ -406,6 +437,7 @@ export async function loadExistingKeys(): Promise<SeenKeys> {
     sourceUrls: new Map(rows.flatMap((row) => (row.source_url ? [[row.source_url, toInfo(row)] as const] : []))),
     locationDates,
     titlesByLocationDateOnly,
+    titlesByPlaceName,
   };
 }
 
@@ -734,13 +766,24 @@ export async function insertCandidates(
     // match (not just placeNamesLikelySame's looser "some shared word"),
     // that's already strong independent evidence — only a single
     // genuinely shared significant word is required here, see
-    // isLikelySameTitleSharingAnyWord's own doc comment.
+    // isLikelySameTitleWithoutRatio's own doc comment.
+    //
+    // Bucketed by placeName ALONE (titlesByPlaceName), not locDateOnlyKey
+    // — a second real gap found the same day (hifas.galeria, "Cartografía
+    // del Fuego"): when neither post states an explicit opening date,
+    // fillRunStartFromPublishedDate (discover.ts) backfills runStartDate
+    // from each POST'S OWN publish date, which genuinely differs post to
+    // post — putting the two candidates in DIFFERENT locDateOnlyKey
+    // buckets despite being the same real event with the same real
+    // runEndDate. Matching on runEndDate alone (when both sides have one)
+    // sidesteps that: it's the one date signal actually grounded in the
+    // source text here, not backfilled.
     const sameVenueMatch = c.placeName
-      ? (seen.titlesByLocationDateOnly.get(locDateOnlyKey) ?? []).find(
+      ? (seen.titlesByPlaceName.get(normalizeTitle(c.placeName)) ?? []).find(
           (existing) =>
-            existing.placeName !== null &&
-            normalizeTitle(existing.placeName) === normalizeTitle(c.placeName ?? "") &&
-            isLikelySameTitleSharingAnyWord(existing.title, c.title, c.placeName),
+            ((existing.runEndDate && c.runEndDate && existing.runEndDate === c.runEndDate) ||
+              locationDateOnlyKey(c.location, existing) === locDateOnlyKey) &&
+            isLikelySameTitleWithoutRatio(existing.title, c.title, c.placeName),
         )
       : undefined;
     const existingMatch = titleMatch ?? sourceUrlMatch ?? locationDateMatch ?? fuzzyMatch ?? sameVenueMatch;
@@ -821,12 +864,20 @@ export async function insertCandidates(
         sourceUrl: c.sourceUrl,
         openingDatetime: c.openingDatetime,
         openingTimeConfirmed: c.openingTimeConfirmed,
+        runStartDate: c.runStartDate,
+        runEndDate: c.runEndDate,
       };
       seen.titles.set(titleKey, updatedInfo);
       if (c.sourceUrl) seen.sourceUrls.set(c.sourceUrl, updatedInfo);
       const bucket = seen.titlesByLocationDateOnly.get(locDateOnlyKey);
       if (bucket) bucket.push(updatedInfo);
       else seen.titlesByLocationDateOnly.set(locDateOnlyKey, [updatedInfo]);
+      if (c.placeName) {
+        const placeKey = normalizeTitle(c.placeName);
+        const placeBucket = seen.titlesByPlaceName.get(placeKey);
+        if (placeBucket) placeBucket.push(updatedInfo);
+        else seen.titlesByPlaceName.set(placeKey, [updatedInfo]);
+      }
       outcomes.set(c, "replaced");
       continue;
     }
@@ -878,6 +929,8 @@ export async function insertCandidates(
       sourceUrl: c.sourceUrl,
       openingDatetime: c.openingDatetime,
       openingTimeConfirmed: c.openingTimeConfirmed,
+      runStartDate: c.runStartDate,
+      runEndDate: c.runEndDate,
     };
     seen.titles.set(titleKey, freshInfo);
     if (c.sourceUrl) seen.sourceUrls.set(c.sourceUrl, freshInfo);
@@ -890,6 +943,12 @@ export async function insertCandidates(
     const bucket = seen.titlesByLocationDateOnly.get(locDateOnlyKey);
     if (bucket) bucket.push(freshInfo);
     else seen.titlesByLocationDateOnly.set(locDateOnlyKey, [freshInfo]);
+    if (c.placeName) {
+      const placeKey = normalizeTitle(c.placeName);
+      const placeBucket = seen.titlesByPlaceName.get(placeKey);
+      if (placeBucket) placeBucket.push(freshInfo);
+      else seen.titlesByPlaceName.set(placeKey, [freshInfo]);
+    }
     outcomes.set(c, "inserted");
     inserted += 1;
   }

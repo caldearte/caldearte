@@ -147,7 +147,7 @@ export async function run(deps: HeadlessRunDeps = {}): Promise<void> {
         summary.candidates.byMediumType[c.mediumType] = (summary.candidates.byMediumType[c.mediumType] ?? 0) + 1;
         if (c.sensitivityTags.length > 0) summary.candidates.sensitivityTagged += 1;
       }
-      console.log(`[headless-discovery] ${inserted} new approved event(s) inserted`);
+      console.log(`[headless-discovery] ${insertedCount} new approved event(s) inserted`);
     } else {
       console.log(`[headless-discovery] ${MAVI_SOURCE_URL}: nothing new, skipping curation entirely`);
     }
