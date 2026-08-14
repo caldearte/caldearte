@@ -81,6 +81,20 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
     addedAt: "2026-08-14",
     fixedLocation: { location: "Santiago", placeName: "Factor F" },
   },
+  {
+    username: "d21proyectosdearte",
+    note:
+      "Aportada por Daniel, 2026-08-14. Galería D21, Providencia (Nueva " +
+      "de Lyon 19, depto. 21) — proyecto con financiamiento FONDART. " +
+      "5 posts evaluados: 1 inauguración real y limpia (\"Afecto " +
+      "Extraterrestre\", jueves 20 de agosto, 19:00 hrs), 1 exposición " +
+      "real ya cerrada (\"En el Tiempo a Distancia\", hasta el 6 de " +
+      "agosto), 2 posts de un encuentro/charla (fuera de alcance, mismo " +
+      "criterio de siempre) y 1 aviso operativo de cierre por lluvia. " +
+      "Fechas/horarios siempre claros. fixedLocation.",
+    addedAt: "2026-08-14",
+    fixedLocation: { location: "Providencia", placeName: "D21" },
+  },
   // El resto de la lista la aporta Daniel — una decisión editorial, igual
   // que cada fuente brillante nueva se evaluó una por una. Confirmar
   // pública y activa antes de agregar cada cuenta.
