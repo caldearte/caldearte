@@ -108,6 +108,20 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
     addedAt: "2026-08-14",
     fixedLocation: { location: "Santiago", placeName: "Galería Hifas" },
   },
+  {
+    username: "espacioandreabrunson",
+    note:
+      "Aportada por Daniel, 2026-08-14. Espacio Andrea Brunson, Alonso de " +
+      "Monroy 3050 — confirmado por búsqueda que es Vitacura, no Santiago " +
+      "centro. 2 inauguraciones reales y completas: \"Atlas de la espera\" " +
+      "(Melania Lynch, sábado 15 de agosto 12:30 hrs) y \"ORNAMENTAL\" " +
+      "(Daniela Pulido, jueves 18 de junio 19:00 hrs, ya pasada). El " +
+      "resto: noticias institucionales (preselección Premio Pinault de " +
+      "una artista representada) y presencia en la feria NADA en Nueva " +
+      "York — fuera de alcance. fixedLocation.",
+    addedAt: "2026-08-14",
+    fixedLocation: { location: "Vitacura", placeName: "Espacio Andrea Brunson" },
+  },
   // El resto de la lista la aporta Daniel — una decisión editorial, igual
   // que cada fuente brillante nueva se evaluó una por una. Confirmar
   // pública y activa antes de agregar cada cuenta.
