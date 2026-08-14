@@ -166,6 +166,22 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
       "Haiku infiere ubicación por post, igual que ilposto.cl.",
     addedAt: "2026-08-14",
   },
+  {
+    username: "arte_uah",
+    note:
+      "Aportada por Daniel, 2026-08-14. Departamento de Arte de la " +
+      "Universidad Alberto Hurtado. 4/12 posts propios evaluados: 1 " +
+      "inauguración real y completa (\"Huellas de un atajo\" de Christian " +
+      "Yovane + \"Adobe y sillerías\" de Rodrigo Galecio, sábado 15 de " +
+      "agosto 12:00 hrs, Centro Patrimonial Posada del Corregidor, " +
+      "Esmeralda 749, Santiago, hasta el 26 de septiembre), 1 convocatoria " +
+      "(Premio Municipal Arte Joven), 1 lanzamiento de libro (Centro " +
+      "Cultural de España) y 1 taller de tejido (Museo de Bellas Artes) — " +
+      "los últimos 3 fuera de alcance. Sin fixedLocation: el departamento " +
+      "promueve actividades en sedes de terceros, no un solo local propio " +
+      "— Haiku infiere ubicación por post, igual que ilposto.cl/mamchiloe.",
+    addedAt: "2026-08-14",
+  },
   // El resto de la lista la aporta Daniel — una decisión editorial, igual
   // que cada fuente brillante nueva se evaluó una por una. Confirmar
   // pública y activa antes de agregar cada cuenta.
