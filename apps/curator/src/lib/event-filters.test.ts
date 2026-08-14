@@ -4,6 +4,7 @@ import {
   normalizeLocation,
   isLikelySameTitle,
   isLikelySameTitleIgnoringPlaceName,
+  isLikelySameTitleSharingAnyWord,
   placeNamesLikelySame,
   isWithinAnchorWindow,
 } from "./event-filters.js";
@@ -127,6 +128,25 @@ test("placeNamesLikelySame treats a null/empty placeName on either side as 'no s
 
 test("placeNamesLikelySame: identical placeName strings trivially match", () => {
   assert.equal(placeNamesLikelySame("Balmaceda Arte Joven", "Balmaceda Arte Joven"), true);
+});
+
+// Real gap found 2026-08-14 (factor__f, "BOTÁNICA"): two Instagram posts
+// about the same real opening, worded almost entirely differently beyond
+// the exhibition name itself.
+const BOTANICA_POST_1 = 'Mañana es el día. Te invitamos a la inauguración de BOTÁNICA, jueves 13 de agosto a las 19:00 hrs en Factor F.';
+const BOTANICA_POST_2 = 'Anota la fecha: el jueves 13 de agosto inauguramos BOTÁNICA, nuestra nueva muestra colectiva.';
+
+test("isLikelySameTitleSharingAnyWord: real case — two differently-worded captions about the same opening share only 1+ significant word, which is enough here (unlike isLikelySameTitle's stricter ratio, which misses this case)", () => {
+  assert.equal(isLikelySameTitleSharingAnyWord(BOTANICA_POST_1, BOTANICA_POST_2, "Factor F"), true);
+  assert.equal(isLikelySameTitle(BOTANICA_POST_1, BOTANICA_POST_2), false, "confirms this really is the gap being fixed — the stricter check still misses it");
+});
+
+test("isLikelySameTitleSharingAnyWord ignores the venue's own words, same as isLikelySameTitleIgnoringPlaceName — a shared venue name alone isn't enough", () => {
+  assert.equal(isLikelySameTitleSharingAnyWord("Inauguración BOTÁNICA en Factor F", "Cierre RETRATOS en Factor F", "Factor F"), false);
+});
+
+test("isLikelySameTitleSharingAnyWord requires at least one real shared word — completely unrelated titles at the same venue don't match", () => {
+  assert.equal(isLikelySameTitleSharingAnyWord("Taller de cerámica", "Concierto de jazz", "Factor F"), false);
 });
 
 test("isWithinAnchorWindow: dates exactly at the window boundary count as within it", () => {

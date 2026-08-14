@@ -30,6 +30,7 @@ import {
   normalizeLocation,
   isLikelySameTitle,
   isLikelySameTitleIgnoringPlaceName,
+  isLikelySameTitleSharingAnyWord,
   placeNamesLikelySame,
   isWithinAnchorWindow,
 } from "../lib/event-filters.js";
@@ -725,7 +726,24 @@ export async function insertCandidates(
         isLikelySameTitleIgnoringPlaceName(existing.title, c.title, c.placeName) &&
         placeNamesLikelySame(existing.placeName, c.placeName),
     );
-    const existingMatch = titleMatch ?? sourceUrlMatch ?? locationDateMatch ?? fuzzyMatch;
+    // Real gap found 2026-08-14 (factor__f, "BOTÁNICA"): two independently-
+    // worded Instagram captions about the same real opening, sharing only
+    // 3 of ~9 significant words each — not enough for isLikelySameTitle's
+    // 0.6 jaccard/overlap bar, so fuzzyMatch above missed it even though
+    // locDateOnlyKey already matched. When the venue name is an EXACT
+    // match (not just placeNamesLikelySame's looser "some shared word"),
+    // that's already strong independent evidence — only a single
+    // genuinely shared significant word is required here, see
+    // isLikelySameTitleSharingAnyWord's own doc comment.
+    const sameVenueMatch = c.placeName
+      ? (seen.titlesByLocationDateOnly.get(locDateOnlyKey) ?? []).find(
+          (existing) =>
+            existing.placeName !== null &&
+            normalizeTitle(existing.placeName) === normalizeTitle(c.placeName ?? "") &&
+            isLikelySameTitleSharingAnyWord(existing.title, c.title, c.placeName),
+        )
+      : undefined;
+    const existingMatch = titleMatch ?? sourceUrlMatch ?? locationDateMatch ?? fuzzyMatch ?? sameVenueMatch;
 
     if (existingMatch && !shouldReplaceExisting(c, existingMatch)) {
       const reason = fuzzyMatch && !titleMatch && !sourceUrlMatch && !locationDateMatch
@@ -734,7 +752,9 @@ export async function insertCandidates(
           ? " (same location + date, different title/source)"
           : sourceUrlMatch && !titleMatch
             ? " (same sourceUrl, different title)"
-            : "";
+            : sameVenueMatch && !titleMatch && !sourceUrlMatch && !locationDateMatch && !fuzzyMatch
+              ? " (same exact venue + date, differently-worded title — likely two posts about the same real opening)"
+              : "";
       console.log(`[event-discovery] skipping duplicate: "${c.title}"${reason}`);
       outcomes.set(c, "duplicate_skipped");
       continue;
