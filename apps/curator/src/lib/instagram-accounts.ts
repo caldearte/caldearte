@@ -364,6 +364,20 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
     addedAt: "2026-08-14",
     fixedLocation: { location: "Santiago", placeName: "Galería Gabriela Mistral" },
   },
+  {
+    username: "espacio_o",
+    note:
+      "Aportada por Daniel, 2026-08-14. Espacio O — misma galería ya " +
+      "cubierta vía su sitio web (espacioo.com, plataforma Artlogic, " +
+      "PR #237), agregada en su momento sin exposiciones en vivo; se " +
+      "agrega también por Instagram, que sí tiene contenido real: " +
+      "participación en \"Coleccionismo contemporáneo desde las " +
+      "galerías\" (grupal, Museo Ralli, 30 de julio al 5 de septiembre) " +
+      "y presencia en la feria Ch.ACO. El resto: anuncios de nuevos " +
+      "artistas representados — fuera de alcance. Sin fixedLocation: la " +
+      "muestra encontrada ocurre en OTRO museo, no en su sala propia.",
+    addedAt: "2026-08-14",
+  },
   // El resto de la lista la aporta Daniel — una decisión editorial, igual
   // que cada fuente brillante nueva se evaluó una por una. Confirmar
   // pública y activa antes de agregar cada cuenta.
