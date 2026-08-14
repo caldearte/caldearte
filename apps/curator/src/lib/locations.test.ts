@@ -96,6 +96,11 @@ test("isChileanLocation recognizes Frutillar (real production bug: a legitimate 
   assert.equal(isChileanLocation("Teatro del Lago, Frutillar"), true);
 });
 
+test("isChileanLocation recognizes 'Chiloé' (real production bug, mamchiloe Instagram bright source: the museum's own caption calls itself 'Chiloé', a provincia, not any of its comunas — Castro/Ancud/Quellón/etc. — so a genuine exhibition got code-rejected)", () => {
+  assert.equal(isChileanLocation("Chiloé"), true);
+  assert.equal(isChileanLocation("Museo de Arte Moderno de Chiloé"), true);
+});
+
 test("isChileanLocation recognizes both the official (Coihaique) and legacy (Coyhaique) spellings", () => {
   assert.equal(isChileanLocation("Coihaique"), true);
   assert.equal(isChileanLocation("Coyhaique"), true);

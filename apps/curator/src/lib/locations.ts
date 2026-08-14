@@ -47,6 +47,15 @@ const CHILE_MARKERS = [
   "arica y parinacota", "tarapaca", "antofagasta", "atacama", "coquimbo",
   "valparaiso", "libertador", "o'higgins", "ohiggins", "maule", "nuble",
   "biobio", "araucania", "los rios", "los lagos", "aysen", "magallanes",
+  // Real bug found 2026-08-14 (mamchiloe, an Instagram bright source): a
+  // real MAM Chiloé exhibition got code-rejected because Haiku wrote
+  // location:"Chiloé" (the archipelago/provincia, how the museum's own
+  // caption refers to itself, matching its own username) rather than a
+  // comuna — "Chiloé" isn't itself a seeded comuna (Castro/Ancud/Quellón/
+  // etc. are), so the whitelist never had it. Adding the provincia name
+  // is safe here: this list only decides Chilean-or-not, not which comuna
+  // (that's matchRegionId/extractComunaName's job, comuna-only by design).
+  "chiloe",
   // All 346 comunas in `regions` as of 2026-07-20 — see comment above.
   "aisen", "algarrobo", "alhue", "alto biobio", "alto del carmen", "alto hospicio",
   "ancud", "andacollo", "angol", "antartica", "antofagasta", "antuco", "arauco", "arica",
