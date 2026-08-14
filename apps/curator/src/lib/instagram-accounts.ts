@@ -200,6 +200,24 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
     addedAt: "2026-08-14",
     fixedLocation: { location: "Viña del Mar", placeName: "Instituto de Arte PUCV" },
   },
+  {
+    username: "casavaras",
+    note:
+      "Aportada por Daniel, 2026-08-14. Casa Varas, centro cultural en " +
+      "Antonio Varas 1181, Temuco — buena diversidad geográfica (región " +
+      "poco cubierta hasta ahora). 5/15 posts propios evaluados: 2 " +
+      "exposiciones reales y completas (\"Restauración Cultural\", hasta " +
+      "el 8 de junio; \"Tres Miradas II\", finalistas Premio Arte Joven " +
+      "Miradas del Sur) — ambas ya pasadas en este snapshot pero " +
+      "confirman programación real y recurrente. El resto: un concierto, " +
+      "una presentación de libro de poesía y el Día de los Patrimonios " +
+      "(talleres/puertas abiertas) — fuera de alcance. También aparece " +
+      "frecuentemente etiquetada por artistas externos con exposiciones " +
+      "reales propias en su sala (ej. \"Carne de Cañón\", Rafael Garrido " +
+      "Vílchez + Alexis Acuña Papic, 30 julio-9 agosto). fixedLocation.",
+    addedAt: "2026-08-14",
+    fixedLocation: { location: "Temuco", placeName: "Casa Varas" },
+  },
   // El resto de la lista la aporta Daniel — una decisión editorial, igual
   // que cada fuente brillante nueva se evaluó una por una. Confirmar
   // pública y activa antes de agregar cada cuenta.
