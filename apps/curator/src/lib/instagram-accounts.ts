@@ -247,6 +247,23 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
       "distintas sedes, no un solo local — sin fixedLocation.",
     addedAt: "2026-08-14",
   },
+  {
+    username: "valpocultura",
+    note:
+      "Aportada por Daniel, 2026-08-14. Cuenta oficial de cultura de la " +
+      "Municipalidad de Valparaíso — cubre TODO el espectro cultural " +
+      "(música, literatura, talleres, infraestructura), no solo artes " +
+      "visuales, así que el rendimiento de eventos relevantes es bajo " +
+      "proporcionalmente. 1 exposición real y completa encontrada: " +
+      "\"Prácticas Situadas\" (46° Salón de Estudiantes, Escuela " +
+      "Municipal de Bellas Artes), 5 al 21 de agosto, Galería Municipal " +
+      "de Arte de Valparaíso, Condell 1550. El resto: Festival de Jazz, " +
+      "convocatoria Premio de Literatura, club de lectura infantil, " +
+      "convocatoria de cartas de apoyo, renovación de infraestructura — " +
+      "todo fuera de alcance. Multi-sede dentro de Valparaíso — sin " +
+      "fixedLocation.",
+    addedAt: "2026-08-14",
+  },
   // El resto de la lista la aporta Daniel — una decisión editorial, igual
   // que cada fuente brillante nueva se evaluó una por una. Confirmar
   // pública y activa antes de agregar cada cuenta.
