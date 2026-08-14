@@ -264,6 +264,20 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
       "fixedLocation.",
     addedAt: "2026-08-14",
   },
+  {
+    username: "espaciovilches",
+    note:
+      "Aportada por Daniel, 2026-08-14. Espacio Vilches, Escuela de Arte " +
+      "UC, Campus Oriente UC, Providencia. Densidad alta y cuenta muy " +
+      "limpia — 2 inauguraciones reales y completas: \"Apaga la luz\" " +
+      "(Florencia de la Maza + Matías Yunge, inauguración 5 de agosto " +
+      "18:00 hrs) y \"Los que no fueron once\" (Nicolás Rodríguez, " +
+      "inauguración 27 de mayo, hasta el 24 de junio). El resto: cierre " +
+      "de un workshop y el Día del Patrimonio del campus — fuera de " +
+      "alcance. fixedLocation — un solo local físico.",
+    addedAt: "2026-08-14",
+    fixedLocation: { location: "Providencia", placeName: "Espacio Vilches" },
+  },
   // El resto de la lista la aporta Daniel — una decisión editorial, igual
   // que cada fuente brillante nueva se evaluó una por una. Confirmar
   // pública y activa antes de agregar cada cuenta.
