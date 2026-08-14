@@ -151,6 +151,21 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
     addedAt: "2026-08-14",
     fixedLocation: { location: "Valparaíso", placeName: "MUG-UPLA" },
   },
+  {
+    username: "mamchiloe",
+    note:
+      "Aportada por Daniel, 2026-08-14. Museo de Arte Moderno de Chiloé, " +
+      "Castro. 3/10 posts propios evaluados (el resto, contenido " +
+      "etiquetado de otras organizaciones): \"Muestra Regional 2026\" " +
+      "(inauguración 22 de agosto, hasta el 12 de diciembre, en el museo), " +
+      "\"Apertura de proceso\" de una residencia artística (jueves 30 de " +
+      "julio 15:30 hrs, en el museo) y \"Colección en ruta\", una " +
+      "exposición itinerante en Santiago (Casa de la Cultura de Ñuñoa, " +
+      "Irarrázaval 4055, hasta el 20 de septiembre) — por esta última, " +
+      "sin fixedLocation: el museo sí lleva muestras fuera de su sede, " +
+      "Haiku infiere ubicación por post, igual que ilposto.cl.",
+    addedAt: "2026-08-14",
+  },
   // El resto de la lista la aporta Daniel — una decisión editorial, igual
   // que cada fuente brillante nueva se evaluó una por una. Confirmar
   // pública y activa antes de agregar cada cuenta.
