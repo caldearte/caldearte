@@ -122,6 +122,21 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
     addedAt: "2026-08-14",
     fixedLocation: { location: "Vitacura", placeName: "Espacio Andrea Brunson" },
   },
+  {
+    username: "ilposto.cl",
+    note:
+      "Aportada por Daniel, 2026-08-14. Il Posto, centro de investigación " +
+      "y archivo de arte. Rendimiento esperado bajo: de 6 posts propios " +
+      "evaluados, solo 1 es una inauguración real y limpia (\"Del objeto " +
+      "al misterio\", Juan Pablo Langlois, ya pasada) — el resto son " +
+      "convocatorias (incluida una internacional, Central Saint Martins, " +
+      "Reino Unido), lanzamiento de libro y presentación de becarios. " +
+      "Sin fixedLocation deliberadamente: aparecen 2 direcciones reales " +
+      "distintas en los posts (Espoz 3150 Vitacura, y José Miguel de la " +
+      "Barra 480 — probablemente Santiago Centro), no es un solo local " +
+      "fijo — Haiku infiere ubicación por post, igual que un agregador.",
+    addedAt: "2026-08-14",
+  },
   // El resto de la lista la aporta Daniel — una decisión editorial, igual
   // que cada fuente brillante nueva se evaluó una por una. Confirmar
   // pública y activa antes de agregar cada cuenta.
