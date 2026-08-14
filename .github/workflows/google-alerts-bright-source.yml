@@ -1,0 +1,49 @@
+name: Run Google Alerts Bright Source
+
+# Separate, deferred workflow for the Google Alerts bright source (a real
+# "inauguracion de arte" alert of Daniel's, evaluated 2026-08-14 — see
+# apps/curator/src/lib/google-alerts.ts). Deliberately its OWN workflow,
+# same reasoning as headless-bright-sources.yml/instagram-bright-sources.yml:
+# keeps this off the main run's already-tight GitHub Actions budget, AND —
+# specific to this source — makes it trivial to pause/disable entirely
+# (just disable this workflow) without touching anything else, given each
+# entry here points to an arbitrary, unrelated domain (not one known,
+# reviewed site).
+#
+# No TAVILY_API_KEY: this flow never searches — the Google Alert itself is
+# the search, already running continuously on Google's own infrastructure,
+# for free. This workflow only reads its feed and curates what's new.
+#
+# Cadence: shared 7-day bright_source_fetch_state/isSourceDue, same as
+# every KNOWN_SOURCES entry — the cron below just needs to run at least
+# that often; weekly matches it exactly (no need for the "cron more
+# frequent than the real per-item cadence" pattern used for Instagram,
+# since there's no per-item variability here).
+on:
+  workflow_dispatch: {}
+  schedule:
+    - cron: "0 9 * * 1" # Every Monday, 09:00 UTC — 1h after Instagram
+
+jobs:
+  discover-google-alerts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Run Google Alerts bright source
+        run: pnpm --filter @caldearte/curator run discover-google-alerts-source
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          GOOGLE_ALERTS_FEED_URL: ${{ secrets.GOOGLE_ALERTS_FEED_URL }}

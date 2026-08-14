@@ -76,8 +76,21 @@ async function fetchHtmlPage(pageUrl: string, extractor: ExtractorConfig | undef
   return extractArticleList(html, pageUrl, extractor);
 }
 
-async function fetchHtmlPageFallback(pageUrl: string): Promise<{ content: string; images: ImageCandidate[] }> {
-  const res = await fetch(pageUrl);
+// Same minimal shape as lib/page-fetch.ts's own FetchLike — only ever
+// need .ok/.text() here, never the rest of a real Response.
+type MinimalFetchLike = (url: string) => Promise<{ ok: boolean; status: number; text(): Promise<string> }>;
+
+// Exported for google-alerts-discovery/run.ts (2026-08-14): Google Alerts
+// entries span arbitrary, unrelated domains (a different site per entry,
+// not one consistent source), so there's no per-site extractor to write —
+// this same generic flatten is exactly what a source with no configured
+// extractor already falls back to here, reused as-is rather than
+// duplicated. `fetchImpl` defaults to the global fetch (every existing
+// caller here is unaffected, none pass a second argument) — added only so
+// google-alerts-discovery/run.ts can inject its own stub in tests, same
+// as page-fetch.ts's FetchLike pattern.
+export async function fetchHtmlPageFallback(pageUrl: string, fetchImpl: MinimalFetchLike = fetch): Promise<{ content: string; images: ImageCandidate[] }> {
+  const res = await fetchImpl(pageUrl);
   if (!res.ok) {
     throw new Error(`html source ${pageUrl} responded ${res.status}`);
   }
