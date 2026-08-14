@@ -182,6 +182,24 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
       "— Haiku infiere ubicación por post, igual que ilposto.cl/mamchiloe.",
     addedAt: "2026-08-14",
   },
+  {
+    username: "institutodearte.pucv",
+    note:
+      "Aportada por Daniel, 2026-08-14. Instituto de Arte, Pontificia " +
+      "Universidad Católica de Valparaíso, Miraflores, Viña del Mar. La " +
+      "cuenta más activa evaluada esta sesión (casi diaria) y con " +
+      "programa real de exposiciones recurrente. 2 inauguraciones reales " +
+      "y completas en la misma semana: \"Hiperia\" (Ágata M. Basáez, " +
+      "inaugurada 10 de agosto, hasta el 31, Sala 2063, Los Acacios 2063) " +
+      "y \"Cómo ordenar un miedo\" (Iván Rivera Díaz, inauguración " +
+      "viernes 14 de agosto 17:00 hrs, Sala Leonidas Emilfork, Lusitania " +
+      "68) — mismo instituto, distintas salas internas. El resto: " +
+      "seminario académico, Día Abierto PUCV y visita institucional de la " +
+      "Bienal de Valparaíso — fuera de alcance. fixedLocation a nivel de " +
+      "institución (no de sala individual).",
+    addedAt: "2026-08-14",
+    fixedLocation: { location: "Viña del Mar", placeName: "Instituto de Arte PUCV" },
+  },
   // El resto de la lista la aporta Daniel — una decisión editorial, igual
   // que cada fuente brillante nueva se evaluó una por una. Confirmar
   // pública y activa antes de agregar cada cuenta.

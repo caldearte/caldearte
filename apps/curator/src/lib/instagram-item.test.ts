@@ -50,6 +50,19 @@ test("toBrightSourceItem truncates a very long first line to 120 chars", () => {
   assert.equal(item.title.length, 120);
 });
 
+test("toBrightSourceItem skips a decoration-only first line (real bug, institutodearte.pucv: every caption opens with a lone '•', collapsing all titles to the same string and causing a false dedup collision between two different real exhibitions)", () => {
+  const item = toBrightSourceItem(
+    { ...POST, caption: "•\nHiperia\nInauguración lunes 10 de agosto." },
+    ACCOUNT,
+  );
+  assert.equal(item.title, "Hiperia");
+});
+
+test("toBrightSourceItem falls back to the account username when EVERY line is decoration-only", () => {
+  const item = toBrightSourceItem({ ...POST, caption: "•\n---\n***" }, ACCOUNT);
+  assert.equal(item.title, ACCOUNT.username);
+});
+
 test("toBrightSourceItem leaves location/placeName null when the account has no fixedLocation — Haiku infers it", () => {
   const item = toBrightSourceItem(POST, ACCOUNT);
   assert.equal(item.location, null);
