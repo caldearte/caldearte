@@ -233,6 +233,20 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
     addedAt: "2026-08-14",
     fixedLocation: { location: "Punta Arenas", placeName: "Casa Líquen" },
   },
+  {
+    username: "casa_arpa",
+    note:
+      "Aportada por Daniel, 2026-08-14. Casa Arpa, centro de arte y " +
+      "residencias artísticas, Lucrecia Valdés 390, Barrio Yungay, " +
+      "Santiago. Cadencia baja e irregular (último post propio real, " +
+      "abril 2026; brecha de más de un año antes de eso), pero produce " +
+      "eventos reales cuando publica: inauguración de Hugo Leonello " +
+      "(artista residente), 24 de abril, en el MAC Quinta Normal — no en " +
+      "su propia sala —, y una exposición real en su sala (Lucrecia " +
+      "Valdés 390, marzo 2024). Promueve muestras de sus residentes en " +
+      "distintas sedes, no un solo local — sin fixedLocation.",
+    addedAt: "2026-08-14",
+  },
   // El resto de la lista la aporta Daniel — una decisión editorial, igual
   // que cada fuente brillante nueva se evaluó una por una. Confirmar
   // pública y activa antes de agregar cada cuenta.
