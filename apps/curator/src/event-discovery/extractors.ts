@@ -130,7 +130,15 @@ const NAMED_ENTITIES: Record<string, string> = {
   deg: "°", ordm: "º", ordf: "ª", ndash: "–", mdash: "—",
 };
 
-function decodeHtmlEntities(text: string): string {
+// Exported for lib/google-alerts.ts (2026-08-14): the Atom feed's own
+// <link href="..."> and <content> fields are XML-entity-escaped around
+// content that's ITSELF HTML (a Google redirect URL's own "&" as
+// "&amp;amp;", a <b> highlight tag as "&lt;b&gt;") — needs one decode
+// pass to reach real HTML/URL text before that text can be parsed
+// (extract the redirect's real `url` param) or tag-stripped
+// (collapseWhitespace, which decodes AGAIN for entities inside that,
+// e.g. "&amp;nbsp;" -> "&nbsp;" -> " ") — see that module's own comment.
+export function decodeHtmlEntities(text: string): string {
   return text
     .replace(/&#x([0-9A-Fa-f]+);/g, (_, hex: string) => String.fromCodePoint(parseInt(hex, 16)))
     .replace(/&#(\d+);/g, (_, dec: string) => String.fromCodePoint(parseInt(dec, 10)))

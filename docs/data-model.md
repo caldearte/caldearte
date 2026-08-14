@@ -281,6 +281,8 @@ Fixed in the cost-governance migration for all tables that existed then.
 | `AUTH_GOOGLE_ID` / `AUTH_GOOGLE_SECRET` | Vercel project env var (server-only) AND `apps/web/.env.local` | Google OAuth 2.0 client credentials (Google Cloud Console, Testing-mode consent screen, single test user) — the only sign-in provider `/login` offers |
 | `ADMIN_EMAIL` | Vercel project env var (server-only) AND `apps/web/.env.local` | the one email compared against a signed-in session to compute `isAdmin` (`apps/web/src/lib/auth.ts`) — never shipped to the client, only the resulting boolean claim is |
 | `ADMIN_ACTIONS_SECRET` | Vercel project env var (server-only) AND `apps/web/.env.local`, ALSO a Supabase Edge Function secret (must match) | shared secret between apps/web's admin API routes (`/api/admin/remove-event`, `/api/admin/toggle-sensitive`) and their corresponding Edge Functions — see architecture.md's "Admin mode" section for the full trust chain |
+| `APIFY_TOKEN` | GitHub Actions secret | Instagram bright-source pipeline (`apps/curator/src/instagram-discovery/`), via Apify — see region-discovery.md's 2026-08-12 entry |
+| `GOOGLE_ALERTS_FEED_URL` | GitHub Actions secret | Google Alerts bright-source pipeline (`apps/curator/src/google-alerts-discovery/`) — treated as secret despite not being a credential, since it embeds a Google-account-linked ID; see region-discovery.md's 2026-08-14 entry |
 | `META_APP_ID` / `META_APP_SECRET` | Phase 4, GitHub Actions secret | not needed until Phase 4 |
 | `TIKTOK_CLIENT_KEY` / `TIKTOK_CLIENT_SECRET` | Phase 4, GitHub Actions secret | not needed until Phase 4 |
 

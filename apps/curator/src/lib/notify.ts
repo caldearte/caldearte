@@ -562,6 +562,108 @@ export async function sendInstagramRunSummaryEmail(summary: InstagramRunSummary)
   }
 }
 
+// Google Alerts bright source (2026-08-14, see
+// google-alerts-discovery/run.ts) — same shape as InstagramRunSummary,
+// own type/functions so subject/body read correctly, not "(headless)"
+// or "(Instagram)".
+export interface GoogleAlertsRunSummary {
+  startedAt: Date;
+  dueThisRun: boolean; // this source has no per-item list, just one feed — either due or not
+  candidates: RunSummary["candidates"];
+  eventGroups: EventGroup[];
+  cost: RunSummary["cost"];
+}
+
+export function buildGoogleAlertsSubject(summary: GoogleAlertsRunSummary): string {
+  const dateStr = summary.startedAt.toISOString().slice(0, 10).split("-").reverse().join("/");
+  return `Caldearte — resumen de fuentes brillantes (Google Alerts) (${dateStr})`;
+}
+
+export function buildGoogleAlertsBody(summary: GoogleAlertsRunSummary): string {
+  const { candidates, cost } = summary;
+
+  const lines = [
+    `Resumen de la corrida de fuentes brillantes (Google Alerts) — ${summary.startedAt.toISOString()}`,
+    "",
+    summary.dueThisRun ? "Feed consultado esta corrida." : "No debido esta corrida (cadencia semanal) — nada que hacer.",
+    "",
+    "EVENTOS",
+    `Total candidatos: ${candidates.total}`,
+    `Aprobados por curatoría: ${candidates.approvedByCuration}`,
+    `Rechazados por curatoría: ${candidates.rejectedByCuration}`,
+    `Insertados en el calendario: ${candidates.insertedCount}`,
+    `Con tag de sensibilidad: ${candidates.sensitivityTagged}`,
+    "",
+    "Por tipo de medio:",
+    ...Object.entries(candidates.byMediumType).map(([type, count]) => `  ${type}: ${count}`),
+    "",
+    "COSTO ESTIMADO DE ESTA CORRIDA",
+    `Anthropic (Haiku): ${fmtUsd(cost.anthropicUsd)}`,
+    `Total: ${fmtUsd(cost.totalUsd)}`,
+    "",
+    "GASTO DEL MES A LA FECHA",
+    `$${cost.monthToDateUsd.toFixed(2)} de $${cost.monthlyBudgetUsd.toFixed(2)} (techo mensual, system_config.monthly_budget_usd)`,
+    "",
+    ...buildEventGroupsText(summary.eventGroups),
+  ];
+
+  return lines.join("\n");
+}
+
+// HTML counterpart of buildGoogleAlertsBody.
+export function buildGoogleAlertsHtmlBody(summary: GoogleAlertsRunSummary): string {
+  const { candidates, cost } = summary;
+
+  return `<div style="font-family:-apple-system,Helvetica,Arial,sans-serif;max-width:720px;margin:0 auto;color:#1a1a1a;">
+    <h1 style="font-size:18px;margin:0 0 4px;">Caldearte — resumen de fuentes brillantes (Google Alerts)</h1>
+    <p style="font-size:13px;color:#666;margin:0 0 20px;">${escapeHtml(summary.startedAt.toISOString())}</p>
+
+    <p>${summary.dueThisRun ? "Feed consultado esta corrida." : "No debido esta corrida (cadencia semanal) — nada que hacer."}</p>
+
+    <p>
+      <b>${candidates.total}</b> candidatos totales &middot;
+      <b>${candidates.approvedByCuration}</b> aprobados &middot;
+      <b>${candidates.rejectedByCuration}</b> rechazados &middot;
+      <b>${candidates.insertedCount}</b> insertados &middot;
+      <b>${candidates.sensitivityTagged}</b> con sensibilidad
+    </p>
+
+    ${buildEventGroupsHtml(summary.eventGroups)}
+
+    <h2 style="font-size:14px;text-transform:uppercase;letter-spacing:0.04em;color:#888;margin:24px 0 10px;border-bottom:1px solid #e2e0da;padding-bottom:6px;">Costo</h2>
+    <p>
+      Anthropic (Haiku): ${fmtUsd(cost.anthropicUsd)}<br>
+      Total corrida: ${fmtUsd(cost.totalUsd)}<br>
+      Mes a la fecha: $${cost.monthToDateUsd.toFixed(2)} de $${cost.monthlyBudgetUsd.toFixed(2)}
+    </p>
+  </div>`;
+}
+
+// Same defensive posture as sendRunSummaryEmail: ancillary, last step,
+// must never throw.
+export async function sendGoogleAlertsRunSummaryEmail(summary: GoogleAlertsRunSummary): Promise<void> {
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) {
+    console.warn(
+      "sendGoogleAlertsRunSummaryEmail: RESEND_API_KEY not set — skipping run-summary email (expected outside CI or before the secret is configured).",
+    );
+    return;
+  }
+
+  const resend = new Resend(apiKey);
+  const { error } = await resend.emails.send({
+    from: "Caldearte <contacto@caldearte.com>",
+    to: RUN_SUMMARY_RECIPIENT,
+    subject: buildGoogleAlertsSubject(summary),
+    text: buildGoogleAlertsBody(summary),
+    html: buildGoogleAlertsHtmlBody(summary),
+  });
+
+  if (error) {
+    console.error("[notify] Google Alerts run-summary email send failed", error);
+  }
+}
+
 // Cross-source curation conflict escalation (2026-07-30) — see
 // docs/curation-policy.md's "Cross-source conflict escalation" section.
 // Both `existing`/`newCandidate` are pre-formatted display data (title,

@@ -3349,6 +3349,76 @@ punctuated titles for the same real event, no venue name embedded in any
 of them) still passes fine, confirmed by a regression test — this closes
 a real gap without reopening that one.
 
+## New source: Google Alerts ("inauguracion de arte"), a real free discovery channel (2026-08-14)
+
+Daniel had a personal Google Alert ("inauguracion de arte", Chile-scoped)
+running for a while — evaluated at his request against ~20 real days of
+its own history (both the daily email digest and its own "ver más" full
+history page). Real density: far higher than any single bright source
+added this month, with genuine national geographic spread (Arica,
+Iquique, Temuco, Los Andes, Valparaíso, Concepción, Punta Arenas...) in
+ONE feed, complementing both the comuna-by-comuna Tavily search (25/week
+batch) and every single-site bright source.
+
+**Delivery method, deliberately not email**: two alternatives considered
+first — Gmail API (OAuth2, reusing the same Google Cloud project already
+used for admin login) and IMAP (an app password) — both require reading
+Daniel's actual mailbox. Switching the alert's own delivery to **RSS
+feed** instead avoids that entirely: it's a plain, unauthenticated URL,
+same "just fetch it" shape as every other bright source, no mailbox
+access, no OAuth consent flow. The feed URL itself embeds a
+Google-account-linked numeric ID, so — unlike a public gallery listing
+page — it's treated with the same caution as a real secret:
+`GOOGLE_ALERTS_FEED_URL` (env var / GitHub Actions secret), never
+hardcoded into `known-sources.ts` (this repo is public).
+
+**Real, structural difference from every other bright source**: each
+entry links to a DIFFERENT, unrelated domain — a different news outlet
+per story, not one consistent site. No per-site extractor is possible.
+Own isolated pipeline (`google-alerts-discovery/`), same precedent as
+MAVI/Instagram, reusing the curation/insertion pipeline unchanged.
+
+**Feed shape** (`lib/google-alerts.ts`, real Atom XML, not the RSS 2.0 the
+"Feed RSS" label implies): each `<entry>` gives a title, a Google
+tracking-redirect link (the real article URL lives in its own `url` query
+param — needs unwrapping), a short keyword-highlighted snippet (too thin
+to curate reliably alone), and `<published>` (when Google's crawler found
+it, not the exhibition's own date). Double HTML-entity-escaping found and
+handled: the raw `<content>` text is XML-escaped around text that's
+ITSELF HTML (`&lt;b&gt;` for a keyword-bold tag), so it needs one decode
+pass before the usual tag-strip-and-decode (`collapseWhitespace`) can
+run — `decodeHtmlEntities` exported for this specific reuse.
+
+**No per-site description extractor is possible** (every entry, a
+different domain) — reuses `sources.ts`'s existing generic
+whole-page-flatten fallback (`fetchHtmlPageFallback`, already what every
+extractor-less bright source falls back to) for every entry, not just
+approved ones, since the feed's own snippet alone isn't enough to curate
+on. Exported and given an injectable `fetchImpl` parameter (defaulting to
+the real `fetch`, every other existing caller unaffected) specifically so
+this new orchestrator's own tests don't need real network calls.
+
+**No images from the feed at all** — same generic page fetch recovers one
+via `filterKnownSourceImages(extractImgTags(...))`, same mechanism.
+
+**Cadence**: the SHARED 7-day `bright_source_fetch_state`/`isSourceDue`
+— unlike Instagram (many independently-paced accounts needing per-item
+adaptive cadence), this is one continuously-updating feed, so the simpler
+shared mechanism fits without modification. The feed's own identity is
+tracked as a fixed key string (`google-alerts://inauguracion-de-arte`),
+never the feed URL itself (keeps the personal-data-adjacent URL out of
+any logged/stored value beyond the runtime env var).
+
+**Real end-to-end verification** (local Supabase, real feed, real
+Anthropic curation, 2026-08-14): 7 entries fetched, 1 article blocked the
+plain fetch (403, degraded gracefully to the feed's own snippet rather
+than losing the candidate), 2 genuine exhibitions inserted (ArtePuerto
+2026, Valparaíso; a CONAF photography exhibition, Iquique). Also
+confirmed, incidentally, that this new source correctly triggers
+curation-policy.md's institutional-religious-venue exclusion (a Vatican
+Dicastery-organized triennial, rejected) with zero source-specific code —
+same shared curation pipeline as everything else.
+
 ## Cross-source curation conflict escalation (2026-07-30)
 
 A **different** kind of gap than the dedup fixes above — found by a
