@@ -6,10 +6,32 @@ import {
   extractImgTags,
   extractWordpressItems,
   filterKnownSourceImages,
+  truncateSafely,
   type ArticleListConfig,
   type DateRangeConfig,
   type WordpressRestConfig,
 } from "./extractors.js";
+
+// Real production crash, found 2026-08-14 (mugupla's emoji-dense
+// Instagram captions): a plain `.slice(0, n)` truncates by UTF-16 code
+// unit, splitting a surrogate-pair emoji in half when the cut lands
+// between its two units — the Anthropic API's request-body parser
+// rejects the resulting lone surrogate outright, crashing the whole
+// curation call (not just the one candidate).
+test("truncateSafely never splits a surrogate-pair emoji, unlike a plain .slice()", () => {
+  const text = "x".repeat(119) + "🖋" + "y".repeat(20); // the emoji straddles code-unit index 120
+  const broken = text.slice(0, 120);
+  // Confirms this really is the bug being guarded against: plain .slice()
+  // leaves a lone high surrogate as the last code unit.
+  assert.equal(broken.charCodeAt(119) >= 0xd800 && broken.charCodeAt(119) <= 0xdbff, true, "sanity check: the naive slice really does end mid-surrogate-pair");
+  const safe = truncateSafely(text, 120);
+  assert.equal(safe, "x".repeat(119) + "🖋"); // keeps the whole emoji rather than half of it
+});
+
+test("truncateSafely behaves like a plain slice for ASCII text with no surrogate pairs", () => {
+  assert.equal(truncateSafely("hola mundo", 4), "hola");
+  assert.equal(truncateSafely("corto", 100), "corto");
+});
 
 test("extractImgTags pulls src/alt pairs and treats empty alt as null", () => {
   const html = `<div><img src="/a.jpg" alt="obra"> <img src="/b.jpg" alt=""> <img alt="no src"></div>`;

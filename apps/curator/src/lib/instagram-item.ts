@@ -2,7 +2,7 @@
 // (event-discovery/extractors.ts) so curateBrightSourceItems (discover.ts)
 // can judge it with the exact same scope/date criteria as every other
 // bright source, no new prompt needed.
-import type { BrightSourceItem } from "../event-discovery/extractors.js";
+import { truncateSafely, type BrightSourceItem } from "../event-discovery/extractors.js";
 import type { ApifyInstagramPost } from "./apify-instagram.js";
 import type { InstagramAccountConfig } from "./instagram-accounts.js";
 
@@ -15,9 +15,10 @@ export function toBrightSourceItem(post: ApifyInstagramPost, account: InstagramA
   // description/rawDateText below, so an approximate title hides nothing
   // from it — same kind of imperfection already accepted for other
   // sources with no clean title in the source itself (Aninat, Estación
-  // Mapocho).
+  // Mapocho). truncateSafely, not a raw .slice() — see its own doc
+  // comment (a real crash, found via mugupla's emoji-dense captions).
   const firstLine = caption.split("\n")[0]?.trim();
-  const title = (firstLine || account.username).slice(0, TITLE_MAX_LENGTH);
+  const title = truncateSafely(firstLine || account.username, TITLE_MAX_LENGTH);
 
   return {
     title,

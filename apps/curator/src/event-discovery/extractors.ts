@@ -94,6 +94,23 @@ export function collapseWhitespace(text: string): string {
   return decodeHtmlEntities(text.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim());
 }
 
+// Real production crash, found 2026-08-14 (mugupla, a real Instagram
+// account whose captions are dense with emoji): plain `.slice(0, n)`
+// truncates by UTF-16 code UNIT, not by character — landing exactly
+// between the two code units of a surrogate-pair emoji produces a
+// string with a lone, unpaired surrogate. That string serialized fine
+// locally (JSON.stringify silently escapes it), but the Anthropic API's
+// own request-body parser rejected it outright ("no low surrogate in
+// string") — an uncaught 400 that crashed the ENTIRE curation call for
+// the whole batch, not just the one candidate, taking down every other
+// due account's results with it. The spread operator iterates a string
+// by Unicode code point, so it can never split a surrogate pair — used
+// here instead of a raw `.slice()` anywhere free text (not a known-ASCII
+// value like a URL or ISO date) gets truncated to a fixed length.
+export function truncateSafely(text: string, maxLength: number): string {
+  return [...text].slice(0, maxLength).join("");
+}
+
 // Pull <img src/alt> pairs out BEFORE stripping tags — the original crude
 // tag-strip threw away real per-exhibition thumbnails sitting right in the
 // HTML (a real bug, found against artes.uchile.cl's agenda).

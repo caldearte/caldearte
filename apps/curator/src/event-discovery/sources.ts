@@ -28,6 +28,7 @@ import {
   extractWordpressItems,
   filterKnownSourceImages,
   collapseWhitespace,
+  truncateSafely,
   getPath,
   type BrightSourceItem,
   type ExtractorConfig,
@@ -100,7 +101,11 @@ export async function fetchHtmlPageFallback(pageUrl: string, fetchImpl: MinimalF
   // stripped first, not just the tags, so JS/CSS source doesn't leak into
   // the text Haiku reads.
   const images = filterKnownSourceImages(extractImgTags(html), pageUrl);
-  const text = collapseWhitespace(html.replace(/<script[\s\S]*?<\/script>/gi, "").replace(/<style[\s\S]*?<\/style>/gi, "")).slice(0, 4000);
+  // truncateSafely, not a raw .slice() — see its own doc comment (a real
+  // crash, found via mugupla's emoji-dense Instagram captions; the same
+  // risk applies here to any page whose text happens to have an emoji
+  // straddling the 4000-char cut).
+  const text = truncateSafely(collapseWhitespace(html.replace(/<script[\s\S]*?<\/script>/gi, "").replace(/<style[\s\S]*?<\/style>/gi, "")), 4000);
   return { content: text, images };
 }
 
