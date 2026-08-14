@@ -318,6 +318,22 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
     addedAt: "2026-08-14",
     fixedLocation: { location: "Estación Central", placeName: "Museo Artequín" },
   },
+  {
+    username: "factoriasantarosa",
+    note:
+      "Aportada por Daniel, 2026-08-14. Factoría Santa Rosa, Barrio " +
+      "Franklin, Santiago — mismo espacio ya cubierto como fuente " +
+      "brillante vía su sitio web (factoriasantarosa.cl, PR #234); se " +
+      "agrega también por Instagram para capturar anuncios que el sitio " +
+      "podría no tener a tiempo (el dedup cruzado existente maneja el " +
+      "solapamiento). 3/8 posts propios reales: \"Pacheco Altamirano: " +
+      "redescubrir a un maestro\" (inauguración) y \"Estudio Abierto\" " +
+      "(exposición de artistas residentes, publicada 2 veces). El resto: " +
+      "agradecimiento por participación en ArtBo 2025 (Colombia, feria " +
+      "ya pasada) — fuera de alcance. fixedLocation.",
+    addedAt: "2026-08-14",
+    fixedLocation: { location: "Santiago", placeName: "Factoría Santa Rosa" },
+  },
   // El resto de la lista la aporta Daniel — una decisión editorial, igual
   // que cada fuente brillante nueva se evaluó una por una. Confirmar
   // pública y activa antes de agregar cada cuenta.
