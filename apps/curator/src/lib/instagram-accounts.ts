@@ -278,6 +278,20 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
     addedAt: "2026-08-14",
     fixedLocation: { location: "Providencia", placeName: "Espacio Vilches" },
   },
+  {
+    username: "galerialasala",
+    note:
+      "Aportada por Daniel, 2026-08-14. Galería La Sala, Francisco de " +
+      "Aguirre 3720, Vitacura. Densidad alta — 7/8 posts propios " +
+      "evaluados son exposiciones reales (\"Memoria de las formas\" + " +
+      "\"Tramas: la luz de la Materia\", \"Continuidad\" de Andrés " +
+      "Peñaloza y Celina Gálvez, \"Y dos y tres es su nueva contraseña\" " +
+      "de Totoy Zamudio, participación en ferias Pinta Lima y Chaco) — " +
+      "en tono retrospectivo (\"con éxito se inaugura...\") más que " +
+      "anuncio anticipado, pero consistentemente reales. fixedLocation.",
+    addedAt: "2026-08-14",
+    fixedLocation: { location: "Vitacura", placeName: "Galería La Sala" },
+  },
   // El resto de la lista la aporta Daniel — una decisión editorial, igual
   // que cada fuente brillante nueva se evaluó una por una. Confirmar
   // pública y activa antes de agregar cada cuenta.
