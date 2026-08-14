@@ -152,6 +152,28 @@ export function placeNamesLikelySame(a: string | null, b: string | null): boolea
   return [...wordsA].some((w) => wordsB.has(w));
 }
 
+// Real gap found 2026-08-14 (factor__f, "BOTÁNICA"): two Instagram posts
+// about the SAME real opening (same fixedLocation venue, same exact
+// date) but almost entirely different wording beyond the exhibition
+// name itself — "Mañana es el día..." vs "Anota la fecha... inauguramos
+// BOTÁNICA..." — share only 3 of ~9 significant words each (jaccard
+// ~0.21, overlap ~0.37), both well under isLikelySameTitle's 0.6
+// threshold (tuned for more consistently-worded aggregator titles, not
+// two independently-written informal social captions). run.ts's fuzzy
+// dedup tier already requires an EXACT venue name match (not just
+// placeNamesLikelySame's looser "some shared word") before calling this
+// — that's already strong independent evidence the location+date match
+// alone doesn't carry for a fixedLocation-less aggregator source, so
+// title similarity only needs a single genuinely shared significant word
+// here, no jaccard/overlap ratio required.
+export function isLikelySameTitleSharingAnyWord(a: string, b: string, placeName: string | null): boolean {
+  const placeWords = placeName ? tokenizeSignificantWords(placeName) : new Set<string>();
+  const withoutPlaceWords = (title: string) => new Set([...tokenizeSignificantWords(title)].filter((w) => !placeWords.has(w)));
+  const wordsA = withoutPlaceWords(a);
+  const wordsB = withoutPlaceWords(b);
+  return [...wordsA].some((w) => wordsB.has(w));
+}
+
 // Used by run.ts's cross-source conflict escalation (2026-07-30, found via
 // a manual curation audit — see docs/curation-policy.md's "Cross-source
 // conflict escalation" section) to decide whether two anchor dates are
