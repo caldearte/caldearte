@@ -4,7 +4,7 @@ import {
   normalizeLocation,
   isLikelySameTitle,
   isLikelySameTitleIgnoringPlaceName,
-  isLikelySameTitleSharingAnyWord,
+  isLikelySameTitleWithoutRatio,
   placeNamesLikelySame,
   isWithinAnchorWindow,
 } from "./event-filters.js";
@@ -136,17 +136,30 @@ test("placeNamesLikelySame: identical placeName strings trivially match", () => 
 const BOTANICA_POST_1 = 'Mañana es el día. Te invitamos a la inauguración de BOTÁNICA, jueves 13 de agosto a las 19:00 hrs en Factor F.';
 const BOTANICA_POST_2 = 'Anota la fecha: el jueves 13 de agosto inauguramos BOTÁNICA, nuestra nueva muestra colectiva.';
 
-test("isLikelySameTitleSharingAnyWord: real case — two differently-worded captions about the same opening share only 1+ significant word, which is enough here (unlike isLikelySameTitle's stricter ratio, which misses this case)", () => {
-  assert.equal(isLikelySameTitleSharingAnyWord(BOTANICA_POST_1, BOTANICA_POST_2, "Factor F"), true);
+test("isLikelySameTitleWithoutRatio: real case — two differently-worded captions about the same opening share >=2 significant words, which is enough here (unlike isLikelySameTitle's stricter jaccard/overlap ratio, which misses this case)", () => {
+  assert.equal(isLikelySameTitleWithoutRatio(BOTANICA_POST_1, BOTANICA_POST_2, "Factor F"), true);
   assert.equal(isLikelySameTitle(BOTANICA_POST_1, BOTANICA_POST_2), false, "confirms this really is the gap being fixed — the stricter check still misses it");
 });
 
-test("isLikelySameTitleSharingAnyWord ignores the venue's own words, same as isLikelySameTitleIgnoringPlaceName — a shared venue name alone isn't enough", () => {
-  assert.equal(isLikelySameTitleSharingAnyWord("Inauguración BOTÁNICA en Factor F", "Cierre RETRATOS en Factor F", "Factor F"), false);
+test("isLikelySameTitleWithoutRatio ignores the venue's own words, same as isLikelySameTitleIgnoringPlaceName — a shared venue name alone isn't enough", () => {
+  assert.equal(isLikelySameTitleWithoutRatio("Inauguración BOTÁNICA en Factor F", "Cierre RETRATOS en Factor F", "Factor F"), false);
 });
 
-test("isLikelySameTitleSharingAnyWord requires at least one real shared word — completely unrelated titles at the same venue don't match", () => {
-  assert.equal(isLikelySameTitleSharingAnyWord("Taller de cerámica", "Concierto de jazz", "Factor F"), false);
+test("isLikelySameTitleWithoutRatio requires at least one real shared word — completely unrelated titles at the same venue don't match", () => {
+  assert.equal(isLikelySameTitleWithoutRatio("Taller de cerámica", "Concierto de jazz", "Factor F"), false);
+});
+
+// Real regression found running run.test.ts's real integration suite
+// (2026-08-14): dropping isLikelySameTitle's ratio requirement but NOT
+// its >=2-shared-words floor let a single incidental shared word
+// (ironically, the literal word "test" from a test fixture's own
+// "__test__" naming prefix) falsely match two genuinely different real
+// exhibitions sharing a venue+season (the MAC - Parque Forestal case).
+test("isLikelySameTitleWithoutRatio still requires >=2 shared significant words — a single shared word is NOT enough, even at the same venue", () => {
+  assert.equal(
+    isLikelySameTitleWithoutRatio('Muestra "Nazca/Sudamericana" en el MAC Parque Forestal', 'Exposición "Obras extraordinarias" en el MAC Parque Forestal', "MAC - Parque Forestal"),
+    false,
+  );
 });
 
 test("isWithinAnchorWindow: dates exactly at the window boundary count as within it", () => {
