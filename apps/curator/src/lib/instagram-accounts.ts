@@ -292,6 +292,20 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
     addedAt: "2026-08-14",
     fixedLocation: { location: "Vitacura", placeName: "Galería La Sala" },
   },
+  {
+    username: "omagaleriarte",
+    note:
+      "Aportada por Daniel, 2026-08-14. OMA Galería, en MUT (Apoquindo " +
+      "2730). 2/8 posts propios son exposiciones chilenas reales (\"La " +
+      "celebración\", grupal; \"Quinto Sector\" de Ruben Einsmann). El " +
+      "resto: anuncios de artistas que se suman al portafolio (fuera de " +
+      "alcance) y participación en una feria en Córdoba, Argentina " +
+      "(fuera de Chile). Dirección ambigua entre Providencia/Las Condes " +
+      "— sin fixedLocation, para no forzar mal la ubicación en los posts " +
+      "de feria extranjera (el filtro de ubicación chilena ya los " +
+      "descarta correctamente por sí solo).",
+    addedAt: "2026-08-14",
+  },
   // El resto de la lista la aporta Daniel — una decisión editorial, igual
   // que cada fuente brillante nueva se evaluó una por una. Confirmar
   // pública y activa antes de agregar cada cuenta.
