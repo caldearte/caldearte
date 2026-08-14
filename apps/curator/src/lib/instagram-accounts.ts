@@ -137,6 +137,20 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
       "fijo — Haiku infiere ubicación por post, igual que un agregador.",
     addedAt: "2026-08-14",
   },
+  {
+    username: "mugupla",
+    note:
+      "Aportada por Daniel, 2026-08-14. MUG-UPLA, Museo Universitario de " +
+      "Grabado (Universidad de Playa Ancha), Lautaro Rosas #485, Cerro " +
+      "Alegre, Valparaíso. Inauguración real y completa evaluada: " +
+      "\"Carlos Donaire Escobar (1929-2020): Grabar la memoria\", sábado " +
+      "8 de agosto 12:00 hrs, con dirección y biografía del artista. El " +
+      "resto: talleres de monotipia (Día de la Niñez), domingo de " +
+      "entrada liberada, y un encuentro profesional de mediadores en OTRO " +
+      "museo (Museo Marítimo Nacional) — fuera de alcance. fixedLocation.",
+    addedAt: "2026-08-14",
+    fixedLocation: { location: "Valparaíso", placeName: "MUG-UPLA" },
+  },
   // El resto de la lista la aporta Daniel — una decisión editorial, igual
   // que cada fuente brillante nueva se evaluó una por una. Confirmar
   // pública y activa antes de agregar cada cuenta.
