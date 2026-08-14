@@ -32,6 +32,14 @@ export function toBrightSourceItem(post: ApifyInstagramPost, account: InstagramA
     rawDateText: caption,
     structuredStartDate: null,
     structuredEndDate: null,
+    // Real gap found 2026-08-14 (factor__f's "Formas de habitar la
+    // materia se despide" post — a real closing date confirmed in prose,
+    // "hasta el 9 de agosto", but no opening date anywhere in the text,
+    // the exact same shape found for noticias.udec.cl). The post's own
+    // publish timestamp is real, already-known data — same backfill
+    // mechanism (discover.ts's fillRunStartFromPublishedDate), just fed
+    // from Instagram's own timestamp instead of a WordPress date field.
+    publishedDate: post.timestamp.slice(0, 10),
     location: account.fixedLocation?.location ?? null,
     placeName: account.fixedLocation?.placeName ?? null,
   };
