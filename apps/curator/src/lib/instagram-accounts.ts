@@ -334,6 +334,36 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
     addedAt: "2026-08-14",
     fixedLocation: { location: "Santiago", placeName: "Factoría Santa Rosa" },
   },
+  {
+    username: "galeriamacchina",
+    note:
+      "Aportada por Daniel, 2026-08-14. Galería Macchina, Escuela de Arte " +
+      "UC, Campus Oriente UC, Providencia (mismo campus que " +
+      "espaciovilches, sala distinta). Densidad alta — múltiples " +
+      "inauguraciones reales y completas: \"Alterar el trayecto de la " +
+      "luz\" (Claudia Casarino, inauguración viernes 14 de agosto 13:30 " +
+      "hrs, hasta el 11 de septiembre), \"Ñoqanchis / La Casa del " +
+      "Nosotros\" (Francisco Schwember, inaugurada 10 de junio), " +
+      "\"Signals Beneath\" (Pedram Baldari + Nooshin Hakim Javadi). El " +
+      "resto: un conversatorio con la artista y el Día del Patrimonio " +
+      "del campus — fuera de alcance. fixedLocation.",
+    addedAt: "2026-08-14",
+    fixedLocation: { location: "Providencia", placeName: "Galería Macchina" },
+  },
+  {
+    username: "galeria_gabriela_mistral",
+    note:
+      "Aportada por Daniel, 2026-08-14. Galería Gabriela Mistral, " +
+      "Alameda Libertador Bernardo O'Higgins 1381, Santiago (Metro La " +
+      "Moneda). Densidad muy alta — exposición real y completa: " +
+      "\"Radiación Ocre: tránsitos con el Sol\" (Natalia Montoya), hasta " +
+      "el 29 de agosto, con abundante programación satélite real " +
+      "(visitas mediadas, café + conversa, taller de illas con un " +
+      "artista aymara) — todas con fecha/hora/lugar completos. " +
+      "fixedLocation.",
+    addedAt: "2026-08-14",
+    fixedLocation: { location: "Santiago", placeName: "Galería Gabriela Mistral" },
+  },
   // El resto de la lista la aporta Daniel — una decisión editorial, igual
   // que cada fuente brillante nueva se evaluó una por una. Confirmar
   // pública y activa antes de agregar cada cuenta.
