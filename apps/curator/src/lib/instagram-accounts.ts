@@ -218,6 +218,21 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
     addedAt: "2026-08-14",
     fixedLocation: { location: "Temuco", placeName: "Casa Varas" },
   },
+  {
+    username: "liquenlab_magallanes",
+    note:
+      "Aportada por Daniel, 2026-08-14. Casa Líquen, Jorge Montt 781, " +
+      "Punta Arenas — región poco cubierta (Magallanes). Contenido " +
+      "mayormente documentación de residencias artísticas/procesos " +
+      "(recaps, visitas institucionales), no anuncios limpios de " +
+      "exposición con fecha, pero incluye una \"Apertura de Proceso\" " +
+      "real (residencia ACTO_enelmaritorio, viernes 14 de agosto 18:00 " +
+      "hrs) y anuncian Sala Cladonia, su primer espacio expositivo fijo, " +
+      "con inauguración próxima en agosto (sin detalles confirmados aún " +
+      "al momento de evaluar). fixedLocation — un solo local físico.",
+    addedAt: "2026-08-14",
+    fixedLocation: { location: "Punta Arenas", placeName: "Casa Líquen" },
+  },
   // El resto de la lista la aporta Daniel — una decisión editorial, igual
   // que cada fuente brillante nueva se evaluó una por una. Confirmar
   // pública y activa antes de agregar cada cuenta.
