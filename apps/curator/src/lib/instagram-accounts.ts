@@ -378,6 +378,20 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
       "muestra encontrada ocurre en OTRO museo, no en su sala propia.",
     addedAt: "2026-08-14",
   },
+  {
+    username: "mssachile",
+    note:
+      "Aportada por Daniel, 2026-08-14. Museo de la Solidaridad Salvador " +
+      "Allende (MSSA), Santiago. Museo público real, muy activo. " +
+      "Exposición real y completa: \"América despierta: de la 58ª " +
+      "Bienal Internacional de Carnegie al MSSA\", hasta el 16 de " +
+      "agosto — documentada en múltiples posts (distintas salas/obras " +
+      "de la misma muestra). El resto: taller de bordado Tatreez, " +
+      "mantención del huerto del museo, cierre de una exposición " +
+      "anterior — fuera de alcance. fixedLocation.",
+    addedAt: "2026-08-14",
+    fixedLocation: { location: "Santiago", placeName: "MSSA" },
+  },
   // El resto de la lista la aporta Daniel — una decisión editorial, igual
   // que cada fuente brillante nueva se evaluó una por una. Confirmar
   // pública y activa antes de agregar cada cuenta.

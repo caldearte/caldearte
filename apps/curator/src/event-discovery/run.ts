@@ -778,6 +778,27 @@ export async function insertCandidates(
     // runEndDate. Matching on runEndDate alone (when both sides have one)
     // sidesteps that: it's the one date signal actually grounded in the
     // source text here, not backfilled.
+    // KNOWN, UNFIXED gap found 2026-08-14 (mssachile, "América despierta"):
+    // an institution that posts several content-marketing "highlight" posts
+    // about individual rooms/artworks within ONE running exhibition — each
+    // captioned with genuinely disjoint vocabulary ("¿Conoces las obras...",
+    // "Te invitamos a conocer la sala...", "Últimos días para..." — sharing
+    // 0-1 significant words pairwise, since "exposición" itself is a
+    // GENERIC_TITLE_WORDS stopword) — produces 4 separate DB rows for the
+    // same real exhibition despite an identical placeName + exact
+    // runEndDate. Deliberately NOT fixed by dropping the title check for an
+    // exact runEndDate match: that would directly reopen the MAC - Parque
+    // Forestal regression this file already guards against (below,
+    // "Nazca/Sudamericana" vs "Obras extraordinarias" — two genuinely
+    // DIFFERENT exhibitions sharing a venue's season-wide dates, same
+    // shape: same placeName, same run dates, ~0 shared title words). The
+    // two real cases are structurally indistinguishable by word-overlap
+    // alone; telling them apart needs actually understanding the caption's
+    // content, not just its vocabulary — out of scope for a deterministic
+    // string comparator. Accepted as a bounded cost (a duplicate real
+    // listing is noise, not fabrication) rather than risking the
+    // regression; a moderator can merge duplicates via the admin "Quitar"
+    // action same as any other curation touch-up.
     const sameVenueMatch = c.placeName
       ? (seen.titlesByPlaceName.get(normalizeTitle(c.placeName)) ?? []).find(
           (existing) =>
