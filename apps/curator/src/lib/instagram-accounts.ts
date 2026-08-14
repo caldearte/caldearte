@@ -306,6 +306,18 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
       "descarta correctamente por sí solo).",
     addedAt: "2026-08-14",
   },
+  {
+    username: "artequin",
+    note:
+      "Aportada por Daniel, 2026-08-14. Museo Artequín, Av. Portales " +
+      "3530, Estación Central. Exposición real y con fecha encontrada: " +
+      "\"Historias de Papel en China: cortar, plegar y pegar\", abierta " +
+      "desde el 10 de junio. El resto: convocatoria de concurso infantil, " +
+      "reagendamiento de un evento de adopción de mascotas, taller de " +
+      "origami con CMPC — fuera de alcance. fixedLocation.",
+    addedAt: "2026-08-14",
+    fixedLocation: { location: "Estación Central", placeName: "Museo Artequín" },
+  },
   // El resto de la lista la aporta Daniel — una decisión editorial, igual
   // que cada fuente brillante nueva se evaluó una por una. Confirmar
   // pública y activa antes de agregar cada cuenta.
