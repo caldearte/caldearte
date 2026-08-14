@@ -69,6 +69,18 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
     note: "Aportada por Daniel, 2026-08-13 — pendiente de auditoría de calidad tras la primera corrida real.",
     addedAt: "2026-08-13",
   },
+  {
+    username: "factor__f",
+    note:
+      "Aportada por Daniel, 2026-08-14. Densidad muy alta — 5/5 posts " +
+      "reales evaluados: 3 anuncios de la inauguración de \"BOTÁNICA\" " +
+      "(jueves 13 de agosto, 19:00 hrs, 30 artistas), un aviso de cierre " +
+      "de \"Formas de habitar la materia\" (hasta el 9 de agosto) y un " +
+      "video de recorrido guiado de la misma. Espacio fijo, Franklin 741, " +
+      "Barrio Franklin — fixedLocation.",
+    addedAt: "2026-08-14",
+    fixedLocation: { location: "Santiago", placeName: "Factor F" },
+  },
   // El resto de la lista la aporta Daniel — una decisión editorial, igual
   // que cada fuente brillante nueva se evaluó una por una. Confirmar
   // pública y activa antes de agregar cada cuenta.

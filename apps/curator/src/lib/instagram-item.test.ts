@@ -65,3 +65,11 @@ test("toBrightSourceItem uses the account's fixedLocation when set, same precede
   assert.equal(item.location, "Santiago");
   assert.equal(item.placeName, "Casa Cultural Yanulaque");
 });
+
+// Real gap found 2026-08-14 (factor__f's real "se despide" closing post,
+// confirmed end date + no opening date in the text) — same backfill
+// mechanism as noticias.udec.cl, fed from the post's own timestamp.
+test("toBrightSourceItem maps publishedDate from the post's own timestamp (date part only)", () => {
+  const item = toBrightSourceItem(POST, ACCOUNT);
+  assert.equal(item.publishedDate, "2026-08-07");
+});
