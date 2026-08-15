@@ -476,11 +476,36 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
       "de varios museos/salas, no un único lugar fijo.",
     addedAt: "2026-08-15",
   },
+  {
+    username: "museoandino",
+    note:
+      "Evaluada 2026-08-15. Museo Andino (Fundación Claro Vial). Señal " +
+      "real y concreta: próxima exposición temporal \"Maritorio: " +
+      "mundos costeros prehispánicos\" (agosto-diciembre 2026, con " +
+      "fechas), anunciada en el muestreo (mismo anuncio repetido 3 " +
+      "veces). El resto: evento familiar (Día del Vino, visita " +
+      "mediada a la colección permanente) y contenido educativo sobre " +
+      "piezas de la colección — fuera de alcance pero no ruido " +
+      "problemático. Sin fixedLocation: comuna no confirmada en el " +
+      "texto muestreado.",
+    addedAt: "2026-08-15",
+  },
   // museosdechile: cero posts públicos devueltos por Apify (2026-08-15)
   // — privada, handle equivocado, o cuenta inexistente bajo ese nombre
   // exacto. No agregada; no confundir con la fuente brillante web ya
   // existente museoschile.gob.cl (Red Nacional de Museos) — dominios
   // distintos, no verificado que sean la misma institución.
+  //
+  // cabpatagonia: evaluada 2026-08-15 — no es una galería de arte
+  // visual chilena; contenido de convocatorias de residencias
+  // artísticas y textos en francés sobre un programa de investigación
+  // arte/ciencia internacional (Suiza/Brasil). No agregada.
+  //
+  // museodelsonido: evaluada 2026-08-15 — Barrio Yungay, real y activo,
+  // pero es un museo de sonido/música, no de arte visual (convocatoria
+  // de bienal de música aumentada, concierto de ensamble, restauración
+  // de piano) — mismo motivo de rechazo por disciplina que
+  // museovioletaparra.cl. No agregada.
   //
   // El resto de la lista la aporta Daniel — una decisión editorial, igual
   // que cada fuente brillante nueva se evaluó una por una. Confirmar
