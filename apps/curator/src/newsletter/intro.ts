@@ -166,6 +166,9 @@ async function callHaikuForIntro(system: string, userContent: string, maxTokens:
     await recordUsage({
       purpose: "newsletter_intro",
       model: MODEL,
+      // No discovery pipeline — this call summarizes already-approved
+      // events for the digest, not a new-candidate curation run.
+      pipeline: null,
       usage: {
         inputTokens: response.usage.input_tokens,
         outputTokens: response.usage.output_tokens,

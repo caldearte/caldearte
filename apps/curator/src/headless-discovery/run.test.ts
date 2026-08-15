@@ -120,11 +120,12 @@ test(
 
         const { data: inserted } = await client
           .from("events")
-          .select("title, source_url, opening_datetime")
+          .select("title, source_url, opening_datetime, pipeline")
           .eq("title", activity.title);
         assert.equal(inserted?.length, 1);
         assert.equal(inserted?.[0].source_url, activity.detailUrl);
         assert.equal(inserted?.[0].opening_datetime, null, "MAVI/uc.cl sources never get an openingDatetime, even if Haiku somehow set one");
+        assert.equal(inserted?.[0].pipeline, "headless", "a MAVI-headless-derived event is attributed to the headless pipeline");
 
         const { data: fetchState } = await client.from("bright_source_fetch_state").select("url").eq("url", MAVI_SOURCE_URL);
         assert.equal(fetchState?.length, 1, "fetch state recorded so the next run doesn't re-fetch for 7 days");

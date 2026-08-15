@@ -55,5 +55,11 @@ export function toBrightSourceItem(post: ApifyInstagramPost, account: InstagramA
     publishedDate: post.timestamp.slice(0, 10),
     location: account.fixedLocation?.location ?? null,
     placeName: account.fixedLocation?.placeName ?? null,
+    // Real gap found 2026-08-15 building the admin analytics dashboard:
+    // a post's own permalink never embeds which tracked account posted
+    // it, so this is the only place that real information exists at
+    // all — captured here so it can flow through to events/
+    // rejected_candidates/out_of_scope_signals instead of being lost.
+    sourceAccount: account.username,
   };
 }

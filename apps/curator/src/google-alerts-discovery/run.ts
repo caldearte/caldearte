@@ -159,14 +159,14 @@ export async function run(deps: GoogleAlertsRunDeps = {}): Promise<void> {
 
       const { candidates, usage } = await curateBrightSourceItems(messagesClient, items, currentMonthLabel(now));
 
-      await recordUsage({ purpose: "event_discovery", model: EVENT_DISCOVERY_MODEL, usage });
+      await recordUsage({ purpose: "event_discovery", model: EVENT_DISCOVERY_MODEL, pipeline: "google_alerts", usage });
       summary.cost.anthropicUsd = estimateCostUsd(EVENT_DISCOVERY_MODEL, usage);
       summary.cost.totalUsd = summary.cost.anthropicUsd;
 
       const regions = await loadAllRegions();
       await enrichCandidates(candidates, pageFetchFn, now, regions);
 
-      const { insertedCount, outcomes } = await insertCandidates(candidates, regions, seenKeys, now);
+      const { insertedCount, outcomes } = await insertCandidates(candidates, regions, seenKeys, now, "google_alerts");
 
       summary.candidates.total = candidates.length;
       summary.candidates.insertedCount = insertedCount;

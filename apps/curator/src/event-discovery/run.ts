@@ -22,6 +22,8 @@ import Anthropic from "@anthropic-ai/sdk";
 import type { Tables } from "@caldearte/shared-types";
 import { getSupabaseClient } from "../lib/supabase-client.js";
 import { recordUsage, getConfigNumber, getCurrentMonthSpend } from "../lib/usage-tracking.js";
+import type { Pipeline } from "../lib/pipeline.js";
+import { classifyOutOfScope } from "../lib/out-of-scope-classifier.js";
 import { estimateCostUsd } from "../lib/pricing.js";
 import { knownSourceDomain, isAggregatorSource } from "../lib/known-sources.js";
 import { KNOWN_LOW_QUALITY_SOURCE_DOMAINS } from "../lib/known-exclusions.js";
@@ -629,6 +631,7 @@ export async function insertCandidates(
   regions: RegionLike[],
   seen: SeenKeys,
   now: Date,
+  pipeline: Pipeline,
   rehostImageFn: RehostImageFn = rehostImage,
 ): Promise<{ insertedCount: number; outcomes: Map<EventCandidate, InsertOutcome> }> {
   const client = getSupabaseClient();
@@ -675,6 +678,8 @@ export async function insertCandidates(
           medium_type: c.mediumType,
           sensitivity_tags: c.sensitivityTags,
           source: "discovered",
+          pipeline,
+          source_account: c.sourceAccount,
           source_url: c.sourceUrl,
           image_url: imageUrl,
           curation_status: c.status,
@@ -718,11 +723,37 @@ export async function insertCandidates(
             location: c.location,
             region_id: regionId,
             anchor_date: anchorDate,
+            pipeline,
+            source_account: c.sourceAccount,
           },
           { onConflict: "source_url" },
         );
         if (rejectError) {
           console.error(`[event-discovery] failed to record rejected candidate "${c.title}": ${rejectError.message}`);
+        }
+      }
+
+      // Best-effort, same defensive posture as the rejected_candidates
+      // write above — a failure here must never break the run. Runs
+      // regardless of sourceUrl (unlike the write above, which is keyed
+      // on it) — source_url is nullable on out_of_scope_signals, and a
+      // rejection with no URL is just as real a signal as one with one.
+      // See out-of-scope-classifier.ts's own doc comment for why this is
+      // a deterministic keyword classifier, not a new Haiku field.
+      const outOfScopeCategory = classifyOutOfScope(c.curationReasoning);
+      if (outOfScopeCategory) {
+        const { error: signalError } = await client.from("out_of_scope_signals").insert({
+          pipeline,
+          category: outOfScopeCategory,
+          source_url: c.sourceUrl,
+          source_account: c.sourceAccount,
+          title: c.title,
+          reason: c.curationReasoning,
+          region_id: regionId,
+          anchor_date: anchorDate,
+        });
+        if (signalError) {
+          console.error(`[event-discovery] failed to record out-of-scope signal "${c.title}": ${signalError.message}`);
         }
       }
       continue;
@@ -859,6 +890,8 @@ export async function insertCandidates(
           medium_type: c.mediumType,
           sensitivity_tags: c.sensitivityTags,
           source_url: c.sourceUrl,
+          pipeline,
+          source_account: c.sourceAccount,
           image_url: imageUrl,
           curation_status: c.status,
           curation_reasoning: c.curationReasoning,
@@ -919,6 +952,8 @@ export async function insertCandidates(
         medium_type: c.mediumType,
         sensitivity_tags: c.sensitivityTags,
         source: "discovered",
+        pipeline,
+        source_account: c.sourceAccount,
         source_url: c.sourceUrl,
         image_url: imageUrl,
         curation_status: c.status,
@@ -1258,12 +1293,13 @@ export async function run(deps: RunDeps = {}): Promise<void> {
           purpose: "event_discovery",
           model: EVENT_DISCOVERY_MODEL,
           regionId: unit.id,
+          pipeline: "comuna_search",
           usage,
         });
         summary.cost.anthropicUsd += estimateCostUsd(EVENT_DISCOVERY_MODEL, usage);
         await enrichCandidates(candidates, pageFetchFn, now, regions);
         allCandidates.push(...candidates);
-        const { insertedCount, outcomes } = await insertCandidates(candidates, regions, seenKeys, now, rehostImageFn);
+        const { insertedCount, outcomes } = await insertCandidates(candidates, regions, seenKeys, now, "comuna_search", rehostImageFn);
         summary.eventGroups.push({ label: unit.name, candidates: candidates.map((c) => toCandidateSummary(c, outcomes.get(c))) });
         summary.candidates.insertedCount += insertedCount;
         inserted = insertedCount;
@@ -1346,11 +1382,11 @@ export async function run(deps: RunDeps = {}): Promise<void> {
           const block = buildBlock("Fuentes brillantes (no específicas a ninguna comuna)", [result.result]);
           ({ candidates, usage } = await curate(messagesClient, systemPrompt, block, { isBrightSource: true }));
         }
-        await recordUsage({ purpose: "event_discovery", model: EVENT_DISCOVERY_MODEL, usage });
+        await recordUsage({ purpose: "event_discovery", model: EVENT_DISCOVERY_MODEL, pipeline: "bright_source", usage });
         summary.cost.anthropicUsd += estimateCostUsd(EVENT_DISCOVERY_MODEL, usage);
         await enrichCandidates(candidates, pageFetchFn, now, regions);
         allCandidates.push(...candidates);
-        const { insertedCount, outcomes } = await insertCandidates(candidates, regions, seenKeys, now, rehostImageFn);
+        const { insertedCount, outcomes } = await insertCandidates(candidates, regions, seenKeys, now, "bright_source", rehostImageFn);
         summary.eventGroups.push({ label: sourceUrl, candidates: candidates.map((c) => toCandidateSummary(c, outcomes.get(c))) });
         summary.candidates.insertedCount += insertedCount;
         console.log(`[event-discovery] bright source ${sourceUrl}: ${insertedCount} new approved event(s)`);
