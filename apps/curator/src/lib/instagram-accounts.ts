@@ -447,6 +447,41 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
       "muestreado.",
     addedAt: "2026-08-15",
   },
+  {
+    username: "museociudadano",
+    note:
+      "Evaluada 2026-08-15. Museo Ciudadano, Estación Central — real y " +
+      "muy activo. Buena densidad: cobertura completa de la " +
+      "inauguración de \"Convivencias verticales en Estación Central\" " +
+      "(post de inauguración + presentación del equipo curatorial), " +
+      "más avisos de cierre por feriado. El resto (convocatoria de " +
+      "cocreación, \"Museo en Calma\" programa de accesibilidad) " +
+      "fuera de alcance. fixedLocation.",
+    addedAt: "2026-08-15",
+    fixedLocation: { location: "Estación Central", placeName: "Museo Ciudadano" },
+  },
+  {
+    username: "museosaustral",
+    note:
+      "Evaluada 2026-08-15. Dirección Museológica UACh (red de museos " +
+      "de la Universidad Austral, Valdivia) — real, activa, pero " +
+      "densidad más débil que museociudadano: solo 1/5 posts " +
+      "muestreados fue una exposición real y concreta (\"Fotógrafos " +
+      "Pioneros del Sur\", foyer del Teatro Regional Cervantes); el " +
+      "resto fue patrimonio general/noticias institucionales y una " +
+      "convocatoria de fotografía. Comparte contenido con " +
+      "@galeriabarriosbajos (Los Ríos Territorio Visual) — mismo " +
+      "ecosistema regional. Agregada igual (institución real con al " +
+      "menos una exposición confirmada). Sin fixedLocation: es una red " +
+      "de varios museos/salas, no un único lugar fijo.",
+    addedAt: "2026-08-15",
+  },
+  // museosdechile: cero posts públicos devueltos por Apify (2026-08-15)
+  // — privada, handle equivocado, o cuenta inexistente bajo ese nombre
+  // exacto. No agregada; no confundir con la fuente brillante web ya
+  // existente museoschile.gob.cl (Red Nacional de Museos) — dominios
+  // distintos, no verificado que sean la misma institución.
+  //
   // El resto de la lista la aporta Daniel — una decisión editorial, igual
   // que cada fuente brillante nueva se evaluó una por una. Confirmar
   // pública y activa antes de agregar cada cuenta.
