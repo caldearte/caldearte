@@ -47,7 +47,7 @@ export default function LoginPage() {
         ) : (
           <button
             type="button"
-            onClick={() => signIn("google")}
+            onClick={() => signIn("google", { callbackUrl: "/admin" })}
             className="self-start font-fragment-mono uppercase text-[14px] bg-text-primary text-surface-sage px-[24px] py-[14px] cursor-pointer"
           >
             {esCL.loginPage.signInWithGoogle}
