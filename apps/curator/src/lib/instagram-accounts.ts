@@ -392,6 +392,61 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
     addedAt: "2026-08-14",
     fixedLocation: { location: "Santiago", placeName: "MSSA" },
   },
+  {
+    username: "galerialafuerza",
+    note:
+      "Evaluada 2026-08-15. LA FUERZA, galería experimental (Florencia " +
+      "Izquierdo, Nicolás Oyarce, Isidora Navarrete) — funciona también " +
+      "como taller y tienda. Alta densidad real: inauguración de \"DE " +
+      "LAS COSAS\" (exposición colectiva, 15 de agosto), \"Ensueños " +
+      "que se me aparecen\" de Diego Seye (8-9 de agosto), \"Hasta acá " +
+      "llegaba el mar\" (exposición individual, junio) — al menos 3/5 " +
+      "posts muestreados genuinamente en alcance, con fechas concretas. " +
+      "Sin fixedLocation: no se confirmó la comuna en el texto " +
+      "muestreado, queda a inferencia de Haiku por ítem.",
+    addedAt: "2026-08-15",
+  },
+  {
+    username: "galeriametropolitana",
+    note:
+      "Evaluada 2026-08-15. Galería Metropolitana, espacio real y muy " +
+      "activo (Barrio Yungay) — pero la muestra de 5 posts recientes " +
+      "fue 0/5 en alcance: cursos (\"Mundo de las Artes Visuales\", " +
+      "\"Circuitos\"), taller de portafolio, publicaciones de protesta " +
+      "(\"NO a los recortes en Cultura\"). Agregada de todos modos " +
+      "(instrucción de Daniel, 2026-08-15: institución real y buena " +
+      "aunque la densidad actual sea baja — la cadencia adaptativa se " +
+      "encarga sola de bajar la frecuencia si sigue sin rendir). Sin " +
+      "fixedLocation: no se confirmó dirección exacta en el texto " +
+      "muestreado.",
+    addedAt: "2026-08-15",
+  },
+  {
+    username: "barcogaleria",
+    note:
+      "Evaluada 2026-08-15. Barco Galería, espacio real y activo, " +
+      "orientado a arquitectura/urbanismo — mayormente charlas y " +
+      "conversatorios (\"Arquitecturas de anidación\", ciclo " +
+      "\"Imaginarios impresos\"), pero SÍ tiene inauguraciones reales " +
+      "(ej. muestra sobre Miguel Lawner, Día de los Patrimonios). 1/5 " +
+      "en alcance en la muestra, densidad baja pero institución real. " +
+      "Agregada de todos modos (instrucción de Daniel, 2026-08-15, " +
+      "misma razón que galeriametropolitana). Sin fixedLocation.",
+    addedAt: "2026-08-15",
+  },
+  {
+    username: "veta.ec",
+    note:
+      "Evaluada 2026-08-15. VETA Espacio Creativo, casona patrimonial, " +
+      "activa. Contenido real: performance \"VILO: el peso del " +
+      "fragmento\" (20 de agosto, con hora), muestra \"Artefactos " +
+      "para un sistema de creencias\" (artistas y curaduría " +
+      "nombrados) — ~2-3/5 en alcance, mezclado con contenido más " +
+      "musical/audiovisual (un lanzamiento tipo videoclip). Sin " +
+      "fixedLocation: no se confirmó dirección exacta en el texto " +
+      "muestreado.",
+    addedAt: "2026-08-15",
+  },
   // El resto de la lista la aporta Daniel — una decisión editorial, igual
   // que cada fuente brillante nueva se evaluó una por una. Confirmar
   // pública y activa antes de agregar cada cuenta.
