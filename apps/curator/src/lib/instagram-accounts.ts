@@ -523,7 +523,22 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
   // galeriapacareu: evaluada 2026-08-15 — galería comercial de
   // compraventa de arte (fichas de obras individuales en venta, sin
   // exposiciones con fecha). No agregada.
-  //
+  {
+    username: "museotaller",
+    note:
+      "Evaluada 2026-08-15. Museo Taller, Puerto Octay (Los Lagos) — " +
+      "real y activo, mayormente talleres pagados (autómata, telar, " +
+      "talla de cuchara, grabado, coloraria — fuera de alcance). 1/5 " +
+      "es una exposición real y con fecha: \"Sempiterno\" de José " +
+      "Pérez, disponible hasta fines de septiembre, con venta de " +
+      "entradas en museotaller.cl. Agregada igual (institución real, " +
+      "mismo criterio que galeriametropolitana/barcogaleria). Su " +
+      "sitio web (museotaller.cl) podría valer la pena revisar como " +
+      "fuente brillante complementaria — no evaluado todavía. " +
+      "fixedLocation.",
+    addedAt: "2026-08-15",
+    fixedLocation: { location: "Puerto Octay", placeName: "Museo Taller" },
+  },
   // El resto de la lista la aporta Daniel — una decisión editorial, igual
   // que cada fuente brillante nueva se evaluó una por una. Confirmar
   // pública y activa antes de agregar cada cuenta.
