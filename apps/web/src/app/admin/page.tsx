@@ -1,13 +1,22 @@
 import { redirect } from "next/navigation";
 import { auth, isAdminSession } from "@/lib/auth";
-import EventMetricsChart from "@/components/admin/EventMetricsChart";
-import SourceComparisonTable from "@/components/admin/SourceComparisonTable";
-import OutOfScopeTrends from "@/components/admin/OutOfScopeTrends";
+import AdminDashboard from "@/components/admin/AdminDashboard";
 
 export interface AdminAnalyticsPayload {
-  weeks: number;
   generatedAt: string;
-  eventMetrics: Array<{ week: string; inauguraciones: number; expos: number }>;
+  events: Array<{
+    openingDate: string | null;
+    runStart: string | null;
+    runEnd: string | null;
+    adminRegionName: string | null;
+    pipeline: string | null;
+  }>;
+  outOfScopeSignals: Array<{
+    createdAt: string;
+    category: string;
+    pipeline: string | null;
+    adminRegionName: string | null;
+  }>;
   pipelineComparison: Array<{
     pipeline: string;
     accepted: number;
@@ -16,9 +25,22 @@ export interface AdminAnalyticsPayload {
     totalCostUsd: number;
     approvalRate: number | null;
   }>;
-  deadSourceAlerts: Array<{ url: string; lastFetchedAt: string | null; intervalDays: number | null; possiblyDead: boolean }>;
-  regionCoverage: Array<{ regionName: string; count: number }>;
-  outOfScopeTrends: Array<{ month: string; categories: Record<string, number> }>;
+  brightSources: Array<{
+    url: string;
+    lastFetchedAt: string | null;
+    intervalDays: number | null;
+    accepted: number;
+    rejected: number;
+    possiblyDead: boolean;
+  }>;
+  instagramSources: Array<{
+    username: string;
+    lastFetchedAt: string | null;
+    intervalDays: number | null;
+    accepted: number;
+    rejected: number;
+    possiblyDead: boolean;
+  }>;
 }
 
 // Deliberately unlinked from Header/Footer/MenuDrawer — same posture as
@@ -34,7 +56,9 @@ export interface AdminAnalyticsPayload {
 // since a server component has no browser boundary to cross the way the
 // existing remove-event/toggle-sensitive actions do (triggered by a
 // client onClick). apps/web still never holds a service-role key itself;
-// the secret only ever travels server-to-server.
+// the secret only ever travels server-to-server. All bucketing/charting
+// interactivity lives in the client AdminDashboard component below,
+// operating on this one fetched payload — no re-fetch on toggle change.
 export default async function AdminPage() {
   const session = await auth();
   if (!isAdminSession(session)) {
@@ -47,7 +71,7 @@ export default async function AdminPage() {
     return <AdminPageShell error="NEXT_PUBLIC_SUPABASE_URL o ADMIN_ACTIONS_SECRET no configurados." />;
   }
 
-  const res = await fetch(`${supabaseUrl}/functions/v1/admin-analytics?weeks=12`, {
+  const res = await fetch(`${supabaseUrl}/functions/v1/admin-analytics`, {
     headers: { "x-admin-secret": adminSecret },
     cache: "no-store",
   });
@@ -60,24 +84,7 @@ export default async function AdminPage() {
 
   return (
     <AdminPageShell>
-      <section className="mb-12">
-        <h2 className="font-fragment-mono uppercase text-[18px] text-text-primary mb-4">Eventos por semana</h2>
-        <EventMetricsChart data={data.eventMetrics} />
-      </section>
-
-      <section className="mb-12">
-        <h2 className="font-fragment-mono uppercase text-[18px] text-text-primary mb-4">Fuentes / pipelines</h2>
-        <SourceComparisonTable comparison={data.pipelineComparison} deadSourceAlerts={data.deadSourceAlerts} regionCoverage={data.regionCoverage} />
-      </section>
-
-      <section>
-        <h2 className="font-fragment-mono uppercase text-[18px] text-text-primary mb-4">Señales fuera de alcance</h2>
-        <p className="font-geist text-[14px] text-text-primary/70 mb-4">
-          Evidencia interna, no pública — acumulando datos para una futura decisión sobre ampliar el alcance de Caldearte
-          (convocatorias, talleres, etc.).
-        </p>
-        <OutOfScopeTrends trends={data.outOfScopeTrends} />
-      </section>
+      <AdminDashboard data={data} />
     </AdminPageShell>
   );
 }
