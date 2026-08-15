@@ -289,6 +289,18 @@ export const esCL = {
     signOut: "Cerrar sesión",
   },
 
+  // Top-nav /admin link — only rendered client-side for a session with
+  // isAdmin true (useIsAdmin), see Header.tsx. Unlike /login itself, this
+  // is now intentionally discoverable for whoever's already signed in.
+  adminLink: "Admin",
+
+  // Hamburger menu on /admin itself — same DrawerShell chrome as
+  // MenuDrawer, just two entries: back to the public site, and sign out
+  // (reuses loginPage.signOut's copy/behavior).
+  adminMenu: {
+    home: "Inicio",
+  },
+
   // /eventos/[id] — the shareable, individually-linkable page for one
   // event (see docs/risks.md's ToS note on scraped sources: this page's
   // whole point is to make attribution unmissable, not buried in a menu).

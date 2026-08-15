@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { auth, isAdminSession } from "@/lib/auth";
 import AdminDashboard from "@/components/admin/AdminDashboard";
+import AdminMenu from "@/components/admin/AdminMenu";
 
 export interface AdminAnalyticsPayload {
   generatedAt: string;
@@ -92,7 +93,10 @@ export default async function AdminPage() {
 function AdminPageShell({ children, error }: { children?: React.ReactNode; error?: string }) {
   return (
     <main className="min-h-screen w-full bg-surface-sage px-[20px] py-8 md:px-[61px] max-w-[1280px] mx-auto">
-      <h1 className="font-lato font-black leading-none text-brand-magenta text-[28px] mb-8">Métricas — admin</h1>
+      <div className="flex items-center justify-between mb-8">
+        <h1 className="font-lato font-black leading-none text-brand-magenta text-[28px]">Métricas — admin</h1>
+        <AdminMenu />
+      </div>
       {error ? <p className="font-geist text-[16px] text-red-700">{error}</p> : children}
     </main>
   );

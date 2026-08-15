@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState, type RefObject } from "react";
 import { esCL } from "@/i18n/es-CL";
 import { fmtWeekRange } from "@/lib/date";
+import { useIsAdmin } from "@/lib/useIsAdmin";
 
 interface HeaderProps {
   regionName: string; // display name of the currently selected región, e.g. "Santiago" (shortRegionName's own shortened form)
@@ -36,6 +37,20 @@ function MenuButton({ onClick }: { onClick: () => void }) {
   );
 }
 
+// Only rendered for a session with isAdmin true (useIsAdmin, computed
+// server-side in the jwt callback — see lib/auth.ts). /login itself stays
+// deliberately unlinked (see that page's own comment); this link is only
+// useful once already signed in as admin.
+function AdminLink() {
+  const isAdmin = useIsAdmin();
+  if (!isAdmin) return null;
+  return (
+    <Link href="/admin" className="font-fragment-mono uppercase text-[14px] text-text-primary">
+      {esCL.adminLink}
+    </Link>
+  );
+}
+
 // Compact single-line wordmark shown in the top nav only once the full
 // hero has scrolled out of view — same font/color as the hero wordmark,
 // just small enough to sit in the nav row.
@@ -60,9 +75,12 @@ function TopNavContent({
 }) {
   if (!scrolledPastHero) {
     return (
-      <div className="flex items-center justify-end gap-[10px] px-[15px] md:px-[60px] py-[15px] md:py-[20px]">
-        <SearchButton onClick={onOpenSearch} />
-        <MenuButton onClick={onOpenMenu} />
+      <div className="flex items-center justify-end gap-[15px] px-[15px] md:px-[60px] py-[15px] md:py-[20px]">
+        <AdminLink />
+        <div className="flex items-center gap-[10px]">
+          <SearchButton onClick={onOpenSearch} />
+          <MenuButton onClick={onOpenMenu} />
+        </div>
       </div>
     );
   }
@@ -71,16 +89,24 @@ function TopNavContent({
       {/* Desktop: logo left, icons right. */}
       <div className="hidden md:flex items-center justify-between px-[60px] py-[20px]">
         <CompactLogo size="md" />
-        <div className="flex items-center gap-[10px]">
-          <SearchButton onClick={onOpenSearch} />
-          <MenuButton onClick={onOpenMenu} />
+        <div className="flex items-center gap-[15px]">
+          <AdminLink />
+          <div className="flex items-center gap-[10px]">
+            <SearchButton onClick={onOpenSearch} />
+            <MenuButton onClick={onOpenMenu} />
+          </div>
         </div>
       </div>
-      {/* Mobile: search left, logo centered, menu right. */}
+      {/* Mobile: search left, logo centered, menu right. Admin link, when
+          present, rides along in the same slot as the hamburger — the
+          mobile row has no spare room for a fourth element. */}
       <div className="md:hidden flex items-center justify-between px-[15px] py-[15px]">
         <SearchButton onClick={onOpenSearch} />
         <CompactLogo size="sm" />
-        <MenuButton onClick={onOpenMenu} />
+        <div className="flex items-center gap-[10px]">
+          <AdminLink />
+          <MenuButton onClick={onOpenMenu} />
+        </div>
       </div>
     </>
   );
