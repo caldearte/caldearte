@@ -27,11 +27,20 @@ test(
       await recordUsage({
         purpose: "event_discovery",
         model: "claude-haiku-4-5",
+        pipeline: "comuna_search",
         usage: { inputTokens: 1_000_000, outputTokens: 1_000_000 },
       });
 
       const after = await getCurrentMonthSpend();
       assert.ok(after >= before + 6 - 1e-9, `expected spend to grow by ~$6, got ${after - before}`);
+
+      const { data: row } = await getSupabaseClient()
+        .from("api_usage_log")
+        .select("pipeline")
+        .eq("purpose", "event_discovery")
+        .eq("input_tokens", 1_000_000)
+        .single();
+      assert.equal(row?.pipeline, "comuna_search", "recordUsage writes the pipeline it was given");
 
       // Clean up so repeated local runs don't drift month-to-date totals.
       // Surgical (by this test's own distinctive token count), NOT by
@@ -53,6 +62,7 @@ test(
       await recordUsage({
         purpose: "event_discovery",
         model: "claude-sonnet-5",
+        pipeline: "comuna_search",
         usage: { inputTokens: spikeInputTokens, outputTokens: 0 },
       });
 

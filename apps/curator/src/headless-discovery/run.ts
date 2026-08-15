@@ -129,14 +129,14 @@ export async function run(deps: HeadlessRunDeps = {}): Promise<void> {
         fixedLocation: MAVI_FIXED_LOCATION,
       });
 
-      await recordUsage({ purpose: "event_discovery", model: EVENT_DISCOVERY_MODEL, usage });
+      await recordUsage({ purpose: "event_discovery", model: EVENT_DISCOVERY_MODEL, pipeline: "headless", usage });
       summary.cost.anthropicUsd = estimateCostUsd(EVENT_DISCOVERY_MODEL, usage);
       summary.cost.totalUsd = summary.cost.anthropicUsd;
 
       const regions = await loadAllRegions();
       await enrichCandidates(candidates, pageFetchFn, now, regions);
 
-      const { insertedCount, outcomes } = await insertCandidates(candidates, regions, seenKeys, now);
+      const { insertedCount, outcomes } = await insertCandidates(candidates, regions, seenKeys, now, "headless");
 
       summary.candidates.total = candidates.length;
       summary.candidates.insertedCount = insertedCount;

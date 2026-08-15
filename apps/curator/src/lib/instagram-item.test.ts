@@ -63,6 +63,11 @@ test("toBrightSourceItem falls back to the account username when EVERY line is d
   assert.equal(item.title, ACCOUNT.username);
 });
 
+test("toBrightSourceItem always sets sourceAccount to the account's username — real gap found 2026-08-15: a post's own permalink never embeds which account posted it, so this is the only place that information exists at all", () => {
+  const item = toBrightSourceItem(POST, ACCOUNT);
+  assert.equal(item.sourceAccount, ACCOUNT.username);
+});
+
 test("toBrightSourceItem leaves location/placeName null when the account has no fixedLocation — Haiku infers it", () => {
   const item = toBrightSourceItem(POST, ACCOUNT);
   assert.equal(item.location, null);

@@ -74,6 +74,12 @@ export interface BrightSourceItem {
   // a real runEndDate but never says when the show opened — see that
   // function's own doc comment.
   publishedDate?: string | null;
+  // The specific account/handle this item came from, when the pipeline
+  // has that concept — see EventCandidate.sourceAccount's own doc
+  // comment (discover.ts) for the real gap this closes. Optional,
+  // undefined for every source shape except Instagram
+  // (lib/instagram-item.ts sets it to account.username).
+  sourceAccount?: string | null;
 }
 
 // Entities decoded AFTER tags are stripped, never before — decoding

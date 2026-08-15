@@ -1,5 +1,6 @@
 import { getSupabaseClient } from "./supabase-client.js";
 import { estimateCostUsd, type ModelId, type Usage } from "./pricing.js";
+import type { Pipeline } from "./pipeline.js";
 
 export type Purpose = "event_discovery" | "newsletter_intro";
 
@@ -8,6 +9,12 @@ export interface RecordUsageInput {
   model: ModelId;
   usage: Usage;
   regionId?: string;
+  // Required, unlike regionId — every caller always knows which pipeline
+  // it is (region is genuinely sometimes absent, e.g. a bright-source
+  // item with no matched comuna; pipeline never is). Only "newsletter_intro"
+  // calls (unrelated to event discovery) have no natural pipeline — see
+  // that call site's own comment for what it passes.
+  pipeline: Pipeline | null;
 }
 
 export async function recordUsage(input: RecordUsageInput): Promise<void> {
@@ -19,6 +26,7 @@ export async function recordUsage(input: RecordUsageInput): Promise<void> {
       purpose: input.purpose,
       model: input.model,
       region_id: input.regionId ?? null,
+      pipeline: input.pipeline,
       input_tokens: input.usage.inputTokens,
       output_tokens: input.usage.outputTokens,
       cache_creation_input_tokens: input.usage.cacheCreationInputTokens ?? 0,

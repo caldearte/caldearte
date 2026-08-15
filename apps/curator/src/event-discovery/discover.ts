@@ -41,6 +41,20 @@ export interface EventCandidate {
   location: string;
   placeName: string | null; // recognizable venue/institution/landmark name, when the source states one
   sourceUrl: string | null;
+  // The specific account/handle a candidate came from, when the pipeline
+  // has that concept — so far only Instagram (account.username, see
+  // lib/instagram-item.ts). Added 2026-08-15 at the user's explicit
+  // request, prompted by a real gap found building the admin analytics
+  // dashboard: an Instagram post's own permalink
+  // (instagram.com/p/<shortcode>/) never embeds which of the ~27 tracked
+  // accounts posted it, so a per-account "is this specific account dead"
+  // check was impossible from source_url alone — domain-level yield
+  // (instagram.com as a whole) hid every individual account's silence
+  // behind any other account's activity. null for every other pipeline
+  // (comuna search, web bright sources, Google Alerts, MAVI headless) —
+  // none of those have an "account" concept distinct from the source
+  // itself.
+  sourceAccount: string | null;
   // Verbatim quote grounding, added 2026-07-22 after a real production
   // audit found Haiku fabricating whole events — specific dates/hours,
   // venue names, even descriptions — with zero basis in the source text,
@@ -356,6 +370,9 @@ function parseCandidates(text: string): EventCandidate[] {
     locationQuote: typeof c.locationQuote === "string" ? c.locationQuote : null,
     runStartDateQuote: typeof c.runStartDateQuote === "string" ? c.runStartDateQuote : null,
     runEndDateQuote: typeof c.runEndDateQuote === "string" ? c.runEndDateQuote : null,
+    // This path (plain comuna-search/aggregator curation) has no account
+    // concept at all — Haiku's schema for it doesn't report one.
+    sourceAccount: null,
   }));
 }
 
@@ -1033,6 +1050,7 @@ function mergeBrightSourceCandidate(
     location: fixedLocation?.location ?? item.location ?? row.location ?? "",
     placeName: fixedLocation?.placeName ?? item.placeName ?? row.placeName ?? null,
     sourceUrl: item.sourceUrl,
+    sourceAccount: item.sourceAccount ?? null,
     // Grounding-quote fields don't apply on this path at all — there's
     // real source text behind every field Haiku still touches, and the
     // deterministic fields never went through Haiku in the first place.

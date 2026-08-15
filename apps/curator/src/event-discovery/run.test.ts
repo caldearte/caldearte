@@ -310,6 +310,7 @@ test(
         assert.equal(vigente.run_start_date, "2026-07-05");
         assert.equal(vigente.run_end_date, "2026-09-30");
         assert.equal(vigente.source, "discovered");
+        assert.equal(vigente.pipeline, "comuna_search", "a comuna/Tavily-search-derived event is attributed to the comuna_search pipeline");
 
         const santiagoRegion = await client.from("regions").select("id").eq("name", "Santiago").single();
         assert.equal(vigente.region_id, santiagoRegion.data?.id, "matched against the seeded Santiago region");
@@ -540,6 +541,7 @@ test(
           regions,
           seenBefore,
           new Date(2026, 6, 1),
+          "bright_source",
         );
         assert.equal(insertedSamePlace, 0, "same place_name ('Balmaceda Arte Joven'): abbreviated-title repost recognized as a duplicate, not a fresh insert");
         assert.equal(
@@ -588,6 +590,7 @@ test(
           regions,
           seenAfter,
           new Date(2026, 6, 1),
+          "bright_source",
         );
         assert.equal(insertedDifferentPlace, 1, "different place_name ('Centro Cultural Otro Lugar'): inserted as a distinct event, not silently dropped");
         assert.equal(outcomesDifferentPlace.get(differentPlaceRepost), "inserted");
@@ -653,7 +656,7 @@ test(
 
         const regions = await loadAllRegions();
         const seen = await loadExistingKeys();
-        const { insertedCount, outcomes } = await insertCandidates([differentExhibitionSameSeason], regions, seen, new Date(2026, 6, 20));
+        const { insertedCount, outcomes } = await insertCandidates([differentExhibitionSameSeason], regions, seen, new Date(2026, 6, 20), "bright_source");
 
         assert.equal(insertedCount, 1, "a genuinely different exhibition sharing the venue's season dates must be inserted, not dropped as a duplicate");
         assert.equal(outcomes.get(differentExhibitionSameSeason), "inserted");
@@ -721,7 +724,7 @@ test(
 
         const regions = await loadAllRegions();
         const seen = await loadExistingKeys();
-        const { insertedCount: inserted } = await insertCandidates([candidate], regions, seen, new Date(2026, 3, 25));
+        const { insertedCount: inserted } = await insertCandidates([candidate], regions, seen, new Date(2026, 3, 25), "bright_source");
         assert.equal(inserted, 0, "recognized as a duplicate of the seeded row — not a fresh second insert");
 
         const { data: rows } = await client.from("events").select("title, place_name, source_url").eq("place_name", "MAC - Museo de Arte Contemporáneo").ilike("title", "__test__%");
@@ -779,7 +782,7 @@ test(
 
         try {
           const seen = await loadExistingKeys();
-          const { insertedCount: inserted, outcomes } = await insertCandidates([candidate], regions, seen, new Date(2026, 6, 10));
+          const { insertedCount: inserted, outcomes } = await insertCandidates([candidate], regions, seen, new Date(2026, 6, 10), "bright_source");
           assert.equal(inserted, 0, "escalated, not inserted");
           assert.equal(outcomes.get(candidate), "escalated");
 
@@ -857,7 +860,7 @@ test(
         try {
           const regions = await loadAllRegions();
           const seen = await loadExistingKeys();
-          const { insertedCount: inserted } = await insertCandidates([candidate], regions, seen, new Date(2026, 6, 10));
+          const { insertedCount: inserted } = await insertCandidates([candidate], regions, seen, new Date(2026, 6, 10), "bright_source");
           assert.equal(inserted, 0);
 
           const { data: stillApproved } = await client
@@ -925,7 +928,7 @@ test(
         try {
           const regions = await loadAllRegions();
           const seen = await loadExistingKeys();
-          const { insertedCount: inserted } = await insertCandidates([candidate], regions, seen, new Date(2026, 6, 10));
+          const { insertedCount: inserted } = await insertCandidates([candidate], regions, seen, new Date(2026, 6, 10), "bright_source");
           assert.equal(inserted, 1, "no title match against the unrelated rejected candidate — inserted normally");
 
           const { data: escalation } = await client.from("curation_escalations").select("id").eq("new_source_url", candidate.sourceUrl).maybeSingle();
@@ -998,7 +1001,7 @@ test(
         // "now" pinned to the candidate's own opening day — its only date
         // signal (no run range) — so isCurrentOrUpcoming doesn't filter
         // it out before the replace logic under test ever runs.
-        const { insertedCount: inserted } = await insertCandidates([withConfirmedOpening], regions, seen, new Date(2026, 6, 1));
+        const { insertedCount: inserted } = await insertCandidates([withConfirmedOpening], regions, seen, new Date(2026, 6, 1), "bright_source");
         assert.equal(inserted, 0, "not a fresh insert — replaced the existing row in place");
 
         const { data: replaced } = await client
@@ -1060,7 +1063,7 @@ test(
 
         const regions = await loadAllRegions();
         const seen = await loadExistingKeys();
-        const { insertedCount: inserted } = await insertCandidates([bareCandidate], regions, seen, new Date(2026, 6, 5));
+        const { insertedCount: inserted } = await insertCandidates([bareCandidate], regions, seen, new Date(2026, 6, 5), "bright_source");
         assert.equal(inserted, 0, "not a fresh insert — recognized as a duplicate");
 
         const { data: kept } = await client
@@ -1122,7 +1125,7 @@ test(
 
         const regions = await loadAllRegions();
         const seen = await loadExistingKeys();
-        const { insertedCount: inserted } = await insertCandidates([tiedCandidate], regions, seen, new Date(2026, 6, 5));
+        const { insertedCount: inserted } = await insertCandidates([tiedCandidate], regions, seen, new Date(2026, 6, 5), "bright_source");
         assert.equal(inserted, 0, "not a fresh insert — recognized as a duplicate");
 
         const { data: kept } = await client
@@ -1563,8 +1566,9 @@ test(
 
         assert.equal(searchUnitFnCalled, false, "searchUnitFn never called — the comuna batch was skipped entirely");
 
-        const { data: bright } = await client.from("events").select("id").eq("title", "__test__ Brillante Mayo");
+        const { data: bright } = await client.from("events").select("id, pipeline").eq("title", "__test__ Brillante Mayo");
         assert.equal(bright?.length, 1, "bright source still processed and inserted despite brightSourcesOnly");
+        assert.equal(bright?.[0].pipeline, "bright_source", "a bright-source-derived event is attributed to the bright_source pipeline");
 
         await client.from("events").delete().eq("title", "__test__ Brillante Mayo");
         await client.from("bright_source_fetch_state").delete().neq("url", "");
@@ -1843,6 +1847,12 @@ test(
                   rawDateText: "Del 5 al 31 de agosto",
                   structuredStartDate: "2027-08-05",
                   structuredEndDate: "2027-08-31",
+                  // Only Instagram items actually set this in production
+                  // (lib/instagram-item.ts), but insertCandidates should
+                  // pass whatever's on the item straight through regardless
+                  // of pipeline — exercised here since this fixture already
+                  // uses the deterministic items path.
+                  sourceAccount: "__test_account__",
                 },
               ],
             },
@@ -1862,6 +1872,7 @@ test(
         assert.equal(inserted!.place_name, "Parque Cultural de Valparaíso", "placeName from fixedLocation, not Haiku's invented value");
         assert.equal(inserted!.run_start_date, "2027-08-05", "structuredStartDate wins over whatever Haiku returned");
         assert.equal(inserted!.run_end_date, "2027-08-31", "structuredEndDate wins over whatever Haiku returned");
+        assert.equal(inserted!.source_account, "__test_account__", "sourceAccount from the item flows through to the stored row");
 
         await client.from("events").delete().eq("title", "__test__ Item Determinista");
       });
@@ -2090,8 +2101,95 @@ test(
           assert.ok(row, "the rejected candidate was recorded");
           assert.equal(row!.title, "__test__ Recien Rechazado");
           assert.equal(row!.reason, "Es un taller, no una exposición.");
+          assert.equal(row!.pipeline, "bright_source", "rejected_candidates rows are attributed to their pipeline too");
+
+          const { data: signal } = await client.from("out_of_scope_signals").select("*").eq("source_url", newlyRejectedUrl).maybeSingle();
+          assert.ok(signal, "a rejection classified as taller/charla also lands in out_of_scope_signals");
+          assert.equal(signal!.category, "taller_o_charla");
+          assert.equal(signal!.pipeline, "bright_source");
+          assert.equal(signal!.title, "__test__ Recien Rechazado");
         } finally {
           await client.from("rejected_candidates").delete().eq("source_url", newlyRejectedUrl);
+          await client.from("out_of_scope_signals").delete().eq("source_url", newlyRejectedUrl);
+        }
+      });
+
+      await t.test("a rejection with no out-of-scope-by-type signal (missing dates, not a taller/convocatoria/etc.) is NOT recorded in out_of_scope_signals", async () => {
+        const genericRejectedUrl = "https://fuente-estructurada.cl/expo-fecha-incompleta";
+        await client.from("rejected_candidates").delete().eq("source_url", genericRejectedUrl);
+        await client.from("out_of_scope_signals").delete().eq("source_url", genericRejectedUrl);
+        // The previous test's run already marked EVERY real known bright
+        // source as freshly fetched at this same `now` (run() marks all of
+        // dueBrightSources as fetched once processed, regardless of what a
+        // mocked fetchBrightSourcesFn actually returns) — leaving
+        // dueBrightSources empty gates the whole fetchBrightSourcesFn call
+        // off (run.ts: `if (dueBrightSources.length > 0)`), so this test's
+        // own mock would never even get called. Reset the whole cadence
+        // table, same as other tests in this suite that hit the same issue.
+        await client.from("bright_source_fetch_state").delete().neq("url", "");
+
+        const rejectingMessagesClient = {
+          messages: {
+            create: async () => ({
+              content: [
+                {
+                  type: "text",
+                  text: fencedJson([
+                    {
+                      index: 0,
+                      status: "rejected",
+                      artist: null,
+                      runStartDate: null,
+                      runEndDate: null,
+                      openingDatetime: null,
+                      openingTimeConfirmed: false,
+                      location: null,
+                      placeName: null,
+                      mediumType: "tradicional",
+                      sensitivityTags: [],
+                      curationReasoning: "No se pudo confirmar la fecha de apertura ni el rango de exhibición completo.",
+                    },
+                  ]),
+                },
+              ],
+              usage: { input_tokens: 10, output_tokens: 5 },
+            }),
+          },
+        };
+
+        try {
+          await run({
+            messagesClient: rejectingMessagesClient,
+            searchUnitFn: async () => ({ results: [], credits: 0 }),
+            fetchBrightSourcesFn: async () => [
+              {
+                kind: "items",
+                source: { url: "https://fuente-estructurada.cl/agenda", note: "fuente estructurada", fixedLocation: { location: "Valparaíso", placeName: "Parque Cultural de Valparaíso" } },
+                items: [
+                  {
+                    title: "__test__ Fecha Incompleta",
+                    sourceUrl: genericRejectedUrl,
+                    imageUrl: null,
+                    description: null,
+                    locationHint: null,
+                    rawDateText: "Fechas por confirmar",
+                    structuredStartDate: null,
+                    structuredEndDate: null,
+                  },
+                ],
+              },
+            ],
+            now: new Date(2027, 7, 12),
+          });
+
+          const { data: row } = await client.from("rejected_candidates").select("*").eq("source_url", genericRejectedUrl).maybeSingle();
+          assert.ok(row, "the rejected candidate was still recorded in rejected_candidates");
+
+          const { data: signal } = await client.from("out_of_scope_signals").select("*").eq("source_url", genericRejectedUrl).maybeSingle();
+          assert.equal(signal, null, "an ordinary in-scope rejection (missing dates) is never recorded as an out-of-scope signal");
+        } finally {
+          await client.from("rejected_candidates").delete().eq("source_url", genericRejectedUrl);
+          await client.from("out_of_scope_signals").delete().eq("source_url", genericRejectedUrl);
         }
       });
     } finally {

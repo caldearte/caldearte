@@ -113,10 +113,11 @@ test(
         assert.equal(sentSummary?.candidates.insertedCount, 1);
         assert.equal(sentSummary?.eventGroups[0]?.label, "Google Alerts");
 
-        const { data: inserted } = await client.from("events").select("title, source_url, artist, freeform_location").eq("title", entry.title);
+        const { data: inserted } = await client.from("events").select("title, source_url, artist, freeform_location, pipeline").eq("title", entry.title);
         assert.equal(inserted?.length, 1);
         assert.equal(inserted?.[0].source_url, entry.url);
         assert.equal(inserted?.[0].artist, "Artista de Prueba");
+        assert.equal(inserted?.[0].pipeline, "google_alerts", "a Google Alerts-derived event is attributed to the google_alerts pipeline");
 
         const { data: fetchState } = await client.from("bright_source_fetch_state").select("url").eq("url", SOURCE_KEY);
         assert.equal(fetchState?.length, 1, "fetch state recorded so the next run doesn't re-fetch for 7 days");
