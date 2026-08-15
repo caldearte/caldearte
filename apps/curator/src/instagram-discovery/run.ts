@@ -32,7 +32,7 @@ import {
   loadInstagramFetchState,
   isInstagramAccountDue,
   accountCutoffDate,
-  nextIntervalDays,
+  nextFetchState,
   recordInstagramFetchState,
   instagramAccountProfileUrl,
 } from "../lib/instagram-fetch-state.js";
@@ -164,9 +164,11 @@ export async function run(deps: InstagramRunDeps = {}): Promise<void> {
 
   for (const account of dueAccounts) {
     const state = fetchState.get(instagramAccountProfileUrl(account));
-    const interval = nextIntervalDays(state?.intervalDays, usernamesWithNewItems.has(account.username));
-    await recordInstagramFetchState(account, now, interval);
-    console.log(`[instagram-discovery] ${account.username}: next fetch in ${interval} day(s)`);
+    const next = nextFetchState(state, usernamesWithNewItems.has(account.username));
+    await recordInstagramFetchState(account, now, next);
+    console.log(
+      `[instagram-discovery] ${account.username}: next fetch in ${next.intervalDays} day(s)${next.isInactive ? " — marked inactive, won't be fetched again automatically" : ""}`,
+    );
   }
 
   try {
