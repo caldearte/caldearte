@@ -3308,6 +3308,73 @@ multiple times, not an aggregator collision; the existing cross-run dedup
 (`run.ts`) already collapses the repeats into one insert once the URL
 survives.
 
+## New source: Instagram via Apify, an isolated pipeline for many independently-paced accounts (2026-08-12)
+
+Instagram itself blocks anonymous/headless fetch (bio + ~1 post, then a
+hard login wall — same shape already confirmed for Facebook). After
+evaluating Meta's Graph API (requires Business/Creator accounts — doesn't
+fit informal, self-convened art spaces), third-party scraping services,
+and a standalone scraper, the decision (with Daniel) was **Apify**
+(`apify-client`, actor `apify/instagram-post-scraper`), with an explicit
+policy: only public accounts, never private (both an editorial decision
+and a real technical limit — the actor never logs in, so it can't reach a
+private account at all).
+
+**Architecture: its own pipeline, not a `KnownSource`** — same precedent
+as MAVI (`mavi-headless.ts`) and Google Alerts, for two reasons. Technical:
+`KnownSource`/`knownSourceDomain` (`lib/known-sources.ts`) dedupes by bare
+hostname, so two Instagram accounts under `instagram.com` would collide
+there — rather than patch that bug to force Instagram in, it lives in its
+own list, indexed by `username`. Risk-shaped: keeping this isolated makes
+the whole source trivially pausable/disableable without touching anything
+else, given its different risk profile (third-party scraping of a
+platform that actively blocks it) versus a plain site fetch.
+
+**Files**: `lib/instagram-accounts.ts` (the hardcoded, documented account
+list — `{username, note, addedAt, fixedLocation?}`, same "note" convention
+as `KnownSource`), `lib/apify-instagram.ts` (the Apify wrapper — one
+`apify-client` call per run covering ALL due accounts at once, not one
+call per account), `lib/instagram-item.ts` (maps `ApifyInstagramPost` →
+the shared `BrightSourceItem` shape, so `curateBrightSourceItems`
+(`discover.ts`) judges every post with the exact same scope/date criteria
+as any other bright source — no new prompt), `instagram-discovery/run.ts`
+(orchestrator), `instagram-index.ts` (entrypoint),
+`.github/workflows/instagram-bright-sources.yml` (its own cron, Monday
+08:00 UTC — offset from the main run and the other bright-source crons).
+
+**`fixedLocation`** (`{location, placeName}` on an account's config) — set
+only when the account is confirmed to operate from a single fixed
+physical venue (verified via WebSearch when the address/comuna is
+ambiguous); left unset for accounts that promote activities across
+several different venues (a university department, a multi-venue
+institution), so Haiku infers the location per-post instead, same posture
+as a real aggregator. When set, it's NOT a hint — `instagram-item.ts`
+assigns it directly to every post from that account, overriding whatever
+Haiku might otherwise infer; setting it for a multi-venue account would
+silently mislabel posts about a different real venue.
+
+**Per-account adaptive cadence** (unlike Google Alerts' single shared
+7-day feed) — each account gets its own `bright_source_fetch_state` row,
+escalating 14 → 21 → 28 days when a fetch turns up nothing new, resetting
+to 14 when it does. Necessary because account posting frequency varies
+wildly (some post daily, some monthly) and a shared fixed interval would
+either waste Apify calls on quiet accounts or miss active ones.
+
+**Evaluation playbook for adding a new account** (used ~40 times
+2026-08-14, see the entry below): fetch 5-6 real recent posts (no date
+filter) via a throwaway script, check (a) how many are genuinely the
+account's own (`ownerUsername` match — tagged/reposted content from OTHER
+accounts is expected noise, already filtered by `instagram-discovery/
+run.ts`), (b) content-type mix (clean exhibition-opening announcements
+vs. workshops/talks/convocatorias/institutional-news/recaps — all
+correctly rejected by Haiku's existing scope judgment already, proven
+repeatedly), (c) date completeness, (d) single-fixed-venue vs. touring/
+multi-venue for the `fixedLocation` call. Reject outright for: dead (no
+real post in the past year or so), a commercial sales gallery or auction
+house (no exhibitions, just product/lot listings), a workshop mislabeled
+as a "galería", wrong country, or a pure content/criticism account that
+doesn't itself host events.
+
 ### Cross-source dedup: same venue + same season dates isn't always the same event (2026-08-12)
 
 A user-requested audit found two more real, distinct MAC - Parque
@@ -3418,6 +3485,101 @@ confirmed, incidentally, that this new source correctly triggers
 curation-policy.md's institutional-religious-venue exclusion (a Vatican
 Dicastery-organized triennial, rejected) with zero source-specific code —
 same shared curation pipeline as everything else.
+
+## Instagram accounts: 17 added, 5 real bugs found in one evaluation session (2026-08-14)
+
+Following the playbook above, ~40 Daniel-proposed usernames evaluated in
+one session; 17 added (`instagram-accounts.ts`): mugupla, mamchiloe,
+arte_uah, institutodearte.pucv, casavaras, liquenlab_magallanes,
+casa_arpa, valpocultura, espaciovilches, galerialasala, omagaleriarte,
+artequin, factoriasantarosa (Instagram, ALONGSIDE the existing
+factoriasantarosa.cl bright source — same real venue via two mechanisms,
+cross-source dedup handles the overlap), galeriamacchina,
+galeria_gabriela_mistral, espacio_o (Instagram, alongside espacioo.com,
+same reasoning), mssachile. Rejected candidates and why (dead, commercial/
+auction/workshop-not-gallery, wrong country, low density) are NOT
+repeated here — full list lives in memory
+(`project_instagram_accounts_evaluated_2026_08_14`), not this doc, since
+"why we didn't add X" doesn't inform future engineering decisions the way
+a real bug does.
+
+**Bug 1 — `publishedDate` never backfilled for Instagram.**
+`fillRunStartFromPublishedDate` (`discover.ts`) — backfills a missing
+`runStartDate` from a real, non-fabricated `BrightSourceItem.publishedDate`
+when only a closing date is confirmed — existed for `noticias.udec.cl`
+(WordPress `date` field) but `instagram-item.ts` never populated
+`publishedDate` at all. Found via factor__f's real "Formas de habitar la
+materia" post (closing date confirmed, no opening date anywhere). Fixed
+by mapping it from `ApifyInstagramPost.timestamp`.
+
+**Bugs 2-3 — informal-caption dedup gaps, two iterations, one real
+regression caught.** `isLikelySameTitle`'s jaccard/overlap ratio, tuned
+for consistent aggregator titles, is too strict for two differently-
+worded social captions about the same real opening (found via factor__f's
+"BOTÁNICA": 2 posts → 2 DB rows). A first fix (new `titlesByLocationDateOnly`
++ "≥1 shared word, no ratio" tier) missed a second, related case
+(hifas.galeria's "Cartografía del Fuego": the backfilled `runStartDate`
+from bug 1 differed per-post, so even the coarser date bucket didn't
+match) — fixed by adding `titlesByPlaceName` (keyed on placeName alone)
+matching on `runEndDate` equality instead. Dropping the ≥1-word floor
+(not just the ratio) then broke a PRE-EXISTING regression test (MAC -
+Parque Forestal, see 2026-08-12 above) — traced to the fixture prefix
+`__test__` surviving tokenization as a "shared word," proving the ≥1-word
+threshold was unsafely weak in general, not just for that test artifact.
+Final: `isLikelySameTitleWithoutRatio` (`lib/event-filters.ts`), restored
+≥2-shared-word floor, new `sameVenueMatch` dedup tier in `run.ts`.
+
+**Bug 4 — a real production-severity crash: UTF-16 surrogate-pair
+truncation.** Found via mugupla's emoji-dense captions. Plain
+`.slice(0, TITLE_MAX_LENGTH)` truncates by UTF-16 code UNIT, not
+character — landing mid-surrogate-pair produces a lone unpaired
+surrogate, which the Anthropic API's JSON parser rejects outright (400,
+"no low surrogate in string"). Uncaught, this killed the ENTIRE batch
+curation call, not just the one bad candidate — every other due
+account's results in the same run, lost. Fixed with `truncateSafely`
+(`extractors.ts`, spread-operator code-point iteration, can't split a
+surrogate pair), applied in `instagram-item.ts`'s title truncation and
+(same latent risk, found proactively) `sources.ts`'s 4000-char
+whole-page-flatten fallback (used by Google Alerts and any
+extractor-less source).
+
+**Bug 5 — "Chiloé" not recognized as a Chilean location.**
+`isChileanLocation`'s whitelist (`lib/locations.ts`) had every comuna and
+region name but not "Chiloé" itself — a real provincia, not a comuna, so
+never in the `regions`-table snapshot the list was generated from.
+mamchiloe's own museum caption self-identifies as "Chiloé" (matching its
+username), so a real, complete, dated exhibition got code-rejected as
+"not Chilean." Fixed by adding "chiloe" to `CHILE_MARKERS` — safe since
+that list only decides Chilean-or-not, not which comuna (`matchRegionId`
+stays comuna-only, `region_id` correctly stays null rather than
+fabricating a comuna).
+
+**Bug 6 — a decorative first line collapsed every title to the same
+string.** institutodearte.pucv's captions all open with a lone "•" before
+the real title; `toBrightSourceItem`'s "first line" title extraction took
+that literal "•" as the title for every single post — useless in the UI,
+and worse, it caused a false title-exact-match dedup collision between
+two genuinely different real exhibitions (Hiperia, Cómo ordenar un
+miedo), silently dropping one. Fixed: `instagram-item.ts` now takes the
+first line containing at least one letter/digit (Unicode-aware), not the
+literal first line.
+
+**A known, deliberately UNFIXED gap — MSSA's "highlight post" pattern.**
+Museums that post several content-marketing highlights about individual
+rooms/artworks within ONE running exhibition, each with genuinely
+disjoint captions (0-1 shared significant words pairwise, since
+"exposición" itself is a stopword), produce multiple DB rows for the same
+real exhibition despite an identical placeName + exact `runEndDate`.
+Structurally indistinguishable, by word-overlap alone, from the MAC -
+Parque Forestal regression case above (two genuinely DIFFERENT
+exhibitions sharing a venue's season dates) — any fix relaxing the title
+check for an exact venue+date match would directly reopen that
+regression. Documented in `run.ts` next to `sameVenueMatch` as an
+accepted, bounded cost (a duplicate real listing is noise, not
+fabrication; a moderator can merge via the admin "Quitar" action) rather
+than risking the known-good regression guard. Confirmed live in
+production the same day: MSSA's real "América despierta" exhibition
+produced 3 separate rows in one run.
 
 ## Cross-source curation conflict escalation (2026-07-30)
 
