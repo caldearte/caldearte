@@ -136,6 +136,28 @@ export function stripAccents(text: string): string {
 // crashing. `| null | undefined` in the signature documents that this
 // function must survive exactly the input that broke it, not just the
 // declared type.
+// Two location strings for the SAME real place — a conservative overlap
+// check used to decide whether Haiku's own in-text location extraction
+// genuinely conflicts with a source's assumed default (either a bright
+// source's fixedLocation, or an Instagram account's fixedLocation baked
+// into BrightSourceItem.defaultLocation). Real bug found 2026-08-16: a
+// touring/co-hosted show posted by Factoría Santa Rosa's Instagram
+// account was actually happening in Cerro Alegre, Valparaíso — the
+// account's own "Santiago" default silently overrode Haiku's correct
+// in-text extraction. Segment-level (not a raw substring check), so "Las
+// Condes, Santiago" still correctly agrees with a plain "Santiago"
+// default instead of being flagged as a false conflict.
+export function locationsOverlap(a: string, b: string): boolean {
+  const segmentsOf = (s: string) =>
+    stripAccents(s.toLowerCase())
+      .split(",")
+      .map((seg) => seg.trim())
+      .filter(Boolean);
+  const segsA = segmentsOf(a);
+  const segsB = segmentsOf(b);
+  return segsA.some((sa) => segsB.some((sb) => sa === sb || sa.includes(sb) || sb.includes(sa)));
+}
+
 export function isChileanLocation(location: string | null | undefined): boolean {
   if (!location) return false;
   const normalized = stripAccents(location.toLowerCase());

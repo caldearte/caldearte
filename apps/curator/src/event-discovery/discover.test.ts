@@ -1048,7 +1048,7 @@ test("curateBrightSourceItems always prefers the item's own structuredStartDate/
   assert.equal(candidates[0].runEndDate, "2026-08-30");
 });
 
-test("curateBrightSourceItems attaches fixedLocation deterministically, ignoring whatever Haiku returned for location/placeName", async () => {
+test("curateBrightSourceItems attaches fixedLocation when Haiku's own extraction agrees (or reports nothing) — no false conflict", async () => {
   const items: BrightSourceItem[] = [baseBrightItem];
   const client = stubBrightClient([
     {
@@ -1059,8 +1059,8 @@ test("curateBrightSourceItems attaches fixedLocation deterministically, ignoring
       runEndDate: "2026-07-31",
       openingDatetime: null,
       openingTimeConfirmed: false,
-      location: "Un lugar inventado",
-      placeName: "Otro nombre",
+      location: null,
+      placeName: null,
       mediumType: "tradicional",
       sensitivityTags: [],
       curationReasoning: "ok",
@@ -1073,6 +1073,65 @@ test("curateBrightSourceItems attaches fixedLocation deterministically, ignoring
 
   assert.equal(candidates[0].location, "Valparaíso");
   assert.equal(candidates[0].placeName, "Parque Cultural de Valparaíso");
+});
+
+// Real bug found 2026-08-16 (Factoría Santa Rosa's Instagram account,
+// posting about a touring/co-hosted show actually happening in Cerro
+// Alegre, Valparaíso): a fixedLocation used to win unconditionally, even
+// when Haiku correctly read a different real Chilean place from the
+// item's own text. Now that specific, clearly-different extraction wins
+// instead — see mergeBrightSourceCandidate/locationsOverlap.
+test("curateBrightSourceItems lets Haiku's own extraction override fixedLocation when it clearly names a different real Chilean place", async () => {
+  const items: BrightSourceItem[] = [baseBrightItem];
+  const client = stubBrightClient([
+    {
+      index: 0,
+      status: "approved",
+      artist: null,
+      runStartDate: "2026-09-04",
+      runEndDate: "2026-09-04",
+      openingDatetime: null,
+      openingTimeConfirmed: false,
+      location: "Cerro Alegre, Valparaíso",
+      placeName: "Palacio Baburizza",
+      mediumType: "tradicional",
+      sensitivityTags: [],
+      curationReasoning: "ok",
+    },
+  ]);
+
+  const { candidates } = await curateBrightSourceItems(client, items, "septiembre 2026", {
+    fixedLocation: { location: "Santiago", placeName: "Factoría Santa Rosa" },
+  });
+
+  assert.equal(candidates[0].location, "Cerro Alegre, Valparaíso");
+  assert.equal(candidates[0].placeName, "Palacio Baburizza");
+  assert.match(candidates[0].curationReasoning, /difiere de la ubicación por defecto/);
+});
+
+test("curateBrightSourceItems lets Haiku's extraction override a per-item defaultLocation (Instagram account default) the same way it does fixedLocation", async () => {
+  const items: BrightSourceItem[] = [{ ...baseBrightItem, defaultLocation: { location: "Santiago", placeName: "Factoría Santa Rosa" } }];
+  const client = stubBrightClient([
+    {
+      index: 0,
+      status: "approved",
+      artist: null,
+      runStartDate: "2026-09-04",
+      runEndDate: "2026-09-04",
+      openingDatetime: null,
+      openingTimeConfirmed: false,
+      location: "Cerro Alegre, Valparaíso",
+      placeName: "Palacio Baburizza",
+      mediumType: "tradicional",
+      sensitivityTags: [],
+      curationReasoning: "ok",
+    },
+  ]);
+
+  const { candidates } = await curateBrightSourceItems(client, items, "septiembre 2026", {});
+
+  assert.equal(candidates[0].location, "Cerro Alegre, Valparaíso");
+  assert.equal(candidates[0].placeName, "Palacio Baburizza");
 });
 
 test("curateBrightSourceItems uses Haiku's location/placeName for an aggregator source (no fixedLocation) and applies the Chile-only backstop", async () => {

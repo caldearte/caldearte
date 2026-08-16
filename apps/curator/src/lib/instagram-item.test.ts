@@ -74,14 +74,21 @@ test("toBrightSourceItem leaves location/placeName null when the account has no 
   assert.equal(item.placeName, null);
 });
 
-test("toBrightSourceItem uses the account's fixedLocation when set, same precedence as known-sources.ts", () => {
+// Not baked directly into item.location/placeName anymore — real bug
+// found 2026-08-16 (Factoría Santa Rosa posting about a touring show
+// actually in Valparaíso): an account's fixedLocation is an assumption,
+// not certain per-item data, so it flows through defaultLocation instead,
+// letting discover.ts's mergeBrightSourceCandidate override it when
+// Haiku's own in-text extraction clearly disagrees.
+test("toBrightSourceItem passes the account's fixedLocation as defaultLocation, not directly as location/placeName", () => {
   const fixedAccount: InstagramAccountConfig = {
     ...ACCOUNT,
     fixedLocation: { location: "Santiago", placeName: "Casa Cultural Yanulaque" },
   };
   const item = toBrightSourceItem(POST, fixedAccount);
-  assert.equal(item.location, "Santiago");
-  assert.equal(item.placeName, "Casa Cultural Yanulaque");
+  assert.equal(item.location, null);
+  assert.equal(item.placeName, null);
+  assert.deepEqual(item.defaultLocation, { location: "Santiago", placeName: "Casa Cultural Yanulaque" });
 });
 
 // Real gap found 2026-08-14 (factor__f's real "se despide" closing post,
