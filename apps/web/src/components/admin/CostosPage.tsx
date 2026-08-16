@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import { enumeratePeriods, formatPeriodLabel, type Granularity } from "@/lib/adminAnalyticsBucketing";
+import { splitApifyFreeTier } from "@/lib/apifyCostSplit";
 import CostTable from "./CostTable";
 import GranularityToggle from "./GranularityToggle";
 
@@ -48,6 +49,16 @@ export default function CostosPage({
 
   const periods = useMemo(() => enumeratePeriods(minDate, maxDate, granularity), [minDate, maxDate, granularity]);
 
+  // "Costos totales" must never count Apify's $5/mo free tier as real
+  // spend (Daniel's explicit request, 2026-08-16) — only the REAL
+  // (billed) portion goes into the total. CostHistoryChart and CostTable
+  // do their own splitting internally (they need the free/real
+  // breakdown itself, not just the real total).
+  const apifyRealCostByDay = useMemo(
+    () => splitApifyFreeTier(apifyCostByDay).map((r) => ({ date: r.date, amountUsd: r.realUsd })),
+    [apifyCostByDay],
+  );
+
   return (
     <div className="flex flex-col gap-12">
       <GranularityToggle value={granularity} onChange={setGranularity} />
@@ -61,7 +72,7 @@ export default function CostosPage({
           <h2 className="font-fragment-mono uppercase text-[18px] text-text-primary mb-4">Costos totales</h2>
           <TotalCostChart
             anthropicCostByDay={anthropicCostByDay}
-            apifyCostByDay={apifyCostByDay}
+            apifyCostByDay={apifyRealCostByDay}
             periods={periods}
             granularity={granularity}
             highlightedPeriodLabel={highlightedPeriodLabel}

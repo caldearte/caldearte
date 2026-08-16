@@ -2,6 +2,7 @@
 
 import { Area, AreaChart, CartesianGrid, Legend, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { formatPeriodLabel, sumAmountByPeriod, type Granularity } from "@/lib/adminAnalyticsBucketing";
+import { splitApifyFreeTier } from "@/lib/apifyCostSplit";
 import StatBars from "./StatBars";
 
 interface CostRow {
@@ -44,6 +45,15 @@ export default function CostHistoryChart({
     periods,
     granularity,
   );
+  // Real (billed) portion only, for the tooltip's "$real (gross)"
+  // breakdown below — the plotted apifyUsd value itself stays the GROSS
+  // total (Daniel's explicit request, 2026-08-16: leave this chart's
+  // shape as-is, only clarify the tooltip).
+  const apifyReal = sumAmountByPeriod(
+    splitApifyFreeTier(apifyCostByDay).map((r) => ({ date: r.date, amount: r.realUsd })),
+    periods,
+    granularity,
+  );
 
   if (granularity === "total") {
     return (
@@ -57,10 +67,12 @@ export default function CostHistoryChart({
   }
 
   const apifyByPeriod = new Map(apify.map((a) => [a.period, a.count]));
+  const apifyRealByPeriod = new Map(apifyReal.map((a) => [a.period, a.count]));
   const rows = anthropic.map((row) => ({
     label: formatPeriodLabel(row.period, granularity),
     anthropicUsd: row.count,
     apifyUsd: apifyByPeriod.get(row.period) ?? 0,
+    apifyRealUsd: apifyRealByPeriod.get(row.period) ?? 0,
   }));
 
   return (
@@ -70,7 +82,18 @@ export default function CostHistoryChart({
           <CartesianGrid strokeDasharray="3 3" stroke="#00000015" />
           <XAxis dataKey="label" tick={{ fontSize: 12 }} />
           <YAxis tick={{ fontSize: 12 }} tickFormatter={(v) => `$${v}`} />
-          <Tooltip formatter={(value) => formatUsd(Number(value))} />
+          <Tooltip
+            formatter={(value, name, entry) => {
+              // Apify's plotted value is gross usage (free tier
+              // included) — the tooltip clarifies how much of that was
+              // actually billed, e.g. "$0.59 ($1.71)".
+              if (name === "Apify") {
+                const realUsd = (entry?.payload as { apifyRealUsd?: number } | undefined)?.apifyRealUsd ?? 0;
+                return `${formatUsd(realUsd)} (${formatUsd(Number(value))})`;
+              }
+              return formatUsd(Number(value));
+            }}
+          />
           <Legend />
           {highlightedPeriodLabel && <ReferenceLine x={highlightedPeriodLabel} stroke="#000000" strokeWidth={3} />}
           <Area type="monotone" dataKey="anthropicUsd" name="Anthropic" stroke="#ff00fb" fill="#ff00fb" fillOpacity={0.35} />
