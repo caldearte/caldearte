@@ -250,7 +250,7 @@ export default function Header({
             <button
               ref={cityPickerTriggerRef}
               onClick={onOpenCityPicker}
-              className="flex items-center gap-[9px] border border-border-default rounded-[9px] px-[30px] py-[23px] text-border-default"
+              className="flex items-center gap-[9px] border border-border-default rounded-[9px] px-[30px] py-[23px] text-border-default cursor-pointer"
             >
               {/* eslint-disable-next-line @next/next/no-img-element -- Figma-exported asset, verbatim per design decision */}
               <img
@@ -307,7 +307,13 @@ export default function Header({
                     href={prevWeekHref}
                     aria-label={esCL.prevWeekAriaLabel}
                     scroll={false}
-                    className="inline-flex shrink-0"
+                    // p-[12px] -m-[12px]: bigger tap target (real bug
+                    // report, 2026-08-16 — "cuesta achuntarle" on both
+                    // desktop and mobile) without pushing the range text
+                    // over — the negative margin cancels the padding's
+                    // effect on surrounding flex layout, only the hit
+                    // area grows.
+                    className="inline-flex shrink-0 items-center justify-center p-[8px] -m-[8px] cursor-pointer"
                   >
                     {/* eslint-disable-next-line @next/next/no-img-element -- Figma-exported asset, verbatim per design decision */}
                     <img
@@ -326,7 +332,7 @@ export default function Header({
                   href={nextWeekHref}
                   aria-label={esCL.nextWeekAriaLabel}
                   scroll={false}
-                  className="inline-flex shrink-0"
+                  className="inline-flex shrink-0 items-center justify-center p-[8px] -m-[8px] cursor-pointer"
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element -- Figma-exported asset, verbatim per design decision */}
                   <img
