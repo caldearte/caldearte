@@ -1812,8 +1812,13 @@ test(
                       runEndDate: "1999-01-02",
                       openingDatetime: null,
                       openingTimeConfirmed: false,
-                      location: "Un lugar que Haiku inventó",
-                      placeName: "Nombre inventado",
+                      // Real, well-behaved Haiku response, not naming a
+                      // different place — fixedLocation still wins here.
+                      // discover.test.ts covers the actual override case
+                      // (Haiku naming a genuinely different real Chilean
+                      // place, real bug found 2026-08-16).
+                      location: null,
+                      placeName: null,
                       mediumType: "tradicional",
                       sensitivityTags: [],
                       curationReasoning: "ok",

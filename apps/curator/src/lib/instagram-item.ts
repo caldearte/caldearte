@@ -53,8 +53,17 @@ export function toBrightSourceItem(post: ApifyInstagramPost, account: InstagramA
     // mechanism (discover.ts's fillRunStartFromPublishedDate), just fed
     // from Instagram's own timestamp instead of a WordPress date field.
     publishedDate: post.timestamp.slice(0, 10),
-    location: account.fixedLocation?.location ?? null,
-    placeName: account.fixedLocation?.placeName ?? null,
+    // Not baked into `location` directly — an account's fixedLocation is
+    // an ASSUMPTION (this account usually posts about its own venue), not
+    // certain per-item data, and a touring/co-hosted show can contradict
+    // it (real bug found 2026-08-16, Factoría Santa Rosa/Valparaíso — see
+    // extractors.ts's BrightSourceItem.defaultLocation doc comment).
+    // Passed as defaultLocation instead, so discover.ts's
+    // mergeBrightSourceCandidate can let Haiku's own in-text extraction
+    // override it when the post's own text clearly says otherwise.
+    location: null,
+    placeName: null,
+    defaultLocation: account.fixedLocation ?? null,
     // Real gap found 2026-08-15 building the admin analytics dashboard:
     // a post's own permalink never embeds which tracked account posted
     // it, so this is the only place that real information exists at

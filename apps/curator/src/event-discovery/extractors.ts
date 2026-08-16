@@ -64,6 +64,19 @@ export interface BrightSourceItem {
   // as before).
   location: string | null;
   placeName: string | null;
+  // A source's own ASSUMED default location — distinct from `location`
+  // above (which is only ever set from real per-item structured data).
+  // Set when a source is presumed to only ever cover one venue (e.g. an
+  // Instagram account with instagram-accounts.ts's `fixedLocation`) but
+  // that assumption isn't certain the way a structured API field is —
+  // real bug found 2026-08-16: a touring/co-hosted show posted by
+  // Factoría Santa Rosa's account was actually in Valparaíso, not
+  // Santiago. discover.ts's mergeBrightSourceCandidate uses this as a
+  // default that Haiku's own in-text extraction (row.location) can
+  // override when it clearly names a different real Chilean place — see
+  // locationsOverlap (lib/locations.ts). null for every source that
+  // doesn't have this assumption at all.
+  defaultLocation?: { location: string; placeName: string } | null;
   // Real, already-known date — the SOURCE POST'S OWN publish date, not an
   // event date at all. Optional (undefined for every existing source
   // shape, no other constructor site needs updating): only populated by
