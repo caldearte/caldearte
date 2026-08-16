@@ -10,6 +10,7 @@ import GranularityToggle from "./GranularityToggle";
 // server render otherwise.
 const ChartLoading = () => <div className="w-full h-[320px] flex items-center justify-center font-geist text-[13px] text-text-primary/50">Cargando gráfico…</div>;
 const CostHistoryChart = dynamic(() => import("./CostHistoryChart"), { ssr: false, loading: ChartLoading });
+const TotalCostChart = dynamic(() => import("./TotalCostChart"), { ssr: false, loading: ChartLoading });
 
 interface CostRow {
   date: string;
@@ -45,10 +46,21 @@ export default function CostosPage({
     <div className="flex flex-col gap-12">
       <GranularityToggle value={granularity} onChange={setGranularity} />
 
-      <section>
-        <h2 className="font-fragment-mono uppercase text-[18px] text-text-primary mb-4">Costo histórico</h2>
-        <CostHistoryChart anthropicCostByDay={anthropicCostByDay} apifyCostByDay={apifyCostByDay} periods={periods} granularity={granularity} />
-      </section>
+      {/* 2 columns on desktop so both charts fit the page's existing
+          width side by side instead of one very wide chart each — same
+          height per chart either way (both fixed h-[320px] internally),
+          1 column on mobile. */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <section>
+          <h2 className="font-fragment-mono uppercase text-[18px] text-text-primary mb-4">Costos totales</h2>
+          <TotalCostChart anthropicCostByDay={anthropicCostByDay} apifyCostByDay={apifyCostByDay} periods={periods} granularity={granularity} />
+        </section>
+
+        <section>
+          <h2 className="font-fragment-mono uppercase text-[18px] text-text-primary mb-4">Costos por servicio</h2>
+          <CostHistoryChart anthropicCostByDay={anthropicCostByDay} apifyCostByDay={apifyCostByDay} periods={periods} granularity={granularity} />
+        </section>
+      </div>
     </div>
   );
 }
