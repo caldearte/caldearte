@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import CalendarView from "./CalendarView";
 import { getCookie, REGION_COOKIE, FAMILY_MODE_COOKIE, TODAY_FILTER_COOKIE, VIGENTES_FILTER_COOKIE, PRECISE_CITY_COOKIE, GEO_CONSENT_COOKIE } from "@/lib/cookies";
@@ -35,21 +35,38 @@ export default function HomeClient({ initialModel }: HomeClientProps) {
   // this still needs to show the prompt for them. Runs once on mount,
   // reading the real cookie directly rather than waiting on any fetch.
   const [showGeoConsentPrompt, setShowGeoConsentPrompt] = useState(false);
+  // Surfaced to Header via CalendarView — the week chevrons themselves
+  // resolve almost instantly (same-route search-param change, no real
+  // RSC round-trip since page.tsx never reads searchParams), so without
+  // this the actual latency here — this fetch — was invisible, felt
+  // "stuck" (real user report, 2026-08-15).
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  // Rapid back-to-back navigations (tap prev then next quickly) fire
+  // overlapping fetches — without this, an older response resolving
+  // AFTER a newer one would silently stomp fresh data with stale data.
+  // Each refresh() call claims the next id; only the response matching
+  // the LATEST claimed id is allowed to setModel.
+  const latestRequestId = useRef(0);
 
   async function refresh() {
+    const requestId = ++latestRequestId.current;
     const qs = new URLSearchParams();
     const semana = searchParams.get("semana");
     const newsletter = searchParams.get("newsletter");
     if (semana) qs.set("semana", semana);
     if (newsletter) qs.set("newsletter", newsletter);
+    setIsRefreshing(true);
     try {
       const res = await fetch(`/api/home-data${qs.toString() ? `?${qs}` : ""}`);
       if (!res.ok) return;
-      setModel(await res.json());
+      const data = await res.json();
+      if (requestId === latestRequestId.current) setModel(data);
     } catch {
       // Network hiccup — the visitor keeps seeing whatever model is
       // already on screen (the cached default, or their last-fetched
       // personalized view); not worth surfacing an error for this.
+    } finally {
+      if (requestId === latestRequestId.current) setIsRefreshing(false);
     }
   }
 
@@ -69,5 +86,5 @@ export default function HomeClient({ initialModel }: HomeClientProps) {
     if (getCookie(GEO_CONSENT_COOKIE) === undefined) setShowGeoConsentPrompt(true);
   }, []);
 
-  return <CalendarView {...model} showGeoConsentPrompt={showGeoConsentPrompt} onRefreshNeeded={refresh} />;
+  return <CalendarView {...model} showGeoConsentPrompt={showGeoConsentPrompt} onRefreshNeeded={refresh} isRefreshing={isRefreshing} />;
 }

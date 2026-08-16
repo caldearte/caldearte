@@ -54,6 +54,12 @@ interface CalendarViewProps {
   // across that boundary; that fallback is only ever shown for the
   // instant before client hydration takes over, so a no-op there is safe.
   onRefreshNeeded?: () => void;
+  // Whether onRefreshNeeded's own fetch (HomeClient.tsx) is currently in
+  // flight — surfaced to Header so the week-nav row can show a loading
+  // indicator instead of looking "stuck" (real user report, 2026-08-15).
+  // Same no-op-safe default as onRefreshNeeded, for the same Suspense-
+  // fallback reason.
+  isRefreshing?: boolean;
 }
 
 export default function CalendarView({
@@ -78,6 +84,7 @@ export default function CalendarView({
   regions,
   newsletterStatus,
   onRefreshNeeded = () => {},
+  isRefreshing = false,
 }: CalendarViewProps) {
   const cityPickerTriggerRef = useRef<HTMLButtonElement>(null);
   const [locationOpen, setLocationOpen] = useState(false);
@@ -135,6 +142,7 @@ export default function CalendarView({
         weekNumber={weekNumber}
         prevWeekHref={prevWeekHref}
         nextWeekHref={nextWeekHref}
+        isRefreshing={isRefreshing}
         onOpenCityPicker={() => setLocationOpen(true)}
         cityPickerTriggerRef={cityPickerTriggerRef}
         onOpenSearch={() => setSearchOpen(true)}
