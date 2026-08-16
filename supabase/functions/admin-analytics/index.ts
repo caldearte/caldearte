@@ -51,7 +51,7 @@ Deno.serve(async (req) => {
   }
 
   // ---- events (all-time, approved, not soft-removed) -----------------
-  const [eventsRes, signalsRes, rejectedRes, usageRes, fetchStateRes] = await Promise.all([
+  const [eventsRes, signalsRes, rejectedRes, usageRes, fetchStateRes, costSnapshotsRes] = await Promise.all([
     client
       .from("events")
       .select("opening_datetime, run_start_date, run_end_date, region_id, pipeline")
@@ -59,8 +59,9 @@ Deno.serve(async (req) => {
       .is("removed_at", null),
     client.from("out_of_scope_signals").select("created_at, category, pipeline, region_id"),
     client.from("rejected_candidates").select("pipeline, source_url, source_account"),
-    client.from("api_usage_log").select("pipeline, estimated_cost_usd"),
+    client.from("api_usage_log").select("pipeline, estimated_cost_usd, created_at"),
     client.from("bright_source_fetch_state").select("url, last_fetched_at, interval_days"),
+    client.from("platform_cost_snapshots").select("platform, usage_date, amount_usd"),
   ]);
   for (const [label, res] of [
     ["events", eventsRes],
@@ -68,6 +69,7 @@ Deno.serve(async (req) => {
     ["rejected_candidates", rejectedRes],
     ["api_usage_log", usageRes],
     ["bright_source_fetch_state", fetchStateRes],
+    ["platform_cost_snapshots", costSnapshotsRes],
   ] as const) {
     if (res.error) {
       console.error(`admin-analytics: ${label} query failed`, res.error);
@@ -243,6 +245,18 @@ Deno.serve(async (req) => {
   brightSources.sort(bySourceRank);
   instagramSources.sort(bySourceRank);
 
+  // ---- cost history (all-time, row-level — client buckets by granularity) ----
+  // Anthropic: precise per-call ledger, already in api_usage_log. Apify:
+  // no per-call data reaches us, only this daily snapshot table (see
+  // apps/curator/src/apify-usage-snapshot's own comment on why).
+  const anthropicCostByDay = (usageRes.data ?? []).map((row) => ({
+    date: String(row.created_at).slice(0, 10),
+    amountUsd: Number(row.estimated_cost_usd ?? 0),
+  }));
+  const apifyCostByDay = (costSnapshotsRes.data ?? [])
+    .filter((row) => row.platform === "apify")
+    .map((row) => ({ date: String(row.usage_date), amountUsd: Number(row.amount_usd ?? 0) }));
+
   return jsonResponse({
     generatedAt: new Date().toISOString(),
     events,
@@ -250,5 +264,7 @@ Deno.serve(async (req) => {
     pipelineComparison,
     brightSources,
     instagramSources,
+    anthropicCostByDay,
+    apifyCostByDay,
   });
 });

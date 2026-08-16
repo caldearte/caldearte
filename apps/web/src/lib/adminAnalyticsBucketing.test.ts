@@ -5,6 +5,7 @@ import {
   countActiveByPeriod,
   enumeratePeriods,
   formatPeriodLabel,
+  sumAmountByPeriod,
   sumFlowByPeriod,
 } from "./adminAnalyticsBucketing";
 
@@ -72,6 +73,25 @@ test("total granularity: sumFlowByPeriod and countActiveByPeriod both collapse t
   const ranges = [{ start: "2024-06-01", end: "2024-07-01" }, { start: "2026-08-01", end: "2026-09-01" }];
   const stateResult = countActiveByPeriod(ranges, ["total"], "total");
   assert.deepEqual(stateResult, [{ period: "total", group: null, count: 2 }]);
+});
+
+test("sumAmountByPeriod: sums the $ amount per period instead of counting occurrences", () => {
+  const periods = enumeratePeriods("2026-08-01", "2026-08-31", "month");
+  const items = [{ date: "2026-08-05", amount: 1.5 }, { date: "2026-08-20", amount: 2.25 }];
+  const result = sumAmountByPeriod(items, periods, "month");
+  assert.deepEqual(result, [{ period: "2026-08", group: null, count: 3.75 }]);
+});
+
+test("sumAmountByPeriod: groups (e.g. platform) are summed independently, zero-filled where a group has no items in a period", () => {
+  const periods = enumeratePeriods("2026-08-01", "2026-08-31", "month");
+  const items = [
+    { date: "2026-08-05", amount: 1.5, group: "anthropic" },
+    { date: "2026-08-10", amount: 0.5, group: "apify" },
+  ];
+  const result = sumAmountByPeriod(items, periods, "month");
+  const byGroup = new Map(result.map((r) => [r.group, r.count]));
+  assert.equal(byGroup.get("anthropic"), 1.5);
+  assert.equal(byGroup.get("apify"), 0.5);
 });
 
 test("formatPeriodLabel: matches the reference charts' Spanish month'YY style, and passes week/year through readably", () => {

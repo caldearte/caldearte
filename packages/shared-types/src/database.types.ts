@@ -44,6 +44,7 @@ export type Database = {
           input_tokens: number
           model: string
           output_tokens: number
+          pipeline: string | null
           purpose: string
           region_id: string | null
           web_search_requests: number
@@ -57,6 +58,7 @@ export type Database = {
           input_tokens?: number
           model: string
           output_tokens?: number
+          pipeline?: string | null
           purpose: string
           region_id?: string | null
           web_search_requests?: number
@@ -70,6 +72,7 @@ export type Database = {
           input_tokens?: number
           model?: string
           output_tokens?: number
+          pipeline?: string | null
           purpose?: string
           region_id?: string | null
           web_search_requests?: number
@@ -93,17 +96,23 @@ export type Database = {
       }
       bright_source_fetch_state: {
         Row: {
+          consecutive_zero_yield_at_cap: number
           interval_days: number | null
+          is_inactive: boolean
           last_fetched_at: string
           url: string
         }
         Insert: {
+          consecutive_zero_yield_at_cap?: number
           interval_days?: number | null
+          is_inactive?: boolean
           last_fetched_at: string
           url: string
         }
         Update: {
+          consecutive_zero_yield_at_cap?: number
           interval_days?: number | null
+          is_inactive?: boolean
           last_fetched_at?: string
           url?: string
         }
@@ -234,6 +243,7 @@ export type Database = {
           opening_date_confidence: string
           opening_datetime: string | null
           opening_time_confirmed: boolean
+          pipeline: string | null
           place_name: string | null
           public_explanation: string | null
           region_id: string | null
@@ -243,6 +253,7 @@ export type Database = {
           run_start_date: string | null
           sensitivity_tags: string[]
           source: string
+          source_account: string | null
           source_url: string | null
           title: string
         }
@@ -261,6 +272,7 @@ export type Database = {
           opening_date_confidence?: string
           opening_datetime?: string | null
           opening_time_confirmed?: boolean
+          pipeline?: string | null
           place_name?: string | null
           public_explanation?: string | null
           region_id?: string | null
@@ -270,6 +282,7 @@ export type Database = {
           run_start_date?: string | null
           sensitivity_tags?: string[]
           source: string
+          source_account?: string | null
           source_url?: string | null
           title: string
         }
@@ -288,6 +301,7 @@ export type Database = {
           opening_date_confidence?: string
           opening_datetime?: string | null
           opening_time_confirmed?: boolean
+          pipeline?: string | null
           place_name?: string | null
           public_explanation?: string | null
           region_id?: string | null
@@ -297,6 +311,7 @@ export type Database = {
           run_start_date?: string | null
           sensitivity_tags?: string[]
           source?: string
+          source_account?: string | null
           source_url?: string | null
           title?: string
         }
@@ -344,6 +359,87 @@ export type Database = {
           email?: string
           id?: string
           unsubscribed_at?: string | null
+        }
+        Relationships: []
+      }
+      out_of_scope_signals: {
+        Row: {
+          anchor_date: string | null
+          category: string
+          created_at: string
+          id: string
+          pipeline: string
+          reason: string
+          region_id: string | null
+          source_account: string | null
+          source_url: string | null
+          title: string
+        }
+        Insert: {
+          anchor_date?: string | null
+          category: string
+          created_at?: string
+          id?: string
+          pipeline: string
+          reason: string
+          region_id?: string | null
+          source_account?: string | null
+          source_url?: string | null
+          title: string
+        }
+        Update: {
+          anchor_date?: string | null
+          category?: string
+          created_at?: string
+          id?: string
+          pipeline?: string
+          reason?: string
+          region_id?: string | null
+          source_account?: string | null
+          source_url?: string | null
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "out_of_scope_signals_region_id_fkey"
+            columns: ["region_id"]
+            isOneToOne: false
+            referencedRelation: "regions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "out_of_scope_signals_region_id_fkey"
+            columns: ["region_id"]
+            isOneToOne: false
+            referencedRelation: "regions_public"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      platform_cost_snapshots: {
+        Row: {
+          amount_usd: number
+          id: string
+          platform: string
+          raw: Json | null
+          recorded_at: string
+          usage_date: string
+        }
+        Insert: {
+          amount_usd: number
+          id?: string
+          platform: string
+          raw?: Json | null
+          recorded_at?: string
+          usage_date: string
+        }
+        Update: {
+          amount_usd?: number
+          id?: string
+          platform?: string
+          raw?: Json | null
+          recorded_at?: string
+          usage_date?: string
         }
         Relationships: []
       }
@@ -461,8 +557,10 @@ export type Database = {
           created_at: string
           id: string
           location: string | null
+          pipeline: string | null
           reason: string
           region_id: string | null
+          source_account: string | null
           source_url: string
           title: string
         }
@@ -471,8 +569,10 @@ export type Database = {
           created_at?: string
           id?: string
           location?: string | null
+          pipeline?: string | null
           reason: string
           region_id?: string | null
+          source_account?: string | null
           source_url: string
           title: string
         }
@@ -481,8 +581,10 @@ export type Database = {
           created_at?: string
           id?: string
           location?: string | null
+          pipeline?: string | null
           reason?: string
           region_id?: string | null
+          source_account?: string | null
           source_url?: string
           title?: string
         }
