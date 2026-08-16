@@ -72,6 +72,14 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-inter);
 
+  /* Registered here (not just referenced via an arbitrary animate-[...]
+     value) because Tailwind v4's build strips a hand-written @keyframes
+     block that nothing in the theme ties to a utility — confirmed via
+     the real bug: the animation-name/duration/play-state all applied
+     correctly, but the @keyframes rule itself was silently missing from
+     every loaded stylesheet, so the dashes never actually moved. */
+  --animate-week-nav-dashes: week-nav-dashes 0.6s linear infinite;
+
   --color-venue-gray: var(--color-venue-gray);
   --color-period-gray: var(--color-period-gray);
   --color-heading-gray: var(--color-heading-gray);
@@ -112,4 +120,18 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans), Arial, Helvetica, sans-serif;
+}
+
+/* Week-nav loading indicator (Header.tsx) — a "marching dashes" bar
+   instead of a spinner, per the user's explicit request (2026-08-15):
+   tapping the week chevrons gave no feedback that a fetch was in
+   flight. Dash size (10px on, 8px off) must match background-size
+   below so the loop is seamless. */
+@keyframes week-nav-dashes {
+  from {
+    background-position: 0 0;
+  }
+  to {
+    background-position: 18px 0;
+  }
 }

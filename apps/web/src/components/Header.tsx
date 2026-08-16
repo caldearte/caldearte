@@ -17,6 +17,26 @@ interface HeaderProps {
   cityPickerTriggerRef: RefObject<HTMLButtonElement | null>;
   onOpenSearch: () => void;
   onOpenMenu: () => void;
+  isRefreshing: boolean;
+}
+
+// "Marching dashes" loading bar — replaces the week-range/chevron row
+// while HomeClient's fetch is in flight (see that file's own comment on
+// why a spinner/plain Link-pending check doesn't cover this gap). Fixed
+// width rather than matching the row's exact (variable) text width —
+// acceptable brief layout shift for a loading state, see the plan.
+function WeekNavLoadingBar() {
+  return (
+    <div
+      role="status"
+      aria-label={esCL.weekLoadingAriaLabel}
+      className="w-[140px] h-[3px] rounded-full animate-week-nav-dashes"
+      style={{
+        backgroundImage: "repeating-linear-gradient(90deg, var(--color-brand-magenta) 0 10px, transparent 10px 18px)",
+        backgroundSize: "18px 100%",
+      }}
+    />
+  );
 }
 
 function SearchButton({ onClick }: { onClick: () => void }) {
@@ -123,6 +143,7 @@ export default function Header({
   cityPickerTriggerRef,
   onOpenSearch,
   onOpenMenu,
+  isRefreshing,
 }: HeaderProps) {
   const weekRangeLabel = fmtWeekRange(rangeStart, rangeEnd);
   const heroRef = useRef<HTMLDivElement>(null);
@@ -250,48 +271,58 @@ export default function Header({
             </button>
           </div>
 
-          <div className="flex items-center gap-[9px]">
-            {/* Hidden at SEMANA N°1 — that's the epoch week (lunes 27 de
-                julio de 2026, ver weekNumberSince en lib/date.ts), Caldearte
-                no existía antes de esa semana, así que no hay adónde
-                retroceder. weekNumberSince ya clampea a 1 cualquier semana
-                anterior al epoch, así que esta condición también cubre
-                (aunque nunca debería alcanzarse, dado que el chevron ya
-                estaría oculto) cualquier semana previa. */}
-            {weekNumber > 1 && (
-              <Link
-                href={prevWeekHref}
-                aria-label={esCL.prevWeekAriaLabel}
-                scroll={false}
-                className="inline-flex shrink-0"
-              >
-                {/* eslint-disable-next-line @next/next/no-img-element -- Figma-exported asset, verbatim per design decision */}
-                <img
-                  src="/icons/chevron-right.svg"
-                  alt=""
-                  width={7}
-                  height={14}
-                  className="rotate-180"
-                />
-              </Link>
+          <div className="flex items-center justify-center gap-[9px] h-[18px]">
+            {isRefreshing ? (
+              // Replaces both chevrons + the range text — see
+              // WeekNavLoadingBar's own comment. Not rendering the
+              // chevrons here also means a rapid repeat tap can't queue
+              // another navigation mid-fetch.
+              <WeekNavLoadingBar />
+            ) : (
+              <>
+                {/* Hidden at SEMANA N°1 — that's the epoch week (lunes 27 de
+                    julio de 2026, ver weekNumberSince en lib/date.ts), Caldearte
+                    no existía antes de esa semana, así que no hay adónde
+                    retroceder. weekNumberSince ya clampea a 1 cualquier semana
+                    anterior al epoch, así que esta condición también cubre
+                    (aunque nunca debería alcanzarse, dado que el chevron ya
+                    estaría oculto) cualquier semana previa. */}
+                {weekNumber > 1 && (
+                  <Link
+                    href={prevWeekHref}
+                    aria-label={esCL.prevWeekAriaLabel}
+                    scroll={false}
+                    className="inline-flex shrink-0"
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element -- Figma-exported asset, verbatim per design decision */}
+                    <img
+                      src="/icons/chevron-right.svg"
+                      alt=""
+                      width={7}
+                      height={14}
+                      className="rotate-180"
+                    />
+                  </Link>
+                )}
+                <span className="font-fragment-mono text-[18px] text-border-default tracking-[-0.84px] whitespace-nowrap">
+                  {weekRangeLabel}
+                </span>
+                <Link
+                  href={nextWeekHref}
+                  aria-label={esCL.nextWeekAriaLabel}
+                  scroll={false}
+                  className="inline-flex shrink-0"
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element -- Figma-exported asset, verbatim per design decision */}
+                  <img
+                    src="/icons/chevron-right.svg"
+                    alt=""
+                    width={7}
+                    height={14}
+                  />
+                </Link>
+              </>
             )}
-            <span className="font-fragment-mono text-[18px] text-border-default tracking-[-0.84px] whitespace-nowrap">
-              {weekRangeLabel}
-            </span>
-            <Link
-              href={nextWeekHref}
-              aria-label={esCL.nextWeekAriaLabel}
-              scroll={false}
-              className="inline-flex shrink-0"
-            >
-              {/* eslint-disable-next-line @next/next/no-img-element -- Figma-exported asset, verbatim per design decision */}
-              <img
-                src="/icons/chevron-right.svg"
-                alt=""
-                width={7}
-                height={14}
-              />
-            </Link>
           </div>
         </div>
       </div>
