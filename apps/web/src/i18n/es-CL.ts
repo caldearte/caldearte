@@ -301,6 +301,7 @@ export const esCL = {
   // sign out (reuses loginPage.signOut's copy/behavior).
   adminMenu: {
     home: "Inicio",
+    dashboard: "Dashboard",
     costos: "Costos",
   },
 

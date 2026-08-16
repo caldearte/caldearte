@@ -56,16 +56,25 @@ export default function AdminDashboard({ data }: { data: AdminAnalyticsPayload }
         <NationalOverviewChart events={data.events} periods={periods} granularity={granularity} />
       </section>
 
-      <section>
-        <h2 className="font-fragment-mono uppercase text-[18px] text-text-primary mb-4">Exposiciones por región</h2>
-        <ExposicionesPorRegionChart events={data.events} periods={periods} granularity={granularity} />
-      </section>
+      {/* 2 columns on desktop so both región breakdowns fit the page's
+          existing width side by side instead of one very wide chart
+          each — same height per chart either way, 1 column on mobile. */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <section>
+          <h2 className="font-fragment-mono uppercase text-[18px] text-text-primary mb-4">Exposiciones por región</h2>
+          <ExposicionesPorRegionChart events={data.events} periods={periods} granularity={granularity} />
+        </section>
 
-      <section>
-        <h2 className="font-fragment-mono uppercase text-[18px] text-text-primary mb-4">Inauguraciones por región</h2>
-        <InauguracionesPorRegionChart events={data.events} periods={periods} granularity={granularity} />
-      </section>
+        <section>
+          <h2 className="font-fragment-mono uppercase text-[18px] text-text-primary mb-4">Inauguraciones por región</h2>
+          <InauguracionesPorRegionChart events={data.events} periods={periods} granularity={granularity} />
+        </section>
+      </div>
 
+      {/* Deliberately its own full-width row, not paired in the grid
+          above — kept clearly separate from the región breakdowns
+          (Daniel's explicit request, 2026-08-16), since it's a
+          different dimension (source/pipeline, not región). */}
       <section>
         <h2 className="font-fragment-mono uppercase text-[18px] text-text-primary mb-4">Fuentes por pipeline</h2>
         <FuentesPorPipelineChart events={data.events} periods={periods} granularity={granularity} />
