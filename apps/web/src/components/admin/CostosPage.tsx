@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import dynamic from "next/dynamic";
-import { enumeratePeriods, type Granularity } from "@/lib/adminAnalyticsBucketing";
+import { enumeratePeriods, formatPeriodLabel, type Granularity } from "@/lib/adminAnalyticsBucketing";
 import CostTable from "./CostTable";
 import GranularityToggle from "./GranularityToggle";
 
@@ -30,6 +30,11 @@ export default function CostosPage({
   apifyCostByDay: CostRow[];
 }) {
   const [granularity, setGranularity] = useState<Granularity>("month");
+  // Raw period key (e.g. "2026-07-03"), set while hovering a CostTable
+  // row — formatted per chart below since the chart's ReferenceLine
+  // needs the same string shape as its own X axis labels.
+  const [hoveredPeriod, setHoveredPeriod] = useState<string | null>(null);
+  const highlightedPeriodLabel = hoveredPeriod ? formatPeriodLabel(hoveredPeriod, granularity) : null;
 
   const { minDate, maxDate } = useMemo(() => {
     const dates = [...anthropicCostByDay.map((c) => c.date), ...apifyCostByDay.map((c) => c.date)];
@@ -54,18 +59,36 @@ export default function CostosPage({
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
         <section>
           <h2 className="font-fragment-mono uppercase text-[18px] text-text-primary mb-4">Costos totales</h2>
-          <TotalCostChart anthropicCostByDay={anthropicCostByDay} apifyCostByDay={apifyCostByDay} periods={periods} granularity={granularity} />
+          <TotalCostChart
+            anthropicCostByDay={anthropicCostByDay}
+            apifyCostByDay={apifyCostByDay}
+            periods={periods}
+            granularity={granularity}
+            highlightedPeriodLabel={highlightedPeriodLabel}
+          />
         </section>
 
         <section>
           <h2 className="font-fragment-mono uppercase text-[18px] text-text-primary mb-4">Costos por servicio</h2>
-          <CostHistoryChart anthropicCostByDay={anthropicCostByDay} apifyCostByDay={apifyCostByDay} periods={periods} granularity={granularity} />
+          <CostHistoryChart
+            anthropicCostByDay={anthropicCostByDay}
+            apifyCostByDay={apifyCostByDay}
+            periods={periods}
+            granularity={granularity}
+            highlightedPeriodLabel={highlightedPeriodLabel}
+          />
         </section>
       </div>
 
       <section>
         <h2 className="font-fragment-mono uppercase text-[18px] text-text-primary mb-4">Detalle por período</h2>
-        <CostTable anthropicCostByDay={anthropicCostByDay} apifyCostByDay={apifyCostByDay} periods={periods} granularity={granularity} />
+        <CostTable
+          anthropicCostByDay={anthropicCostByDay}
+          apifyCostByDay={apifyCostByDay}
+          periods={periods}
+          granularity={granularity}
+          onHoverPeriod={setHoveredPeriod}
+        />
       </section>
     </div>
   );

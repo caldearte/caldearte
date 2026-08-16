@@ -1,3 +1,5 @@
+"use client";
+
 import { formatPeriodLabel, sumAmountByPeriod, type Granularity } from "@/lib/adminAnalyticsBucketing";
 
 interface CostRow {
@@ -12,17 +14,21 @@ function formatUsd(value: number): string {
 // Plain table below the charts — copying exact numbers off an area
 // chart is genuinely hard (Daniel's explicit request, 2026-08-16); this
 // updates with the same granularity toggle the charts use, one row per
-// period, easy to select/copy.
+// period, easy to select/copy. Hovering a row also drives the vertical
+// "you are pointing here" ReferenceLine on both charts above (via
+// onHoverPeriod, raw period key — CostosPage formats it per chart).
 export default function CostTable({
   anthropicCostByDay,
   apifyCostByDay,
   periods,
   granularity,
+  onHoverPeriod,
 }: {
   anthropicCostByDay: CostRow[];
   apifyCostByDay: CostRow[];
   periods: string[];
   granularity: Granularity;
+  onHoverPeriod?: (period: string | null) => void;
 }) {
   const anthropic = sumAmountByPeriod(
     anthropicCostByDay.map((r) => ({ date: r.date, amount: r.amountUsd })),
@@ -65,7 +71,12 @@ export default function CostTable({
         </thead>
         <tbody>
           {rows.map((row) => (
-            <tr key={row.period} className="border-b border-text-primary/10">
+            <tr
+              key={row.period}
+              className="border-b border-text-primary/10 hover:bg-surface-white"
+              onMouseEnter={() => onHoverPeriod?.(row.period)}
+              onMouseLeave={() => onHoverPeriod?.(null)}
+            >
               <td className="py-2 pr-4">{row.label}</td>
               <td className="py-2 pr-4 text-right">{formatUsd(row.anthropicUsd)}</td>
               <td className="py-2 pr-4 text-right">{formatUsd(row.apifyUsd)}</td>

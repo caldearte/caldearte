@@ -1,6 +1,6 @@
 "use client";
 
-import { Area, AreaChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { Area, AreaChart, CartesianGrid, Legend, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { formatPeriodLabel, sumAmountByPeriod, type Granularity } from "@/lib/adminAnalyticsBucketing";
 import StatBars from "./StatBars";
 
@@ -24,11 +24,15 @@ export default function CostHistoryChart({
   apifyCostByDay,
   periods,
   granularity,
+  highlightedPeriodLabel,
 }: {
   anthropicCostByDay: CostRow[];
   apifyCostByDay: CostRow[];
   periods: string[];
   granularity: Granularity;
+  // Set while hovering a row in CostTable — see TotalCostChart's own
+  // comment on why this is hover-driven, not always-on.
+  highlightedPeriodLabel?: string | null;
 }) {
   const anthropic = sumAmountByPeriod(
     anthropicCostByDay.map((r) => ({ date: r.date, amount: r.amountUsd })),
@@ -68,6 +72,7 @@ export default function CostHistoryChart({
           <YAxis tick={{ fontSize: 12 }} tickFormatter={(v) => `$${v}`} />
           <Tooltip formatter={(value) => formatUsd(Number(value))} />
           <Legend />
+          {highlightedPeriodLabel && <ReferenceLine x={highlightedPeriodLabel} stroke="#000000" strokeWidth={3} />}
           <Area type="monotone" dataKey="anthropicUsd" name="Anthropic" stroke="#ff00fb" fill="#ff00fb" fillOpacity={0.35} />
           <Area type="monotone" dataKey="apifyUsd" name="Apify" stroke="#3d373d" fill="#3d373d" fillOpacity={0.25} />
         </AreaChart>
