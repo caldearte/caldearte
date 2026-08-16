@@ -55,6 +55,10 @@ export const esCL = {
   // natural text wrap) — desktop keeps heroTagline as one line.
   heroTaglineMobileLines: ["GUÍA", "INDEPENDIENTE", "DE ARTE SEMANAL"],
   weekNumberLabel: (n: number) => `SEMANA N°${n}`,
+  // Shown next to "SEMANA N°X" only when viewing a week other than the
+  // real current one — a quick way back, real ?semana= Link (goes
+  // through the same fetch/loading state as the chevrons).
+  currentWeekLinkLabel: "Semana actual",
   prevWeekAriaLabel: "Semana anterior",
   nextWeekAriaLabel: "Semana siguiente",
   weekLoadingAriaLabel: "Cargando semana",
