@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import { enumeratePeriods, type Granularity } from "@/lib/adminAnalyticsBucketing";
+import CostTable from "./CostTable";
 import GranularityToggle from "./GranularityToggle";
 
 // Same recharts/SSR reasoning as AdminDashboard's own dynamic imports —
@@ -61,6 +62,11 @@ export default function CostosPage({
           <CostHistoryChart anthropicCostByDay={anthropicCostByDay} apifyCostByDay={apifyCostByDay} periods={periods} granularity={granularity} />
         </section>
       </div>
+
+      <section>
+        <h2 className="font-fragment-mono uppercase text-[18px] text-text-primary mb-4">Detalle por período</h2>
+        <CostTable anthropicCostByDay={anthropicCostByDay} apifyCostByDay={apifyCostByDay} periods={periods} granularity={granularity} />
+      </section>
     </div>
   );
 }
