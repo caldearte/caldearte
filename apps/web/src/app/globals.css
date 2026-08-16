@@ -72,6 +72,14 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-inter);
 
+  /* Registered here (not just referenced via an arbitrary animate-[...]
+     value) because Tailwind v4's build strips a hand-written @keyframes
+     block that nothing in the theme ties to a utility — confirmed via
+     the real bug: the animation-name/duration/play-state all applied
+     correctly, but the @keyframes rule itself was silently missing from
+     every loaded stylesheet, so the dashes never actually moved. */
+  --animate-week-nav-dashes: week-nav-dashes 0.6s linear infinite;
+
   --color-venue-gray: var(--color-venue-gray);
   --color-period-gray: var(--color-period-gray);
   --color-heading-gray: var(--color-heading-gray);

@@ -48,8 +48,16 @@ export default function HomeClient({ initialModel }: HomeClientProps) {
   // the LATEST claimed id is allowed to setModel.
   const latestRequestId = useRef(0);
 
+  // On a fast connection/local Supabase, the fetch can resolve in well
+  // under 500ms — too quick to actually register as "something is
+  // happening" (real user report, 2026-08-15, after the loading bar
+  // itself already shipped). Keeps the bar visible for at least this
+  // long regardless of how fast the real fetch was.
+  const MIN_LOADING_MS = 500;
+
   async function refresh() {
     const requestId = ++latestRequestId.current;
+    const startedAt = Date.now();
     const qs = new URLSearchParams();
     const semana = searchParams.get("semana");
     const newsletter = searchParams.get("newsletter");
@@ -66,7 +74,11 @@ export default function HomeClient({ initialModel }: HomeClientProps) {
       // already on screen (the cached default, or their last-fetched
       // personalized view); not worth surfacing an error for this.
     } finally {
-      if (requestId === latestRequestId.current) setIsRefreshing(false);
+      if (requestId === latestRequestId.current) {
+        const remaining = MIN_LOADING_MS - (Date.now() - startedAt);
+        if (remaining > 0) await new Promise((r) => setTimeout(r, remaining));
+        if (requestId === latestRequestId.current) setIsRefreshing(false);
+      }
     }
   }
 

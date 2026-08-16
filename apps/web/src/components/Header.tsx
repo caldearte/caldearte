@@ -30,7 +30,7 @@ function WeekNavLoadingBar() {
     <div
       role="status"
       aria-label={esCL.weekLoadingAriaLabel}
-      className="w-[140px] h-[3px] rounded-full animate-[week-nav-dashes_0.6s_linear_infinite]"
+      className="w-[140px] h-[3px] rounded-full animate-week-nav-dashes"
       style={{
         backgroundImage: "repeating-linear-gradient(90deg, var(--color-brand-magenta) 0 10px, transparent 10px 18px)",
         backgroundSize: "18px 100%",
