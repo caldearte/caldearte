@@ -42,6 +42,8 @@ export interface AdminAnalyticsPayload {
     rejected: number;
     possiblyDead: boolean;
   }>;
+  anthropicCostByDay: Array<{ date: string; amountUsd: number }>;
+  apifyCostByDay: Array<{ date: string; amountUsd: number }>;
 }
 
 // Deliberately unlinked from Header/Footer/MenuDrawer — same posture as

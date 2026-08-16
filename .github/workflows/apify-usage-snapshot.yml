@@ -1,0 +1,34 @@
+name: Record Apify Usage Snapshot
+
+# Daily cost-tracking snapshot — Apify has no per-call ledger reaching
+# our own DB the way Anthropic does (api_usage_log), only their own
+# account usage API. Runs daily (not weekly, like the actual Instagram
+# fetch cron) so the admin cost dashboard has real day-by-day history —
+# the script itself upserts every day Apify's response returns, so a
+# missed run self-heals on the next one instead of leaving a gap.
+on:
+  workflow_dispatch: {}
+  schedule:
+    - cron: "0 9 * * *" # Daily, 09:00 UTC
+
+jobs:
+  record-apify-usage:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Record Apify usage snapshot
+        run: pnpm --filter @caldearte/curator run record-apify-usage
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          APIFY_TOKEN: ${{ secrets.APIFY_TOKEN }}
