@@ -53,6 +53,7 @@ export default function CostTable({
       totalUsd: anthropicUsd + apifyUsd,
     };
   });
+  rows.reverse(); // most recent period first — easier to scan/copy than oldest-first
 
   if (rows.length === 0) {
     return <p className="font-geist text-[14px] text-text-primary/70">Sin datos todavía.</p>;
