@@ -8,8 +8,9 @@ import DrawerShell from "@/components/DrawerShell";
 
 // Same DrawerShell chrome MenuDrawer uses on the public site — /admin has
 // no Header of its own, so this owns its own hamburger trigger instead of
-// sharing Header's. Two entries only: back to the public site, and sign
-// out (reuses the same signOut() call and copy as /login's own button).
+// sharing Header's. "Inicio" moved to the top bar directly (Daniel's
+// request, 2026-08-16) — this drawer now holds cross-page nav within
+// admin mode (currently just Costos) plus sign out.
 export default function AdminMenu() {
   const [open, setOpen] = useState(false);
 
@@ -27,8 +28,8 @@ export default function AdminMenu() {
         </button>
 
         <div className="mt-[40px] flex flex-col gap-[24px]">
-          <Link href="/" className="font-fragment-mono uppercase text-[16px]" onClick={() => setOpen(false)}>
-            {esCL.adminMenu.home}
+          <Link href="/admin/costos" className="font-fragment-mono uppercase text-[16px]" onClick={() => setOpen(false)}>
+            {esCL.adminMenu.costos}
           </Link>
           <button type="button" onClick={() => signOut()} className="self-start font-fragment-mono uppercase text-[16px] cursor-pointer">
             {esCL.loginPage.signOut}

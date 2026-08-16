@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import { enumeratePeriods, type Granularity } from "@/lib/adminAnalyticsBucketing";
-import type { AdminAnalyticsPayload } from "@/app/admin/page";
+import type { AdminAnalyticsPayload } from "@/lib/adminAnalytics";
 import GranularityToggle from "./GranularityToggle";
 import SourceComparisonTable from "./SourceComparisonTable";
 import BrightSourcesTable from "./BrightSourcesTable";
@@ -21,7 +21,6 @@ const NationalOverviewChart = dynamic(() => import("./NationalOverviewChart"), {
 const ExposicionesPorRegionChart = dynamic(() => import("./ExposicionesPorRegionChart"), { ssr: false, loading: ChartLoading });
 const InauguracionesPorRegionChart = dynamic(() => import("./InauguracionesPorRegionChart"), { ssr: false, loading: ChartLoading });
 const FuentesPorPipelineChart = dynamic(() => import("./FuentesPorPipelineChart"), { ssr: false, loading: ChartLoading });
-const CostHistoryChart = dynamic(() => import("./CostHistoryChart"), { ssr: false, loading: ChartLoading });
 
 // Owns the one shared granularity toggle — everything below re-renders
 // from the same in-memory payload the server component fetched once, no
@@ -38,8 +37,6 @@ export default function AdminDashboard({ data }: { data: AdminAnalyticsPayload }
       if (e.runEnd) dates.push(e.runEnd);
     }
     for (const s of data.outOfScopeSignals) dates.push(s.createdAt.slice(0, 10));
-    for (const c of data.anthropicCostByDay) dates.push(c.date);
-    for (const c of data.apifyCostByDay) dates.push(c.date);
     if (dates.length === 0) {
       const today = new Date().toISOString().slice(0, 10);
       return { minDate: today, maxDate: today };
@@ -72,16 +69,6 @@ export default function AdminDashboard({ data }: { data: AdminAnalyticsPayload }
       <section>
         <h2 className="font-fragment-mono uppercase text-[18px] text-text-primary mb-4">Fuentes por pipeline</h2>
         <FuentesPorPipelineChart events={data.events} periods={periods} granularity={granularity} />
-      </section>
-
-      <section>
-        <h2 className="font-fragment-mono uppercase text-[18px] text-text-primary mb-4">Costo histórico</h2>
-        <CostHistoryChart
-          anthropicCostByDay={data.anthropicCostByDay}
-          apifyCostByDay={data.apifyCostByDay}
-          periods={periods}
-          granularity={granularity}
-        />
       </section>
 
       <section>
