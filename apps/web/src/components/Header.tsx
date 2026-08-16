@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useRef, useState, type RefObject } from "react";
 import { esCL } from "@/i18n/es-CL";
-import { fmtWeekRange } from "@/lib/date";
+import { currentWeekInSantiago, fmtWeekRange } from "@/lib/date";
 import { useIsAdmin } from "@/lib/useIsAdmin";
 
 interface HeaderProps {
@@ -146,6 +146,14 @@ export default function Header({
   isRefreshing,
 }: HeaderProps) {
   const weekRangeLabel = fmtWeekRange(rangeStart, rangeEnd);
+  // "Semana actual" link — only when the week actually being shown isn't
+  // the real current week (Daniel's explicit request, 2026-08-16). A
+  // real ?semana= Link, same as the prev/next chevrons, so clicking it
+  // goes through the exact same fetch + isRefreshing loading state, not
+  // a special case.
+  const currentWeekStart = currentWeekInSantiago().start;
+  const isCurrentWeek = rangeStart === currentWeekStart;
+  const currentWeekHref = `/?semana=${currentWeekStart}`;
   const heroRef = useRef<HTMLDivElement>(null);
   // Only the top nav (Buscar/Menú row) is sticky — the hero itself scrolls
   // away normally. Once the hero is fully out of view, the sticky nav
@@ -228,9 +236,16 @@ export default function Header({
               match — that's what pins "SEMANA N°X" to the button's own
               left edge instead of floating centered above it. */}
           <div className="flex flex-col gap-[11px]">
-            <p className="w-full text-left font-fragment-mono text-[18px] text-border-default tracking-[-0.84px]">
-              {esCL.weekNumberLabel(weekNumber)}
-            </p>
+            <div className="w-full flex items-end justify-between gap-[9px]">
+              <p className="text-left font-fragment-mono text-[18px] text-border-default tracking-[-0.84px]">
+                {esCL.weekNumberLabel(weekNumber)}
+              </p>
+              {!isCurrentWeek && !isRefreshing && (
+                <Link href={currentWeekHref} scroll={false} className="font-fragment-mono text-[12px] text-brand-magenta underline whitespace-nowrap">
+                  {esCL.currentWeekLinkLabel}
+                </Link>
+              )}
+            </div>
 
             <button
               ref={cityPickerTriggerRef}
