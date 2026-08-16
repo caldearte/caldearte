@@ -1,7 +1,7 @@
 "use client";
 
-import { Area, AreaChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { countActiveByPeriod, type Granularity } from "@/lib/adminAnalyticsBucketing";
+import { Area, AreaChart, CartesianGrid, Legend, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { countActiveByPeriod, currentPeriodLabel, type Granularity } from "@/lib/adminAnalyticsBucketing";
 import { shortRegionName } from "@/lib/regionNames";
 import { colorFor } from "./chartPalette";
 import { pivotBuckets } from "./pivotBuckets";
@@ -61,6 +61,7 @@ export default function ExposicionesPorRegionChart({
           <YAxis allowDecimals={false} tick={{ fontSize: 12 }} />
           <Tooltip />
           <Legend />
+          <ReferenceLine x={currentPeriodLabel(granularity)} stroke="#000000" strokeWidth={3} />
           {groups.map((group, i) => (
             <Area key={group} type="monotone" dataKey={group} name={group} stackId="1" stroke={colorFor(i)} fill={colorFor(i)} fillOpacity={0.75} />
           ))}

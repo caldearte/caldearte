@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   bucketLabel,
   countActiveByPeriod,
+  currentPeriodLabel,
   enumeratePeriods,
   formatPeriodLabel,
   sumAmountByPeriod,
@@ -99,4 +100,12 @@ test("formatPeriodLabel: matches the reference charts' Spanish month'YY style, a
   assert.equal(formatPeriodLabel("2026", "year"), "2026");
   assert.equal(formatPeriodLabel("2026-08-10", "week"), "10-ago");
   assert.equal(formatPeriodLabel("total", "total"), "Total");
+});
+
+test("currentPeriodLabel: formats 'now' the same way the chart's own X axis formats its periods, per granularity", () => {
+  const now = new Date("2026-08-14T12:00:00.000Z"); // a Friday
+  assert.equal(currentPeriodLabel("week", now), "10-ago"); // that week's Monday
+  assert.equal(currentPeriodLabel("month", now), "ago'26");
+  assert.equal(currentPeriodLabel("year", now), "2026");
+  assert.equal(currentPeriodLabel("total", now), "Total");
 });

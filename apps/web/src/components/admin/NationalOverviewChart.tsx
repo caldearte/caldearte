@@ -1,7 +1,7 @@
 "use client";
 
-import { Area, AreaChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { countActiveByPeriod, formatPeriodLabel, sumFlowByPeriod, type Granularity } from "@/lib/adminAnalyticsBucketing";
+import { Area, AreaChart, CartesianGrid, Legend, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { countActiveByPeriod, currentPeriodLabel, formatPeriodLabel, sumFlowByPeriod, type Granularity } from "@/lib/adminAnalyticsBucketing";
 import StatBars from "./StatBars";
 
 interface EventRow {
@@ -62,6 +62,10 @@ export default function NationalOverviewChart({
           <YAxis allowDecimals={false} tick={{ fontSize: 12 }} />
           <Tooltip />
           <Legend />
+          {/* "You are here" — the current week/month/year, always on for
+              the main dashboard's charts (Daniel's explicit request,
+              2026-08-16), unlike /admin/costos' hover-driven version. */}
+          <ReferenceLine x={currentPeriodLabel(granularity)} stroke="#000000" strokeWidth={3} />
           <Area type="monotone" dataKey="inauguraciones" name="Inauguraciones" stroke="#ff00fb" fill="#ff00fb" fillOpacity={0.35} />
           <Area type="monotone" dataKey="exposicionesActivas" name="Expos activas" stroke="#3d373d" fill="#3d373d" fillOpacity={0.25} />
         </AreaChart>
