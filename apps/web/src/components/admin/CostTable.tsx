@@ -98,8 +98,8 @@ export default function CostTable({
             </th>
           </tr>
           <tr className="border-b border-text-primary/20 text-left">
-            <th className="pb-2 pr-4 text-right font-normal text-text-primary/60">Gratuito</th>
-            <th className="pb-2 pr-4 text-right font-normal">Real</th>
+            <th className="pb-2 pr-4 text-center font-normal text-text-primary/60">Gratuito</th>
+            <th className="pb-2 pr-4 text-center font-normal">Real</th>
           </tr>
         </thead>
         <tbody>
@@ -113,8 +113,8 @@ export default function CostTable({
               <td className="py-2 pr-4">{row.label}</td>
               <td className="py-2 pr-4 text-right">{formatUsd(row.anthropicUsd)}</td>
               {/* Muted on purpose — not real money, not part of Total. */}
-              <td className="py-2 pr-4 text-right text-text-primary/40">{formatUsd(row.apifyFreeUsd)}</td>
-              <td className="py-2 pr-4 text-right">{formatUsd(row.apifyRealUsd)}</td>
+              <td className="py-2 pr-4 text-center text-text-primary/40">{formatUsd(row.apifyFreeUsd)}</td>
+              <td className="py-2 pr-4 text-center">{formatUsd(row.apifyRealUsd)}</td>
               <td className="py-2 pr-4 text-right">{formatUsd(row.totalUsd)}</td>
             </tr>
           ))}
