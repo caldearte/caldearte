@@ -296,10 +296,12 @@ export const esCL = {
   adminLink: "Admin",
 
   // Hamburger menu on /admin itself — same DrawerShell chrome as
-  // MenuDrawer, just two entries: back to the public site, and sign out
-  // (reuses loginPage.signOut's copy/behavior).
+  // MenuDrawer. `home` is used in the top bar directly (AdminPageShell),
+  // not inside the drawer — the drawer holds cross-page nav (Costos) and
+  // sign out (reuses loginPage.signOut's copy/behavior).
   adminMenu: {
     home: "Inicio",
+    costos: "Costos",
   },
 
   // /eventos/[id] — the shareable, individually-linkable page for one
