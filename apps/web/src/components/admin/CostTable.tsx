@@ -84,22 +84,22 @@ export default function CostTable({
       <table className="w-full font-geist text-[14px] text-text-primary border-collapse">
         <thead className="sticky top-0 bg-surface-sage">
           <tr className="text-left">
-            <th className="py-2 pr-4" rowSpan={2}>
+            <th className="py-2 pr-4 align-top" rowSpan={2}>
               Período
             </th>
-            <th className="py-2 pr-4 text-right" rowSpan={2}>
+            <th className="py-2 pr-4 text-right align-top" rowSpan={2}>
               Anthropic
             </th>
-            <th className="py-2 pr-4 text-center" colSpan={2}>
+            <th className="py-2 text-center align-top" colSpan={2}>
               Apify
             </th>
-            <th className="py-2 pr-4 text-right" rowSpan={2}>
+            <th className="py-2 pr-4 text-right align-top" rowSpan={2}>
               Total
             </th>
           </tr>
           <tr className="border-b border-text-primary/20 text-left">
             <th className="pb-2 pr-4 text-right font-normal text-text-primary/60">Gratuito</th>
-            <th className="pb-2 pr-4 text-right font-normal text-text-primary/60">Real</th>
+            <th className="pb-2 pr-4 text-right font-normal">Real</th>
           </tr>
         </thead>
         <tbody>
