@@ -60,9 +60,12 @@ export default function CostTable({
   }
 
   return (
-    <div className="overflow-x-auto">
+    // Fixed height showing ~5 data rows + header, scrolls for the rest
+    // (Daniel's explicit request, 2026-08-16) — header stays pinned
+    // (sticky) while scrolling so the columns stay legible.
+    <div className="overflow-x-auto overflow-y-auto max-h-[240px]">
       <table className="w-full font-geist text-[14px] text-text-primary border-collapse">
-        <thead>
+        <thead className="sticky top-0 bg-surface-sage">
           <tr className="border-b border-text-primary/20 text-left">
             <th className="py-2 pr-4">Período</th>
             <th className="py-2 pr-4 text-right">Anthropic</th>
