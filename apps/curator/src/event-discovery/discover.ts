@@ -963,7 +963,7 @@ ${TEXT_CURATION_POLICY}
 
 ${INSTITUTIONAL_EXCLUSION_POLICY}
 
-Importante sobre fechas: estamos armando el calendario de ${monthLabel}. Un evento cuya vigencia (runEndDate, o runStartDate si no hay término) ya terminó antes de ${monthLabel} no es útil, pero el código ya filtra eso al final — no rechaces solo por eso, tu juicio es sobre si el contenido ES arte visual real en alcance, no sobre su vigencia temporal exacta.
+Importante sobre fechas — regla dura, no una sugerencia: estamos armando el calendario de ${monthLabel}, pero tu \`status\` NUNCA debe basarse en si la fecha cae antes, dentro, o después de ${monthLabel} — eso lo decide el código automáticamente después, con la fecha exacta que tú reportes en \`runStartDate\`/\`runEndDate\`/\`openingDatetime\`. Tu \`status\` es EXCLUSIVAMENTE sobre si el contenido ES una exposición o intervención de arte visual real en alcance. Un evento real que ya terminó, o que recién empieza en un mes futuro, sigue siendo \`"approved"\` si el contenido en sí es válido — repórtalo con su fecha real, no lo rechaces ni le inventes otra fecha para "hacerlo caber" en ${monthLabel}. Caso real que este calendario perdió por hacer esto mal: una exposición real de octubre 2026, con fecha confirmada en el texto, fue rechazada con el razonamiento "outside the August 2026 calendar scope" — eso es exactamente el error a evitar; el código, no tu \`status\`, es quien decide si octubre queda fuera del calendario de agosto.
 
 Etiqueta también: \`mediumType\` ("tradicional" o "intervencion_no_tradicional") y \`sensitivityTags\` (array de ["desnudo_erotismo", "guerra_violencia", "memoria_dictadura"], vacío si no aplica). Escribe un \`curationReasoning\` breve explicando tu decisión.
 
