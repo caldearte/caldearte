@@ -51,7 +51,7 @@ Deno.serve(async (req) => {
   }
 
   // ---- events (all-time, approved, not soft-removed) -----------------
-  const [eventsRes, signalsRes, rejectedRes, usageRes, fetchStateRes, costSnapshotsRes] = await Promise.all([
+  const [eventsRes, signalsRes, rejectedRes, usageRes, fetchStateRes, costSnapshotsRes, pendingEscalationsRes] = await Promise.all([
     client
       .from("events")
       .select("opening_datetime, run_start_date, run_end_date, region_id, pipeline")
@@ -62,6 +62,14 @@ Deno.serve(async (req) => {
     client.from("api_usage_log").select("pipeline, estimated_cost_usd, created_at"),
     client.from("bright_source_fetch_state").select("url, last_fetched_at, interval_days"),
     client.from("platform_cost_snapshots").select("platform, usage_date, amount_usd"),
+    // The email half of the escalation flow (accept/reject tokens) was
+    // never wired up (docs/region-discovery.md) — these rows have
+    // real cross-source conflicts sitting unreviewed with zero visibility
+    // anywhere until now (real gap found 2026-08-17: 7 pending rows found
+    // only by querying the table directly during an audit). A bare count
+    // is enough for now — no UI to act on them yet, just make it visible
+    // that they exist.
+    client.from("curation_escalations").select("id", { count: "exact", head: true }).is("resolved_at", null),
   ]);
   for (const [label, res] of [
     ["events", eventsRes],
@@ -70,6 +78,7 @@ Deno.serve(async (req) => {
     ["api_usage_log", usageRes],
     ["bright_source_fetch_state", fetchStateRes],
     ["platform_cost_snapshots", costSnapshotsRes],
+    ["curation_escalations", pendingEscalationsRes],
   ] as const) {
     if (res.error) {
       console.error(`admin-analytics: ${label} query failed`, res.error);
@@ -266,5 +275,6 @@ Deno.serve(async (req) => {
     instagramSources,
     anthropicCostByDay,
     apifyCostByDay,
+    pendingEscalationsCount: pendingEscalationsRes.count ?? 0,
   });
 });

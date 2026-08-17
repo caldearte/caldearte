@@ -20,6 +20,7 @@ export default async function AdminFuentesPage() {
         pipelineComparison={result.pipelineComparison}
         brightSources={result.brightSources}
         instagramSources={result.instagramSources}
+        pendingEscalationsCount={result.pendingEscalationsCount}
       />
     </AdminPageShell>
   );

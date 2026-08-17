@@ -42,6 +42,10 @@ export interface AdminAnalyticsPayload {
   }>;
   anthropicCostByDay: Array<{ date: string; amountUsd: number }>;
   apifyCostByDay: Array<{ date: string; amountUsd: number }>;
+  // Real cross-source conflicts sitting unreviewed — the email half of
+  // this flow (accept/reject tokens) was never wired up. A bare count,
+  // no detail view yet (real gap found 2026-08-17, see FuentesPage.tsx).
+  pendingEscalationsCount: number;
 }
 
 // Shared by every /admin/* page — same auth gate + fetch, extracted
