@@ -35,6 +35,7 @@ import {
   utcIsoToSantiagoDateParts,
 } from "./opening-time.js";
 import { extractPublishedDate, isStalePublishYear } from "./post-freshness.js";
+import { isSafeExternalUrl } from "./url-safety.js";
 
 export type FetchLike = (url: string) => Promise<{ ok: boolean; status: number; text(): Promise<string> }>;
 
@@ -143,6 +144,13 @@ function resolveImageFromHtml(html: string, pageUrl: string): string | null {
 // (social URL, non-2xx, network error) — never throws, so a broken page
 // never blocks the candidate it belongs to.
 async function fetchDetailHtml(url: string, fetchImpl: FetchLike): Promise<string | null> {
+  // SSRF guard, 2026-08-17 — url comes from a candidate's own sourceUrl,
+  // itself derived from arbitrary scraped HTML (see url-safety.ts's doc
+  // comment). Fails the same way an unreachable/broken page already does.
+  if (!isSafeExternalUrl(url)) {
+    console.error(`[page-fetch] refusing to fetch unsafe URL: ${url}`);
+    return null;
+  }
   try {
     const res = await fetchImpl(url);
     if (!res.ok) return null;

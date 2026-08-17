@@ -32,7 +32,13 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "invalid_json" }, { status: 400 });
   }
 
-  const name = payload.name?.trim() || "Anónimo";
+  // Strips embedded CR/LF before this ever reaches the email subject/body
+  // — Resend's own JSON API almost certainly already rejects header
+  // injection server-side, but sanitizing at our own boundary is cheap
+  // and doesn't depend on that (same layered-defense posture the rest of
+  // this project already uses — real audit finding, 2026-08-17).
+  const stripNewlines = (s: string) => s.replace(/[\r\n]+/g, " ").trim();
+  const name = stripNewlines(payload.name?.trim() || "Anónimo").slice(0, 200) || "Anónimo";
   const email = payload.email?.trim() ?? "";
   const message = payload.message?.trim() ?? "";
 
