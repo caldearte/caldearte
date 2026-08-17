@@ -767,6 +767,38 @@ export async function insertCandidates(
       // posture as the "rejected"/"duplicate_skipped" branches around it.
       console.log(`[event-discovery] expired before insertion: "${c.title}" (opening/run dates already past)`);
       outcomes.set(c, "expired");
+      // Real gap found 2026-08-17, auditing a week of rejections: unlike
+      // an ordinary rejection (written to rejected_candidates below, and
+      // thus protected by loadRecentlyRejectedSourceUrls' 90-day window),
+      // an "expired" candidate got NO durable record at all — its
+      // sourceUrl never entered `seen` either (that only happens in the
+      // "inserted"/"replaced" branches further down). For a source whose
+      // stale content stays on the page indefinitely (a news/blog-style
+      // listing, e.g. Centex — confirmed 15 such candidates in a single
+      // run, 2026-08-17), that meant re-fetching, re-curating, and
+      // re-expiring the SAME item every single week, forever, with zero
+      // memory. Recording it here — same upsert, same table, same shape
+      // as an ordinary rejection — gives it the exact same 90-day
+      // dedup protection instead of none at all.
+      if (c.sourceUrl) {
+        const { error: expiredError } = await client.from("rejected_candidates").upsert(
+          {
+            source_url: c.sourceUrl,
+            title: c.title,
+            reason: `${c.curationReasoning} [FILTRO DE CÓDIGO: aprobado por Haiku pero expiró antes de insertarse; fechas ya pasadas al momento de la corrida]`,
+            created_at: now.toISOString(),
+            location: c.location,
+            region_id: regionId,
+            anchor_date: anchorDate,
+            pipeline,
+            source_account: c.sourceAccount,
+          },
+          { onConflict: "source_url" },
+        );
+        if (expiredError) {
+          console.error(`[event-discovery] failed to record expired candidate "${c.title}": ${expiredError.message}`);
+        }
+      }
       continue;
     }
 
