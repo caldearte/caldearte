@@ -907,24 +907,22 @@ export function enforceDateCompleteness(candidates: EventCandidate[]): EventCand
 // block. See docs/region-discovery.md's 2026-07-24 entry for the 3
 // separate production bugs (all "Haiku mis-transcribed a fact the code
 // already had") that motivated this.
-export function buildBrightSourceBlock(items: BrightSourceItem[], fixedLocation?: { location: string; placeName: string }): string {
+export function buildBrightSourceBlock(items: BrightSourceItem[]): string {
   return items
     .map((item, index) => {
       const dateLine =
         item.structuredStartDate && item.structuredEndDate
           ? `Fechas de exhibición ya confirmadas: ${item.structuredStartDate} a ${item.structuredEndDate} (no hace falta reportarlas, el código ya las tiene — solo indica si hay una fecha/hora de inauguración distinta mencionada abajo).`
           : `Texto de fecha de la fuente: ${item.rawDateText || "(sin fecha indicada)"}`;
-      // Batch-level fixedLocation (single-venue bright sources) or a
-      // per-item defaultLocation (Instagram accounts, instagram-item.ts)
-      // — either way, an ASSUMPTION Haiku should default to but can
-      // override, not certain data (see extractors.ts's doc comment on
-      // BrightSourceItem.defaultLocation for the real bug this fixes).
-      const effectiveDefault = fixedLocation ?? item.defaultLocation ?? undefined;
+      // Only item.defaultLocation (an Instagram account's usual venue) —
+      // a batch-level fixedLocation source never reaches this line at all
+      // (needsLocation is false for it, curateBrightSourceItems), so
+      // there's nothing to hint at for those items.
       const lines = [
         `[${index}] "${item.title}"`,
         dateLine,
-        effectiveDefault
-          ? `Ubicación por defecto de esta fuente: ${effectiveDefault.placeName}, ${effectiveDefault.location} (repórtala tal cual salvo que el texto de este ítem indique explícitamente una comuna/ciudad distinta).`
+        item.defaultLocation
+          ? `Ubicación por defecto de esta cuenta: ${item.defaultLocation.placeName}, ${item.defaultLocation.location} (repórtala tal cual salvo que el texto de este ítem indique explícitamente una comuna/ciudad distinta).`
           : null,
         item.locationHint ? `Lugar mencionado en la fuente: ${item.locationHint}` : null,
         item.description ? `Descripción: ${item.description}` : null,
@@ -936,7 +934,7 @@ export function buildBrightSourceBlock(items: BrightSourceItem[], fixedLocation?
 
 export function buildBrightSourceSystemPrompt(monthLabel: string, opts: { needsLocation: boolean }): string {
   const locationInstructions = opts.needsLocation
-    ? `- \`location\`: la comuna/ciudad donde ocurre el evento — para esta fuente, infiérela del lugar/institución mencionado (ej. "MAC - Espacio Quinta Normal" -> "Santiago") usando tu conocimiento general de dónde queda cada lugar; no hay una cita textual que la respalde literalmente, así que no hace falta citar nada, solo tu mejor inferencia. Si no puedes determinar ninguna comuna real de Chile, el evento debe ser "rejected". Algunos ítems incluyen una línea "Ubicación por defecto de esta fuente: ...": úsala como tu mejor suposición inicial, PERO si el texto del ítem menciona explícitamente una comuna/ciudad distinta (ej. una muestra itinerante o co-organizada que ocurre en otro lugar), repórtala en su lugar — no ignores una ubicación distinta solo porque contradice el valor por defecto.
+    ? `- \`location\`: la comuna/ciudad donde ocurre el evento — para esta fuente, infiérela del lugar/institución mencionado (ej. "MAC - Espacio Quinta Normal" -> "Santiago") usando tu conocimiento general de dónde queda cada lugar; no hay una cita textual que la respalde literalmente, así que no hace falta citar nada, solo tu mejor inferencia. Si no puedes determinar ninguna comuna real de Chile, el evento debe ser "rejected". Algunos ítems incluyen una línea "Ubicación por defecto de esta cuenta: ...": úsala como tu mejor suposición inicial, PERO si el texto del ítem menciona explícitamente una comuna/ciudad distinta (ej. una muestra itinerante o co-organizada que ocurre en otro lugar), repórtala en su lugar — no ignores una ubicación distinta solo porque contradice el valor por defecto.
 - \`placeName\`: el nombre reconocible del lugar (museo, galería, centro cultural), si el texto lo menciona.
 `
     : `- No reportes \`location\`/\`placeName\` — esta fuente es de un único lugar fijo y el código ya los conoce.
@@ -1043,18 +1041,51 @@ function mergeBrightSourceCandidate(
   fixedLocation: { location: string; placeName: string } | undefined,
 ): EventCandidate {
   const openingDatetime = row.openingDatetime ? parseLocalDatetimeToUtcIso(row.openingDatetime) : null;
-  // fixedLocation (batch-level, single-venue sources) or item.defaultLocation
-  // (per-account, Instagram) are both ASSUMPTIONS, not certain per-item
-  // data — unlike item.location, which is only ever set from real
-  // structured extraction and always wins outright. Real bug found
-  // 2026-08-16: a touring/co-hosted show posted by Factoría Santa Rosa's
-  // Instagram account was actually in Valparaíso, not the account's
-  // assumed "Santiago" — Haiku's own row.location correctly said so, but
-  // the assumption unconditionally overrode it. Now the assumption only
-  // wins when Haiku's own extraction doesn't clearly contradict it (see
-  // locationsOverlap, lib/locations.ts).
-  const effectiveDefault = fixedLocation ?? item.defaultLocation ?? undefined;
-  const defaultConflictsWithExtraction = Boolean(effectiveDefault && row.location && !locationsOverlap(row.location, effectiveDefault.location));
+
+  // Real regression found 2026-08-17: PR #294 let Haiku's own location
+  // guess override a batch-level fixedLocation whenever it "conflicted" —
+  // meant to catch a touring/co-hosted show (Factoría Santa Rosa, IG),
+  // but for a TRUE single-physical-venue source (a museum/gallery's own
+  // website, or MAVI) there's no such thing as touring — the source only
+  // ever shows its own space. needsLocation is false for these sources
+  // (Haiku isn't even asked), but nothing stopped an ungrounded guess from
+  // still landing in row.location and winning anyway. Corrupted 2 real
+  // production events (Galería Patricia Ready: fixedLocation "Vitacura",
+  // Haiku's un-grounded general-knowledge guess "Santiago" overrode it).
+  // fixedLocation is unconditional again, same as before PR #294 —
+  // Haiku is never even asked for it (needsLocation below), so this is
+  // just the enforcement half of that.
+  if (fixedLocation) {
+    return {
+      title: item.title,
+      description: item.description,
+      artist: row.artist,
+      runStartDate: item.structuredStartDate ?? row.runStartDate,
+      runEndDate: item.structuredEndDate ?? row.runEndDate,
+      openingDatetime,
+      openingTimeConfirmed: openingDatetime ? row.openingTimeConfirmed : false,
+      mediumType: row.mediumType,
+      sensitivityTags: row.sensitivityTags,
+      curationReasoning: row.curationReasoning,
+      imageUrl: item.imageUrl,
+      status: row.status,
+      location: fixedLocation.location,
+      placeName: fixedLocation.placeName,
+      sourceUrl: item.sourceUrl,
+      sourceAccount: item.sourceAccount ?? null,
+      dateQuote: null,
+      locationQuote: null,
+      runStartDateQuote: null,
+      runEndDateQuote: null,
+    };
+  }
+
+  // item.defaultLocation (an Instagram account's usual venue) stays
+  // overridable — unlike a batch-fixed source above, an account's own
+  // post text is real evidence it can genuinely contradict (confirmed
+  // real bug fixed 2026-08-16: Factoría Santa Rosa posting about a
+  // touring show actually in Valparaíso, not its usual Santiago venue).
+  const defaultConflictsWithExtraction = Boolean(item.defaultLocation && row.location && !locationsOverlap(row.location, item.defaultLocation.location));
   return {
     title: item.title,
     description: item.description,
@@ -1066,12 +1097,12 @@ function mergeBrightSourceCandidate(
     mediumType: row.mediumType,
     sensitivityTags: row.sensitivityTags,
     curationReasoning: defaultConflictsWithExtraction
-      ? `${row.curationReasoning} [FILTRO DE CÓDIGO: ubicación extraída del texto ("${row.location}") difiere de la ubicación por defecto de la fuente ("${effectiveDefault!.location}"); se usó la extraída]`
+      ? `${row.curationReasoning} [FILTRO DE CÓDIGO: ubicación extraída del texto ("${row.location}") difiere de la ubicación por defecto de la cuenta ("${item.defaultLocation!.location}"); se usó la extraída]`
       : row.curationReasoning,
     imageUrl: item.imageUrl,
     status: row.status,
-    location: defaultConflictsWithExtraction ? row.location! : (effectiveDefault?.location ?? item.location ?? row.location ?? ""),
-    placeName: defaultConflictsWithExtraction ? row.placeName : (effectiveDefault?.placeName ?? item.placeName ?? row.placeName ?? null),
+    location: defaultConflictsWithExtraction ? row.location! : (item.defaultLocation?.location ?? item.location ?? row.location ?? ""),
+    placeName: defaultConflictsWithExtraction ? row.placeName : (item.defaultLocation?.placeName ?? item.placeName ?? row.placeName ?? null),
     sourceUrl: item.sourceUrl,
     sourceAccount: item.sourceAccount ?? null,
     // Grounding-quote fields don't apply on this path at all — there's
@@ -1152,17 +1183,18 @@ export async function curateBrightSourceItems(
   // infer: mergeBrightSourceCandidate above always prefers item.location
   // over row.location anyway, so asking would be pure wasted tokens.
   //
-  // A batch-level fixedLocation or a per-item defaultLocation (Instagram)
-  // is NOT the same as a real item.location — it's an assumption Haiku
-  // should be asked to double-check against each item's own text (real
-  // bug fixed 2026-08-16, see mergeBrightSourceCandidate's doc comment),
-  // so neither of those exempts a batch from needing to ask. In practice
-  // items carrying either only ever have item.location === null anyway
-  // (headless-discovery/run.ts, instagram-item.ts), so this already
-  // resolves to `true` for them without any extra condition.
-  const needsLocation = !items.every((item) => item.location !== null);
+  // A batch-level fixedLocation is a TRUE single-physical-venue source
+  // (a museum/gallery's own website, or MAVI) — never asked at all,
+  // reverted 2026-08-17 after a real regression (see
+  // mergeBrightSourceCandidate's doc comment): asking Haiku to guess a
+  // location it has no real grounding for, then trusting that guess over
+  // a known-correct default, corrupted 2 real production events. An
+  // Instagram account's per-item defaultLocation is different — its own
+  // post text is real evidence, so those items (item.location === null)
+  // still get asked, same as any other item with no known location.
+  const needsLocation = !opts.fixedLocation && !items.every((item) => item.location !== null);
   const systemPrompt = buildBrightSourceSystemPrompt(monthLabel, { needsLocation });
-  const block = buildBrightSourceBlock(items, opts.fixedLocation);
+  const block = buildBrightSourceBlock(items);
 
   const response = await client.messages.create({
     model: MODEL,
