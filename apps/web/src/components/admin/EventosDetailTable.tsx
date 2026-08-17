@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import { countActiveByPeriod, formatPeriodLabel, isEventInPeriod, sumFlowByPeriod, type Granularity } from "@/lib/adminAnalyticsBucketing";
 
 interface EventRow {
@@ -20,14 +21,22 @@ export default function EventosDetailTable({
   periods,
   granularity,
   activePeriod,
+  currentPeriod,
   onHoverPeriod,
 }: {
   events: EventRow[];
   periods: string[];
   granularity: Granularity;
   activePeriod: string;
+  // The TRUE current period, independent of whatever's hovered — only
+  // used to auto-scroll the table into view on mount/granularity change,
+  // never moves on hover (that would fight the user's own scrolling).
+  // Daniel's explicit request, 2026-08-17: "las tablas deberían estar
+  // scrolleadas por defecto en el mes indicado por defecto."
+  currentPeriod: string;
   onHoverPeriod?: (period: string | null) => void;
 }) {
+  const containerRef = useRef<HTMLDivElement>(null);
   const inauguraciones = sumFlowByPeriod(
     events.map((e) => ({ date: e.openingDate })),
     periods,
@@ -43,7 +52,7 @@ export default function EventosDetailTable({
   const rows = inauguraciones.map((row) => {
     // Distinct total (not a sum of the two columns) — an event that's
     // both an inauguración and an active exposición this period counts
-    // once, same rule as EventosSummaryBar's total (2026-08-17).
+    // once, same rule as AdminDashboard's "Chile — eventos" total (2026-08-17).
     const total = events.filter((e) => isEventInPeriod(e, row.period, granularity)).length;
     return {
       period: row.period,
@@ -55,12 +64,22 @@ export default function EventosDetailTable({
   });
   rows.reverse(); // most recent period first, same convention as CostTable
 
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+    const row = container.querySelector<HTMLTableRowElement>(`[data-period="${currentPeriod}"]`);
+    row?.scrollIntoView({ block: "center" });
+    // Only re-run when the current period or the row set itself changes
+    // (granularity toggle) — deliberately NOT on activePeriod/hover, or
+    // hovering a different row would fight the user's own scroll position.
+  }, [currentPeriod, periods.length]);
+
   if (rows.length === 0) {
     return <p className="font-geist text-[14px] text-text-primary/70">Sin datos todavía.</p>;
   }
 
   return (
-    <div className="overflow-x-auto overflow-y-auto max-h-[240px]">
+    <div ref={containerRef} className="overflow-x-auto overflow-y-auto max-h-[240px]">
       <table className="w-full font-geist text-[14px] text-text-primary border-collapse">
         <thead className="sticky top-0 bg-surface-sage">
           <tr className="text-left border-b border-text-primary/20">
@@ -74,6 +93,7 @@ export default function EventosDetailTable({
           {rows.map((row) => (
             <tr
               key={row.period}
+              data-period={row.period}
               className={`border-b border-text-primary/10 hover:bg-surface-white ${row.period === activePeriod ? "bg-surface-white" : ""}`}
               onMouseEnter={() => onHoverPeriod?.(row.period)}
               onMouseLeave={() => onHoverPeriod?.(null)}

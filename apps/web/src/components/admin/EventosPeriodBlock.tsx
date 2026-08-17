@@ -54,6 +54,7 @@ export default function EventosPeriodBlock({
           periods={periods}
           granularity={granularity}
           activePeriod={activePeriod}
+          currentPeriod={currentPeriodRaw}
           onHoverPeriod={setHoveredPeriod}
         />
       </div>

@@ -2,11 +2,15 @@
 
 import { useMemo, useState } from "react";
 import dynamic from "next/dynamic";
-import { bucketLabel, countActiveByPeriod, enumeratePeriods, isEventInPeriod, sumFlowByPeriod, type Granularity } from "@/lib/adminAnalyticsBucketing";
+import { bucketLabel, countActiveByPeriod, enumeratePeriods, isEventInPeriod, sumAmountByPeriod, sumFlowByPeriod, type Granularity } from "@/lib/adminAnalyticsBucketing";
+import { splitApifyFreeTier } from "@/lib/apifyCostSplit";
 import { shortRegionName } from "@/lib/regionNames";
 import type { AdminAnalyticsPayload } from "@/lib/adminAnalytics";
+import { colorFor } from "./chartPalette";
 import GranularityToggle from "./GranularityToggle";
-import EventosSummaryBar from "./EventosSummaryBar";
+import StackedPeriodBar from "./StackedPeriodBar";
+import CostSummaryLine from "./CostSummaryLine";
+import FuentesMetricsTable from "./FuentesMetricsTable";
 import OutOfScopeTrends from "./OutOfScopeTrends";
 
 // recharts' ResponsiveContainer needs real DOM measurement (getBoundingClientRect
@@ -18,12 +22,25 @@ import OutOfScopeTrends from "./OutOfScopeTrends";
 const ChartLoading = () => <div className="w-full h-[280px] flex items-center justify-center font-geist text-[13px] text-text-primary/50">Cargando gráfico…</div>;
 const RegionDonutChart = dynamic(() => import("./RegionDonutChart"), { ssr: false, loading: ChartLoading });
 
+// "Web" merges bright_source + headless (MAVI) — MAVI is itself a website
+// scrape, it shouldn't read as its own category separate from "web"
+// (Daniel's explicit correction, 2026-08-17). Mirrors FuentesMetricsTable's
+// own merge, just applied to raw events instead of pipelineComparison rows.
+function fuentesGroupLabel(pipeline: string | null): string {
+  if (pipeline === null) return "Sin atribuir";
+  if (pipeline === "bright_source" || pipeline === "headless") return "Web";
+  if (pipeline === "instagram") return "Instagram";
+  if (pipeline === "google_alerts") return "Google Alerts";
+  if (pipeline === "comuna_search") return "Búsqueda por comuna";
+  return pipeline;
+}
+
 // Rewritten 2026-08-17: /admin used to be the full historical dashboard
 // (Chile total, por región, fuentes por pipeline) — all of that moved to
 // /admin/eventos and /admin/fuentes. This page is now a quick CURRENT-
 // period-only summary (no "Total" granularity — see GranularityToggle's
-// hideTotal prop, "período actual" has no meaningful all-time reading)
-// plus "Señales fuera de alcance", which stays here unchanged.
+// hideTotal prop, "período actual" has no meaningful all-time reading):
+// costo del período, eventos, regiones, fuentes, señales fuera de alcance.
 export default function AdminDashboard({ data }: { data: AdminAnalyticsPayload }) {
   const [granularity, setGranularity] = useState<Granularity>("week");
 
@@ -85,16 +102,59 @@ export default function AdminDashboard({ data }: { data: AdminAnalyticsPayload }
     };
   }, [currentPeriodEvents]);
 
+  // Fuentes summary bar segments — same current-period event set as
+  // above, grouped by fuente instead of by inauguración/exposición.
+  const fuentesSegments = useMemo(() => {
+    const byGroup = new Map<string, number>();
+    for (const e of currentPeriodEvents) {
+      const label = fuentesGroupLabel(e.pipeline);
+      byGroup.set(label, (byGroup.get(label) ?? 0) + 1);
+    }
+    return [...byGroup.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .map(([label, value], i) => ({ label, value, color: colorFor(i) }));
+  }, [currentPeriodEvents]);
+
+  // Costo del período — Anthropic siempre "real" (sin capa gratuita);
+  // Apify se divide primero sobre TODA la serie (la lógica de capa
+  // gratuita es acumulativa por mes calendario, no se puede recortar
+  // antes de dividir) y luego se acota al período actual, mismo patrón
+  // que CostTable/CostosPage ya usan.
+  const apifySplit = useMemo(() => splitApifyFreeTier(data.apifyCostByDay), [data.apifyCostByDay]);
+  const anthropicCurrentUsd = sumAmountByPeriod(
+    data.anthropicCostByDay.map((r) => ({ date: r.date, amount: r.amountUsd })),
+    [currentPeriod],
+    granularity,
+  )[0]?.count ?? 0;
+  const apifyRealCurrentUsd = sumAmountByPeriod(
+    apifySplit.map((r) => ({ date: r.date, amount: r.realUsd })),
+    [currentPeriod],
+    granularity,
+  )[0]?.count ?? 0;
+  const apifyFreeCurrentUsd = sumAmountByPeriod(
+    apifySplit.map((r) => ({ date: r.date, amount: r.freeUsd })),
+    [currentPeriod],
+    granularity,
+  )[0]?.count ?? 0;
+
   return (
     <div className="flex flex-col gap-12">
       <GranularityToggle value={granularity} onChange={setGranularity} hideTotal />
 
       <section>
+        <h2 className="font-fragment-mono uppercase text-[18px] text-text-primary mb-4">Costos</h2>
+        <CostSummaryLine effectiveUsd={anthropicCurrentUsd + apifyRealCurrentUsd} freeTierUsd={apifyFreeCurrentUsd} />
+      </section>
+
+      <section>
         <h2 className="font-fragment-mono uppercase text-[18px] text-text-primary mb-4">Chile — eventos</h2>
-        <EventosSummaryBar
-          inauguraciones={inauguracionesCount}
-          exposicionesActivas={exposicionesActivasCount}
+        <StackedPeriodBar
+          segments={[
+            { label: "Inauguraciones", value: inauguracionesCount, color: "#ff00fb" },
+            { label: "Exposiciones activas", value: exposicionesActivasCount, color: "#3d373d" },
+          ]}
           total={currentPeriodEvents.length}
+          totalLabel="eventos en Chile este período"
         />
       </section>
 
@@ -103,6 +163,14 @@ export default function AdminDashboard({ data }: { data: AdminAnalyticsPayload }
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           <RegionDonutChart data={santiagoDonutData} />
           <RegionDonutChart data={allRegionsDonutData} />
+        </div>
+      </section>
+
+      <section>
+        <h2 className="font-fragment-mono uppercase text-[18px] text-text-primary mb-4">Fuentes</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
+          <StackedPeriodBar segments={fuentesSegments} total={currentPeriodEvents.length} totalLabel="eventos en Chile este período" />
+          <FuentesMetricsTable comparison={data.pipelineComparison} />
         </div>
       </section>
 

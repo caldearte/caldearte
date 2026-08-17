@@ -49,15 +49,19 @@ export default function FuentesPage({
     <div className="flex flex-col gap-12">
       <GranularityToggle value={granularity} onChange={setGranularity} />
 
-      <section>
-        <h2 className="font-fragment-mono uppercase text-[18px] text-text-primary mb-4">Fuentes por pipeline</h2>
-        <FuentesPorPipelineChart events={events} periods={periods} granularity={granularity} />
-      </section>
+      {/* Chart left, comparison table right (Daniel's request, 2026-08-17)
+          — same 2-column convention as every EventosPeriodBlock. */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <section>
+          <h2 className="font-fragment-mono uppercase text-[18px] text-text-primary mb-4">Fuentes por pipeline</h2>
+          <FuentesPorPipelineChart events={events} periods={periods} granularity={granularity} />
+        </section>
 
-      <section>
-        <h2 className="font-fragment-mono uppercase text-[18px] text-text-primary mb-4">Fuentes / pipelines — comparación</h2>
-        <SourceComparisonTable comparison={pipelineComparison} />
-      </section>
+        <section>
+          <h2 className="font-fragment-mono uppercase text-[18px] text-text-primary mb-4">Fuentes / pipelines — comparación</h2>
+          <SourceComparisonTable comparison={pipelineComparison} />
+        </section>
+      </div>
 
       <section>
         <h2 className="font-fragment-mono uppercase text-[18px] text-text-primary mb-4">Fuentes brillantes (web)</h2>
