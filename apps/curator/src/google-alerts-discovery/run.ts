@@ -25,6 +25,7 @@ import { fetchHtmlPageFallback } from "../event-discovery/sources.js";
 import { enrichCandidates, type FetchLike as PageFetchLike } from "../lib/page-fetch.js";
 import { fetchGoogleAlertEntries, type GoogleAlertEntry } from "../lib/google-alerts.js";
 import { sendGoogleAlertsRunSummaryEmail, type GoogleAlertsRunSummary } from "../lib/notify.js";
+import { recordRunSummary } from "../lib/run-summary-store.js";
 import { curateBrightSourceItems, currentMonthLabel, EVENT_DISCOVERY_MODEL, type MessagesClient } from "../event-discovery/discover.js";
 import type { BrightSourceItem } from "../event-discovery/extractors.js";
 import {
@@ -133,6 +134,7 @@ export async function run(deps: GoogleAlertsRunDeps = {}): Promise<void> {
 
   if (!due) {
     console.log("[google-alerts-discovery] not due yet (7-day cadence) — nothing to do");
+    await recordRunSummary("google_alerts", summary.startedAt, summary.candidates, summary.eventGroups, summary.cost);
     await (deps.sendGoogleAlertsRunSummaryEmailFn ?? sendGoogleAlertsRunSummaryEmail)(summary);
     return;
   }
@@ -195,5 +197,6 @@ export async function run(deps: GoogleAlertsRunDeps = {}): Promise<void> {
     console.error(`[google-alerts-discovery] failed to compute month-to-date spend for the summary email: ${(err as Error).message}`);
   }
 
+  await recordRunSummary("google_alerts", summary.startedAt, summary.candidates, summary.eventGroups, summary.cost);
   await (deps.sendGoogleAlertsRunSummaryEmailFn ?? sendGoogleAlertsRunSummaryEmail)(summary);
 }

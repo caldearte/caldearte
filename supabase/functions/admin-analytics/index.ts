@@ -51,7 +51,7 @@ Deno.serve(async (req) => {
   }
 
   // ---- events (all-time, approved, not soft-removed) -----------------
-  const [eventsRes, signalsRes, rejectedRes, usageRes, fetchStateRes, costSnapshotsRes, pendingEscalationsRes] = await Promise.all([
+  const [eventsRes, signalsRes, rejectedRes, usageRes, fetchStateRes, costSnapshotsRes, pendingEscalationsRes, runSummariesRes] = await Promise.all([
     client
       .from("events")
       .select("opening_datetime, run_start_date, run_end_date, region_id, pipeline")
@@ -70,6 +70,22 @@ Deno.serve(async (req) => {
     // is enough for now — no UI to act on them yet, just make it visible
     // that they exist.
     client.from("curation_escalations").select("id", { count: "exact", head: true }).is("resolved_at", null),
+    // Real "cobertura" gap found 2026-08-17: the only way to see per-run
+    // stats (candidates curated, real outcome funnel — inserted/
+    // replaced/duplicate_skipped/escalated/expired/insert_failed, cost)
+    // was digging through ephemeral GitHub Actions logs by hand. Every
+    // curator entrypoint already computes this every run (notify.ts's
+    // RunSummary and friends) — apps/curator/src/lib/run-summary-store.ts
+    // now persists it regardless of whether the (never-wired) summary
+    // email sends. Last 90 days, most recent first — small table, no
+    // pruning needed yet.
+    client
+      .from("discovery_run_summaries")
+      .select(
+        "entrypoint, started_at, candidates_total, approved_by_curation, rejected_by_curation, inserted_count, replaced_count, duplicate_skipped_count, escalated_count, expired_count, insert_failed_count, cost_usd",
+      )
+      .gte("started_at", new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString())
+      .order("started_at", { ascending: false }),
   ]);
   for (const [label, res] of [
     ["events", eventsRes],
@@ -79,6 +95,7 @@ Deno.serve(async (req) => {
     ["bright_source_fetch_state", fetchStateRes],
     ["platform_cost_snapshots", costSnapshotsRes],
     ["curation_escalations", pendingEscalationsRes],
+    ["discovery_run_summaries", runSummariesRes],
   ] as const) {
     if (res.error) {
       console.error(`admin-analytics: ${label} query failed`, res.error);
@@ -266,6 +283,21 @@ Deno.serve(async (req) => {
     .filter((row) => row.platform === "apify")
     .map((row) => ({ date: String(row.usage_date), amountUsd: Number(row.amount_usd ?? 0) }));
 
+  const discoveryRunSummaries = (runSummariesRes.data ?? []).map((row) => ({
+    entrypoint: row.entrypoint,
+    startedAt: row.started_at,
+    candidatesTotal: row.candidates_total,
+    approvedByCuration: row.approved_by_curation,
+    rejectedByCuration: row.rejected_by_curation,
+    insertedCount: row.inserted_count,
+    replacedCount: row.replaced_count,
+    duplicateSkippedCount: row.duplicate_skipped_count,
+    escalatedCount: row.escalated_count,
+    expiredCount: row.expired_count,
+    insertFailedCount: row.insert_failed_count,
+    costUsd: Number(row.cost_usd ?? 0),
+  }));
+
   return jsonResponse({
     generatedAt: new Date().toISOString(),
     events,
@@ -276,5 +308,6 @@ Deno.serve(async (req) => {
     anthropicCostByDay,
     apifyCostByDay,
     pendingEscalationsCount: pendingEscalationsRes.count ?? 0,
+    discoveryRunSummaries,
   });
 });

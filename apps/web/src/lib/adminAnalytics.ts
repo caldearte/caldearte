@@ -46,6 +46,24 @@ export interface AdminAnalyticsPayload {
   // this flow (accept/reject tokens) was never wired up. A bare count,
   // no detail view yet (real gap found 2026-08-17, see FuentesPage.tsx).
   pendingEscalationsCount: number;
+  // "Cobertura" — last 90 days, one row per curator run, real outcome
+  // funnel per run (see run-summary-store.ts). Real gap found
+  // 2026-08-17: this data was already computed every run, it just fed a
+  // summary email whose Resend half was never wired up.
+  discoveryRunSummaries: Array<{
+    entrypoint: "event_discovery" | "headless" | "instagram" | "google_alerts";
+    startedAt: string;
+    candidatesTotal: number;
+    approvedByCuration: number;
+    rejectedByCuration: number;
+    insertedCount: number;
+    replacedCount: number;
+    duplicateSkippedCount: number;
+    escalatedCount: number;
+    expiredCount: number;
+    insertFailedCount: number;
+    costUsd: number;
+  }>;
 }
 
 // Shared by every /admin/* page — same auth gate + fetch, extracted

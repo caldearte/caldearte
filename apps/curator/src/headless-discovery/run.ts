@@ -27,6 +27,7 @@ import { estimateCostUsd } from "../lib/pricing.js";
 import { enrichCandidates, enrichBrightSourceItemDetails, type FetchLike as PageFetchLike } from "../lib/page-fetch.js";
 import { fetchMaviActivities, type MaviActivity } from "../lib/mavi-headless.js";
 import { sendHeadlessRunSummaryEmail, type HeadlessRunSummary } from "../lib/notify.js";
+import { recordRunSummary } from "../lib/run-summary-store.js";
 import { curateBrightSourceItems, currentMonthLabel, EVENT_DISCOVERY_MODEL, type MessagesClient } from "../event-discovery/discover.js";
 import type { BrightSourceItem } from "../event-discovery/extractors.js";
 import {
@@ -96,6 +97,7 @@ export async function run(deps: HeadlessRunDeps = {}): Promise<void> {
 
   if (!due) {
     console.log(`[headless-discovery] ${MAVI_SOURCE_URL} not due yet (7-day cadence) — nothing to do`);
+    await recordRunSummary("headless", summary.startedAt, summary.candidates, summary.eventGroups, summary.cost);
     await (deps.sendHeadlessRunSummaryEmailFn ?? sendHeadlessRunSummaryEmail)(summary);
     return;
   }
@@ -165,5 +167,6 @@ export async function run(deps: HeadlessRunDeps = {}): Promise<void> {
     console.error(`[headless-discovery] failed to compute month-to-date spend for the summary email: ${(err as Error).message}`);
   }
 
+  await recordRunSummary("headless", summary.startedAt, summary.candidates, summary.eventGroups, summary.cost);
   await (deps.sendHeadlessRunSummaryEmailFn ?? sendHeadlessRunSummaryEmail)(summary);
 }
