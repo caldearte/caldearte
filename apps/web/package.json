@@ -8,7 +8,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "node --import tsx --test src/**/*.test.ts"
+    "test": "node --import tsx --test src/**/*.test.ts src/**/**/*.test.ts"
   },
   "dependencies": {
     "@caldearte/shared-types": "workspace:*",

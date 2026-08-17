@@ -7,6 +7,7 @@ import { splitApifyFreeTier } from "@/lib/apifyCostSplit";
 import { shortRegionName } from "@/lib/regionNames";
 import type { AdminAnalyticsPayload } from "@/lib/adminAnalytics";
 import { colorFor } from "./chartPalette";
+import { groupPipelineLabel } from "./pipelineGrouping";
 import GranularityToggle from "./GranularityToggle";
 import StackedPeriodBar from "./StackedPeriodBar";
 import CostSummaryLine from "./CostSummaryLine";
@@ -21,19 +22,6 @@ import OutOfScopeTrends from "./OutOfScopeTrends";
 // does). `ssr: false` is the standard fix for chart libraries like this one.
 const ChartLoading = () => <div className="w-full h-[280px] flex items-center justify-center font-geist text-[13px] text-text-primary/50">Cargando gráfico…</div>;
 const RegionDonutChart = dynamic(() => import("./RegionDonutChart"), { ssr: false, loading: ChartLoading });
-
-// "Web" merges bright_source + headless (MAVI) — MAVI is itself a website
-// scrape, it shouldn't read as its own category separate from "web"
-// (Daniel's explicit correction, 2026-08-17). Mirrors FuentesMetricsTable's
-// own merge, just applied to raw events instead of pipelineComparison rows.
-function fuentesGroupLabel(pipeline: string | null): string {
-  if (pipeline === null) return "Sin atribuir";
-  if (pipeline === "bright_source" || pipeline === "headless") return "Web";
-  if (pipeline === "instagram") return "Instagram";
-  if (pipeline === "google_alerts") return "Google Alerts";
-  if (pipeline === "comuna_search") return "Búsqueda por comuna";
-  return pipeline;
-}
 
 // Rewritten 2026-08-17: /admin used to be the full historical dashboard
 // (Chile total, por región, fuentes por pipeline) — all of that moved to
@@ -107,7 +95,7 @@ export default function AdminDashboard({ data }: { data: AdminAnalyticsPayload }
   const fuentesSegments = useMemo(() => {
     const byGroup = new Map<string, number>();
     for (const e of currentPeriodEvents) {
-      const label = fuentesGroupLabel(e.pipeline);
+      const label = groupPipelineLabel(e.pipeline);
       byGroup.set(label, (byGroup.get(label) ?? 0) + 1);
     }
     return [...byGroup.entries()]

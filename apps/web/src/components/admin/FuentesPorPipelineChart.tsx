@@ -5,7 +5,7 @@ import { Area, AreaChart, CartesianGrid, Legend, ReferenceLine, ResponsiveContai
 import { currentPeriodLabel, sumFlowByPeriod, type Granularity } from "@/lib/adminAnalyticsBucketing";
 import { shortRegionName } from "@/lib/regionNames";
 import { colorFor } from "./chartPalette";
-import { PIPELINE_LABELS } from "./pipelineLabels";
+import { groupPipelineLabel } from "./pipelineGrouping";
 import { pivotBuckets } from "./pivotBuckets";
 import StatBars from "./StatBars";
 
@@ -17,7 +17,6 @@ interface EventRow {
 }
 
 const ALL_CHILE = "__all__";
-const SIN_ATRIBUIR = "Sin atribuir";
 
 // Chart 4: stacked by pipeline, "todo Chile" by default with a región
 // selector to drill into one región's own source composition — same
@@ -43,7 +42,7 @@ export default function FuentesPorPipelineChart({
   const filtered = selectedRegion === ALL_CHILE ? events : events.filter((e) => e.adminRegionName === selectedRegion);
   const items = filtered.map((e) => ({
     date: e.openingDate ?? e.runStart,
-    group: e.pipeline ? (PIPELINE_LABELS[e.pipeline] ?? e.pipeline) : SIN_ATRIBUIR,
+    group: groupPipelineLabel(e.pipeline),
   }));
   const buckets = sumFlowByPeriod(items, periods, granularity);
 
@@ -65,7 +64,7 @@ export default function FuentesPorPipelineChart({
   if (granularity === "total") {
     const totals = new Map<string, number>();
     for (const b of buckets) {
-      const key = b.group ?? SIN_ATRIBUIR;
+      const key = b.group ?? groupPipelineLabel(null);
       totals.set(key, (totals.get(key) ?? 0) + b.count);
     }
     const summary = [...totals.entries()]
