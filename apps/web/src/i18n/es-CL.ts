@@ -306,6 +306,8 @@ export const esCL = {
   adminMenu: {
     home: "Inicio",
     dashboard: "Dashboard",
+    eventos: "Eventos",
+    fuentes: "Fuentes",
     costos: "Costos",
   },
 
