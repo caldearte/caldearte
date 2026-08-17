@@ -203,6 +203,45 @@ test("extractArticleList falls back to placeholder date text when days/place are
   assert.equal(items[0].locationHint, null);
 });
 
+// Real gap found 2026-08-17 (galeriapready.cl): a source whose listing
+// unavoidably spans every year at once has a real recurring chunk of
+// artist-roster/profile entries with a genuinely empty date field — no
+// date anywhere for these, ever. skipIfNoDate drops them before they ever
+// become a BrightSourceItem, instead of costing Haiku a judgment call
+// every ~90 days forever for something that can never become approvable.
+test("extractArticleList with skipIfNoDate drops a block whose daysRegex captures nothing, but keeps one with a real date", () => {
+  const html = `
+    <article class="mod-cal-result__item">
+      <h4 class="mod__item-title"><a href="/agenda/con-fecha">Muestra con fecha</a></h4>
+      <p class="mod-cal-result__item-days">Todo julio</p>
+    </article>
+    <article class="mod-cal-result__item">
+      <h4 class="mod__item-title"><a href="/agenda/sin-fecha">Solo el nombre del artista</a></h4>
+    </article>
+  `;
+  const config: ArticleListConfig = { ...UCHILE_CONFIG, skipIfNoDate: true };
+
+  const items = extractArticleList(html, "https://artes.uchile.cl/agenda/30dias/6", config);
+
+  assert.ok(items);
+  assert.equal(items.length, 1);
+  assert.equal(items[0].title, "Muestra con fecha");
+});
+
+test("extractArticleList without skipIfNoDate (the default) still keeps a block with no date, same as before", () => {
+  const html = `
+    <article class="mod-cal-result__item">
+      <h4 class="mod__item-title"><a href="/agenda/sin-fecha">Solo el nombre del artista</a></h4>
+    </article>
+  `;
+
+  const items = extractArticleList(html, "https://artes.uchile.cl/agenda/30dias/6", UCHILE_CONFIG);
+
+  assert.ok(items);
+  assert.equal(items.length, 1);
+  assert.equal(items[0].rawDateText, "fecha no indicada");
+});
+
 // 2026-07-24: unlike every other articleList source, molinomachmar.cl's
 // LISTING page already carries real description prose per event —
 // captured via the optional descriptionRegex, no separate detail-page

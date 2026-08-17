@@ -582,6 +582,16 @@ export const KNOWN_SOURCES: KnownSource[] = [
       blockRegex: /(<a href="\/exhibition\/[^"]+" class="exhib-tabs-item w-inline-block">[\s\S]*?<\/a>)/g,
       titleLinkRegex: /<a href="([^"]+)"[^>]*>[\s\S]*?exhib-tab-title">([^<]*)</,
       daysRegex: /class="exhib-tab-descr">([^<]*)</,
+      // Real gap found 2026-08-17, auditing a week of rejections: ~54 of
+      // this run's items were artist-roster/profile entries with a
+      // genuinely empty exhib-tab-descr (no date anywhere for these, not
+      // even on their own detail page) — Haiku correctly rejected every
+      // one ("Text contains only artist name... no date"), but that still
+      // costs a real judgment call every ~90 days forever (the rejected-
+      // candidate dedup window), for items that can never structurally
+      // become approvable. skipIfNoDate drops them before they ever reach
+      // Haiku at all.
+      skipIfNoDate: true,
     },
     fixedLocation: { location: "Vitacura", placeName: "Galería Patricia Ready" },
     descriptionExtractor: {
