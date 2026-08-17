@@ -39,6 +39,7 @@ import {
 import { enrichCandidates, enrichBrightSourceItemDetails, isSocialMediaUrl, type FetchLike as PageFetchLike } from "../lib/page-fetch.js";
 import { rehostImage, type RehostImageFn } from "../lib/image-rehost.js";
 import { sendRunSummaryEmail, sendEscalationEmail, type RunSummary, type CandidateSummary } from "../lib/notify.js";
+import { recordRunSummary } from "../lib/run-summary-store.js";
 import {
   buildBlock,
   buildSystemPrompt,
@@ -1456,6 +1457,11 @@ export async function run(deps: RunDeps = {}): Promise<void> {
     summary.cost.monthToDateUsd = await getCurrentMonthSpend();
     summary.cost.monthlyBudgetUsd = await getConfigNumber("monthly_budget_usd");
 
+    // Recorded BEFORE the email send — this must survive a real Resend
+    // failure (RESEND_API_KEY not set today just no-ops, doesn't throw,
+    // but a genuine API error shouldn't cost us the persisted summary
+    // too, see recordRunSummary's own doc comment on why this exists).
+    await recordRunSummary("event_discovery", summary.startedAt, summary.candidates, summary.eventGroups, summary.cost);
     await (deps.sendRunSummaryEmailFn ?? sendRunSummaryEmail)(summary);
   } catch (err) {
     console.error(`[event-discovery] failed to build/send run-summary email: ${(err as Error).message}`);

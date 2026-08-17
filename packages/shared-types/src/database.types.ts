@@ -227,6 +227,60 @@ export type Database = {
         }
         Relationships: []
       }
+      discovery_run_summaries: {
+        Row: {
+          approved_by_curation: number
+          candidates_total: number
+          cost_usd: number
+          created_at: string
+          duplicate_skipped_count: number
+          entrypoint: string
+          escalated_count: number
+          expired_count: number
+          id: string
+          insert_failed_count: number
+          inserted_count: number
+          raw_summary: Json
+          rejected_by_curation: number
+          replaced_count: number
+          started_at: string
+        }
+        Insert: {
+          approved_by_curation?: number
+          candidates_total?: number
+          cost_usd?: number
+          created_at?: string
+          duplicate_skipped_count?: number
+          entrypoint: string
+          escalated_count?: number
+          expired_count?: number
+          id?: string
+          insert_failed_count?: number
+          inserted_count?: number
+          raw_summary: Json
+          rejected_by_curation?: number
+          replaced_count?: number
+          started_at: string
+        }
+        Update: {
+          approved_by_curation?: number
+          candidates_total?: number
+          cost_usd?: number
+          created_at?: string
+          duplicate_skipped_count?: number
+          entrypoint?: string
+          escalated_count?: number
+          expired_count?: number
+          id?: string
+          insert_failed_count?: number
+          inserted_count?: number
+          raw_summary?: Json
+          rejected_by_curation?: number
+          replaced_count?: number
+          started_at?: string
+        }
+        Relationships: []
+      }
       events: {
         Row: {
           admin_sensitive_marked_at: string | null

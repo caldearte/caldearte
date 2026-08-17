@@ -37,6 +37,7 @@ import {
   instagramAccountProfileUrl,
 } from "../lib/instagram-fetch-state.js";
 import { sendInstagramRunSummaryEmail, type InstagramRunSummary } from "../lib/notify.js";
+import { recordRunSummary } from "../lib/run-summary-store.js";
 import { curateBrightSourceItems, currentMonthLabel, EVENT_DISCOVERY_MODEL, type MessagesClient } from "../event-discovery/discover.js";
 import type { BrightSourceItem } from "../event-discovery/extractors.js";
 import { insertCandidates, loadAllRegions, loadExistingKeys, loadRecentlyRejectedSourceUrls, toCandidateSummary } from "../event-discovery/run.js";
@@ -75,6 +76,7 @@ export async function run(deps: InstagramRunDeps = {}): Promise<void> {
 
   if (dueAccounts.length === 0) {
     console.log("[instagram-discovery] no accounts due yet (adaptive 14-28 day cadence) — nothing to do");
+    await recordRunSummary("instagram", summary.startedAt, summary.candidates, summary.eventGroups, summary.cost);
     await (deps.sendInstagramRunSummaryEmailFn ?? sendInstagramRunSummaryEmail)(summary);
     return;
   }
@@ -181,5 +183,6 @@ export async function run(deps: InstagramRunDeps = {}): Promise<void> {
     console.error(`[instagram-discovery] failed to compute month-to-date spend for the summary email: ${(err as Error).message}`);
   }
 
+  await recordRunSummary("instagram", summary.startedAt, summary.candidates, summary.eventGroups, summary.cost);
   await (deps.sendInstagramRunSummaryEmailFn ?? sendInstagramRunSummaryEmail)(summary);
 }

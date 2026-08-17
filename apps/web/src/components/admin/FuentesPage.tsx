@@ -8,6 +8,7 @@ import GranularityToggle from "./GranularityToggle";
 import SourceComparisonTable from "./SourceComparisonTable";
 import BrightSourcesTable from "./BrightSourcesTable";
 import InstagramSourcesTable from "./InstagramSourcesTable";
+import CoberturaTable from "./CoberturaTable";
 
 const ChartLoading = () => <div className="w-full h-[320px] flex items-center justify-center font-geist text-[13px] text-text-primary/50">Cargando gráfico…</div>;
 const FuentesPorPipelineChart = dynamic(() => import("./FuentesPorPipelineChart"), { ssr: false, loading: ChartLoading });
@@ -22,12 +23,14 @@ export default function FuentesPage({
   brightSources,
   instagramSources,
   pendingEscalationsCount,
+  discoveryRunSummaries,
 }: {
   events: AdminAnalyticsPayload["events"];
   pipelineComparison: AdminAnalyticsPayload["pipelineComparison"];
   brightSources: AdminAnalyticsPayload["brightSources"];
   instagramSources: AdminAnalyticsPayload["instagramSources"];
   pendingEscalationsCount: AdminAnalyticsPayload["pendingEscalationsCount"];
+  discoveryRunSummaries: AdminAnalyticsPayload["discoveryRunSummaries"];
 }) {
   const [granularity, setGranularity] = useState<Granularity>("month");
 
@@ -88,6 +91,14 @@ export default function FuentesPage({
       <section>
         <h2 className="font-fragment-mono uppercase text-[18px] text-text-primary mb-4">Cuentas de Instagram</h2>
         <InstagramSourcesTable sources={instagramSources} />
+      </section>
+
+      <section>
+        <h2 className="font-fragment-mono uppercase text-[18px] text-text-primary mb-4">Cobertura por corrida</h2>
+        <p className="font-geist text-[14px] text-text-primary/70 mb-4">
+          Últimos 90 días — candidatos curados y qué pasó después de la curación, no solo aprobado/rechazado.
+        </p>
+        <CoberturaTable runs={discoveryRunSummaries} />
       </section>
     </div>
   );
