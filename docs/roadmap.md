@@ -414,6 +414,56 @@ building infra" discipline the rest of this project has followed.
   private until passing audit, requires a demo video and privacy policy.
 - Recommendation: submit for review only once the calendar already has real
   events running (better demo, better approval odds).
+- **Weekly "inauguraciones de la semana" carousel — idea captured
+  2026-08-16** (Daniel's own idea; Camila, who handles difusión separately,
+  independently asked the same day whether something automatic could be
+  posted). Goal: once a week, publish a carousel titled with the week's
+  date range (e.g. "10 al 16 de agosto") showing every inauguración
+  nationwide that week, one card per event, **ordered chronologically
+  ascending by opening date** (lunes primero, domingo al final) — "así se
+  ve primero las del lunes de esa semana y termina con las del domingo,"
+  giving a fast overview of everything new opening that week. Investigated
+  what Instagram's official API actually allows (see sources below,
+  checked 2026-08-16) and found a real capability gap that rules out doing
+  this fully automatically exactly as first imagined:
+  - **Story Highlights (the "circulitos" above the profile grid) have no
+    creation API at all** — only unofficial third-party scrapers exist for
+    *reading* other accounts' highlights, none for creating one or adding
+    a story to it. Always a manual, in-app action (drag into the
+    collection).
+  - **Story link stickers (the swipeable per-image link) can't be attached
+    via the official Graph API/Content Publishing API either** — the API
+    can publish the story's image, but the clickable link sticker has to
+    be added by hand afterward, inside the app.
+  - Feed carousel posts publish 100% via API with no manual step, but
+    Instagram doesn't allow a clickable link per photo in the feed either
+    (platform-wide restriction, not API-specific) — only the single
+    link-in-bio.
+  - Two options, both worth keeping on the roadmap rather than picking one
+    now:
+    - **(a) Manual, exactly as first imagined** — a person (Camila) posts
+      the weekly Highlight by hand: adds the per-photo link sticker and
+      drags each story into the "10 al 16 de agosto" highlight. Gets the
+      exact UX Daniel described, costs a recurring few minutes/week,
+      needs no new infrastructure.
+      **Comodín**: the automated version (b) could still generate the
+      per-event carousel *images* on a schedule and hand Camila a
+      ready-made set to post/link/highlight manually — automating the
+      design work even if the platform-side steps stay manual.
+    - **(b) Automated, scoped to what the API actually allows** — a weekly
+      Feed carousel (not a Story), auto-generated and auto-published via
+      the Instagram Graph API, images ordered lunes→domingo as above,
+      caption pointing to the single link in bio (already lands on the
+      current week by default). Needs: `@caldearte.oficial` converted to
+      a Business account, linked to a Facebook Page, a Meta developer app
+      with `instagram_content_publish` permission (basic business
+      verification, not the full 2–4 week app review needed for
+      broader-scope permissions), long-lived access token
+      management (~60-day refresh), and a new weekly cron script
+      (same pattern as the existing curator crons) that queries the
+      week's approved inauguraciones nationwide from Supabase, renders one
+      branded image per event, and publishes the carousel.
+  - Neither option is scoped/built yet — parked here until picked up.
 
 ## Phase 5 — Parked / optional, doesn't block anything above
 

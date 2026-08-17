@@ -1,7 +1,7 @@
 "use client";
 
 import { Area, AreaChart, CartesianGrid, Legend, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { countActiveByPeriod, currentPeriodLabel, formatPeriodLabel, sumFlowByPeriod, type Granularity } from "@/lib/adminAnalyticsBucketing";
+import { countActiveByPeriod, formatPeriodLabel, sumFlowByPeriod, type Granularity } from "@/lib/adminAnalyticsBucketing";
 import StatBars from "./StatBars";
 
 interface EventRow {
@@ -10,19 +10,33 @@ interface EventRow {
   runEnd: string | null;
 }
 
-// Chart 1: nationwide overview, two OVERLAID (not stacked) areas — same
-// visual language as the "Cash flow" reference: inauguraciones is a FLOW
-// (an opening happened on one date, counted once), exposiciones activas
-// is a STATE (an exhibition counts in every period it's running, same as
-// a balance line, not a summed flow).
-export default function NationalOverviewChart({
+// Two OVERLAID (not stacked) areas — same visual language as a "Cash
+// flow" reference: inauguraciones is a FLOW (an opening happened on one
+// date, counted once), exposiciones activas is a STATE (an exhibition
+// counts in every period it's running, same as a balance line, not a
+// summed flow). Used by EventosPeriodBlock — once for "Chile — total" and
+// once per región, each instance fed its own pre-filtered `events`.
+//
+// Renamed from NationalOverviewChart 2026-08-17: it used to be the one
+// nationwide chart with an always-on, self-computed "current period"
+// ReferenceLine; now it's reused per región too, and the line's position
+// is driven by the parent (EventosPeriodBlock) instead — defaults to the
+// current period but moves on hover, same prop shape TotalCostChart
+// already uses for /admin/costos' hover-only version. Unlike
+// TotalCostChart, this one is never conditional — the parent always
+// supplies a real value (falls back to the current period itself when
+// nothing's hovered), so the line is always visible, just not always
+// fixed to "now" anymore.
+export default function EventosChart({
   events,
   periods,
   granularity,
+  highlightedPeriodLabel,
 }: {
   events: EventRow[];
   periods: string[];
   granularity: Granularity;
+  highlightedPeriodLabel: string;
 }) {
   const inauguraciones = sumFlowByPeriod(
     events.map((e) => ({ date: e.openingDate })),
@@ -62,10 +76,10 @@ export default function NationalOverviewChart({
           <YAxis allowDecimals={false} tick={{ fontSize: 12 }} />
           <Tooltip />
           <Legend />
-          {/* "You are here" — the current week/month/year, always on for
-              the main dashboard's charts (Daniel's explicit request,
-              2026-08-16), unlike /admin/costos' hover-driven version. */}
-          <ReferenceLine x={currentPeriodLabel(granularity)} stroke="#000000" strokeWidth={3} />
+          {/* "You are here" — defaults to the current period (via the
+              parent's activePeriod fallback), moves to whichever row is
+              hovered in EventosDetailTable, always visible either way. */}
+          <ReferenceLine x={highlightedPeriodLabel} stroke="#000000" strokeWidth={3} />
           <Area type="monotone" dataKey="inauguraciones" name="Inauguraciones" stroke="#ff00fb" fill="#ff00fb" fillOpacity={0.35} />
           <Area type="monotone" dataKey="exposicionesActivas" name="Expos activas" stroke="#3d373d" fill="#3d373d" fillOpacity={0.25} />
         </AreaChart>

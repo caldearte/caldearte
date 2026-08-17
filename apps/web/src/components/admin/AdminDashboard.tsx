@@ -2,12 +2,11 @@
 
 import { useMemo, useState } from "react";
 import dynamic from "next/dynamic";
-import { enumeratePeriods, type Granularity } from "@/lib/adminAnalyticsBucketing";
+import { bucketLabel, countActiveByPeriod, enumeratePeriods, isEventInPeriod, sumFlowByPeriod, type Granularity } from "@/lib/adminAnalyticsBucketing";
+import { shortRegionName } from "@/lib/regionNames";
 import type { AdminAnalyticsPayload } from "@/lib/adminAnalytics";
 import GranularityToggle from "./GranularityToggle";
-import SourceComparisonTable from "./SourceComparisonTable";
-import BrightSourcesTable from "./BrightSourcesTable";
-import InstagramSourcesTable from "./InstagramSourcesTable";
+import EventosSummaryBar from "./EventosSummaryBar";
 import OutOfScopeTrends from "./OutOfScopeTrends";
 
 // recharts' ResponsiveContainer needs real DOM measurement (getBoundingClientRect
@@ -16,18 +15,17 @@ import OutOfScopeTrends from "./OutOfScopeTrends";
 // recharts chunk in production (Vercel), even though these are already "use
 // client" components (that alone doesn't skip SSR, only client-only rendering
 // does). `ssr: false` is the standard fix for chart libraries like this one.
-const ChartLoading = () => <div className="w-full h-[320px] flex items-center justify-center font-geist text-[13px] text-text-primary/50">Cargando gráfico…</div>;
-const NationalOverviewChart = dynamic(() => import("./NationalOverviewChart"), { ssr: false, loading: ChartLoading });
-const ExposicionesPorRegionChart = dynamic(() => import("./ExposicionesPorRegionChart"), { ssr: false, loading: ChartLoading });
-const InauguracionesPorRegionChart = dynamic(() => import("./InauguracionesPorRegionChart"), { ssr: false, loading: ChartLoading });
-const FuentesPorPipelineChart = dynamic(() => import("./FuentesPorPipelineChart"), { ssr: false, loading: ChartLoading });
+const ChartLoading = () => <div className="w-full h-[280px] flex items-center justify-center font-geist text-[13px] text-text-primary/50">Cargando gráfico…</div>;
+const RegionDonutChart = dynamic(() => import("./RegionDonutChart"), { ssr: false, loading: ChartLoading });
 
-// Owns the one shared granularity toggle — everything below re-renders
-// from the same in-memory payload the server component fetched once, no
-// re-fetch on toggle change (see admin-analytics/index.ts's own comment
-// on why it ships row-level data instead of pre-bucketed series).
+// Rewritten 2026-08-17: /admin used to be the full historical dashboard
+// (Chile total, por región, fuentes por pipeline) — all of that moved to
+// /admin/eventos and /admin/fuentes. This page is now a quick CURRENT-
+// period-only summary (no "Total" granularity — see GranularityToggle's
+// hideTotal prop, "período actual" has no meaningful all-time reading)
+// plus "Señales fuera de alcance", which stays here unchanged.
 export default function AdminDashboard({ data }: { data: AdminAnalyticsPayload }) {
-  const [granularity, setGranularity] = useState<Granularity>("month");
+  const [granularity, setGranularity] = useState<Granularity>("week");
 
   const { minDate, maxDate } = useMemo(() => {
     const dates: string[] = [];
@@ -47,52 +45,65 @@ export default function AdminDashboard({ data }: { data: AdminAnalyticsPayload }
 
   const periods = useMemo(() => enumeratePeriods(minDate, maxDate, granularity), [minDate, maxDate, granularity]);
 
+  const currentPeriod = bucketLabel(new Date().toISOString().slice(0, 10), granularity);
+
+  const inauguracionesCount = sumFlowByPeriod(
+    data.events.map((e) => ({ date: e.openingDate })),
+    [currentPeriod],
+    granularity,
+  )[0]?.count ?? 0;
+  const exposicionesActivasCount = countActiveByPeriod(
+    data.events.map((e) => ({ start: e.runStart, end: e.runEnd })),
+    [currentPeriod],
+    granularity,
+  )[0]?.count ?? 0;
+
+  // Distinct events for the current period — an event that's both an
+  // inauguración and an active exposición this period counts once, not
+  // twice (Daniel's explicit call, 2026-08-17). Also the shared basis for
+  // both donuts below, so their slices always sum to this same total.
+  const currentPeriodEvents = useMemo(
+    () => data.events.filter((e) => isEventInPeriod(e, currentPeriod, granularity)),
+    [data.events, currentPeriod, granularity],
+  );
+
+  const { santiagoDonutData, allRegionsDonutData } = useMemo(() => {
+    const byRegion = new Map<string, number>();
+    let santiago = 0;
+    for (const e of currentPeriodEvents) {
+      const label = e.adminRegionName ? shortRegionName(e.adminRegionName) : "Sin región";
+      byRegion.set(label, (byRegion.get(label) ?? 0) + 1);
+      if (label === "Santiago") santiago++;
+    }
+    const allRegions = [...byRegion.entries()].sort((a, b) => b[1] - a[1]).map(([name, value]) => ({ name, value }));
+    return {
+      santiagoDonutData: [
+        { name: "Santiago", value: santiago },
+        { name: "Otras regiones", value: currentPeriodEvents.length - santiago },
+      ],
+      allRegionsDonutData: allRegions,
+    };
+  }, [currentPeriodEvents]);
+
   return (
     <div className="flex flex-col gap-12">
-      <GranularityToggle value={granularity} onChange={setGranularity} />
+      <GranularityToggle value={granularity} onChange={setGranularity} hideTotal />
 
       <section>
-        <h2 className="font-fragment-mono uppercase text-[18px] text-text-primary mb-4">Chile — total</h2>
-        <NationalOverviewChart events={data.events} periods={periods} granularity={granularity} />
-      </section>
-
-      {/* 2 columns on desktop so both región breakdowns fit the page's
-          existing width side by side instead of one very wide chart
-          each — same height per chart either way, 1 column on mobile. */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-        <section>
-          <h2 className="font-fragment-mono uppercase text-[18px] text-text-primary mb-4">Exposiciones por región</h2>
-          <ExposicionesPorRegionChart events={data.events} periods={periods} granularity={granularity} />
-        </section>
-
-        <section>
-          <h2 className="font-fragment-mono uppercase text-[18px] text-text-primary mb-4">Inauguraciones por región</h2>
-          <InauguracionesPorRegionChart events={data.events} periods={periods} granularity={granularity} />
-        </section>
-      </div>
-
-      {/* Deliberately its own full-width row, not paired in the grid
-          above — kept clearly separate from the región breakdowns
-          (Daniel's explicit request, 2026-08-16), since it's a
-          different dimension (source/pipeline, not región). */}
-      <section>
-        <h2 className="font-fragment-mono uppercase text-[18px] text-text-primary mb-4">Fuentes por pipeline</h2>
-        <FuentesPorPipelineChart events={data.events} periods={periods} granularity={granularity} />
+        <h2 className="font-fragment-mono uppercase text-[18px] text-text-primary mb-4">Chile — eventos</h2>
+        <EventosSummaryBar
+          inauguraciones={inauguracionesCount}
+          exposicionesActivas={exposicionesActivasCount}
+          total={currentPeriodEvents.length}
+        />
       </section>
 
       <section>
-        <h2 className="font-fragment-mono uppercase text-[18px] text-text-primary mb-4">Fuentes / pipelines — comparación</h2>
-        <SourceComparisonTable comparison={data.pipelineComparison} />
-      </section>
-
-      <section>
-        <h2 className="font-fragment-mono uppercase text-[18px] text-text-primary mb-4">Fuentes brillantes (web)</h2>
-        <BrightSourcesTable sources={data.brightSources} />
-      </section>
-
-      <section>
-        <h2 className="font-fragment-mono uppercase text-[18px] text-text-primary mb-4">Cuentas de Instagram</h2>
-        <InstagramSourcesTable sources={data.instagramSources} />
+        <h2 className="font-fragment-mono uppercase text-[18px] text-text-primary mb-4">Chile — regiones</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          <RegionDonutChart data={santiagoDonutData} />
+          <RegionDonutChart data={allRegionsDonutData} />
+        </div>
       </section>
 
       <section>

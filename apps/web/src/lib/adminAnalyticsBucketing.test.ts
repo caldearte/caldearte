@@ -6,6 +6,7 @@ import {
   currentPeriodLabel,
   enumeratePeriods,
   formatPeriodLabel,
+  isEventInPeriod,
   sumAmountByPeriod,
   sumFlowByPeriod,
 } from "./adminAnalyticsBucketing";
@@ -100,6 +101,28 @@ test("formatPeriodLabel: matches the reference charts' Spanish month'YY style, a
   assert.equal(formatPeriodLabel("2026", "year"), "2026");
   assert.equal(formatPeriodLabel("2026-08-10", "week"), "10-ago");
   assert.equal(formatPeriodLabel("total", "total"), "Total");
+});
+
+test("isEventInPeriod: an event that's BOTH an inauguración and an active exposición in the same period is still just one true — caller counts it once", () => {
+  const event = { openingDate: "2026-08-11", runStart: "2026-08-11", runEnd: "2026-08-20" };
+  assert.equal(isEventInPeriod(event, "2026-08-10", "week"), true);
+});
+
+test("isEventInPeriod: an event with no run range only counts via its opening date (FLOW rule)", () => {
+  const event = { openingDate: "2026-08-11", runStart: null, runEnd: null };
+  assert.equal(isEventInPeriod(event, "2026-08-10", "week"), true, "opens this week");
+  assert.equal(isEventInPeriod(event, "2026-09", "month"), false, "doesn't open in September");
+});
+
+test("isEventInPeriod: a purely STATE event (no opening date this period, but running) still counts via the run range", () => {
+  const event = { openingDate: null, runStart: "2026-07-01", runEnd: "2026-09-01" };
+  assert.equal(isEventInPeriod(event, "2026-08", "month"), true, "running through August");
+  assert.equal(isEventInPeriod(event, "2026-10", "month"), false, "already closed before October");
+});
+
+test("isEventInPeriod: an event with neither a matching opening date nor a usable run range is false", () => {
+  const event = { openingDate: "2026-01-01", runStart: null, runEnd: "2026-08-15" };
+  assert.equal(isEventInPeriod(event, "2026-08", "month"), false, "run range incomplete (no runStart), opening date is in a different period");
 });
 
 test("currentPeriodLabel: formats 'now' the same way the chart's own X axis formats its periods, per granularity", () => {

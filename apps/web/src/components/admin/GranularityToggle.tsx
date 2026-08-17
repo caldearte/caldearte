@@ -15,13 +15,20 @@ const OPTIONS: { value: Granularity; label: string }[] = [
 export default function GranularityToggle({
   value,
   onChange,
+  hideTotal,
 }: {
   value: Granularity;
   onChange: (granularity: Granularity) => void;
+  // /admin's summary page only ever shows the CURRENT period (semana/mes/
+  // año actual, not a historical series) — "Total" (all-time) has no
+  // meaningful "current" reading, so it's hidden there (Daniel's explicit
+  // request, 2026-08-17). Every other page keeps all 4 options.
+  hideTotal?: boolean;
 }) {
+  const options = hideTotal ? OPTIONS.filter((opt) => opt.value !== "total") : OPTIONS;
   return (
     <div className="flex gap-2">
-      {OPTIONS.map((opt) => (
+      {options.map((opt) => (
         <button
           key={opt.value}
           type="button"
