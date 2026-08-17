@@ -3635,6 +3635,16 @@ ancillary/never-throws posture as the run-summary emails) — both
 versions' title, source link, and full reasoning, plus Accept ("usar la
 versión nueva") and Reject ("mantener la anterior") links.
 
+**Confirmed 2026-08-17, real gap found during an audit**: the DETECTION
+and resolution machinery below is fully built and working, but
+`sendEscalationEmail` shares the same `RESEND_API_KEY`-not-set no-op
+every other curator email hits (real production run logs consistently
+show it as unset) — conflicts were accumulating with genuinely zero
+visibility anywhere (7 real, unresolved rows found by querying the table
+directly). `/admin/fuentes` now shows a bare pending count (see
+[architecture.md](architecture.md#admin-analytics-dashboard)) — no
+detail/action view yet, just visibility that these exist.
+
 **Resolution**: `supabase/functions/curation-escalation-decide` — the
 project's first Edge Function, reached directly from the email (no
 inbound email parsing, no webhook — just two GET links, same "link to our

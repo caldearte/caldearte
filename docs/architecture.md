@@ -112,6 +112,117 @@ sign-in to regular visitors.
   a separate column from the AI-owned ones (`curation_status`,
   `sensitivity_tags`).
 
+## Admin analytics dashboard
+
+**Built 2026-08-15 through 2026-08-17**, on top of the same
+`isAdminSession`/`ADMIN_EMAIL` gate as Admin mode above, but a distinct
+read-only reporting layer, not another privileged-write action — no
+`api/admin/*` route needed (see `AdminPageShell`/`requireAdminSession`
+below), and no `x-admin-secret` reaches the browser (fetched server-side
+only).
+
+**Data flow**: one Supabase Edge Function, `admin-analytics`
+(`supabase/functions/admin-analytics/index.ts`), ships lightweight
+ROW-LEVEL data (events, `rejected_candidates`, cost logs, etc. —
+un-aggregated) in one response, authenticated by the same shared
+`x-admin-secret` pattern the privileged-write actions use. Every
+`/admin/*` page's own React Server Component calls
+`requireAdminSession()` + `fetchAdminAnalytics()`
+(`apps/web/src/lib/adminAnalytics.ts`) once, then hands the whole
+payload to a client component. All bucketing (week/month/year/total) and
+filtering happens **client-side**
+(`apps/web/src/lib/adminAnalyticsBucketing.ts`'s `bucketLabel`/
+`sumFlowByPeriod`/`countActiveByPeriod`/`sumAmountByPeriod`/
+`isEventInPeriod`) — no re-fetch when a visitor toggles granularity, and
+the Edge Function never needs a separate query per time window.
+
+**Four pages, split 2026-08-17** (originally one long `/admin` page):
+- **`/admin`** — a quick CURRENT-period-only summary, not a historical
+  view (`GranularityToggle`'s `hideTotal` prop hides "Total" here
+  specifically — "período actual" has no meaningful all-time reading).
+  In order: **Costos** (one executive line — effective cost this period,
+  Apify's free tier called out separately, see Cost governance above),
+  **Chile — eventos** (stacked bar: inauguraciones vs. exposiciones
+  activas, plus the period's real DISTINCT event total —
+  `isEventInPeriod` dedupes an event that's both at once, rather than
+  summing the two bars), **Chile — regiones** (2 donut charts — Santiago
+  vs. resto, and the full 16-región breakdown — first `PieChart` usage in
+  the repo), **Fuentes** (same stacked-bar component as Chile — eventos,
+  reused generically — grouped by fuente instead of by
+  inauguración/exposición), **Señales fuera de alcance**
+  (`OutOfScopeTrends`, full historical view, not period-scoped).
+- **`/admin/eventos`** — the historical event detail that used to live on
+  `/admin` itself: one `EventosPeriodBlock` for "Chile — total" plus one
+  per región (all 16, always, north→south order — a región with zero
+  events stays visible rather than disappearing, same posture as the
+  public site's CityPicker). Each block is a chart+table pair
+  (`EventosChart`/`EventosDetailTable`) with a hover-sync interaction
+  that combines two patterns that used to be separate: the "you are here"
+  reference line defaults to the CURRENT period (not hover-only), moves
+  to whatever row is hovered in the table, and reverts to the current
+  period on mouseleave — the table's detail rows also auto-scroll into
+  view on mount/granularity change, so the current period is visible
+  without manual scrolling.
+- **`/admin/fuentes`** — per-fuente detail: `FuentesPorPipelineChart` +
+  `SourceComparisonTable` (chart left, table right), `BrightSourcesTable`/
+  `InstagramSourcesTable` (per-source yield + a `possiblyDead` heuristic),
+  a pending-curation-conflicts count (see `curation_escalations` below),
+  and `CoberturaTable` (see "Cobertura por corrida" below).
+- **`/admin/costos`** — Anthropic + Apify cost history, `TotalCostChart`/
+  `CostHistoryChart`/`CostTable`, same hover-sync `ReferenceLine` pattern
+  as `/admin/eventos` (hover-only here, no current-period default — see
+  Cost governance above for the Apify free-tier split this table/chart
+  both apply).
+
+**Pipeline grouping, not raw pipeline values** (`pipelineGrouping.ts`,
+2026-08-17): `bright_source` and `headless` (MAVI — a single website
+source scraped via headless browser, not a genuinely distinct discovery
+mechanism from the other web sources) both display as **"Web"**
+everywhere in this dashboard — `groupPipelineLabel`/
+`mergePipelineComparison` are the one shared place this merge happens,
+reused by every chart/table that groups by fuente, so `/admin`'s summary
+and `/admin/fuentes`' detail can never drift into showing MAVI two
+different ways (a real inconsistency found and fixed the same day it was
+introduced). `comuna_search` (Tavily-based comuna search, disabled since
+the bright-sources pivot — see Event Discovery above) keeps its own row
+wherever pipelines are compared, but its label is suffixed
+**"— inactiva"** (`pipelineLabels.ts`) so a permanent 0/0 row reads as
+"off on purpose," not broken.
+
+**Cobertura por corrida** (`discovery_run_summaries` table, migration
+`20260817120000_add_discovery_run_summaries.sql`) — every curator
+entrypoint (`event_discovery`/`headless`/`instagram`/`google_alerts`)
+already computed a rich per-run summary object every run
+(`apps/curator/src/lib/notify.ts`'s `RunSummary` and its 3 siblings,
+including the real per-candidate `outcome` —
+`inserted`/`replaced`/`duplicate_skipped`/`escalated`/`expired`/
+`insert_failed`, distinct from Haiku's own approved/rejected verdict) —
+it just fed a summary email whose Resend half was never actually
+configured in production (`RESEND_API_KEY` reads as unset in every real
+run's own logs), so the object was built and discarded every time.
+`recordRunSummary` (`apps/curator/src/lib/run-summary-store.ts`)
+persists a compact, typed projection of that same object regardless of
+whether the email sends — full original object kept in a `raw_summary`
+jsonb column for anything not promoted to its own column yet, same
+"ship raw, aggregate client-side" posture the rest of this dashboard
+uses. Surfaced in `/admin/fuentes` as `CoberturaTable`, last 90 days,
+most recent first — the first place this data has ever been visible
+outside ephemeral GitHub Actions logs.
+
+**Pending curation-conflict count** — `curation_escalations`
+(see "Cross-source curation conflict escalation" in
+[region-discovery.md](region-discovery.md)) rows with `resolved_at is
+null` are counted (`pendingEscalationsCount` in the Edge Function
+payload) and shown as a plain line in `/admin/fuentes` when non-zero — no
+detail view yet, just visibility. Confirmed 2026-08-17: the escalation
+DETECTION and resolution machinery (`findConflictingApprovedEvent`/
+`findConflictingRejectedCandidate`, the `curation-escalation-decide` Edge
+Function) is fully built and working, but `sendEscalationEmail` shares
+the same `RESEND_API_KEY`-not-set no-op as every other curator email —
+conflicts were accumulating (7 real, unresolved rows found during a
+2026-08-17 audit) with genuinely zero visibility anywhere until this
+count.
+
 ## User location detection: región, not comuna
 
 **Chosen approach: Vercel's native IP geolocation as a silent default (SSR) +
