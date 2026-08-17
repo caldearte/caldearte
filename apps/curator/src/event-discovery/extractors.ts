@@ -373,6 +373,20 @@ export interface ArticleListConfig {
   // curateBrightSourceItems's prompt still asks Haiku to interpret that as
   // a fallback, since a source's markup can always drift.
   dateRangeExtractor?: DateRangeConfig;
+  // Optional — real gap found 2026-08-17 (galeriapready.cl): its listing
+  // unavoidably spans every year at once (2018-2026, see that source's own
+  // known-sources.ts note), and a real recurring chunk of those items are
+  // artist-roster/profile entries whose "exhib-tab-descr" date field is
+  // genuinely empty on the page itself — not a missing-but-inferable date,
+  // there is NO date anywhere for these, ever (confirmed: they have no
+  // detail-page date either). Sending them to Haiku costs a real judgment
+  // call every ~90 days forever (the rejected-candidate dedup window), for
+  // an item that can structurally never become approvable. Skips the item
+  // entirely, before it ever becomes a BrightSourceItem, when daysRegex is
+  // configured but captures nothing — false only for sources where a
+  // missing date is still worth Haiku's judgment (most sources), so this
+  // must be opted into per-source, not a default.
+  skipIfNoDate?: boolean;
 }
 
 // matchAll requires a global regex — a config author forgetting the "g"
@@ -393,6 +407,7 @@ export function extractArticleList(html: string, pageUrl: string, config: Articl
     const title = decodeHtmlEntities(collapseWhitespace(rawTitle ?? ""));
 
     const days = config.daysRegex ? collapseWhitespace(block.match(config.daysRegex)?.[1] ?? "") : "";
+    if (config.skipIfNoDate && config.daysRegex && !days) continue;
     const place = config.placeRegex ? collapseWhitespace(block.match(config.placeRegex)?.[1] ?? "") : "";
     const descriptionMatch = config.descriptionRegex ? collapseWhitespace(block.match(config.descriptionRegex)?.[1] ?? "") : "";
     const dateRange = config.dateRangeExtractor ? extractDateRange(block, config.dateRangeExtractor) : null;
