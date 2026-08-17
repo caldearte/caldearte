@@ -1075,13 +1075,17 @@ test("curateBrightSourceItems attaches fixedLocation when Haiku's own extraction
   assert.equal(candidates[0].placeName, "Parque Cultural de Valparaíso");
 });
 
-// Real bug found 2026-08-16 (Factoría Santa Rosa's Instagram account,
-// posting about a touring/co-hosted show actually happening in Cerro
-// Alegre, Valparaíso): a fixedLocation used to win unconditionally, even
-// when Haiku correctly read a different real Chilean place from the
-// item's own text. Now that specific, clearly-different extraction wins
-// instead — see mergeBrightSourceCandidate/locationsOverlap.
-test("curateBrightSourceItems lets Haiku's own extraction override fixedLocation when it clearly names a different real Chilean place", async () => {
+// Real regression found 2026-08-17 (Galería Patricia Ready, a TRUE
+// single-physical-venue bright source with fixedLocation "Vitacura"): an
+// earlier version of this fix let Haiku's own ungrounded guess ("Santiago"
+// — Haiku has no real evidence for this source, needsLocation is false,
+// it was never even supposed to report a location at all) override a
+// batch-level fixedLocation whenever it "conflicted" — corrupted 2 real
+// production events. fixedLocation must stay unconditional: unlike an
+// Instagram account (see the defaultLocation test below), a source
+// configured with fixedLocation only ever shows its own single venue —
+// there's no such thing as "touring" for it to catch.
+test("curateBrightSourceItems keeps fixedLocation unconditional even when Haiku's row somehow reports a different Chilean place", async () => {
   const items: BrightSourceItem[] = [baseBrightItem];
   const client = stubBrightClient([
     {
@@ -1092,8 +1096,8 @@ test("curateBrightSourceItems lets Haiku's own extraction override fixedLocation
       runEndDate: "2026-09-04",
       openingDatetime: null,
       openingTimeConfirmed: false,
-      location: "Cerro Alegre, Valparaíso",
-      placeName: "Palacio Baburizza",
+      location: "Santiago",
+      placeName: "Galería inventada",
       mediumType: "tradicional",
       sensitivityTags: [],
       curationReasoning: "ok",
@@ -1101,15 +1105,20 @@ test("curateBrightSourceItems lets Haiku's own extraction override fixedLocation
   ]);
 
   const { candidates } = await curateBrightSourceItems(client, items, "septiembre 2026", {
-    fixedLocation: { location: "Santiago", placeName: "Factoría Santa Rosa" },
+    fixedLocation: { location: "Vitacura", placeName: "Galería Patricia Ready" },
   });
 
-  assert.equal(candidates[0].location, "Cerro Alegre, Valparaíso");
-  assert.equal(candidates[0].placeName, "Palacio Baburizza");
-  assert.match(candidates[0].curationReasoning, /difiere de la ubicación por defecto/);
+  assert.equal(candidates[0].location, "Vitacura");
+  assert.equal(candidates[0].placeName, "Galería Patricia Ready");
+  assert.doesNotMatch(candidates[0].curationReasoning, /difiere de la ubicación por defecto/);
 });
 
-test("curateBrightSourceItems lets Haiku's extraction override a per-item defaultLocation (Instagram account default) the same way it does fixedLocation", async () => {
+// Real bug found 2026-08-16 (Factoría Santa Rosa's Instagram account,
+// posting about a touring/co-hosted show actually happening in Cerro
+// Alegre, Valparaíso): an account's own post text is real evidence it can
+// genuinely contradict, unlike a batch-fixed source's ungrounded guess
+// above — this override stays specific to item.defaultLocation.
+test("curateBrightSourceItems lets Haiku's extraction override a per-item defaultLocation (Instagram account default) when it clearly names a different real Chilean place", async () => {
   const items: BrightSourceItem[] = [{ ...baseBrightItem, defaultLocation: { location: "Santiago", placeName: "Factoría Santa Rosa" } }];
   const client = stubBrightClient([
     {
@@ -1212,6 +1221,23 @@ test("curateBrightSourceItems doesn't ask Haiku for location when every item alr
   );
 
   await curateBrightSourceItems(client, items, "julio 2026", {});
+
+  assert.match(captured.value, /No reportes `location`\/`placeName`/);
+});
+
+// Locks in the 2026-08-17 regression fix directly at the prompt level —
+// a batch-level fixedLocation source must never even be ASKED for a
+// location, regardless of item.location (which is always null for these
+// sources anyway, headless-discovery/run.ts's own convention).
+test("curateBrightSourceItems never asks Haiku for location when opts.fixedLocation is set, even though item.location is null", async () => {
+  const items: BrightSourceItem[] = [baseBrightItem];
+  const captured = { value: "" };
+  const client = stubBrightClient(
+    [{ index: 0, status: "approved", artist: null, runStartDate: "2026-07-05", runEndDate: "2026-07-31", openingDatetime: null, openingTimeConfirmed: false, location: null, placeName: null, mediumType: "tradicional", sensitivityTags: [], curationReasoning: "ok" }],
+    captured,
+  );
+
+  await curateBrightSourceItems(client, items, "julio 2026", { fixedLocation: { location: "Vitacura", placeName: "Galería Patricia Ready" } });
 
   assert.match(captured.value, /No reportes `location`\/`placeName`/);
 });
