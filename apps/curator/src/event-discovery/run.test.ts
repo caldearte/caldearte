@@ -1350,6 +1350,54 @@ test(
         );
       });
 
+      // Real gap found 2026-08-17, auditing a week of rejections: unlike
+      // an ordinary rejection, an "expired" candidate got zero durable
+      // record anywhere — its sourceUrl never entered the dedup set nor
+      // rejected_candidates, so a source with stale content that never
+      // disappears from its own page (Centex: 7 such candidates in a
+      // single real run) would re-cost a full Haiku curation call every
+      // single week, forever. Now it's recorded the same way an ordinary
+      // rejection is, protected by the same 90-day dedup window.
+      await t.test("insertCandidates records an expired (approved-but-stale) candidate in rejected_candidates, same as an ordinary rejection", async () => {
+        const staleCandidate = {
+          title: "__test__ Expiró Antes De Insertarse",
+          description: null,
+          artist: null,
+          runStartDate: "2026-01-01",
+          runEndDate: "2026-01-15", // months before the "now" below — stale
+          openingDatetime: null,
+          openingTimeConfirmed: true,
+          dateQuote: null,
+          locationQuote: "GAM, Santiago",
+          runStartDateQuote: "1 de enero",
+          runEndDateQuote: "15 de enero",
+          mediumType: "tradicional" as const,
+          sensitivityTags: [],
+          curationReasoning: "ok",
+          imageUrl: null,
+          status: "approved" as const,
+          location: "GAM, Santiago",
+          placeName: null,
+          sourceUrl: "https://x.cl/__test__/expiro-antes-de-insertarse",
+        };
+
+        const { insertCandidates, loadExistingKeys, loadAllRegions } = await import("./run.js");
+        await client.from("rejected_candidates").delete().eq("source_url", staleCandidate.sourceUrl);
+
+        const regions = await loadAllRegions();
+        const seen = await loadExistingKeys();
+        const { insertedCount, outcomes } = await insertCandidates([staleCandidate], regions, seen, new Date(2026, 7, 1), "bright_source");
+
+        assert.equal(insertedCount, 0);
+        assert.equal(outcomes.get(staleCandidate), "expired");
+
+        const { data: rejectedRows } = await client.from("rejected_candidates").select("reason").eq("source_url", staleCandidate.sourceUrl);
+        assert.equal(rejectedRows?.length, 1, "the expired candidate's sourceUrl now has a durable record, protected by the same 90-day dedup window an ordinary rejection gets");
+        assert.match(rejectedRows![0].reason, /expiró antes de insertarse/);
+
+        await client.from("rejected_candidates").delete().eq("source_url", staleCandidate.sourceUrl);
+      });
+
       await t.test("summary distinguishes insertedCount (actually written) from approvedByCuration (Haiku's raw call)", async () => {
         // One current+approved (gets inserted) and one approved-but-stale
         // (filtered by isCurrentOrUpcoming before insertCandidates ever
