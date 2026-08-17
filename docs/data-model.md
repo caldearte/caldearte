@@ -234,6 +234,25 @@ curation_escalations (added 20260730150000_add_curation_escalations.sql
     resolves them)
   -- One row per detected cross-source conflict, held until a human picks
   -- a side via the email's Accept/Reject links.
+
+discovery_run_summaries (added 20260817120000_add_discovery_run_summaries.sql
+    — see architecture.md's "Admin analytics dashboard" section)
+  id, created_at, started_at,
+  entrypoint (event_discovery | headless | instagram | google_alerts),
+  candidates_total, approved_by_curation, rejected_by_curation,
+  inserted_count, replaced_count, duplicate_skipped_count,
+  escalated_count, expired_count, insert_failed_count (the real
+    per-candidate outcome funnel, distinct from Haiku's approved/rejected
+    verdict — see run.ts's InsertOutcome type),
+  cost_usd,
+  raw_summary (jsonb — the full original per-run summary object
+    notify.ts already computes, for anything not promoted to its own
+    column yet)
+  -- One row per curator run (all 4 entrypoints), NOT pruned — small,
+  -- weekly/daily cadence. Was already being computed every run to feed a
+  -- summary email whose Resend half was never configured in production;
+  -- this persists it regardless, so /admin/fuentes' "Cobertura por
+  -- corrida" doesn't require digging through GitHub Actions logs by hand.
 ```
 
 Field types and constraints (exact `CHECK`s, defaults, nullability) live in
