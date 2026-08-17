@@ -1,4 +1,5 @@
 import { VISION_AXIS5_POLICY } from "./curation-policy.js";
+import { isSafeExternalUrl } from "./url-safety.js";
 
 export interface ImageFetcher {
   fetch(url: string): Promise<{ base64: string; mediaType: string }>;
@@ -6,6 +7,12 @@ export interface ImageFetcher {
 
 export const defaultImageFetcher: ImageFetcher = {
   async fetch(url: string) {
+    // SSRF guard, 2026-08-17 — url is a candidate's chosen imageUrl,
+    // itself derived from arbitrary scraped HTML (see url-safety.ts's doc
+    // comment).
+    if (!isSafeExternalUrl(url)) {
+      throw new Error(`defaultImageFetcher: refusing to fetch unsafe URL: ${url}`);
+    }
     const response = await fetch(url);
     if (!response.ok) {
       throw new Error(`defaultImageFetcher: ${url} responded ${response.status}`);

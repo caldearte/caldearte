@@ -9,6 +9,7 @@
 // docs/roadmap.md; this covers only the known-rot Instagram/Facebook case).
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@caldearte/shared-types";
+import { isSafeExternalUrl } from "./url-safety.js";
 
 const BUCKET = "event-images";
 // Real measured samples (5 Instagram images, 2026-07-20): 25KB-1.9MB, one
@@ -36,6 +37,15 @@ export async function rehostImage(
   client: SupabaseClient<Database>,
   fetchImpl: ImageFetchLike = fetch,
 ): Promise<string | null> {
+  // SSRF guard, 2026-08-17 — imageUrl comes from extracted og:image/
+  // twitter:image/JSON-LD content, itself derived from arbitrary scraped
+  // HTML (see url-safety.ts's doc comment). Same "fall back to no image"
+  // posture this function already uses for every other failure mode.
+  if (!isSafeExternalUrl(imageUrl)) {
+    console.error(`[image-rehost] refusing to fetch unsafe URL: ${imageUrl}`);
+    return null;
+  }
+
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
 
