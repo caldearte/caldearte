@@ -2,7 +2,8 @@
 
 import { useRef, useState } from "react";
 import { pushRecentRegionId } from "@/lib/cookies";
-import type { CityCounts, RegionMeta } from "@/lib/events";
+import type { RegionMeta } from "@/lib/events";
+import type { CityCounts } from "@/lib/event-utils";
 import CityPickerPanel from "./CityPickerPanel";
 
 interface EventPageCityPickerProps {

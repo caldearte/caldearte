@@ -2,7 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import { esCL } from "@/i18n/es-CL";
-import { searchEvents, sortByRunEndAsc, type EventRecord } from "@/lib/events";
+import { searchEvents, sortByRunEndAsc } from "@/lib/event-utils";
+import type { EventRecord } from "@/lib/events";
 import { dateOnlyFromIso, todayInSantiago } from "@/lib/date";
 import EventHorizontalListItem from "./EventHorizontalListItem";
 

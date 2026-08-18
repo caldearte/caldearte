@@ -17,8 +17,8 @@ import {
   resolveCityId,
   displayNameForCity,
   sortByRunEndAsc,
-  type EventRecord,
-} from "./events";
+} from "./event-utils";
+import type { EventRecord } from "./events";
 
 function event(overrides: Partial<EventRecord> = {}): EventRecord {
   return {

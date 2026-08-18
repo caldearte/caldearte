@@ -14,7 +14,8 @@ import {
 } from "@/lib/date";
 import { deriveComuna } from "@/lib/comuna";
 import { esCL } from "@/i18n/es-CL";
-import { displayNameForCity, type EventRecord } from "@/lib/events";
+import { displayNameForCity } from "@/lib/event-utils";
+import type { EventRecord } from "@/lib/events";
 
 // Shared business logic behind every event card's date/venue text and
 // action buttons (Cómo llegar/Agregar/Compartir) — extracted from

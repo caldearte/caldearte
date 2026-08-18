@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
-import { fetchApprovedEvents, filterFamilyMode, filterActiveInRange, filterByRegion, splitInauguracionesYExpos } from "@/lib/events";
+import { fetchApprovedEvents } from "@/lib/events";
+import { filterFamilyMode, filterActiveInRange, filterByRegion, splitInauguracionesYExpos } from "@/lib/event-utils";
 import { buildRegionMetaByCityId, adminRegionNameByRegionId } from "@/lib/cities";
 import { currentWeekInSantiago, weekBoundsInSantiago, todayInSantiago } from "@/lib/date";
 import { REGION_COOKIE, FAMILY_MODE_COOKIE, TODAY_FILTER_COOKIE } from "@/lib/cookies";

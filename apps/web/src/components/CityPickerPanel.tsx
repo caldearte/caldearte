@@ -16,7 +16,8 @@ import {
 import { shortRegionName } from "@/lib/regionNames";
 import { getRecentRegionIds, setCookie, PRECISE_CITY_COOKIE } from "@/lib/cookies";
 import { requestPreciseCityId } from "@/lib/geolocation";
-import { type CityCounts, type RegionMeta } from "@/lib/events";
+import { type CityCounts } from "@/lib/event-utils";
+import type { RegionMeta } from "@/lib/events";
 
 interface CityPickerPanelProps {
   open: boolean;

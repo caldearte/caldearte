@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { fmtWeekRange } from "@/lib/date";
 import { esCL } from "@/i18n/es-CL";
-import type { CityCounts, RegionMeta } from "@/lib/events";
+import type { RegionMeta } from "@/lib/events";
+import type { CityCounts } from "@/lib/event-utils";
 import EventPageCityPicker from "./EventPageCityPicker";
 
 interface EventPageTopNavProps {

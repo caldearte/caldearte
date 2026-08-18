@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { cookies, headers } from "next/headers";
 import { notFound } from "next/navigation";
+import { fetchApprovedEvents } from "@/lib/events";
 import {
-  fetchApprovedEvents,
   truncateDescription,
   displayNameForCity,
   resolveAdminRegionName,
@@ -11,7 +11,7 @@ import {
   splitInauguracionesYExpos,
   filterActiveInRange,
   filterUpcomingInauguraciones,
-} from "@/lib/events";
+} from "@/lib/event-utils";
 import { resolveCityPickerContext } from "@/lib/cityPickerContext";
 import { buildRegionMetaByCityId, adminRegionNameByRegionId, regionIdFromAdminRegionName } from "@/lib/cities";
 import { shortRegionName } from "@/lib/regionNames";
