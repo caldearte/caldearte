@@ -539,6 +539,18 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
     addedAt: "2026-08-15",
     fixedLocation: { location: "Puerto Octay", placeName: "Museo Taller" },
   },
+  {
+    username: "studio_globo_urbano",
+    note:
+      "Evaluada 2026-08-18. Colectivo de arte activo, real. 3/6 posts " +
+      "propios: \"REFUGIO\" (10 artistas emergentes, 20-30 agosto, " +
+      "Galería Condell — anuncio limpio con fecha) + 2 recaps de una " +
+      "inauguración real en Tienda Makers (Parque Arauco), confirmada " +
+      "de forma independiente por 3 posts de otras cuentas etiquetando " +
+      "el mismo evento. Multi-venue (Galería Condell y Tienda Makers) — " +
+      "sin fixedLocation, Haiku infiere por post.",
+    addedAt: "2026-08-18",
+  },
   // El resto de la lista la aporta Daniel — una decisión editorial, igual
   // que cada fuente brillante nueva se evaluó una por una. Confirmar
   // pública y activa antes de agregar cada cuenta.
