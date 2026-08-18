@@ -3581,6 +3581,58 @@ than risking the known-good regression guard. Confirmed live in
 production the same day: MSSA's real "América despierta" exhibition
 produced 3 separate rows in one run.
 
+## Instagram accounts: 10 added in one session, no new pipeline bugs (2026-08-18)
+
+A different session shape than 2026-08-14 above: ~28 Daniel-proposed
+usernames evaluated one at a time in chat, following the same playbook
+(fetch 5-6 real recent posts, no date filter, via a throwaway script),
+but purely a curation/evaluation pass — no code changes to the discovery
+pipeline itself this time.
+
+**10 added** (`instagram-accounts.ts`): studio_globo_urbano (multi-venue,
+Galería Condell + Tienda Makers), wall.galeriataller (Talca),
+casona_lagoslira (Santiago), colinagaleria (Colina, municipal),
+galeriauct (Temuco, Universidad Católica), centroamigosdelarte (Talca —
+second real space confirmed in that comuna alongside wall.galeriataller),
+casadelartediegorivera (Puerto Montt), loica_arte (Valparaíso),
+valparaisocasaarte (Valparaíso), fundacioncultural561 (Ovalle). Also
+completed a pending quality audit on atacama_artgallery (added 2026-08-13,
+had not yet had its first real production run) — confirmed real: not a
+fixed gallery but a touring themed exhibition organized by Activo
+Festival.
+
+**A recurring evidence pattern, distinct from the 2026-08-14 batch**:
+several of today's additions had ZERO qualifying posts in their own feed
+within the sampled window — the evidence came entirely from OTHER
+accounts (artists, curators, partner organizations) tagging or mentioning
+the venue with real dates. `casona_lagoslira` and `casadelartediegorivera`
+are the clearest cases — added anyway given independently-confirmed real
+exhibitions, but flagged in their own notes as an operational risk worth
+watching: if the venue's own feed genuinely posts rarely, per-account
+Apify fetches keyed on that `username` may under-deliver relative to what
+the venue actually hosts. Revisit after a few real production runs.
+
+**Two handles failed to resolve** (`extension_utalca`, `vinvulacion_ufro`,
+and later `fencuentrosur`) — Apify's actor silently fell back to
+unrelated content (once, traceable to hashtag-adjacent fallback content)
+rather than erroring cleanly, for what's most likely a wrong/mistyped
+handle or a private/deleted account. Worth a real fix if this recurs:
+today it was caught only by manually noticing the returned `ownerUsername`
+never matched the requested account.
+
+**Verified same-day in production** (`workflow_dispatch` run of
+`instagram-bright-sources.yml`, real cost $0.022): 3 of the 10 new
+accounts (studio_globo_urbano, wall.galeriataller) already had due,
+curatable content — both real exhibitions evaluated in chat ("REFUGIO",
+"MURMULLOS") were approved and inserted on the very first fetch, exactly
+matching the manual evaluation.
+
+**On "artesanía" as a scope question, left open**: one candidate
+(artesaniasdechile) sits genuinely on the boundary between crafts/
+artisanry and fine-art exhibitions — checked both `curation-policy.md`
+and `overview.md`, neither takes a position either way. Not added,
+pending an explicit editorial call from Daniel.
+
 ## Cross-source curation conflict escalation (2026-07-30)
 
 A **different** kind of gap than the dedup fixes above — found by a
