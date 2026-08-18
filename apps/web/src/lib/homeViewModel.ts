@@ -1,5 +1,6 @@
+import { fetchApprovedEvents } from "@/lib/events";
+import type { EventRecord, RegionMeta } from "@/lib/events";
 import {
-  fetchApprovedEvents,
   filterFamilyMode,
   filterByRegion,
   filterActiveInRange,
@@ -7,9 +8,7 @@ import {
   filterUpcomingInauguraciones,
   findNextEvent,
   type CityCounts,
-  type EventRecord,
-  type RegionMeta,
-} from "@/lib/events";
+} from "@/lib/event-utils";
 import { buildRegionMetaByCityId, adminRegionNameByRegionId } from "@/lib/cities";
 import { resolveCityPickerContext, type CookieReader } from "@/lib/cityPickerContext";
 import { todayInSantiago, currentWeekInSantiago, weekBoundsInSantiago, addWeeks, weekNumberSince, isCurrentOrUpcoming } from "@/lib/date";

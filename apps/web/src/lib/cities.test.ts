@@ -15,7 +15,8 @@ import {
   OTHER_CITY,
   DEFAULT_CITY_ID,
 } from "./cities";
-import type { CityCounts, RegionMeta } from "./events";
+import type { RegionMeta } from "./events";
+import type { CityCounts } from "./event-utils";
 
 function regionMeta(overrides: Partial<RegionMeta> = {}): RegionMeta {
   return {

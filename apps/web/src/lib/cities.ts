@@ -20,7 +20,8 @@
 // file is already a real, validated Chilean comuna — trusting it directly
 // is safe, no separate frontend whitelist needed.
 
-import { sumCounts, type CityCounts, type RegionMeta } from "./events";
+import { sumCounts, type CityCounts } from "./event-utils";
+import type { RegionMeta } from "./events";
 
 export interface City {
   id: string;

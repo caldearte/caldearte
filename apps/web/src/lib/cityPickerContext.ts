@@ -1,13 +1,12 @@
+import type { EventRecord, RegionMeta } from "@/lib/events";
 import {
   filterFamilyMode,
   filterActiveInRange,
   countByCity,
   cityNamesFromEvents,
   thumbnailsByCity,
-  type EventRecord,
-  type RegionMeta,
   type CityCounts,
-} from "@/lib/events";
+} from "@/lib/event-utils";
 import {
   buildRegionMetaByCityId,
   resolveDefaultCityId,

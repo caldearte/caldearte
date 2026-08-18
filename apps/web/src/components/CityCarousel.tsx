@@ -3,7 +3,8 @@
 import { useMemo, useRef, useState } from "react";
 import { esCL } from "@/i18n/es-CL";
 import { citiesWithEvents, narrowCitiesByRegion, buildRegionMetaByCityId } from "@/lib/cities";
-import type { CityCounts, EventRecord, RegionMeta } from "@/lib/events";
+import type { EventRecord, RegionMeta } from "@/lib/events";
+import type { CityCounts } from "@/lib/event-utils";
 import CityThumbnails from "./CityThumbnails";
 
 interface CityCarouselProps {
