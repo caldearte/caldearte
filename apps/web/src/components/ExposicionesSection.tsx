@@ -177,8 +177,15 @@ export default function ExposicionesSection({
               type="button"
               aria-label={esCL.pageIndicator(i + 1, totalPages)}
               onClick={() => goToPage(i)}
-              className={`size-[8px] rounded-full ${i === currentPage ? "bg-brand-magenta" : "bg-border-default/40"}`}
-            />
+              // size-[24px] -m-[8px]: 24x24 tap target (WCAG minimum) with
+              // the same 8px visual footprint as before — same trick as
+              // Header.tsx's week-nav chevrons, negative margin cancels the
+              // hit-area growth so the dots' own gap-[6px] spacing doesn't
+              // shift.
+              className="flex items-center justify-center size-[24px] -m-[8px] cursor-pointer"
+            >
+              <span className={`size-[8px] rounded-full ${i === currentPage ? "bg-brand-magenta" : "bg-border-default/40"}`} />
+            </button>
           ))}
         </div>
       )}
