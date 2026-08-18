@@ -93,7 +93,7 @@ export default function MenuDrawer({ open, familyMode, onToggleFamilyMode, onClo
               className="relative w-full md:w-[340px] h-[218px] md:h-[420px] shrink-0 bg-brand-magenta overflow-hidden flex flex-row items-start justify-between md:flex-col md:justify-end p-[24px] md:p-[40px]"
             >
               {/* eslint-disable-next-line @next/next/no-img-element -- Figma-exported asset, verbatim per design decision */}
-              <img src="/icons/curatoria-head.svg" alt="" width={112} className="mb-[16px] scale-x-[-1]" />
+              <img src="/icons/curatoria-head.svg" alt="" width={112} height={119} className="mb-[16px] scale-x-[-1]" />
               <h3 className="font-lato font-black leading-[0.95] text-surface-sage text-[58px] md:text-[70px]">
                 {esCL.curatoriaWordmarkLines.map((line) => (
                   <span key={line} className="block">
@@ -130,7 +130,7 @@ export default function MenuDrawer({ open, familyMode, onToggleFamilyMode, onClo
                 className="flex-1 md:flex-none md:w-[170px] h-[84px] flex flex-col items-left justify-center cursor-pointer"
               >
                 {/* eslint-disable-next-line @next/next/no-img-element -- Figma-exported asset, verbatim per design decision */}
-                <img src="/icons/drawer-envelope.svg" alt="" width={100} />
+                <img src="/icons/drawer-envelope.svg" alt="" width={100} height={71} />
                 <span className="self-start ml-[5px] font-fragment-mono text-[16px] text-surface-sage">
                   {esCL.menuDrawer.contactoLabel}
                 </span>

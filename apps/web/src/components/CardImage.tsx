@@ -13,9 +13,13 @@ interface CardImageProps {
   // cards' fixed-height object-cover crop. Placeholders have no real
   // dimensions to respect, so they keep a fixed aspect box either way.
   fullSize?: boolean;
+  // True only for the very first card on the home page (the mobile LCP
+  // element per the 2026-08-17 Lighthouse audit — lcp-discovery-insight
+  // flagged it discoverable and non-lazy already, just missing this hint).
+  priority?: boolean;
 }
 
-export default function CardImage({ imageUrl, sourceUrl, sensitivityTags, fullSize = false }: CardImageProps) {
+export default function CardImage({ imageUrl, sourceUrl, sensitivityTags, fullSize = false, priority = false }: CardImageProps) {
   const [revealed, setRevealed] = useState(false);
   const sensitive = sensitivityTags.length > 0;
   const image = resolveCardImage({ imageUrl, sourceUrl });
@@ -37,6 +41,8 @@ export default function CardImage({ imageUrl, sourceUrl, sensitivityTags, fullSi
         <img
           src={image.url}
           alt=""
+          loading={priority ? "eager" : "lazy"}
+          fetchPriority={priority ? "high" : "auto"}
           className={`w-full transition-[filter] duration-300 ${fullSize ? "h-auto" : "h-full object-cover"} ${blurClass}`}
         />
       ) : (

@@ -162,6 +162,7 @@ export default function InauguracionesSection({
                   event={e}
                   reversed={(pIdx * itemsPerPage + i) % 2 === 1}
                   hideTodayBadge={hideTodayBadge}
+                  priority={pIdx === 0 && i === 0}
                 />
               ))}
             </div>
