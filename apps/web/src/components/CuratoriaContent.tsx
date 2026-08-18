@@ -35,7 +35,7 @@ export default function CuratoriaContent() {
           icon here at this bigger 96px size (real bug, found 2026-08-05). */}
       <div className="relative w-full bg-brand-magenta flex flex-col justify-end p-[24px] md:p-[60px] mt-[40px] md:mt-[60px]">
         {/* eslint-disable-next-line @next/next/no-img-element -- Figma-exported asset, verbatim per design decision */}
-        <img src="/icons/curatoria-head.svg" alt="" width={112} className="mb-[16px] scale-x-[-1]" />
+        <img src="/icons/curatoria-head.svg" alt="" width={112} height={119} className="mb-[16px] scale-x-[-1]" />
         <h1 className="font-lato font-black leading-[0.95] text-surface-sage text-[48px] md:text-[96px]">
           {esCL.curatoriaWordmarkLines.map((line) => (
             <span key={line} className="block">

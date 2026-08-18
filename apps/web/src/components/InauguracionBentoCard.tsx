@@ -17,6 +17,8 @@ interface InauguracionBentoCardProps {
   // in the design, 178:72).
   reversed?: boolean;
   hideTodayBadge?: boolean;
+  // First card on the home page only — see CardImage's own doc comment.
+  priority?: boolean;
 }
 
 const DESCRIPTION_MAX_CHARS = 220;
@@ -46,7 +48,7 @@ function ActionButton({ href, onClick, icon, label }: { href?: string; onClick?:
 // 2026-08-06, a direct user request), this home-grid card wasn't asked
 // for — the event detail page a click already goes to has it. Not an
 // oversight.
-export default function InauguracionBentoCard({ event, reversed = false, hideTodayBadge = false }: InauguracionBentoCardProps) {
+export default function InauguracionBentoCard({ event, reversed = false, hideTodayBadge = false, priority = false }: InauguracionBentoCardProps) {
   const {
     showTodayBadge,
     dateLine,
@@ -71,7 +73,7 @@ export default function InauguracionBentoCard({ event, reversed = false, hideTod
           uncropped aspect ratio; this bento layout needs the image
           cropped (object-cover) to fill the fixed h-[220px]/h-[500px]
           box, matching the Figma design. */}
-      <CardImage imageUrl={event.imageUrl} sourceUrl={event.sourceUrl} sensitivityTags={event.sensitivityTags} />
+      <CardImage imageUrl={event.imageUrl} sourceUrl={event.sourceUrl} sensitivityTags={event.sensitivityTags} priority={priority} />
       {showTodayBadge && (
         <span className="absolute top-2 right-2 z-[5] text-[11px] font-bold uppercase tracking-wide bg-white text-heading-gray rounded-full px-2.5 py-1">
           {esCL.todayBadge}
