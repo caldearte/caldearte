@@ -384,3 +384,60 @@ domain/city placeholders. Beyond enabling Google's event rich results,
 this also gives AI answer engines that ground on schema.org markup a
 structured, unambiguous source instead of having to infer date/place
 from prose.
+
+## Mobile performance/accessibility audit (2026-08-17/18)
+
+A real Lighthouse report the user ran locally (mobile: Performance 76,
+Accessibility 87) triggered a focused pass, verified against a second
+mobile report afterward (97/92) and against production directly.
+
+**Image optimization was fully off** (`next.config.ts`'s
+`images.unoptimized: true`) on the premise that event photos come from
+"unknown domains, no fixed allowlist possible." Checked against
+production data and found false: `bright_source` (the dominant non-
+Instagram pipeline) draws from only ~20 distinct hostnames total — a
+small, hand-curated set, since each bright source is registered in code
+one at a time. Replaced with an explicit `remotePatterns` allowlist (the
+verified real hostnames + the Supabase Storage host) — a new bright
+source whose images live on a not-yet-listed host now 400s loudly until
+added, an intentional tripwire. `minimumCacheTTL` raised from the 4-hour
+default to 90 days (`7776000`) — event photos never change at the same
+URL once curated, and with Vercel's monthly quota reset, 90 days keeps
+every calendar month at the "new content only" floor instead of paying
+for repeat re-transformations of the same photo under real traffic.
+
+**A real regression, found by the user within hours of the image-
+optimization change going live**: `InauguracionBentoCard`'s image panel
+combines `flex-1` (flex-basis: 0%) with an explicit `h-[220px]` — on
+mobile (`flex-col` stacking), flex-basis wins over the height property
+per the CSS flexbox spec, collapsing the panel to 0px tall. A plain
+`<img>` used to mask this (its own intrinsic size fed back into layout
+as a backstop); switching `CardImage` to `next/image`'s `fill` mode
+(`position: absolute`, out of flow) removed that backstop, and the
+collapse became visible — photos disappeared from "Inauguraciones de la
+semana" on mobile. Fixed with `min-h-[220px] md:min-h-[500px]` alongside
+the existing `h-`, which isn't subject to the same flex-basis override.
+Lesson: `flex-1` + a fixed height on a flex item is a latent trap the
+moment anything inside stops being a normal-flow, intrinsically-sized
+element — worth a second look anywhere else that combination appears.
+
+**The home page's client JS bundle carried the full
+`@supabase/supabase-js` SDK** (~78KB gzip) for every anonymous visitor —
+not because of `next-auth` (a real but wrong initial hypothesis; that
+chunk is only ~4.6KB gzip), but because two value (not type-only)
+imports dragged `events.ts` — and its `getSupabaseClient` — into the
+client: `useNewsletterSubscribe.ts` called the SDK directly from the
+browser just to read `regions_public`, and `SearchPanel.tsx` imported
+pure filter/sort functions from the same module that also exports the
+server-only `fetchApprovedEvents`. Fixed by (1) replacing the SDK call
+with a plain `fetch()` against Supabase's REST endpoint, and (2)
+splitting the ~20 pure, client-safe utilities (filtering/sorting/
+grouping over an already-fetched `EventRecord[]`) out of `events.ts`
+into a new `event-utils.ts` that never imports `getSupabaseClient`/
+`unstable_cache` — `events.ts` now holds only the DB-fetching surface,
+server-only by construction of the module boundary, not by discipline of
+who happens to call it. Also broke a preexisting circular import
+(`cities.ts` ↔ `events.ts`, via `sumCounts`). Verified against a real
+production build (`next build` + `next start`): the 299KB/78KB-gzip
+chunk disappears entirely from the home page's served chunk list; total
+home JS drops from ~282KB to ~223KB gzip.
