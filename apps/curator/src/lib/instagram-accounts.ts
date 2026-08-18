@@ -568,6 +568,26 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
     addedAt: "2026-08-18",
     fixedLocation: { location: "Talca", placeName: "Wall Galería Taller" },
   },
+  {
+    username: "casona_lagoslira",
+    note:
+      "Evaluada 2026-08-18. Casona Lagos-Lira, Pedro Lagos 396, Santiago — " +
+      "espacio real y activo, con densidad fuerte pero atípica: los 6 " +
+      "posts de la muestra son de 5 cuentas DISTINTAS (artistas, " +
+      "curadores) etiquetando/mencionando el espacio, ninguno del feed " +
+      "propio de la casona en esta ventana — probablemente depende de " +
+      "sus artistas para difundir. Evidencia real e independiente: " +
+      "\"Piedra en el Zapato\" (grupal, Araya/Lobos/Prieto/Rupcich, 24 " +
+      "jul-7 ago 2026, confirmada por 3 posts distintos) y \"Todas las " +
+      "piedras que he recogido\" (individual, Javiera Clavería, " +
+      "inauguración 14 de agosto 19:00 hrs, anuncio + recap). Riesgo " +
+      "operacional a vigilar: si el feed propio realmente publica poco, " +
+      "el fetch por username podría rendir pocos candidatos nuevos por " +
+      "corrida pese al espacio ser real — revisar tras las primeras " +
+      "corridas. fixedLocation.",
+    addedAt: "2026-08-18",
+    fixedLocation: { location: "Santiago", placeName: "Casona Lagos-Lira" },
+  },
   // El resto de la lista la aporta Daniel — una decisión editorial, igual
   // que cada fuente brillante nueva se evaluó una por una. Confirmar
   // pública y activa antes de agregar cada cuenta.
