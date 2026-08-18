@@ -53,6 +53,7 @@ export default function NewsletterSection() {
                 name="adminRegionName"
                 required
                 defaultValue=""
+                aria-label={esCL.newsletter.regionPlaceholder}
                 className="appearance-none w-full bg-transparent border-b-4 md:border-b-6 border-text-primary rounded-input px-[8px] md:px-[16px] py-[16px] md:py-[20px] font-lato font-semibold text-[16px] md:text-[20px] text-text-primary focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#3d373d] focus-visible:outline-offset-2"
               >
                 <option value="" disabled>
