@@ -651,6 +651,32 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
     addedAt: "2026-08-18",
     fixedLocation: { location: "Puerto Montt", placeName: "Casa del Arte Diego Rivera" },
   },
+  {
+    username: "loica_arte",
+    note:
+      "Evaluada 2026-08-18. Galería Loica, Valparaíso — real. 4 posts " +
+      "propios documentan la misma exposición real: \"Plan DeLito\" " +
+      "(litografía colectiva, 13 artistas), inauguración 27 de febrero " +
+      "19:00 hrs — anuncio, mediación y recap, confirmados de forma " +
+      "independiente por una de las artistas (@andreabeizart). Última " +
+      "publicación propia vista es de abril — actividad reciente más " +
+      "espaciada, no muerta. fixedLocation.",
+    addedAt: "2026-08-18",
+    fixedLocation: { location: "Valparaíso", placeName: "Galería Loica" },
+  },
+  {
+    username: "valparaisocasaarte",
+    note:
+      "Evaluada 2026-08-18. Casa Arte, Blanco 366, Valparaíso (Barrio " +
+      "Puerto) — real y activa. Anuncio limpio de inauguración: " +
+      "\"Grandes experiencias + In-material-les\" del artista Pato " +
+      "Munita Rebolledo. Resto del contenido de la muestra es sobre " +
+      "VALP-HORROR (feria literaria/temática de terror en el mismo " +
+      "espacio) — fuera de alcance, no descalifica dada la exposición " +
+      "real confirmada. fixedLocation.",
+    addedAt: "2026-08-18",
+    fixedLocation: { location: "Valparaíso", placeName: "Casa Arte" },
+  },
   // El resto de la lista la aporta Daniel — una decisión editorial, igual
   // que cada fuente brillante nueva se evaluó una por una. Confirmar
   // pública y activa antes de agregar cada cuenta.
