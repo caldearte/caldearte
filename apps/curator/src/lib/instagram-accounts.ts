@@ -628,6 +628,20 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
     addedAt: "2026-08-18",
     fixedLocation: { location: "Talca", placeName: "Centro Amigos del Arte" },
   },
+  {
+    username: "casadelartediegorivera",
+    note:
+      "Evaluada 2026-08-18. Casa del Arte Diego Rivera, Puerto Montt " +
+      "(Los Lagos) — real y activa. El único post propio en la muestra " +
+      "es cine, pero evidencia real de exposición vía terceros: ENFOTO " +
+      "2026 (12ª edición, Encuentro Regional de Fotografía) — exposición " +
+      "colectiva \"Sur Extendido\" (15 fotógrafos), inauguración 14 de " +
+      "agosto 19:00 hrs, Sala Hardy Wistuba — confirmado por 3 posts de " +
+      "@enfotoloslagos (anuncio + recap de la inauguración). " +
+      "fixedLocation.",
+    addedAt: "2026-08-18",
+    fixedLocation: { location: "Puerto Montt", placeName: "Casa del Arte Diego Rivera" },
+  },
   // El resto de la lista la aporta Daniel — una decisión editorial, igual
   // que cada fuente brillante nueva se evaluó una por una. Confirmar
   // pública y activa antes de agregar cada cuenta.
