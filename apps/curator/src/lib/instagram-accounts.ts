@@ -614,6 +614,20 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
     addedAt: "2026-08-18",
     fixedLocation: { location: "Temuco", placeName: "Galería de Arte UCT" },
   },
+  {
+    username: "centroamigosdelarte",
+    note:
+      "Evaluada 2026-08-18. Centro Amigos del Arte, Talca (Maule) — real " +
+      "y muy activo. Solo 1/6 posts del feed propio en la muestra (el " +
+      "anuncio de inauguración), pero confirmación independiente fuerte: " +
+      "\"Dibujando Talca\" de Sergio Sepúlveda Moyano (4 posts del " +
+      "artista — inauguración, visitas guiadas de cierre, agradecimiento " +
+      "— más entrevista real en Diario Talca) y una segunda exposición " +
+      "distinta, \"La forma del silencio\" de @ruido___, con curaduría de " +
+      "@editorialrayon y música en vivo. fixedLocation.",
+    addedAt: "2026-08-18",
+    fixedLocation: { location: "Talca", placeName: "Centro Amigos del Arte" },
+  },
   // El resto de la lista la aporta Daniel — una decisión editorial, igual
   // que cada fuente brillante nueva se evaluó una por una. Confirmar
   // pública y activa antes de agregar cada cuenta.
