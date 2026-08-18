@@ -9,6 +9,7 @@ import { fmtShort } from "@/lib/date";
 import type { EventRecord, RegionMeta } from "@/lib/events";
 import type { CityCounts } from "@/lib/event-utils";
 import Header from "./Header";
+import RegionCountRing from "./RegionCountRing";
 import InauguracionesSection from "./InauguracionesSection";
 import ExposicionesSection from "./ExposicionesSection";
 import CuratoriaBanner from "./CuratoriaBanner";
@@ -38,6 +39,8 @@ interface CalendarViewProps {
   weekNumber: number; // "SEMANA N°X" — sequential since launch, see lib/date.ts
   prevWeekHref: string; // "/?semana=..." — real navigation, not a cookie (see page.tsx)
   nextWeekHref: string;
+  chileInauguracionesCount: number; // same week/Hoy/Vigentes filter chain as inauguraciones above, nationwide — Header's ring indicators
+  chileExposActualesCount: number;
   cityCounts: Record<string, CityCounts>; // full-week counts, unaffected by Hoy/Vigentes — CityCarousel/city picker
   cityThumbnails: Record<string, EventRecord[]>; // up to 4 preview events per comuna — CityCarousel
   searchableEvents: EventRecord[]; // active/upcoming, every comuna — SearchPanel's own scope
@@ -79,6 +82,8 @@ export default function CalendarView({
   weekNumber,
   prevWeekHref,
   nextWeekHref,
+  chileInauguracionesCount,
+  chileExposActualesCount,
   cityCounts,
   searchableEvents,
   nextEvent,
@@ -152,6 +157,33 @@ export default function CalendarView({
           setDrawerOpen(true);
         }}
       />
+
+      {/* Región-vs-Chile ring indicators (2026-08-18) — its own full-width
+          centered row, not nested inside Header's right-aligned location
+          column (tried first, but the user's own mockup has these
+          centered under the whole page, not tucked into that column).
+          Hidden while isRefreshing, same reasoning as Header's own
+          WeekNavLoadingBar: the counts would otherwise flash the
+          PREVIOUS week/región's numbers for an instant before the fetch
+          resolves. */}
+      {!isRefreshing && (
+        <div className="w-full flex items-center justify-center gap-[32px] md:gap-[40px] pb-8 md:pb-[60px] px-4 md:px-[80px]">
+          <RegionCountRing
+            label={esCL.regionCountRingInauguracionesLabel}
+            shortLabel={esCL.regionCountRingInauguracionesShortLabel}
+            count={inauguraciones.length}
+            total={chileInauguracionesCount}
+            kindLabel={esCL.regionCountRingKindInauguraciones}
+          />
+          <RegionCountRing
+            label={esCL.regionCountRingExposicionesLabel}
+            shortLabel={esCL.regionCountRingExposicionesShortLabel}
+            count={exposActuales.length}
+            total={chileExposActualesCount}
+            kindLabel={esCL.regionCountRingKindExposiciones}
+          />
+        </div>
+      )}
 
       {isEmpty ? (
         <div className="py-10">

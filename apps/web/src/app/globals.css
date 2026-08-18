@@ -36,6 +36,11 @@
   --color-text-muted: #626262;
   --color-text-placeholder: #a5b1b6;
   --color-border-default: #626262;
+  /* Anillos de región vs. Chile del header (2026-08-18) — no viene de
+     Figma, es un color nuevo pedido por el usuario para esa comparación
+     específica; no reutiliza brand-magenta (ya significa "activo/hoy" en
+     otros lugares) ni ningún token existente. */
+  --color-stat-cyan: #14b8a6;
   /* Selector de lugar (Zona/Región/Comuna, 187:1283-1570) — texto sobre
      una fila resaltada oscura (bg-text-primary), e ícono/placeholder
      dentro de un input blanco. */
@@ -107,6 +112,7 @@
   --color-text-muted: var(--color-text-muted);
   --color-text-placeholder: var(--color-text-placeholder);
   --color-border-default: var(--color-border-default);
+  --color-stat-cyan: var(--color-stat-cyan);
   --color-surface-sage-dark: var(--color-surface-sage-dark);
   --color-icon-default: var(--color-icon-default);
 

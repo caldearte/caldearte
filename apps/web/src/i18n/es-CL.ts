@@ -195,6 +195,21 @@ export const esCL = {
   // which of the week's items are happening right now.
   todayBadge: "HOY",
 
+  // Header's región-vs-Chile ring indicators (2026-08-18) — kindLabel is
+  // the short form used inside the tooltip sentence ("9 inaug. de 25"),
+  // deliberately distinct from the longer sectionInauguraciones* labels
+  // used as full section headings elsewhere.
+  regionCountRingInauguracionesLabel: "INAUGURACIONES",
+  regionCountRingExposicionesLabel: "EXPOSICIONES",
+  // Mobile-only short forms — desktop has room for the full word, mobile
+  // stacks the label above the ring and needs it to stay on one line.
+  regionCountRingInauguracionesShortLabel: "INAU.",
+  regionCountRingExposicionesShortLabel: "EXPO.",
+  regionCountRingOfLabel: (total: number) => `de ${total}`,
+  regionCountRingTooltip: (count: number, kindLabel: string, total: number) => `Mostrando ${count} ${kindLabel} de ${total} de Chile para esta semana`,
+  regionCountRingKindInauguraciones: "inaug.",
+  regionCountRingKindExposiciones: "expos.",
+
   sectionInauguraciones: "INAUGURACIONES DE LA SEMANA",
   sectionInauguracionesLabel: "APERTURAS DESTACADAS",
   sectionExposActuales: "EXPOSICIONES ACTUALES",
