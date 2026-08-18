@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import { esCL } from "@/i18n/es-CL";
 import { resolveCardImage, PLACEHOLDER_BG } from "@/lib/image-source";
 
@@ -37,14 +38,32 @@ export default function CardImage({ imageUrl, sourceUrl, sensitivityTags, fullSi
   return (
     <div className={`relative w-full ${heightClass} overflow-hidden bg-stone-800`}>
       {image.type === "photo" ? (
-        // eslint-disable-next-line @next/next/no-img-element -- external, unoptimized scraped URLs, see next.config.ts
-        <img
-          src={image.url}
-          alt=""
-          loading={priority ? "eager" : "lazy"}
-          fetchPriority={priority ? "high" : "auto"}
-          className={`w-full transition-[filter] duration-300 ${fullSize ? "h-auto" : "h-full object-cover"} ${blurClass}`}
-        />
+        fullSize ? (
+          // width=0/height=0 + sizes is next/image's documented pattern for
+          // "unknown real dimensions, full-width, height auto-scaled to the
+          // image's own real aspect ratio" — we don't store the scraped
+          // photo's dimensions, so this is the only way to keep the
+          // uncropped natural-aspect behavior this prop promises while
+          // still going through Vercel's optimizer/srcset.
+          <Image
+            src={image.url}
+            alt=""
+            width={0}
+            height={0}
+            sizes="100vw"
+            priority={priority}
+            className={`w-full h-auto transition-[filter] duration-300 ${blurClass}`}
+          />
+        ) : (
+          <Image
+            src={image.url}
+            alt=""
+            fill
+            sizes="(max-width: 768px) 100vw, 50vw"
+            priority={priority}
+            className={`object-cover transition-[filter] duration-300 ${blurClass}`}
+          />
+        )
       ) : (
         <div
           className={`w-full h-full bg-cover bg-center transition-[filter] duration-300 ${blurClass}`}
