@@ -66,7 +66,16 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
   },
   {
     username: "atacama_artgallery",
-    note: "Aportada por Daniel, 2026-08-13 — pendiente de auditoría de calidad tras la primera corrida real.",
+    note:
+      "Aportada por Daniel, 2026-08-13. Auditoría de calidad completada " +
+      "2026-08-18 (aún no había tenido su primera corrida real — " +
+      "cadencia adaptativa de 14 días). No es una galería fija: es el " +
+      "nombre de una muestra colectiva itinerante organizada por Activo " +
+      "Festival. Confirmado real: \"ATACAMA ARTGALLERY\", 27 de agosto, " +
+      "INACAP Sede Iquique / Escuela de Arquitectura UNAP, con 6 " +
+      "artistas anunciados progresivamente por @activofest, más un post " +
+      "propio anterior real (\"Sueño de Artista\", Iquique). Sin " +
+      "fixedLocation — itinerante, vinculada a distintos festivales.",
     addedAt: "2026-08-13",
   },
   {
