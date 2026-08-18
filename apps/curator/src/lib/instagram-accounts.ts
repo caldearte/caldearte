@@ -677,6 +677,21 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
     addedAt: "2026-08-18",
     fixedLocation: { location: "Valparaíso", placeName: "Casa Arte" },
   },
+  {
+    username: "fundacioncultural561",
+    note:
+      "Evaluada 2026-08-18. Fundación Cultural 561, Emilio Vaisse 561, " +
+      "Ovalle (Coquimbo) — real y activa. 2 anuncios limpios propios: " +
+      "lanzamiento de la fundación + inauguración de \"La Descarga\" " +
+      "(viernes 26 de junio 19:00 hrs) y \"Oskar Huerta — De pie junto a " +
+      "las ruinas\" (jueves 2 de julio 19:00 hrs). Confirmado de forma " +
+      "independiente y sólida por @ovalle_cultura (Corporación Cultural " +
+      "Municipal de Ovalle, 4 posts) sobre una segunda exposición real, " +
+      "\"Superficie en disputa\" (Galería Homero Martínez Salas). " +
+      "fixedLocation.",
+    addedAt: "2026-08-18",
+    fixedLocation: { location: "Ovalle", placeName: "Fundación Cultural 561" },
+  },
   // El resto de la lista la aporta Daniel — una decisión editorial, igual
   // que cada fuente brillante nueva se evaluó una por una. Confirmar
   // pública y activa antes de agregar cada cuenta.
