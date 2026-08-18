@@ -588,6 +588,19 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
     addedAt: "2026-08-18",
     fixedLocation: { location: "Santiago", placeName: "Casona Lagos-Lira" },
   },
+  {
+    username: "colinagaleria",
+    note:
+      "Evaluada 2026-08-18. Colina Galería, municipal (Colina, Región " +
+      "Metropolitana) — real y activa. 4/5 posts propios giran en torno " +
+      "a la misma exposición real: \"Animal\" de Camilo Villasmil (Lobo " +
+      "Project) — invitación formal de la alcaldesa + Concejo Municipal " +
+      "+ Colina Galería a la inauguración, confirmada independientemente " +
+      "por Radio Colina, y un recap que confirma \"está actualmente en " +
+      "Colina Galería\". fixedLocation.",
+    addedAt: "2026-08-18",
+    fixedLocation: { location: "Colina", placeName: "Colina Galería" },
+  },
   // El resto de la lista la aporta Daniel — una decisión editorial, igual
   // que cada fuente brillante nueva se evaluó una por una. Confirmar
   // pública y activa antes de agregar cada cuenta.
