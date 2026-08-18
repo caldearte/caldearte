@@ -601,6 +601,19 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
     addedAt: "2026-08-18",
     fixedLocation: { location: "Colina", placeName: "Colina Galería" },
   },
+  {
+    username: "galeriauct",
+    note:
+      "Evaluada 2026-08-18. Galería de Arte de la Universidad Católica " +
+      "de Temuco, Campus Menchaca Lira, Av. Alemania 422, Temuco — real " +
+      "y activa. Anuncio limpio de inauguración: \"MURMULLOS\" de Renzo " +
+      "Vaccaro Meza, jueves 13 de agosto — confirmado independientemente " +
+      "por 2 posts de @uct_vip (con dirección completa) y por el medio " +
+      "local @directamedia (agrega fecha de cierre, 16 de septiembre). " +
+      "fixedLocation.",
+    addedAt: "2026-08-18",
+    fixedLocation: { location: "Temuco", placeName: "Galería de Arte UCT" },
+  },
   // El resto de la lista la aporta Daniel — una decisión editorial, igual
   // que cada fuente brillante nueva se evaluó una por una. Confirmar
   // pública y activa antes de agregar cada cuenta.
