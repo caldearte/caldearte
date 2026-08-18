@@ -68,7 +68,16 @@ export default function InauguracionBentoCard({ event, reversed = false, hideTod
   const eventHref = `/eventos/${event.id}`;
 
   const imagePanel = (
-    <div className="relative flex-1 h-[220px] md:h-[500px] shrink-0">
+    // min-h alongside h- : real bug found 2026-08-18 (image disappeared in
+    // production, mobile only) — flex-1 sets flex-basis:0%, which on
+    // mobile's flex-col stacking wins over the plain height property per
+    // the flexbox spec, collapsing this panel to 0px tall. A normal <img>
+    // used to mask it (its own intrinsic size fed back into layout); once
+    // CardImage switched to next/image's `fill` (position:absolute, out of
+    // flow), that backstop was gone and the collapse became visible.
+    // min-height isn't subject to the same flex-basis override — it's a
+    // hard floor regardless of flex-grow/shrink/basis math.
+    <div className="relative flex-1 h-[220px] md:h-[500px] min-h-[220px] md:min-h-[500px] shrink-0">
       {/* No fullSize — that flag is for the standalone page's natural,
           uncropped aspect ratio; this bento layout needs the image
           cropped (object-cover) to fill the fixed h-[220px]/h-[500px]
