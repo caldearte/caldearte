@@ -551,6 +551,23 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
       "sin fixedLocation, Haiku infiere por post.",
     addedAt: "2026-08-18",
   },
+  {
+    username: "wall.galeriataller",
+    note:
+      "Evaluada 2026-08-18. Wall Galería Taller, Talca (Maule) — real y " +
+      "activa. 5/6 posts propios: anuncio + 2 recaps de \"Otra forma de " +
+      "existir\" (fotografía, Juan Manuel Aguiló, inauguración sábado " +
+      "15 de agosto 12:00 hrs — fecha limpia). Confirmado además por " +
+      "@kolajmagazine (revista internacional de collage), de forma " +
+      "independiente, reseñando una segunda exposición real en el mismo " +
+      "lugar (\"Tijeretadas y Encantadas\", Laura Rojbel, hasta el 13 de " +
+      "agosto). 1 post de conversación diseño/interiorismo y 1 borde " +
+      "comercial (obras de un artista ofrecidas a nuevos espacios) — " +
+      "fuera de alcance, no descalifican dada la densidad real. " +
+      "fixedLocation.",
+    addedAt: "2026-08-18",
+    fixedLocation: { location: "Talca", placeName: "Wall Galería Taller" },
+  },
   // El resto de la lista la aporta Daniel — una decisión editorial, igual
   // que cada fuente brillante nueva se evaluó una por una. Confirmar
   // pública y activa antes de agregar cada cuenta.
