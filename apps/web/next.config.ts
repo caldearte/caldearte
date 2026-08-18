@@ -54,6 +54,16 @@ const nextConfig: NextConfig = {
       ...EVENT_IMAGE_HOSTS.map((hostname) => ({ protocol: "https" as const, hostname })),
       ...(supabaseStorageHost() ? [{ protocol: "https" as const, hostname: supabaseStorageHost()! }] : []),
     ],
+    // Default is 4 hours. Event photos essentially never change at the same
+    // URL once curated (each event is touched once; a real fix goes through
+    // a new sourceUrl/imageUrl, a different cache key, not a same-URL swap),
+    // so a short TTL only buys unnecessary re-transformations under real
+    // traffic. 90 days keeps every monthly Vercel Image Optimization quota
+    // (Transformations/Cache Writes/Reads/Storage) at the "new content only"
+    // floor — verified against real usage 2026-08-18: ~140 events/mo with an
+    // image, ~11-23% of the Transformations cap even in the first month's
+    // one-time catalog catch-up.
+    minimumCacheTTL: 7776000, // 90 days
   },
 };
 
