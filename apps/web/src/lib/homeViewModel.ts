@@ -39,6 +39,14 @@ export interface HomeViewModel {
   prevWeekHref: string;
   nextWeekHref: string;
   cityCounts: Record<string, CityCounts>;
+  // Chile-wide totals for the SAME week + Hoy/Vigentes filter state as
+  // inauguraciones/exposActuales above — the "de X" comparison next to
+  // the región's own count in Header's ring indicators. Deliberately NOT
+  // cityCounts' own full-week (filter-unaffected) totals summed — that
+  // would compare a filtered región count against an unfiltered national
+  // one, an apples-to-oranges ratio.
+  chileInauguracionesCount: number;
+  chileExposActualesCount: number;
   cityThumbnails: Record<string, EventRecord[]>;
   searchableEvents: EventRecord[];
   nextEvent: EventRecord | null;
@@ -107,6 +115,15 @@ export async function computeHomeViewModel({
   const inauguraciones = vigentesFilterOn ? filterUpcomingInauguraciones(inauguracionesForCity, today) : inauguracionesForCity;
   const exposActuales = exposActualesForCity;
 
+  // Same split + same Hoy/Vigentes filter chain as the región's own
+  // inauguraciones/exposActuales above, just over the unfiltered-by-región
+  // activeInRange set — the Chile-wide "de X" comparison count.
+  const chileSplit = splitInauguracionesYExpos(activeInRange, rangeStart, rangeEnd);
+  const chileInauguracionesForFilter = todayFilterOn ? filterActiveInRange(chileSplit.inauguraciones, today, today) : chileSplit.inauguraciones;
+  const chileExposActualesForFilter = todayFilterOn ? filterActiveInRange(chileSplit.exposActuales, today, today) : chileSplit.exposActuales;
+  const chileInauguracionesCount = (vigentesFilterOn ? filterUpcomingInauguraciones(chileInauguracionesForFilter, today) : chileInauguracionesForFilter).length;
+  const chileExposActualesCount = chileExposActualesForFilter.length;
+
   const nextEvent = findNextEvent(filterByRegion(visible, adminRegionName, metaByCityId), today, rangeEnd);
 
   return {
@@ -128,6 +145,8 @@ export async function computeHomeViewModel({
     prevWeekHref,
     nextWeekHref,
     cityCounts,
+    chileInauguracionesCount,
+    chileExposActualesCount,
     cityThumbnails,
     searchableEvents,
     nextEvent,
