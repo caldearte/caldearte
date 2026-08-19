@@ -206,7 +206,13 @@ export const esCL = {
   regionCountRingInauguracionesShortLabel: "INAU.",
   regionCountRingExposicionesShortLabel: "EXPO.",
   regionCountRingOfLabel: (total: number) => `de ${total}`,
-  regionCountRingTooltip: (count: number, kindLabel: string, total: number) => `Mostrando ${count} ${kindLabel} de ${total} de Chile para esta semana`,
+  // Visible content on the ring button is "{count}" then "de {total}"
+  // (two separate spans, RegionCountRing.tsx) — the accessible name must
+  // contain that exact "{count} de {total}" substring contiguously or
+  // Lighthouse's label-content-name-mismatch (WCAG 2.5.3) flags it; real
+  // regression caught 2026-08-19 when "Mostrando X ... de Y" split the
+  // two numbers apart with other words in between.
+  regionCountRingTooltip: (count: number, kindLabel: string, total: number) => `${count} de ${total} ${kindLabel} en Chile para esta semana`,
   regionCountRingKindInauguraciones: "inaug.",
   regionCountRingKindExposiciones: "expos.",
 
