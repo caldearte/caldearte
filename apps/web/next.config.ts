@@ -64,6 +64,12 @@ const nextConfig: NextConfig = {
     // image, ~11-23% of the Transformations cap even in the first month's
     // one-time catalog catch-up.
     minimumCacheTTL: 7776000, // 90 days
+    // 65 instead of Next's own default of 75 — event photos are photographic
+    // content shown at card sizes (never full-bleed hero), where the
+    // Lighthouse image-delivery-insight audit measured ~30-55% real savings
+    // per image at 75 with no visible quality loss at card scale (verified
+    // 2026-08-19). CardImage.tsx passes quality={65} to actually use this.
+    qualities: [65, 75],
   },
 };
 
