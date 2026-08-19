@@ -180,22 +180,17 @@ export default function InauguracionesSection({
       </div>
 
       {totalPages > 1 && (
-        <div className="flex gap-[6px] justify-center pt-4">
+        // Non-interactive — real page navigation is the prev/next arrows
+        // above (both call the same goToPage), plus swipe on the track
+        // itself. Real request, 2026-08-19: a clickable dot this size is
+        // a target-size accessibility hit no matter how much the tap area
+        // is padded out; removing the interaction entirely (not just
+        // enlarging it, see the PR #310 attempt before this one) is what
+        // actually clears it — a purely decorative "you are here"
+        // indicator isn't subject to that audit at all.
+        <div role="presentation" className="flex gap-[6px] justify-center pt-4">
           {pages.map((_, i) => (
-            <button
-              key={i}
-              type="button"
-              aria-label={esCL.pageIndicator(i + 1, totalPages)}
-              onClick={() => goToPage(i)}
-              // size-[24px] -m-[8px]: 24x24 tap target (WCAG minimum) with
-              // the same 8px visual footprint as before — same trick as
-              // Header.tsx's week-nav chevrons, negative margin cancels the
-              // hit-area growth so the dots' own gap-[6px] spacing doesn't
-              // shift.
-              className="flex items-center justify-center size-[24px] -m-[8px] cursor-pointer"
-            >
-              <span className={`size-[8px] rounded-full ${i === currentPage ? "bg-brand-magenta" : "bg-border-default/40"}`} />
-            </button>
+            <span key={i} className={`size-[8px] rounded-full ${i === currentPage ? "bg-brand-magenta" : "bg-border-default/40"}`} />
           ))}
         </div>
       )}
