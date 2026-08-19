@@ -19,9 +19,14 @@ Nota de fecha: el sitio todavía no tiene tráfico real — la difusión por
 redes sociales recién está por comenzar. Estas personas son hipótesis
 fundamentadas, no segmentos medidos.
 
-## Personas de descubrimiento
+## Personas de descubrimiento — **primarias**
 
-Quienes abrirían Caldearte para decidir un plan cultural.
+Quienes abrirían Caldearte para decidir un plan cultural — usuarias
+directas del producto que existe hoy (la grilla + el newsletter). Las 3
+son primarias por igual: el producto no está diseñado para una sola de
+ellas por sobre las otras, cubre el espectro real de quién decide un
+plan cultural en Chile (regional/familiar, joven/urbano/informal,
+profesional del rubro).
 
 ### Daniela Rojas, 34 — Talca (Región del Maule)
 
@@ -88,11 +93,15 @@ proyecto. También querría poder ver, caso por caso, por qué se excluyó
 algo puntual que esperaba encontrar — hoy solo existe la política
 general, no un registro de decisiones individuales.
 
-## Personas de la oferta
+## Personas de la oferta — **secundarias (hoy)**
 
 Espacios/artistas cuyo contenido termina en el calendario vía rastreo
 automatizado — no son usuarios directos del sitio hoy (no hay cuenta ni
-autopublicación), pero son stakeholders indirectos reales.
+autopublicación), así que ninguna decisión de UX actual se toma
+pensando en ellos primero. Son secundarias **por fase del proyecto, no
+por importancia**: pasan a ser primarias el día que se construya la
+"ficha de obra autoservicio del espacio" (roadmap de la capa de
+comunidad) — recién ahí tendrían algo que usar directamente.
 
 ### Marisol Toledo, 34 — Valparaíso (Cerro Cordillera)
 
@@ -129,6 +138,36 @@ política editorial no neutral: si exhibe una obra con carga política o
 sexual explícita (arte contemporáneo serio, no marginal), no sabe si el
 filtro la rechazará por malentendido de contexto, y no hay forma de
 apelar salvo el formulario genérico.
+
+## Anti-persona
+
+A quién Caldearte explícitamente NO está tratando de atraer — no por
+descuido, sino porque la curación es no-neutral por diseño (ver
+[curation-policy.md](curation-policy.md)). Tener esto escrito importa
+tanto como las personas positivas: evita que una futura decisión de
+producto intente "arreglar" una fricción que en realidad es la
+propuesta de valor funcionando como debe.
+
+### Perla Núñez, 45 — Santiago (Ñuñoa)
+
+Terapeuta holística y organizadora de ferias de bienestar — tarot,
+sanación con cristales, constelaciones familiares, presentadas bajo el
+paraguas de "arte y espiritualidad alternativa". Quiso que su próxima
+feria apareciera en Caldearte (la vio recomendada por una colega) y
+mandó los datos por el formulario de contacto. El evento nunca se
+publicó — cae directo en el eje de pseudociencia/superstición que
+`curation-policy.md` excluye por defecto (el mismo ejemplo ya
+documentado ahí: "Tarot, Cards, and Energy Healing: Exhibitor Fair" →
+EXCLUDE). No recibió una explicación puntual, solo silencio.
+
+**Por qué esto está bien, no es un bug:** para Perla esto se siente
+como rechazo arbitrario ("¿por qué esto no es arte?"), pero es
+exactamente el filtro que María José (persona primaria de arriba)
+valora que exista. Diseñar para reducir la frustración de Perla —
+por ejemplo, explicándole caso a caso por qué quedó fuera, o
+suavizando el criterio — iría directamente en contra de la propuesta
+de valor declarada del producto. La fricción de Perla no se resuelve,
+se acepta.
 
 ## Patrones que se repitieron sin que los agentes se coordinaran
 
