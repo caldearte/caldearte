@@ -17,6 +17,12 @@ interface CardImageProps {
   // True only for the very first card on the home page (the mobile LCP
   // element per the 2026-08-17 Lighthouse audit — lcp-discovery-insight
   // flagged it discoverable and non-lazy already, just missing this hint).
+  // Real bug found 2026-08-19: this used to set next/image's `priority`,
+  // deprecated as of Next 16 in favor of `preload` — but `preload` only
+  // inserts a <link> in <head>, it doesn't apply fetchpriority to the
+  // <img> tag itself, so lcp-discovery-insight kept failing even with it
+  // set. Next's own docs recommend `loading="eager"` + `fetchPriority`
+  // instead, which sets the attribute directly on the element.
   priority?: boolean;
 }
 
@@ -51,7 +57,8 @@ export default function CardImage({ imageUrl, sourceUrl, sensitivityTags, fullSi
             width={0}
             height={0}
             sizes="100vw"
-            priority={priority}
+            loading={priority ? "eager" : "lazy"}
+            fetchPriority={priority ? "high" : "auto"}
             className={`w-full h-auto transition-[filter] duration-300 ${blurClass}`}
           />
         ) : (
@@ -60,7 +67,8 @@ export default function CardImage({ imageUrl, sourceUrl, sensitivityTags, fullSi
             alt=""
             fill
             sizes="(max-width: 768px) 100vw, 50vw"
-            priority={priority}
+            loading={priority ? "eager" : "lazy"}
+            fetchPriority={priority ? "high" : "auto"}
             className={`object-cover transition-[filter] duration-300 ${blurClass}`}
           />
         )
