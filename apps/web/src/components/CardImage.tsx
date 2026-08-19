@@ -69,6 +69,7 @@ export default function CardImage({ imageUrl, sourceUrl, sensitivityTags, fullSi
             sizes="(max-width: 768px) 100vw, 50vw"
             loading={priority ? "eager" : "lazy"}
             fetchPriority={priority ? "high" : "auto"}
+            quality={65}
             className={`object-cover transition-[filter] duration-300 ${blurClass}`}
           />
         )
