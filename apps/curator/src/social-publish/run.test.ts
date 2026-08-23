@@ -84,6 +84,65 @@ test("run(): dry run + forceTypes exercises the real pipeline (selection, flyer 
   assert.equal(publishCalled, false, "dry run should never actually publish");
 });
 
+test("run(): on a Sunday, inauguracion selects the UPCOMING week (starting tomorrow), not the week ending today — real bug found 2026-08-23 shifting the discovery cadence to Sunday", async () => {
+  const supabase = fakeSupabase({
+    events: [
+      {
+        id: "past-week-only",
+        title: "Evento de la semana pasada",
+        artist: null,
+        place_name: null,
+        region_id: null,
+        image_url: "https://example.com/a.jpg",
+        description: null,
+        sensitivity_tags: [],
+        // Friday of the week ENDING on this Sunday's run — must be
+        // excluded now that "week" means the upcoming one.
+        opening_datetime: "2026-08-14T20:00:00.000Z",
+        opening_time_confirmed: true,
+        run_start_date: null,
+        run_end_date: null,
+        freeform_location: "Santiago",
+      },
+      {
+        id: "upcoming-week",
+        title: "Evento de la semana que viene",
+        artist: null,
+        place_name: null,
+        region_id: null,
+        image_url: "https://example.com/b.jpg",
+        description: null,
+        sensitivity_tags: [],
+        // Thursday of the week STARTING the day after this Sunday's run.
+        opening_datetime: "2026-08-20T20:00:00.000Z",
+        opening_time_confirmed: true,
+        run_start_date: null,
+        run_end_date: null,
+        freeform_location: "Santiago",
+      },
+    ],
+    regions: [],
+    social_post_log: [],
+  });
+
+  const published: { imageUrls: string[] }[] = [];
+  await run({
+    supabase,
+    now: new Date("2026-08-16T15:00:00.000Z"), // a Sunday
+    forceTypes: ["inauguracion"],
+    instagramConfig: { igBusinessAccountId: "fake-account", accessToken: "fake-token" },
+    publishInstagramCarouselFn: async (_config, imageUrls) => {
+      published.push({ imageUrls });
+      return "fake-media-id";
+    },
+  });
+
+  assert.equal(published.length, 1);
+  const dynamicSlides = published[0].imageUrls.slice(0, -1); // last slide is always the fixed closing image
+  assert.equal(dynamicSlides.length, 1, "only the upcoming-week event should be selected");
+  assert.match(dynamicSlides[0], /title=Evento\+de\+la\+semana\+que\+viene/);
+});
+
 test(
   "run(): Sunday publishes all 3 types, Monday only inauguracion, and only no_te_la_pierdas/destacada write de-dup rows",
   { skip: !hasLocalSupabase },
@@ -109,7 +168,7 @@ test(
           region_id: regionId,
           curation_status: "approved",
           source: "discovered",
-          opening_datetime: "2026-08-16T20:00:00.000Z", // Sunday, inside the test week
+          opening_datetime: "2026-08-20T20:00:00.000Z", // Thursday, inside the UPCOMING week (see weekBoundsInSantiago's Sunday fix)
           image_url: "https://example.com/a.jpg",
         },
         {
@@ -118,7 +177,7 @@ test(
           region_id: regionId,
           curation_status: "approved",
           source: "discovered",
-          run_end_date: "2026-08-16", // last day of the test week itself
+          run_end_date: "2026-08-18", // within [today..upcoming week's end]
           image_url: "https://example.com/b.jpg",
         },
         {
@@ -136,7 +195,9 @@ test(
       if (eventsError) throw new Error(`Failed to seed test events: ${eventsError.message}`);
 
       const published: { imageUrls: string[]; caption: string }[] = [];
-      // Sunday 2026-08-16 — the test week runs Mon 2026-08-10..Sun 2026-08-16.
+      // Sunday 2026-08-16 — per weekBoundsInSantiago's Sunday fix, the
+      // week this run announces is the UPCOMING one, Mon 2026-08-17..Sun
+      // 2026-08-23, not the week ending today.
       await run({
         supabase: client,
         now: new Date("2026-08-16T15:00:00.000Z"),
@@ -155,7 +216,7 @@ test(
       const { data: logRows, error: logError } = await client
         .from("social_post_log")
         .select("post_type")
-        .eq("week_start", "2026-08-10");
+        .eq("week_start", "2026-08-17");
       if (logError) throw new Error(`Failed to read social_post_log: ${logError.message}`);
       const postTypes = (logRows ?? []).map((r) => r.post_type).sort();
       // Exactly one row each for no_te_la_pierdas and destacada, none for
@@ -163,7 +224,7 @@ test(
       // rule (social_post_log's own migration comment).
       assert.deepEqual(postTypes, ["destacada", "no_te_la_pierdas"]);
     } finally {
-      await client.from("social_post_log").delete().eq("week_start", "2026-08-10");
+      await client.from("social_post_log").delete().eq("week_start", "2026-08-17");
       await client.from("events").delete().eq("region_id", regionId);
       await client.from("regions").delete().eq("id", regionId);
     }

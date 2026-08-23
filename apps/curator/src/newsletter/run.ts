@@ -38,13 +38,21 @@ export interface RunDeps {
 
 // Same "fixed Monday-Sunday week" convention as apps/web/src/lib/date.ts's
 // weekBoundsInSantiago — "esta semana" means the same thing all week long,
-// not a rolling 7-day window that changes every time this runs.
+// not a rolling 7-day window that changes every time this runs — EXCEPT
+// on a Sunday, where this resolves to the UPCOMING week (starting
+// tomorrow), not the week ending today. Real bug, found 2026-08-23 while
+// moving the newsletter's own send day to Sunday: apps/web's version (a
+// general "current week" concept, correctly Sunday-inclusive for site
+// display) was duplicated here as-is, but the newsletter's actual job is
+// "which week is this digest announcing" — with the old Sunday-inclusive
+// math, week.end landed on TODAY (send day), so a Sunday send would
+// describe the week that just ended instead of the one about to start.
 function weekBoundsInSantiago(now: Date): { start: string; end: string } {
   const todayStr = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Santiago" }).format(now); // en-CA gives YYYY-MM-DD
   const [y, m, d] = todayStr.split("-").map(Number);
   const asUtc = new Date(Date.UTC(y, m - 1, d));
   const dow = asUtc.getUTCDay(); // 0=Sun..6=Sat
-  const mondayOffset = dow === 0 ? -6 : 1 - dow;
+  const mondayOffset = dow === 0 ? 1 : 1 - dow;
   const monday = new Date(asUtc);
   monday.setUTCDate(asUtc.getUTCDate() + mondayOffset);
   const sunday = new Date(monday);

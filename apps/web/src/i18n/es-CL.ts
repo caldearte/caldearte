@@ -434,7 +434,7 @@ export const esCL = {
       title: "Confirmar suscripción",
       confirmedTitle: "¡Listo! Ya eres parte de Caldearte",
       confirmed:
-        "Cada lunes recibirás lo mejor del arte de tu región, directo a tu correo.",
+        "Cada semana recibirás lo mejor del arte de tu región, directo a tu correo.",
       alreadyConfirmed: "Tu suscripción ya estaba confirmada.",
       unsubscribed: "Esta suscripción ya fue dada de baja.",
       invalid: "Este link de confirmación no es válido.",

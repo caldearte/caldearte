@@ -1025,10 +1025,12 @@ const SECTION_LABEL_LINES: Record<string, string[]> = {
 
 // Same "within 7 days, never past" rule as apps/web/src/lib/date.ts's own
 // isClosingSoon (duplicated, not imported — separate packages). `todayStr`
-// anchors off the digest's own week.start (the send always goes out
-// Monday morning, so that's the closest thing to "today" this module has
-// without threading the run's real clock all the way through) — omitted
-// (no badge, ever) when there's no week at all.
+// anchors off the digest's own week.start (the send goes out Sunday
+// morning for the week starting the next day, per weekBoundsInSantiago's
+// Sunday fix — week.start is "tomorrow", one day off from the real send
+// day, close enough for a 7-day threshold without threading the run's
+// real clock all the way through) — omitted (no badge, ever) when there's
+// no week at all.
 function isClosingSoon(runEndDate: string | null, todayStr: string | null, thresholdDays = 7): boolean {
   if (!runEndDate || !todayStr) return false;
   const [ty, tm, td] = todayStr.split("-").map(Number);

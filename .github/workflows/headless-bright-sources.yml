@@ -16,7 +16,7 @@ name: Run Headless Bright Sources
 on:
   workflow_dispatch: {}
   schedule:
-    - cron: "0 7 * * 1" # Every Monday, 07:00 UTC — 1h after the main run
+    - cron: "0 7 * * 0" # Every Sunday, 07:00 UTC — 1h after the main run (moved from Monday 2026-08-23, see event-discovery.yml)
 
 jobs:
   discover-headless:

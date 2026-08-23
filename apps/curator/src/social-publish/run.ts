@@ -33,13 +33,24 @@ type EventRow = Tables<"events">;
 type EventWithRegion = EventRow & { comunaName: string | null };
 
 // Same "fixed Monday-Sunday week" convention as newsletter/run.ts and
-// apps/web/src/lib/date.ts's weekBoundsInSantiago.
+// apps/web/src/lib/date.ts's weekBoundsInSantiago — EXCEPT on a Sunday,
+// where this resolves to the UPCOMING week (starting tomorrow), not the
+// week ending today. Real bug, found 2026-08-23 while shifting the
+// discovery cadence to Sunday: apps/web's version (a general "current
+// week" concept, correctly Sunday-inclusive for site display) was
+// duplicated here as-is, but this function's actual job is "which week
+// is Sunday's post announcing" — with the old Sunday-inclusive math,
+// week.end landed on TODAY, so selectNoTeLaPierdas's `runEndDate <=
+// week.end` filter would only ever match something closing that exact
+// day, and selectInauguraciones would show the week that just ended
+// instead of the one about to start. Monday-Saturday callers are
+// unaffected (dow!==0 branch unchanged).
 function weekBoundsInSantiago(now: Date): { start: string; end: string } {
   const todayStr = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Santiago" }).format(now);
   const [y, m, d] = todayStr.split("-").map(Number);
   const asUtc = new Date(Date.UTC(y, m - 1, d));
   const dow = asUtc.getUTCDay();
-  const mondayOffset = dow === 0 ? -6 : 1 - dow;
+  const mondayOffset = dow === 0 ? 1 : 1 - dow;
   const monday = new Date(asUtc);
   monday.setUTCDate(asUtc.getUTCDate() + mondayOffset);
   const sunday = new Date(monday);

@@ -9,16 +9,24 @@ name: Run Event Discovery
 # events) and instagram (42 live events) cost cents per run by comparison
 # and actually work. The monthly "1st of the month, 06:00 UTC" full-run
 # cron (comuna batch + any due bright sources swept in) is removed
-# entirely — only the weekly Monday bright-sources-only cron remains,
-# since that's the cadence doing all the real work. The comuna-search
+# entirely — only the weekly bright-sources-only cron remains (moved to
+# Sunday the same day, see below), since that's the cadence doing all the
+# real work. The comuna-search
 # CODE itself (searchUnitFn, getUnitsDueForRun, etc.) is deliberately
 # left in place, not deleted — reachable via workflow_dispatch with
 # bright_sources_only=false if this ever needs to be re-investigated or
 # re-enabled, rather than requiring a revert.
 #
-# Every Monday, 06:00 UTC: bright_sources_only — only due bright sources
+# Every Sunday, 06:00 UTC: bright_sources_only — only due bright sources
 # processed. Their own per-source cadence (isSourceDue) is 7 days now (was
 # 14), so this finds something new most weeks instead of every other one.
+# Moved from Monday to Sunday 2026-08-23 (docs/roadmap.md's long-flagged
+# "discovery cadence moves Monday -> Sunday") along with the rest of this
+# chain (headless/instagram/google-alerts + the newsletter, same relative
+# stagger) — so a week's events are discovered and curated the day
+# *before* that week starts, giving Sunday's newsletter and IG drop a real
+# one-day lead time instead of announcing Monday's inauguraciones the same
+# day they happen.
 # workflow_dispatch stays available for a manual run any time, with its
 # own explicit bright_sources_only input (used instead of
 # github.event.schedule when NOT a schedule-triggered run). bright_source_urls
@@ -49,7 +57,7 @@ on:
         type: string
         default: ""
   schedule:
-    - cron: "0 6 * * 1" # every Monday, 06:00 UTC — bright sources only
+    - cron: "0 6 * * 0" # every Sunday, 06:00 UTC — bright sources only
 
 jobs:
   discover:
@@ -75,7 +83,7 @@ jobs:
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
-          # Only one schedule trigger left (the weekly Monday bright-only
+          # Only one schedule trigger left (the weekly Sunday bright-only
           # run) since the comuna batch's monthly cron was removed — a
           # schedule-triggered run is always bright_sources_only now, no
           # need to branch on github.event.schedule anymore.

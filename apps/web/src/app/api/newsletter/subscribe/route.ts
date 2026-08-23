@@ -136,7 +136,7 @@ export async function POST(request: Request) {
     text: `Para recibir el newsletter semanal de Caldearte, confirma tu suscripción:\n\n${confirmUrl}\n\nSi no fuiste tú, ignora este correo.`,
     html: emailShell(`
       <h1 style="margin:0 0 12px;font-size:20px;color:#1c1c1c;">Un paso más</h1>
-      <p style="margin:0 0 20px;font-size:14px;color:#555;line-height:1.5;">Confirma tu suscripción para empezar a recibir la semana en arte, cada lunes.</p>
+      <p style="margin:0 0 20px;font-size:14px;color:#555;line-height:1.5;">Confirma tu suscripción para empezar a recibir la semana en arte, directo a tu correo.</p>
       <a href="${confirmUrl}" style="display:inline-block;background:#1c1c1c;color:#fff;padding:12px 22px;border-radius:999px;text-decoration:none;font-weight:700;font-size:14px;">Confirmar suscripción</a>
       <p style="margin:24px 0 0;font-size:12px;color:#999;">Si no fuiste tú, ignora este correo.</p>
     `),

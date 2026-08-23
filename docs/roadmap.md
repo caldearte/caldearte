@@ -182,7 +182,8 @@ Closed out the initial project brief, moved into a dedicated repo.
     settled; "expos nuevas esta semana" existed as a fourth section
     briefly, then was folded back in), omitting any that's empty, and its
     own weekly cron
-    (`.github/workflows/weekly-newsletter.yml`, Monday 08:00 UTC).
+    (`.github/workflows/weekly-newsletter.yml`, Sunday 10:00 UTC as of the
+    2026-08-23 Monday→Sunday shift below — originally Monday 08:00 UTC).
     Deliberately does NOT depend on event-discovery.yml's discovery
     cadence changing — general comuna search stays monthly (an explicit,
     considered decision, see region-discovery.md) while bright-sources
@@ -403,7 +404,7 @@ building infra" discipline the rest of this project has followed.
   this adds general validation that "this is actually the artwork/flyer, not
   a banner or logo."
 
-## Phase 4 — Social distribution (Instagram / TikTok)
+## Phase 4 — Social distribution (Instagram shipped 2026-08-23; TikTok not started)
 
 - Needs a new piece: flyer-style image generation (card with image + title +
   date + artist) per event.
@@ -471,15 +472,34 @@ building infra" discipline the rest of this project has followed.
       type) so their queries can exclude what's already appeared —
       the one real piece of new state this design needs beyond a plain
       SELECT.
-  - **Discovery cadence moves Monday → Sunday** (headless/Instagram/
-    Google-Alerts crons + the weekly newsletter, keeping their existing
-    relative stagger, all shifted one day earlier) — so a week's events
-    are discovered and curated the day *before* that week starts, giving
-    the newsletter and the new Sunday IG drop a real one-day lead time
-    instead of announcing Monday's inauguraciones the same day they
-    happen. Touches `.github/workflows/`, so this ships as a PR Daniel
-    reviews before merging, per the standing rule for that path — not
-    something to merge autonomously.
+  - **Discovery cadence moved Monday → Sunday, shipped 2026-08-23**
+    (event-discovery bright-sources/headless/Instagram/Google-Alerts
+    crons + the weekly newsletter, keeping their existing relative
+    stagger, all shifted one day earlier) — so a week's events are
+    discovered and curated the day *before* that week starts, giving the
+    newsletter and the Sunday IG drop a real one-day lead time instead of
+    announcing Monday's inauguraciones the same day they happen. Same PR
+    also fixed two real bugs found while doing this:
+    - `weekBoundsInSantiago` (duplicated in both `newsletter/run.ts` and
+      `social-publish/run.ts`) computed "this week" as ending TODAY on a
+      Sunday (matching apps/web's own general-purpose week concept,
+      correct for site display) — but both of these callers actually
+      need "the week starting tomorrow" on a Sunday specifically, since
+      that's the week they're announcing. Left uncaught, this would have
+      made Sunday's `no_te_la_pierdas` carousel almost always empty
+      (`runEndDate` had to fall on the exact send day to pass the old
+      `<= week.end` filter) and Sunday's newsletter/inauguraciones would
+      have described the week that just ended instead of the one about
+      to start. apps/web's own `weekBoundsInSantiago` is untouched —
+      correct as-is for its actual use (site-wide "current week" concept).
+    - `weekly-newsletter.yml`'s cron had silently drifted out of order:
+      set to "1h after headless" (07:00→08:00 UTC) back when headless was
+      the last step in the chain, but `instagram-bright-sources.yml`
+      (added 2026-08-12) and `google-alerts-bright-source.yml` (added
+      2026-08-14) were scheduled after it without ever moving the
+      newsletter later — for about 11 days, the newsletter ran AT THE
+      SAME TIME as instagram-bright-sources instead of after the full
+      chain. Now 1h after google-alerts (10:00 UTC), the actual last step.
   - **Camila's manual track — decoupled, not built for.** Camila's own
     content (in-depth coverage of one specific expo/inauguración, in-situ
     coverage of an opening night, a Caldearte-the-website feature, etc.)
@@ -511,9 +531,44 @@ building infra" discipline the rest of this project has followed.
     (not needed since the app only ever publishes to accounts it already
     administers; submitting for review is now explicitly out of scope
     unless that changes).
-  - **Not scoped/built yet**: the flyer-image renderer, the (B)/(C)
-    de-dup log table, the cron script itself, and the discovery-cadence
-    day shift — parked here until picked up.
+  - **All shipped 2026-08-23**: the flyer-image renderer
+    (`apps/web/src/lib/social/flyer.tsx` + `/api/social/flyer`, Satori/
+    next-og, real vector logo, 3 Figma-matched layouts), the (B)/(C)
+    de-dup log table (`social_post_log`), the cron script itself
+    (`apps/curator/src/social-publish/`), and the discovery-cadence day
+    shift (above). Real posts published and verified end-to-end on all 3
+    carousel types against `@caldearte.oficial`. Real bugs found and
+    fixed along the way, beyond the two cadence bugs noted above:
+    - Instagram's Graph API needs `graph.instagram.com`, not
+      `graph.facebook.com`, for tokens issued via the "Instagram API with
+      Instagram Login" flow — the wrong host gives a generic, misleading
+      "Cannot parse access token" error.
+    - A carousel container isn't necessarily ready to publish the instant
+      it's created — Instagram processes each item asynchronously, and a
+      bigger carousel (10 images) can outrun a naive create-then-publish
+      sequence ("Media ID is not available"). Fixed by polling the
+      container's own `status_code` until `FINISHED` before publishing.
+    - Two distinct WebP-decoding failures: a genuinely-stored `.webp`
+      file (Satori/next-og can't determine its size at all) and a CDN
+      (Squarespace) auto-negotiating WebP for a URL that ends in `.jpg`
+      whenever the request's `Accept` header is permissive — fixed by
+      excluding `.webp`-named sources from eligibility and by having the
+      flyer route fetch each photo itself with an explicit
+      `Accept: image/jpeg,image/png,image/gif` instead of leaving Satori
+      to fetch it (and negotiate format) on its own.
+    - Instagram-sourced event titles were very often the caption's first
+      *sentence* (an invitation), not the exhibition's actual name, which
+      is almost always quoted somewhere in the same caption instead —
+      fixed by preferring quoted text when present.
+    - `diversifyByComuna`'s plain round-robin was technically fair but
+      still read as mostly-Santiago once every other comuna's shorter
+      supply ran out and every remaining slot backfilled from the one
+      comuna with the most candidates — fixed with an optional
+      `maxPerComuna` cap (2, for `no_te_la_pierdas`/`destacada` only),
+      trading a shorter carousel for real diversity.
+    - Comuna-search (Tavily) monthly batch paused the same day, unrelated
+      to social distribution but found while auditing this pipeline's
+      real output — see region-discovery.md's own note.
 
 ## Phase 5 — Parked / optional, doesn't block anything above
 
