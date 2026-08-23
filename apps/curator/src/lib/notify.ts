@@ -1,4 +1,5 @@
 import { Resend } from "resend";
+import { shortRegionName } from "./regionNames.js";
 
 const GITHUB_API = "https://api.github.com";
 const BUDGET_ALERT_LABEL = "budget-alert";
@@ -886,33 +887,6 @@ function fmtWeekLine(weekStart: string, weekEnd: string): string {
   const [, em, ed] = weekEnd.split("-").map(Number);
   const range = sm === em ? `${sd} al ${ed} de ${MONTHS_ES[sm - 1]}` : `${sd} de ${MONTHS_ES[sm - 1]} al ${ed} de ${MONTHS_ES[em - 1]}`;
   return `SEMANA DEL ${range.toUpperCase()}`;
-}
-
-// Display-only shortening of admin_region_name — duplicated from
-// apps/web/src/lib/regionNames.ts (separate package, same values;
-// confirmed with the user 2026-08-04 on the web side). Falls back to the
-// full name for anything unmapped, same defensive stance as the original.
-const SHORT_REGION_NAMES: Record<string, string> = {
-  "Arica y Parinacota": "Arica y Parinacota",
-  Tarapacá: "Tarapacá",
-  Antofagasta: "Antofagasta",
-  Atacama: "Atacama",
-  Coquimbo: "Coquimbo",
-  Valparaíso: "Valparaíso",
-  "Región Metropolitana de Santiago": "Santiago",
-  "Región del Libertador Gral. Bernardo O'Higgins": "O'Higgins",
-  "Región del Maule": "Maule",
-  "Región de Ñuble": "Ñuble",
-  "Región del Biobío": "Biobío",
-  "Región de la Araucanía": "Araucanía",
-  "Región de Los Ríos": "Los Ríos",
-  "Región de Los Lagos": "Los Lagos",
-  "Región Aisén del Gral. Carlos Ibáñez del Campo": "Aisén",
-  "Región de Magallanes y de la Antártica Chilena": "Magallanes",
-};
-
-function shortRegionName(adminRegionName: string): string {
-  return SHORT_REGION_NAMES[adminRegionName] ?? adminRegionName;
 }
 
 const SITE_URL = "https://www.caldearte.com";

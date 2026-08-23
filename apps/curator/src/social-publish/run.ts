@@ -10,6 +10,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database, Tables } from "@caldearte/shared-types";
 import { getSupabaseClient } from "../lib/supabase-client.js";
+import { shortRegionName } from "../lib/regionNames.js";
 import {
   selectInauguraciones,
   selectNoTeLaPierdas,
@@ -87,13 +88,14 @@ function toSocialEvent(e: EventWithRegion): SocialEvent {
   };
 }
 
-function buildFlyerUrl(type: SocialPostType, e: SocialEvent, comunaAndRegion: string): string {
+function buildFlyerUrl(type: SocialPostType, e: SocialEvent, comunaAndRegion: { comuna: string | null; region: string }): string {
   const params = new URLSearchParams({
     type,
     title: e.title,
-    location: comunaAndRegion,
+    region: comunaAndRegion.region,
     imageUrl: e.imageUrl ?? "",
   });
+  if (comunaAndRegion.comuna) params.set("comuna", comunaAndRegion.comuna);
   if (e.artist) params.set("artist", e.artist);
   if (e.placeName) params.set("placeName", e.placeName);
   if (e.openingDatetime) params.set("openingDatetime", e.openingDatetime);
@@ -174,12 +176,15 @@ export async function run(deps: RunDeps = {}): Promise<void> {
     const region = e.region_id ? regionById.get(e.region_id) : undefined;
     return { ...e, comunaName: region?.name ?? null };
   });
-  const comunaAndRegionById = new Map(
+  // Split, not pre-joined into one "Providencia, Santiago" string — the
+  // flyer renders comuna as plain text and región as its own highlighted
+  // badge (Daniel 2026-08-23), so they need to travel as separate fields.
+  const comunaAndRegionById = new Map<string, { comuna: string | null; region: string }>(
     events.map((e) => {
       const region = e.region_id ? regionById.get(e.region_id) : undefined;
-      const comuna = region?.name;
-      const adminRegion = region?.admin_region_name;
-      return [e.id, [comuna, adminRegion].filter(Boolean).join(", ") || e.freeform_location];
+      const comuna = region?.name ?? null;
+      const regionLabel = region?.admin_region_name ? shortRegionName(region.admin_region_name) : null;
+      return [e.id, { comuna, region: regionLabel ?? comuna ?? e.freeform_location ?? "" }];
     }),
   );
   const socialEvents = events.map(toSocialEvent);
@@ -212,7 +217,10 @@ export async function run(deps: RunDeps = {}): Promise<void> {
     // Reserve one slot for the fixed closing slide — carousels cap at 10
     // total on Instagram's side, not 10 dynamic + 1 static.
     const dynamicSlides = selected.slice(0, 9);
-    const imageUrls = [...dynamicSlides.map((e) => buildFlyerUrl(type, e, comunaAndRegionById.get(e.id) ?? "")), CLOSING_SLIDE_URL];
+    const imageUrls = [
+      ...dynamicSlides.map((e) => buildFlyerUrl(type, e, comunaAndRegionById.get(e.id) ?? { comuna: null, region: "" })),
+      CLOSING_SLIDE_URL,
+    ];
 
     if (dryRun) {
       console.log(
