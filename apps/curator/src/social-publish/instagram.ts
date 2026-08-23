@@ -77,12 +77,55 @@ export async function publishCarousel(config: InstagramClientConfig, containerCr
   return id;
 }
 
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+const CONTAINER_POLL_INTERVAL_MS = 3000;
+const CONTAINER_POLL_MAX_ATTEMPTS = 30; // ~90s ceiling
+
+// Real bug found 2026-08-23 publishing a real 10-image carousel
+// (no_te_la_pierdas): media_publish failed with "Media ID is not
+// available" / "The media is not ready for publishing" (code 9007,
+// subcode 2207027) — Instagram processes each carousel item
+// asynchronously after createCarouselContainer, and a bigger carousel can
+// outrun a naive create-then-publish sequence. A 6-image carousel
+// (inauguracion, published successfully earlier the same day) only
+// worked because it happened to finish processing in time. Polling the
+// container's own status_code until FINISHED (Meta's documented pattern
+// for this) makes publishing reliable regardless of carousel size.
+export async function waitUntilContainerReady(
+  config: InstagramClientConfig,
+  containerCreationId: string,
+  pollIntervalMs = CONTAINER_POLL_INTERVAL_MS,
+): Promise<void> {
+  for (let attempt = 0; attempt < CONTAINER_POLL_MAX_ATTEMPTS; attempt++) {
+    const url = new URL(`${GRAPH_API_BASE}/${containerCreationId}`);
+    url.searchParams.set("fields", "status_code");
+    url.searchParams.set("access_token", config.accessToken);
+    const res = await fetch(url);
+    const body = await res.json();
+    if (!res.ok) throw new Error(`Instagram Graph API error checking container status: ${JSON.stringify(body)}`);
+    if (body.status_code === "FINISHED") return;
+    if (body.status_code === "ERROR" || body.status_code === "EXPIRED") {
+      throw new Error(`Instagram carousel container failed to process (status_code: ${body.status_code})`);
+    }
+    await sleep(pollIntervalMs);
+  }
+  throw new Error(`Instagram carousel container still not ready after ${CONTAINER_POLL_MAX_ATTEMPTS} status checks`);
+}
+
 // Full flow for one carousel post. Instagram creates each item
 // sequentially server-side (it fetches image_url itself), so these run
 // one at a time rather than in parallel — matches how the API is meant to
 // be driven and keeps a failure on item N from firing extra requests for
 // items after it.
-export async function publishInstagramCarousel(config: InstagramClientConfig, imageUrls: string[], caption: string): Promise<string> {
+export async function publishInstagramCarousel(
+  config: InstagramClientConfig,
+  imageUrls: string[],
+  caption: string,
+  pollIntervalMs = CONTAINER_POLL_INTERVAL_MS,
+): Promise<string> {
   if (imageUrls.length < 2 || imageUrls.length > 10) {
     throw new Error(`Instagram carousels need 2-10 images, got ${imageUrls.length}`);
   }
@@ -91,5 +134,6 @@ export async function publishInstagramCarousel(config: InstagramClientConfig, im
     itemIds.push(await createCarouselItem(config, imageUrl));
   }
   const containerId = await createCarouselContainer(config, itemIds, caption);
+  await waitUntilContainerReady(config, containerId, pollIntervalMs);
   return publishCarousel(config, containerId);
 }
