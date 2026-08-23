@@ -100,15 +100,23 @@ const COLORS = {
 // bigger photo. INSET_X (127px) is unchanged from the previous version —
 // only the band heights and logo moved.
 const INSET_X = 127;
-const TOP_BAND_HEIGHT = 135;
-// 234 (the Figma v1.2.0 export's own value) is sized for a single-line
-// title with room to spare. When the title needs a 2nd line, Daniel
-// 2026-08-23: the gray band should grow UPWARD into the photo to fit it —
-// artist/venue must stay put, not get pushed down toward (or past) the
-// canvas's bottom edge. BOTTOM_BAND_TOP is computed per-render below
-// (depends on whether the title actually wrapped), not a fixed constant.
-const BASE_BOTTOM_BAND_HEIGHT = 234;
+// 155, not the Figma export's 135 — Daniel 2026-08-23 wanted double the
+// padding between the logo/label/badge and the photo below them (roughly
+// 20px of breathing room in the original export, now ~40px).
+const TOP_BAND_HEIGHT = 155;
+// 246 (not the Figma export's 234) for the same reason — the padding
+// between the band's top edge and the date line doubled (12px -> 24px,
+// see BOTTOM_BAND_TEXT_TOP_PADDING below), so the band needs 12px more
+// height to keep the same amount of room below the text. Sized for a
+// single-line title with room to spare. When the title needs a 2nd line,
+// Daniel 2026-08-23: the gray band should grow UPWARD into the photo to
+// fit it — artist/venue must stay put, not get pushed down toward (or
+// past) the canvas's bottom edge. BOTTOM_BAND_TOP is computed per-render
+// below (depends on whether the title actually wrapped), not a fixed
+// constant.
+const BASE_BOTTOM_BAND_HEIGHT = 246;
 const EXTRA_HEIGHT_FOR_SECOND_TITLE_LINE = 58; // 48px * 1.05 line-height + a small gap
+const BOTTOM_BAND_TEXT_TOP_PADDING = 24;
 const PHOTO_TOP = TOP_BAND_HEIGHT;
 
 export function FlyerImage({ input, logoDataUri }: { input: FlyerEventInput; logoDataUri: string }) {
@@ -219,7 +227,16 @@ export function FlyerImage({ input, logoDataUri }: { input: FlyerEventInput; log
       {/* flex column, not fixed absolute offsets per element — lets
           artist/venue flow below whatever height the (now possibly
           2-line) title actually takes. */}
-      <div style={{ position: "absolute", left: INSET_X, top: bottomBandTop + 12, display: "flex", flexDirection: "column", width: bottomTextWidth }}>
+      <div
+        style={{
+          position: "absolute",
+          left: INSET_X,
+          top: bottomBandTop + BOTTOM_BAND_TEXT_TOP_PADDING,
+          display: "flex",
+          flexDirection: "column",
+          width: bottomTextWidth,
+        }}
+      >
         <span
           style={{
             fontFamily: "Lato",
