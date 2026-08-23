@@ -7,13 +7,12 @@ name: Publish Instagram Social Posts
 # other day is a deliberate no-op) — so this workflow's schedule is
 # intentionally daily, not per-type.
 #
-# 12:00 UTC is provisional — chosen only to run comfortably after
-# event-discovery.yml/headless/instagram/google-alerts's own Monday
-# chain (currently finishes ~09:00 UTC) so Monday's inauguración post
-# has that day's freshest curated events. Once the discovery-cadence
-# Monday -> Sunday shift (also flagged in docs/roadmap.md, not built
-# yet) lands, this time should be revisited so the Sunday post also
-# follows freshly discovered data instead of the previous week's.
+# 12:00 UTC — chosen to run comfortably after event-discovery.yml/
+# headless/instagram/google-alerts/weekly-newsletter's own Sunday chain
+# (finishes ~10:00-10:15 UTC as of 2026-08-23's Monday -> Sunday shift,
+# docs/roadmap.md), so Sunday's triple post (all 3 carousel types) uses
+# that same morning's freshest curated events, and Monday's inauguración
+# post has a real day of lead time on top of that.
 on:
   workflow_dispatch:
     inputs:

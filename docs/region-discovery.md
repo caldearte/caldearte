@@ -984,9 +984,9 @@ timing/fragility cost from the main run entirely):
 - `apps/curator/src/headless-index.ts` + the `discover-headless-sources`
   npm script — separate entrypoint.
 - `.github/workflows/headless-bright-sources.yml` — separate workflow,
-  Monday 07:00 UTC (1h after the main run), no `TAVILY_API_KEY` (this
-  flow never searches). Installs Chromium only in this job, never the
-  main one.
+  Sunday 07:00 UTC (1h after the main run) as of the 2026-08-23
+  Monday→Sunday shift, no `TAVILY_API_KEY` (this flow never searches).
+  Installs Chromium only in this job, never the main one.
 - `lib/notify.ts`'s `HeadlessRunSummary`/`buildHeadlessSubject`/
   `buildHeadlessBody`/`sendHeadlessRunSummaryEmail` — a sibling to
   `RunSummary`'s own functions (same format/recipient/never-throws
@@ -1585,16 +1585,26 @@ cut: run comuna coverage at a slower, smaller pace, and lean harder on
 bright sources (curated, official-venue listings) for the bulk of new
 events.
 
+**Superseded 2026-08-23** — see this file's own top note: the monthly
+full-run cron described below was removed entirely (comuna search never
+produced a single live event, months of runs), and the weekly cron moved
+Monday → Sunday. Left as-is below for the historical record of the
+original dual-cadence reasoning, which still applies to the bright-only
+cron that remains.
+
 `event-discovery.yml`'s single cron became two, same workflow/job,
 distinguished at runtime via `github.event.schedule` (only populated on
 a `schedule`-triggered run, not `workflow_dispatch`):
-- **1st of the month, 06:00 UTC** — a normal full run. `weekly_batch_size`
+- ~~**1st of the month, 06:00 UTC** — a normal full run.~~ Removed
+  2026-08-23 (comuna batch paused). `weekly_batch_size`
   (system_config, name kept as-is — renaming needs a migration, not
   worth it for a label) is still 25; at a monthly cadence instead of
-  weekly, the full 346-comuna rotation now takes ~14 months instead of
-  ~14 weeks. That's the intended effect, not a side effect.
-- **Every Monday, 06:00 UTC** — `bright_sources_only: true`, comuna batch
-  skipped entirely. Each bright source's own fetch cadence
+  weekly, the full 346-comuna rotation would have taken ~14 months
+  instead of ~14 weeks. That's the intended effect this design was going
+  for, not a side effect — moot now that it's paused.
+- **Every Sunday, 06:00 UTC** (moved from Monday 2026-08-23) —
+  `bright_sources_only: true`, comuna batch skipped entirely (the only
+  branch left standing). Each bright source's own fetch cadence
   (`BRIGHT_SOURCE_INTERVAL_MS`, `run.ts`) dropped from 14 days to 7 to
   match — halved, so this actually finds something new most weeks
   instead of every other one. `headless-discovery`'s own weekly cron
@@ -3351,8 +3361,9 @@ the shared `BrightSourceItem` shape, so `curateBrightSourceItems`
 (`discover.ts`) judges every post with the exact same scope/date criteria
 as any other bright source — no new prompt), `instagram-discovery/run.ts`
 (orchestrator), `instagram-index.ts` (entrypoint),
-`.github/workflows/instagram-bright-sources.yml` (its own cron, Monday
-08:00 UTC — offset from the main run and the other bright-source crons).
+`.github/workflows/instagram-bright-sources.yml` (its own cron, Sunday
+08:00 UTC as of the 2026-08-23 Monday→Sunday shift — offset from the main
+run and the other bright-source crons).
 
 **`fixedLocation`** (`{location, placeName}` on an account's config) — set
 only when the account is confirmed to operate from a single fixed

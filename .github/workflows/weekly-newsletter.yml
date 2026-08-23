@@ -4,17 +4,26 @@ name: Send Weekly Newsletter
 # docs/data-model.md's newsletter_subscribers entry and
 # docs/roadmap.md's newsletter section for the full design.
 #
-# Scheduled 1h after headless-bright-sources.yml's own Monday run (07:00
-# UTC) so that week's freshest bright-source events are already curated
-# and approved before the digest goes out. Deliberately its own file —
-# does NOT modify event-discovery.yml's existing schedule (monthly full
-# comuna search, weekly bright-sources-only), which stays as-is per an
-# explicit product decision: general discovery cadence only increases once
-# more of its output has been audited.
+# Moved Monday -> Sunday, 2026-08-23 (docs/roadmap.md's long-flagged
+# "discovery cadence moves Monday -> Sunday") along with the rest of the
+# discovery chain (event-discovery/headless/instagram/google-alerts, same
+# relative stagger) — so the digest announces the week starting the next
+# day, with a real one-day lead time, instead of the week that's already
+# started.
+#
+# Time ALSO moved within that Sunday run, from 08:00 UTC to 10:00 UTC —
+# real bug, found 2026-08-23: this was originally "1h after
+# headless-bright-sources.yml" (07:00 UTC) when headless was the last
+# step in the chain, but instagram-bright-sources.yml (08:00 UTC) and
+# google-alerts-bright-source.yml (09:00 UTC) were added later without
+# ever moving this cron — for weeks, the newsletter ran AT THE SAME TIME
+# as instagram-bright-sources instead of after the full chain, so it
+# never had that week's Instagram- or Google-Alerts-sourced events. Now
+# scheduled 1h after google-alerts (the actual last step).
 on:
   workflow_dispatch: {}
   schedule:
-    - cron: "0 8 * * 1" # Every Monday, 08:00 UTC
+    - cron: "0 10 * * 0" # Every Sunday, 10:00 UTC — 1h after google-alerts-bright-source.yml, the last step in the discovery chain
 
 jobs:
   send-newsletter:
