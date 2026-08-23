@@ -96,7 +96,20 @@ function toSocialEvent(e: EventWithRegion): SocialEvent {
     openingTimeConfirmed: e.opening_time_confirmed,
     runStartDate: e.run_start_date,
     runEndDate: e.run_end_date,
+    sourceAccount: e.source_account,
   };
+}
+
+// Appends an @mention line for every distinct Instagram-sourced venue in
+// this carousel — Daniel 2026-08-23: a tagged venue has a real incentive
+// to reshare to its own (much bigger, already-interested) audience,
+// which a caption with no tag doesn't give it. Only ever set for the
+// Instagram pipeline (bright_source events have no Instagram handle at
+// all), so a carousel with none produces the base caption unchanged.
+function withVenueMentions(caption: string, events: SocialEvent[]): string {
+  const handles = [...new Set(events.map((e) => e.sourceAccount).filter((h): h is string => Boolean(h)))];
+  if (handles.length === 0) return caption;
+  return `${caption}\n\nCon: ${handles.map((h) => `@${h}`).join(" ")}`;
 }
 
 function buildFlyerUrl(type: SocialPostType, e: SocialEvent, comunaAndRegion: { comuna: string | null; region: string }): string {
@@ -232,18 +245,19 @@ export async function run(deps: RunDeps = {}): Promise<void> {
       ...dynamicSlides.map((e) => buildFlyerUrl(type, e, comunaAndRegionById.get(e.id) ?? { comuna: null, region: "" })),
       CLOSING_SLIDE_URL,
     ];
+    const caption = withVenueMentions(CAPTIONS[type], dynamicSlides);
 
     if (dryRun) {
       console.log(
         `[social-publish] DRY RUN — ${type}: would publish a carousel with ${dynamicSlides.length} event(s) + closing slide.\n` +
-          `  caption: ${CAPTIONS[type]}\n` +
+          `  caption: ${caption}\n` +
           imageUrls.map((url, i) => `  [${i + 1}/${imageUrls.length}] ${url}`).join("\n"),
       );
       continue;
     }
 
     console.log(`[social-publish] ${type}: publishing a carousel with ${dynamicSlides.length} event(s) + closing slide.`);
-    const publishedId = await publish(instagramConfig, imageUrls, CAPTIONS[type]);
+    const publishedId = await publish(instagramConfig, imageUrls, caption);
     console.log(`[social-publish] ${type}: published, Instagram media id ${publishedId}.`);
 
     if (type !== "inauguracion") {

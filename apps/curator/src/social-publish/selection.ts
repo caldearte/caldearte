@@ -21,6 +21,13 @@ export interface SocialEvent {
   openingTimeConfirmed: boolean;
   runStartDate: string | null;
   runEndDate: string | null;
+  // Instagram handle of the account this event was sourced from — only
+  // ever set for the Instagram pipeline (the account IS usually the
+  // venue/artist's own), null for bright_source/other pipelines. Used to
+  // @mention the venue in the post's caption (Daniel 2026-08-23: real
+  // outreach lever — a tagged venue has a direct incentive to reshare to
+  // its own audience, which a caption with no tag doesn't give it).
+  sourceAccount: string | null;
 }
 
 export const CAROUSEL_CAP = 10;
