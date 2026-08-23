@@ -18,9 +18,39 @@ const POST: ApifyInstagramPost = {
   ownerUsername: "casaculturalyanulaque",
 };
 
-test("toBrightSourceItem derives the title from the caption's first line", () => {
+test("toBrightSourceItem derives the title from the caption's first line when there's no quoted title", () => {
+  const item = toBrightSourceItem({ ...POST, caption: "Inauguración de la exposición Mareas\n20 de agosto, 19:00hrs." }, ACCOUNT);
+  assert.equal(item.title, "Inauguración de la exposición Mareas");
+});
+
+test("toBrightSourceItem prefers a quoted title over the full first line — real bug found 2026-08-23 auditing production: the first line is almost always a full invitation sentence, not the exhibition name, and the real name is usually quoted somewhere in it", () => {
   const item = toBrightSourceItem(POST, ACCOUNT);
-  assert.equal(item.title, 'Inauguración de la exposición "Mareas"');
+  assert.equal(item.title, "Mareas");
+});
+
+test("toBrightSourceItem extracts a quoted title using guillemets («»)", () => {
+  const item = toBrightSourceItem(
+    { ...POST, caption: "D21 invita a la inauguración de la muestra «Afecto Extraterrestre» del artista Javier González Pesce." },
+    ACCOUNT,
+  );
+  assert.equal(item.title, "Afecto Extraterrestre");
+});
+
+test("toBrightSourceItem extracts a quoted title using curly double quotes anywhere in the caption, not just the first line", () => {
+  const item = toBrightSourceItem(
+    {
+      ...POST,
+      caption:
+        'Los invitamos este 20 de Agosto a las 19:00 hrs, a la Performace “VILO: el peso del fragmento” del artista Sebastián Mahaluf.',
+    },
+    ACCOUNT,
+  );
+  assert.equal(item.title, "VILO: el peso del fragmento");
+});
+
+test("toBrightSourceItem falls back to the first substantive line when no quoted title exists — accepted imperfection, some captions state the real title unquoted", () => {
+  const item = toBrightSourceItem({ ...POST, caption: "Conoce la obra Sempiterno de José Pérez en Museo Taller." }, ACCOUNT);
+  assert.equal(item.title, "Conoce la obra Sempiterno de José Pérez en Museo Taller.");
 });
 
 test("toBrightSourceItem passes the FULL caption through as both description and rawDateText — Haiku interprets the date itself", () => {

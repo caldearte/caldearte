@@ -8,17 +8,49 @@ import type { InstagramAccountConfig } from "./instagram-accounts.js";
 
 const TITLE_MAX_LENGTH = 120;
 
+// Real bug found 2026-08-23, auditing production data: a caption's first
+// substantive line is very often a full invitation sentence ("Los
+// invitamos este 20 de Agosto... a la Performace 'VILO: el peso del
+// fragmento' del artista..."), not the exhibition's actual name — the
+// real name almost always appears quoted somewhere in the caption
+// instead. Scans for the EARLIEST quoted span across the quote styles
+// actually seen in these captions (straight/curly double quotes,
+// guillemets, curly single quotes) and uses its contents as the title
+// when found. Does not cover every case (some captions state the real
+// title unquoted, e.g. "la exposición Hiperia de la artista..." — left
+// to the first-substantive-line fallback below, same accepted
+// imperfection as before).
+function extractQuotedTitle(caption: string): string | null {
+  const quotePairs: [string, string][] = [
+    ["“", "”"],
+    ["«", "»"],
+    ["‘", "’"],
+    ['"', '"'],
+  ];
+  let earliest: { index: number; text: string } | null = null;
+  for (const [open, close] of quotePairs) {
+    const openIndex = caption.indexOf(open);
+    if (openIndex === -1) continue;
+    const closeIndex = caption.indexOf(close, openIndex + open.length);
+    if (closeIndex === -1) continue;
+    const inner = caption.slice(openIndex + open.length, closeIndex).trim();
+    if (!/[\p{L}\p{N}]/u.test(inner)) continue;
+    if (earliest === null || openIndex < earliest.index) {
+      earliest = { index: openIndex, text: inner };
+    }
+  }
+  return earliest?.text ?? null;
+}
+
 export function toBrightSourceItem(post: ApifyInstagramPost, account: InstagramAccountConfig): BrightSourceItem {
   const caption = post.caption ?? "";
-  // Instagram has no "title" field — derived from the caption's first
-  // SUBSTANTIVE line (containing at least one letter/digit), not just the
-  // literal first line, truncated. Imperfect, but Haiku still sees the
-  // FULL caption via description/rawDateText below, so an approximate
-  // title hides nothing from it — same kind of imperfection already
-  // accepted for other sources with no clean title in the source itself
-  // (Aninat, Estación Mapocho). truncateSafely, not a raw .slice() — see
-  // its own doc comment (a real crash, found via mugupla's emoji-dense
-  // captions).
+  // Instagram has no "title" field — derived from the caption. Imperfect,
+  // but Haiku still sees the FULL caption via description/rawDateText
+  // below, so an approximate title hides nothing from it — same kind of
+  // imperfection already accepted for other sources with no clean title
+  // in the source itself (Aninat, Estación Mapocho). truncateSafely, not
+  // a raw .slice() — see its own doc comment (a real crash, found via
+  // mugupla's emoji-dense captions).
   //
   // Real bug found 2026-08-14 (institutodearte.pucv): every one of its
   // captions opens with a lone "•" as a decorative first line before the
@@ -30,7 +62,7 @@ export function toBrightSourceItem(post: ApifyInstagramPost, account: InstagramA
   // all — bullets, dashes, emoji-only lines) fixes both.
   const lines = caption.split("\n").map((line) => line.trim());
   const firstSubstantiveLine = lines.find((line) => /[\p{L}\p{N}]/u.test(line));
-  const title = truncateSafely(firstSubstantiveLine || account.username, TITLE_MAX_LENGTH);
+  const title = truncateSafely(extractQuotedTitle(caption) || firstSubstantiveLine || account.username, TITLE_MAX_LENGTH);
 
   return {
     title,
