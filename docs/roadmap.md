@@ -182,8 +182,10 @@ Closed out the initial project brief, moved into a dedicated repo.
     settled; "expos nuevas esta semana" existed as a fourth section
     briefly, then was folded back in), omitting any that's empty, and its
     own weekly cron
-    (`.github/workflows/weekly-newsletter.yml`, Sunday 10:00 UTC as of the
-    2026-08-23 Monday→Sunday shift below — originally Monday 08:00 UTC).
+    (`.github/workflows/weekly-newsletter.yml`, Sunday ~10:27 UTC as of the
+    2026-08-23 Monday→Sunday shift below — originally Monday 08:00 UTC;
+    minute moved off :00 later the same day, see the cron-congestion note
+    further down).
     Deliberately does NOT depend on event-discovery.yml's discovery
     cadence changing — general comuna search stays monthly (an explicit,
     considered decision, see region-discovery.md) while bright-sources
@@ -516,7 +518,7 @@ building infra" discipline the rest of this project has followed.
       2026-08-14) were scheduled after it without ever moving the
       newsletter later — for about 11 days, the newsletter ran AT THE
       SAME TIME as instagram-bright-sources instead of after the full
-      chain. Now 1h after google-alerts (10:00 UTC), the actual last step.
+      chain. Now 1h after google-alerts (~10:27 UTC), the actual last step.
   - **Camila's manual track — decoupled, not built for.** Camila's own
     content (in-depth coverage of one specific expo/inauguración, in-situ
     coverage of an opening night, a Caldearte-the-website feature, etc.)
@@ -586,6 +588,14 @@ building infra" discipline the rest of this project has followed.
     - Comuna-search (Tavily) monthly batch paused the same day, unrelated
       to social distribution but found while auditing this pipeline's
       real output — see region-discovery.md's own note.
+    - A carousel item occasionally fails with "Media download has
+      failed" (code 9004) on an image URL that had published fine a
+      minute earlier in the very same run — Instagram fetches
+      `image_url` itself, and that fetch is transiently flaky on their
+      end, not a real problem with the image. Fixed by retrying just
+      this error code up to 3 times (5s apart) inside
+      `createCarouselItem`; other error codes (bad token, malformed
+      params) still fail immediately, without retry.
 
 ## Phase 5 — Parked / optional, doesn't block anything above
 

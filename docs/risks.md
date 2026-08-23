@@ -49,3 +49,15 @@
    2026-07-17**: sensitivity-tagged event titles/descriptions were never
    hidden by default, only the thumbnail was blurred. Now defaults ON;
    explicitly turning it off is the only way to see everything.
+8. **Public repo, real secrets/PII could leak into tracked files with no
+   one noticing between commits — mitigated 2026-08-23**: a weekly
+   (Tuesday) automated audit
+   (`.github/workflows/security-audit.yml`/
+   `apps/curator/src/security-audit/`) now scans every tracked file for
+   credential-shaped secrets and unexpected PII, plus dependency
+   vulnerabilities (`pnpm audit`), emailing a summary either way so a
+   missing email is itself a signal. Not a full replacement for GitHub's
+   own native secret scanning/Dependabot alerts, which are free for
+   public repos but still **disabled on this repo as of 2026-08-23** —
+   that's a repo Settings > Code security toggle, not something
+   automatable from inside the repo itself.
