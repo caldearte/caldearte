@@ -58,6 +58,27 @@ test("selectInauguraciones: excludes sensitive-tagged events", () => {
   );
 });
 
+test("selectInauguraciones: excludes events with no real photo — real bug found 2026-08-23 testing against production data, a flyer with no image would render broken", () => {
+  const events = [
+    makeEvent({ id: "with-photo", openingDatetime: "2026-08-20T22:00:00+00:00" }),
+    makeEvent({ id: "no-photo", openingDatetime: "2026-08-20T22:00:00+00:00", imageUrl: null }),
+  ];
+  const result = selectInauguraciones(events, week);
+  assert.deepEqual(
+    result.map((e) => e.id),
+    ["with-photo"],
+  );
+});
+
+test("selectNoTeLaPierdas: excludes events with no real photo", () => {
+  const events = [makeEvent({ id: "with-photo", runEndDate: "2026-08-18" }), makeEvent({ id: "no-photo", runEndDate: "2026-08-18", imageUrl: null })];
+  const result = selectNoTeLaPierdas(events, "2026-08-17", week, new Set());
+  assert.deepEqual(
+    result.map((e) => e.id),
+    ["with-photo"],
+  );
+});
+
 test("selectNoTeLaPierdas: orders by run end date ascending, within the current week only", () => {
   const events = [
     makeEvent({ id: "later", runEndDate: "2026-08-23" }),

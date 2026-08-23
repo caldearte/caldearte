@@ -3,7 +3,16 @@
 // item ids -> publish the container). Plain fetch, matching the rest of
 // this package's style (lib/notify.ts's Resend/GitHub calls) rather than
 // pulling in an SDK for 3 endpoints.
-const GRAPH_API_BASE = "https://graph.facebook.com/v21.0";
+//
+// graph.instagram.com, not graph.facebook.com — real bug, found
+// 2026-08-23 testing against the real account: the app was set up via
+// "Instagram API with Instagram Login" (the instagram.com/consent OAuth
+// flow, not Facebook Login for Business), which issues "IGAA..."-prefixed
+// tokens meant for Instagram's own Graph API host. Pointing those tokens
+// at graph.facebook.com (the classic Facebook Graph API, for "EAA..."
+// tokens from the Facebook Login flow) fails with a generic "Cannot parse
+// access token" error that gives no hint the host itself is wrong.
+const GRAPH_API_BASE = "https://graph.instagram.com/v21.0";
 
 export interface InstagramClientConfig {
   igBusinessAccountId: string;
