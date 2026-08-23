@@ -63,9 +63,17 @@ function todayInSantiago(now: Date): string {
   return new Intl.DateTimeFormat("en-CA", { timeZone: "America/Santiago" }).format(now);
 }
 
-// Sunday posts all 3 (the week's full plan); Monday/Wednesday/Friday each
-// post one — see docs/roadmap.md's cadence table. Every other day is a
-// deliberate no-op, not a bug.
+// Sunday posts all 3 across the week (the full plan); Monday/Wednesday/
+// Friday each post one — see docs/roadmap.md's cadence table. Every
+// other day is a deliberate no-op, not a bug. In the REAL schedule
+// (publish-social.yml), Sunday's 3 types no longer come from this
+// function returning all 3 at once — that made them post back-to-back
+// within the same script run instead of spaced across the day (real bug,
+// found 2026-08-23). The workflow now fires 3 separate Sunday crons, each
+// setting FORCE_TYPES to exactly one type, so this "all 3 for Sunday"
+// branch is only ever reached by a manual workflow_dispatch run with no
+// force_types input — a deliberate, different behavior for testing, not
+// what the automated schedule actually does anymore.
 function scheduledTypesFor(now: Date): SocialPostType[] {
   const dow = new Intl.DateTimeFormat("en-US", { timeZone: "America/Santiago", weekday: "short" }).format(now);
   switch (dow) {

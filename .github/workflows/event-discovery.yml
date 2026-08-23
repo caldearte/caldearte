@@ -57,7 +57,12 @@ on:
         type: string
         default: ""
   schedule:
-    - cron: "0 6 * * 0" # every Sunday, 06:00 UTC — bright sources only
+    # Not minute 0 — GitHub's own docs flag the top of every hour as the
+    # highest-congestion time for scheduled workflows (most repos default
+    # cron minutes to 0), causing real delays; a real 51-minute delay was
+    # observed 2026-08-23, this repo's first Sunday run under the new
+    # schedule. Every cron in this repo was moved off :00 the same day.
+    - cron: "7 6 * * 0" # every Sunday, ~06:07 UTC — bright sources only
 
 jobs:
   discover:

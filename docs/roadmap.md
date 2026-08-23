@@ -455,7 +455,12 @@ building infra" discipline the rest of this project has followed.
   - **Weekly cadence — 6 automated posts/week:**
     - **Sunday** — all three types posted (A + B + C), timed to land the
       day before the week it covers starts (see discovery-cadence change
-      below).
+      below). **Spaced across the day, not back-to-back** — real bug,
+      found 2026-08-23: the original single Sunday cron posted all 3
+      within the same script run (~1-2 minutes apart), undermining the
+      whole point of "no more than 1-2 Feed posts/day" below. Fixed via 3
+      separate Sunday crons in `publish-social.yml` (~08:05/11:05/14:05
+      Chile time), each forcing exactly one type.
     - **Monday** — (A) only.
     - **Wednesday** — (B) only.
     - **Friday** — (C) only.
