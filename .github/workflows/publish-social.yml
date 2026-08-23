@@ -15,7 +15,16 @@ name: Publish Instagram Social Posts
 # yet) lands, this time should be revisited so the Sunday post also
 # follows freshly discovered data instead of the previous week's.
 on:
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Dry run — verify credentials/build the carousel(s) but don't actually publish to Instagram"
+        type: boolean
+        default: true
+      force_types:
+        description: "Comma-separated post types to test regardless of today's day-of-week (inauguracion,no_te_la_pierdas,destacada) — leave empty to use today's real schedule"
+        type: string
+        default: ""
   schedule:
     - cron: "0 12 * * *" # Every day, 12:00 UTC
 
@@ -41,3 +50,9 @@ jobs:
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           INSTAGRAM_ACCESS_TOKEN: ${{ secrets.INSTAGRAM_ACCESS_TOKEN }}
           INSTAGRAM_BUSINESS_ACCOUNT_ID: ${{ secrets.INSTAGRAM_BUSINESS_ACCOUNT_ID }}
+          # Only set on a manual run — a real scheduled run always
+          # publishes for real, with today's actual schedule. github.event.inputs
+          # is empty (not "true"/"false") on a schedule trigger, so DRY_RUN
+          # correctly evaluates to false there via run.ts's own "=== 'true'" check.
+          DRY_RUN: ${{ inputs.dry_run }}
+          FORCE_TYPES: ${{ inputs.force_types }}

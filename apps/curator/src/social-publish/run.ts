@@ -17,7 +17,7 @@ import {
   type SocialEvent,
   type SocialPostType,
 } from "./selection.js";
-import { publishInstagramCarousel, type InstagramClientConfig } from "./instagram.js";
+import { publishInstagramCarousel, verifyInstagramAccount, type InstagramClientConfig } from "./instagram.js";
 
 const SITE_URL = "https://www.caldearte.com";
 const CLOSING_SLIDE_URL = `${SITE_URL}/social/ig-post-cierre.png`;
@@ -107,12 +107,26 @@ export interface RunDeps {
   now?: Date;
   instagramConfig?: InstagramClientConfig;
   publishInstagramCarouselFn?: typeof publishInstagramCarousel;
+  verifyInstagramAccountFn?: typeof verifyInstagramAccount;
+  // Test-and-verify support, 2026-08-23: lets a manual workflow_dispatch
+  // run the full real pipeline (real Supabase query, real selection, real
+  // flyer URLs against production data, real Instagram credentials
+  // checked) WITHOUT actually calling the Graph API's publish step or
+  // writing social_post_log rows — so the setup can be verified end to
+  // end on a day that wouldn't otherwise post anything, without risking a
+  // real post going out wrong. Defaults straight from env so the
+  // workflow's own inputs can drive it without needing a code change to
+  // exercise.
+  dryRun?: boolean;
+  forceTypes?: SocialPostType[];
 }
 
 export async function run(deps: RunDeps = {}): Promise<void> {
   const now = deps.now ?? new Date();
   const today = todayInSantiago(now);
   const publish = deps.publishInstagramCarouselFn ?? publishInstagramCarousel;
+  const dryRun = deps.dryRun ?? process.env.DRY_RUN === "true";
+  const forceTypes = deps.forceTypes ?? (process.env.FORCE_TYPES?.split(",").filter(Boolean) as SocialPostType[] | undefined);
 
   // Checked before touching Supabase or Instagram credentials at all —
   // most days are a no-op by design (see scheduledTypesFor), and neither
@@ -121,7 +135,7 @@ export async function run(deps: RunDeps = {}): Promise<void> {
   // unconditionally, so a no-op day still required SUPABASE_URL/
   // SUPABASE_SERVICE_ROLE_KEY to be set or it would throw before ever
   // reaching the "nothing scheduled" check.
-  const types = scheduledTypesFor(now);
+  const types = forceTypes && forceTypes.length > 0 ? forceTypes : scheduledTypesFor(now);
   if (types.length === 0) {
     console.log(`[social-publish] ${today} — nothing scheduled today, exiting.`);
     return;
@@ -136,6 +150,12 @@ export async function run(deps: RunDeps = {}): Promise<void> {
     throw new Error("INSTAGRAM_BUSINESS_ACCOUNT_ID and INSTAGRAM_ACCESS_TOKEN must be set.");
   }
   const instagramConfig: InstagramClientConfig = { igBusinessAccountId, accessToken };
+
+  if (dryRun) {
+    const verify = deps.verifyInstagramAccountFn ?? verifyInstagramAccount;
+    const account = await verify(instagramConfig);
+    console.log(`[social-publish] DRY RUN — Instagram credentials verified: @${account.username} (${account.mediaCount} posts).`);
+  }
 
   const [eventsRes, regionsRes, logRes] = await Promise.all([
     supabase.from("events").select("*").eq("curation_status", "approved").is("removed_at", null),
@@ -193,6 +213,15 @@ export async function run(deps: RunDeps = {}): Promise<void> {
     // total on Instagram's side, not 10 dynamic + 1 static.
     const dynamicSlides = selected.slice(0, 9);
     const imageUrls = [...dynamicSlides.map((e) => buildFlyerUrl(type, e, comunaAndRegionById.get(e.id) ?? "")), CLOSING_SLIDE_URL];
+
+    if (dryRun) {
+      console.log(
+        `[social-publish] DRY RUN — ${type}: would publish a carousel with ${dynamicSlides.length} event(s) + closing slide.\n` +
+          `  caption: ${CAPTIONS[type]}\n` +
+          imageUrls.map((url, i) => `  [${i + 1}/${imageUrls.length}] ${url}`).join("\n"),
+      );
+      continue;
+    }
 
     console.log(`[social-publish] ${type}: publishing a carousel with ${dynamicSlides.length} event(s) + closing slide.`);
     const publishedId = await publish(instagramConfig, imageUrls, CAPTIONS[type]);
