@@ -9,7 +9,12 @@ name: Record Apify Usage Snapshot
 on:
   workflow_dispatch: {}
   schedule:
-    - cron: "0 9 * * *" # Daily, 09:00 UTC
+    # Not minute 0 — GitHub's own docs flag the top of every hour as the
+    # highest-congestion time for scheduled workflows; real delays
+    # observed across every cron in this repo 2026-08-23. Also picked a
+    # different minute than google-alerts-bright-source.yml's own 09:22
+    # Sunday cron, since this one runs every day including Sunday.
+    - cron: "33 9 * * *" # Daily, ~09:33 UTC
 
 jobs:
   record-apify-usage:

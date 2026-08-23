@@ -25,7 +25,9 @@ name: Run Instagram Bright Sources
 on:
   workflow_dispatch: {}
   schedule:
-    - cron: "0 8 * * 0" # Every Sunday, 08:00 UTC — 1h after headless (moved from Monday 2026-08-23, see event-discovery.yml)
+    # Not minute 0 — see event-discovery.yml's own comment (top-of-hour
+    # congestion, real 26-51min delays observed 2026-08-23).
+    - cron: "17 8 * * 0" # Every Sunday, ~08:17 UTC — 1h after headless (moved from Monday 2026-08-23, see event-discovery.yml)
 
 jobs:
   discover-instagram:

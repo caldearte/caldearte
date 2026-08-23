@@ -1,18 +1,21 @@
 name: Publish Instagram Social Posts
 
 # Automated Feed carousels — see docs/roadmap.md's Fase 4 section for the
-# full design. Runs every day; apps/curator/src/social-publish/run.ts
-# itself decides whether today actually publishes anything (Sunday posts
-# all 3 carousel types, Monday/Wednesday/Friday post one each, every
-# other day is a deliberate no-op) — so this workflow's schedule is
-# intentionally daily, not per-type.
+# full design. apps/curator/src/social-publish/run.ts itself decides
+# whether today actually publishes anything (Monday/Wednesday/Friday post
+# one carousel type each, every other day is a deliberate no-op unless a
+# schedule cron below forces a type — see Sunday below).
 #
-# 12:00 UTC — chosen to run comfortably after event-discovery.yml/
-# headless/instagram/google-alerts/weekly-newsletter's own Sunday chain
-# (finishes ~10:00-10:15 UTC as of 2026-08-23's Monday -> Sunday shift,
-# docs/roadmap.md), so Sunday's triple post (all 3 carousel types) uses
-# that same morning's freshest curated events, and Monday's inauguración
-# post has a real day of lead time on top of that.
+# Sunday is 3 SEPARATE crons, not one — real bug, found 2026-08-23: the
+# original single Sunday firing posted all 3 carousel types back-to-back
+# within the same script run (~1-2min apart, however long each
+# container-poll + publish takes), not spaced across the day as
+# docs/roadmap.md's own reasoning about Feed reach cannibalization
+# ("Instagram penalizes posting frequently to the same audience in a
+# short window") already argued against. Each Sunday cron below sets
+# FORCE_TYPES to exactly one type — same mechanism already used for
+# manual dry-run testing — reusing scheduledTypesFor's Mon/Wed/Fri
+# single-type behavior instead of adding new date logic.
 on:
   workflow_dispatch:
     inputs:
@@ -25,7 +28,14 @@ on:
         type: string
         default: ""
   schedule:
-    - cron: "0 12 * * *" # Every day, 12:00 UTC
+    # Not minute 0 on any of these — GitHub's own docs flag the top of
+    # every hour as the highest-congestion time for scheduled workflows;
+    # real 45+ minute delays were observed across every cron in this repo
+    # 2026-08-23.
+    - cron: "5 12 * * 1-6" # Monday-Saturday, ~12:05 UTC — unchanged single-type-or-noop behavior (Mon/Wed/Fri post, others no-op)
+    - cron: "5 12 * * 0" # Sunday slot 1, ~12:05 UTC (~08:05 Chile) — inauguraciones, right after the discovery chain finishes
+    - cron: "5 15 * * 0" # Sunday slot 2, ~15:05 UTC (~11:05 Chile) — no te la pierdas
+    - cron: "5 18 * * 0" # Sunday slot 3, ~18:05 UTC (~14:05 Chile) — destacada
 
 jobs:
   publish-social:
@@ -54,4 +64,12 @@ jobs:
           # is empty (not "true"/"false") on a schedule trigger, so DRY_RUN
           # correctly evaluates to false there via run.ts's own "=== 'true'" check.
           DRY_RUN: ${{ inputs.dry_run }}
-          FORCE_TYPES: ${{ inputs.force_types }}
+          # The Mon-Sat cron and a manual dispatch both use the real
+          # per-day schedule (empty FORCE_TYPES, falls through to
+          # scheduledTypesFor in run.ts) unless force_types was
+          # explicitly typed in. Each of the 3 Sunday crons instead
+          # forces exactly one type, matching which cron string fired
+          # (github.event.schedule — only populated on a real schedule
+          # trigger, not workflow_dispatch) — see this file's own header
+          # comment for why Sunday needs 3 separate crons instead of one.
+          FORCE_TYPES: ${{ github.event_name == 'workflow_dispatch' && inputs.force_types || github.event.schedule == '5 12 * * 0' && 'inauguracion' || github.event.schedule == '5 15 * * 0' && 'no_te_la_pierdas' || github.event.schedule == '5 18 * * 0' && 'destacada' || '' }}

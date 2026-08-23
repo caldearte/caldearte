@@ -23,7 +23,9 @@ name: Send Weekly Newsletter
 on:
   workflow_dispatch: {}
   schedule:
-    - cron: "0 10 * * 0" # Every Sunday, 10:00 UTC — 1h after google-alerts-bright-source.yml, the last step in the discovery chain
+    # Not minute 0 — see event-discovery.yml's own comment (top-of-hour
+    # congestion, real 26-51min delays observed 2026-08-23).
+    - cron: "27 10 * * 0" # Every Sunday, ~10:27 UTC — 1h after google-alerts-bright-source.yml, the last step in the discovery chain
 
 jobs:
   send-newsletter:
