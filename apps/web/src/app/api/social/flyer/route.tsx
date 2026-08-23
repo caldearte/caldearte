@@ -36,14 +36,19 @@ export async function GET(request: Request) {
     todayStr: todayInSantiago(),
   };
 
-  const [latoBold, latoBlack, geistSemiBold] = await Promise.all([
+  const [latoBold, latoBlack, geistSemiBold, logoSvg] = await Promise.all([
     readFile(join(process.cwd(), "assets/lato-bold.ttf")),
     readFile(join(process.cwd(), "assets/lato-black.ttf")),
     readFile(join(process.cwd(), "assets/geist-semibold.ttf")),
+    readFile(join(process.cwd(), "assets/logo-caldearte.svg")),
   ]);
+  // Data URI, not a remote src — the vector logo is a fixed local asset
+  // (unlike the event photo), so there's no reason to add a network round
+  // trip or a dependency on Figma's own (temporary) asset host.
+  const logoDataUri = `data:image/svg+xml;base64,${logoSvg.toString("base64")}`;
 
   try {
-    return new ImageResponse(<FlyerImage input={input} />, {
+    return new ImageResponse(<FlyerImage input={input} logoDataUri={logoDataUri} />, {
       width: FLYER_WIDTH,
       height: FLYER_HEIGHT,
       fonts: [
