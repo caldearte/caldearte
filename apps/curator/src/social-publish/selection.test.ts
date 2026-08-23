@@ -105,6 +105,20 @@ test("selectNoTeLaPierdas: orders by run end date ascending, within the current 
   );
 });
 
+test("selectNoTeLaPierdas: caps a heavy comuna at 2 instead of filling the whole carousel with it — real complaint 2026-08-23, a nationwide list still read as mostly Santiago", () => {
+  const events = [
+    makeEvent({ id: "s1", comunaName: "Santiago", runEndDate: "2026-08-18" }),
+    makeEvent({ id: "s2", comunaName: "Santiago", runEndDate: "2026-08-19" }),
+    makeEvent({ id: "s3", comunaName: "Santiago", runEndDate: "2026-08-20" }),
+    makeEvent({ id: "v1", comunaName: "Valparaíso", runEndDate: "2026-08-21" }),
+  ];
+  const result = selectNoTeLaPierdas(events, "2026-08-17", week, new Set());
+  assert.deepEqual(
+    result.map((e) => e.id),
+    ["s1", "v1", "s2"],
+  );
+});
+
 test("selectNoTeLaPierdas: excludes events already posted this week (de-dup)", () => {
   const events = [
     makeEvent({ id: "fresh", runEndDate: "2026-08-19" }),
@@ -118,7 +132,14 @@ test("selectNoTeLaPierdas: excludes events already posted this week (de-dup)", (
 });
 
 test("selectDestacada: prefers events never featured, then longest-since-featured", () => {
-  const events = [makeEvent({ id: "featured-recent" }), makeEvent({ id: "never-featured" }), makeEvent({ id: "featured-long-ago" })];
+  // Distinct comunas — otherwise MAX_PER_COMUNA's cap of 2 (see
+  // selection.ts) would drop one of these 3 same-comuna events before
+  // rotation ordering is even exercised.
+  const events = [
+    makeEvent({ id: "featured-recent", comunaName: "Santiago" }),
+    makeEvent({ id: "never-featured", comunaName: "Valparaíso" }),
+    makeEvent({ id: "featured-long-ago", comunaName: "Concepción" }),
+  ];
   const lastFeaturedAt = new Map([
     ["featured-recent", "2026-08-15"],
     ["featured-long-ago", "2026-06-01"],
@@ -155,6 +176,21 @@ test("selectDestacada: excludes events not currently running", () => {
     result.map((e) => e.id),
     ["running"],
   );
+});
+
+test("selectDestacada: caps a heavy comuna at 2 instead of filling the whole carousel with it", () => {
+  const events = [
+    makeEvent({ id: "s1", comunaName: "Santiago" }),
+    makeEvent({ id: "s2", comunaName: "Santiago" }),
+    makeEvent({ id: "s3", comunaName: "Santiago" }),
+    makeEvent({ id: "v1", comunaName: "Valparaíso" }),
+  ];
+  const result = selectDestacada(events, "2026-08-17", new Set(), new Map());
+  assert.deepEqual(
+    result.map((e) => e.id).sort(),
+    ["s1", "s2", "v1"].sort(),
+  );
+  assert.equal(result.length, 3);
 });
 
 test("all three selectors respect the carousel cap", () => {

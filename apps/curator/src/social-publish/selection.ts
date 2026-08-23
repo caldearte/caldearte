@@ -25,6 +25,15 @@ export interface SocialEvent {
 
 export const CAROUSEL_CAP = 10;
 
+// Real complaint from Daniel 2026-08-23 after reviewing a real "no te la
+// pierdas" post: unbounded, once every other comuna's short supply ran
+// out, the carousel just kept backfilling from Santiago (where most
+// events genuinely are) — technically fair round-robin, but didn't read
+// as diverse. Only applied to no_te_la_pierdas/destacada, not
+// inauguraciones — not what was reported, and inauguraciones' own real
+// posts so far already showed reasonable spread.
+const MAX_PER_COMUNA = 2;
+
 // Never included in any automated post — the site's own blur/family-mode
 // is a per-visitor exposure control, not a publish-time filter, and
 // Instagram has its own content policies a flagged post could trip. A
@@ -87,7 +96,7 @@ export function selectNoTeLaPierdas(
     .filter((e) => !alreadyPostedIds.has(e.id))
     .filter((e) => e.runEndDate && e.runEndDate >= todayStr && e.runEndDate <= week.end)
     .sort((a, b) => a.runEndDate!.localeCompare(b.runEndDate!));
-  return diversifyByComuna(eligible, cap);
+  return diversifyByComuna(eligible, cap, MAX_PER_COMUNA);
 }
 
 // (C) Selección/destacada — currently-running, non-sensitive expos with
@@ -116,5 +125,5 @@ export function selectDestacada(
       const bLast = lastFeaturedAt.get(b.id) ?? "";
       return aLast.localeCompare(bLast);
     });
-  return diversifyByComuna(eligible, cap);
+  return diversifyByComuna(eligible, cap, MAX_PER_COMUNA);
 }
