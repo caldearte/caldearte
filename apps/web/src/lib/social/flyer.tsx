@@ -157,10 +157,10 @@ export function FlyerImage({ input, logoDataUri }: { input: FlyerEventInput; log
   const bottomBandHeight = BASE_BOTTOM_BAND_HEIGHT + (titleLine2 ? EXTRA_HEIGHT_FOR_SECOND_TITLE_LINE : 0);
   const bottomBandTop = FLYER_HEIGHT - bottomBandHeight;
   const photoHeight = bottomBandTop - PHOTO_TOP;
-  // Doubled from the single 124px margin, 2026-08-23: Instagram's own
-  // carousel slide-count indicator ("5/10") sits in this exact corner and
-  // was overlapping the label/region badge.
-  const topRightMargin = 248;
+  // Was 248 (double the original 124px, to clear Instagram's carousel
+  // slide-count indicator "5/10") — Daniel 2026-08-23: that ended up too
+  // much once comuna/región grew to 32px. Pulled back a quarter, to 186.
+  const topRightMargin = 186;
 
   return (
     <div style={{ width: FLYER_WIDTH, height: FLYER_HEIGHT, position: "relative", background: "white", display: "flex" }}>
