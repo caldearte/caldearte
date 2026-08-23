@@ -16,11 +16,12 @@
 // Cadence is adaptive PER ACCOUNT (lib/instagram-fetch-state.ts), not the
 // shared 7-day BRIGHT_SOURCE_INTERVAL_MS every other bright source uses
 // (event-discovery/run.ts's isSourceDue) — Daniel's explicit request
-// (2026-08-13): a new account starts at 14 days; a fetch that turns up
-// nothing genuinely new for that account pushes it to 21, then 28
-// (capped there); a fetch that DOES find something new resets it back to
-// 14. Apify is real money per fetch, so an account that rarely posts
-// shouldn't be re-fetched on the same clock as one that posts weekly.
+// (2026-08-13, floor lowered 2026-08-23): a new account starts at 7
+// days; a fetch that turns up nothing genuinely new for that account
+// pushes it to 14, then 21, then 28 (capped there); a fetch that DOES
+// find something new resets it back to 7. Apify is real money per fetch,
+// so an account that rarely posts shouldn't be re-fetched on the same
+// clock as one that posts weekly.
 import Anthropic from "@anthropic-ai/sdk";
 import { recordUsage, getConfigNumber, getCurrentMonthSpend } from "../lib/usage-tracking.js";
 import { estimateCostUsd } from "../lib/pricing.js";
@@ -75,7 +76,7 @@ export async function run(deps: InstagramRunDeps = {}): Promise<void> {
   };
 
   if (dueAccounts.length === 0) {
-    console.log("[instagram-discovery] no accounts due yet (adaptive 14-28 day cadence) — nothing to do");
+    console.log("[instagram-discovery] no accounts due yet (adaptive 7-28 day cadence) — nothing to do");
     await recordRunSummary("instagram", summary.startedAt, summary.candidates, summary.eventGroups, summary.cost);
     await (deps.sendInstagramRunSummaryEmailFn ?? sendInstagramRunSummaryEmail)(summary);
     return;
