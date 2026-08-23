@@ -41,8 +41,18 @@ const SECRET_PATTERNS: { name: string; regex: RegExp }[] = [
 // Paths that legitimately contain lockfile integrity hashes or vendored
 // content shaped like the patterns above (pnpm-lock.yaml's "sha512-..."
 // fields have tripped a naive base64 scan before) — excluded outright
-// rather than tuned around.
-const EXCLUDED_PATH_SEGMENTS = ["pnpm-lock.yaml", "node_modules/", ".pnpm-store/", "/dist/", "/.next/"];
+// rather than tuned around. scan.test.ts is its own real false positive,
+// found running the very first real audit (2026-08-23): its fixture
+// data is deliberately shaped like a secret/PII to test these functions,
+// so the real scan flagged its own test file.
+const EXCLUDED_PATH_SEGMENTS = [
+  "pnpm-lock.yaml",
+  "node_modules/",
+  ".pnpm-store/",
+  "/dist/",
+  "/.next/",
+  "apps/curator/src/security-audit/scan.test.ts",
+];
 
 export function scanForSecrets(files: ScannedFile[]): SecretFinding[] {
   const findings: SecretFinding[] = [];
