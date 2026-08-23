@@ -143,6 +143,78 @@ test("run(): on a Sunday, inauguracion selects the UPCOMING week (starting tomor
   assert.match(dynamicSlides[0], /title=Evento\+de\+la\+semana\+que\+viene/);
 });
 
+test("run(): @mentions each distinct Instagram-sourced venue in the caption, deduped, in first-seen order — Daniel 2026-08-23: gives the venue a direct incentive to reshare", async () => {
+  const supabase = fakeSupabase({
+    events: [
+      {
+        id: "e1",
+        title: "Evento uno",
+        artist: null,
+        place_name: null,
+        region_id: null,
+        image_url: "https://example.com/a.jpg",
+        description: null,
+        sensitivity_tags: [],
+        opening_datetime: "2026-08-20T20:00:00.000Z",
+        opening_time_confirmed: true,
+        run_start_date: null,
+        run_end_date: null,
+        freeform_location: "Santiago",
+        source_account: "galeria_uno",
+      },
+      {
+        id: "e2",
+        title: "Evento dos",
+        artist: null,
+        place_name: null,
+        region_id: null,
+        image_url: "https://example.com/b.jpg",
+        description: null,
+        sensitivity_tags: [],
+        opening_datetime: "2026-08-21T20:00:00.000Z",
+        opening_time_confirmed: true,
+        run_start_date: null,
+        run_end_date: null,
+        freeform_location: "Providencia",
+        source_account: null, // bright_source event — no Instagram handle at all
+      },
+      {
+        id: "e3",
+        title: "Evento tres",
+        artist: null,
+        place_name: null,
+        region_id: null,
+        image_url: "https://example.com/c.jpg",
+        description: null,
+        sensitivity_tags: [],
+        opening_datetime: "2026-08-22T20:00:00.000Z",
+        opening_time_confirmed: true,
+        run_start_date: null,
+        run_end_date: null,
+        freeform_location: "Valparaíso",
+        source_account: "galeria_uno", // same account as e1 — must not be mentioned twice
+      },
+    ],
+    regions: [],
+    social_post_log: [],
+  });
+
+  let capturedCaption = "";
+  await run({
+    supabase,
+    now: new Date("2026-08-16T15:00:00.000Z"), // a Sunday
+    forceTypes: ["inauguracion"],
+    instagramConfig: { igBusinessAccountId: "fake-account", accessToken: "fake-token" },
+    publishInstagramCarouselFn: async (_config, _imageUrls, caption) => {
+      capturedCaption = caption;
+      return "fake-media-id";
+    },
+  });
+
+  assert.match(capturedCaption, /Con: @galeria_uno$/);
+  assert.equal(capturedCaption.match(/@galeria_uno/g)?.length, 1, "same account mentioned only once");
+});
+
 test(
   "run(): Sunday publishes all 3 types, Monday only inauguracion, and only no_te_la_pierdas/destacada write de-dup rows",
   { skip: !hasLocalSupabase },

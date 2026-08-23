@@ -15,6 +15,7 @@ function makeEvent(overrides: Partial<SocialEvent> & { id: string }): SocialEven
     openingTimeConfirmed: true,
     runStartDate: null,
     runEndDate: null,
+    sourceAccount: null,
     ...overrides,
   };
 }
