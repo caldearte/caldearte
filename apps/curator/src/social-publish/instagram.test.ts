@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { waitUntilContainerReady, publishInstagramCarousel, type InstagramClientConfig } from "./instagram.js";
+import { waitUntilContainerReady, publishInstagramCarousel, createCarouselItem, type InstagramClientConfig } from "./instagram.js";
 
 const CONFIG: InstagramClientConfig = { igBusinessAccountId: "17841432827710890", accessToken: "IGAAtest" };
 
@@ -54,6 +54,38 @@ test("waitUntilContainerReady surfaces a Graph API error response instead of rea
     () => withStubFetch(stub, () => waitUntilContainerReady(CONFIG, "container123", 0)),
     /Invalid OAuth access token/,
   );
+});
+
+test("createCarouselItem retries a transient code-9004 media-download error instead of failing immediately — real bug found 2026-08-23: the same image URL had published fine one minute earlier in the same run", async () => {
+  let calls = 0;
+  const stub = (async () => {
+    calls++;
+    if (calls < 3) return jsonResponse({ error: { message: "Media download has failed.", code: 9004, error_subcode: 2207052 } }, false);
+    return jsonResponse({ id: "creation-1" });
+  }) as typeof fetch;
+  const id = await withStubFetch(stub, () => createCarouselItem(CONFIG, "https://example.com/1.jpg", 0));
+  assert.equal(id, "creation-1");
+  assert.equal(calls, 3);
+});
+
+test("createCarouselItem gives up after 3 attempts of a persistent code-9004 error", async () => {
+  let calls = 0;
+  const stub = (async () => {
+    calls++;
+    return jsonResponse({ error: { message: "Media download has failed.", code: 9004 } }, false);
+  }) as typeof fetch;
+  await assert.rejects(() => withStubFetch(stub, () => createCarouselItem(CONFIG, "https://example.com/1.jpg", 0)), /code":9004/);
+  assert.equal(calls, 3);
+});
+
+test("createCarouselItem does not retry a non-transient error (e.g. bad token)", async () => {
+  let calls = 0;
+  const stub = (async () => {
+    calls++;
+    return jsonResponse({ error: { message: "Invalid OAuth access token", code: 190 } }, false);
+  }) as typeof fetch;
+  await assert.rejects(() => withStubFetch(stub, () => createCarouselItem(CONFIG, "https://example.com/1.jpg", 0)), /Invalid OAuth access token/);
+  assert.equal(calls, 1);
 });
 
 test("publishInstagramCarousel waits for the container to be ready before calling media_publish", async () => {
