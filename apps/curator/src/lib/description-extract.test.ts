@@ -65,7 +65,7 @@ test("extractDescription reads galeriapready.cl's real markup, stopping before '
     '<p>‍<strong>Inauguración:</strong> miércoles 10 de junio 18:00 hrs</p>' +
     '<p>‍<strong>Exposición abierta hasta:</strong> 13 de julio</p>' +
     "<p>Galería Patricia Ready presenta la nueva exposición individual del artista.</p>" +
-    '<p>‍<strong>Contacto prensa:</strong> galeria@galeriapatriciaready.cl</p></div>' +
+    '<p>‍<strong>Contacto prensa:</strong> prensa@example.com</p></div>' +
     '<div class="spacer medium"></div><div class="exhib-artist-title">Sobre el artista</div>';
 
   const result = extractDescription(html, PREADY_CONFIG);
