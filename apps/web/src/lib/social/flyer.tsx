@@ -198,7 +198,15 @@ export function FlyerImage({ input, logoDataUri }: { input: FlyerEventInput; log
           fontFamily: "Lato",
           fontWeight: 900,
           fontSize: 48,
-          lineHeight: 0.71,
+          // NOT the 0.71 (Figma's "70.96%" leading) used elsewhere — real bug,
+          // found testing a real long title: combined with this span's own
+          // overflow:hidden (singleLineClip, needed as a truncate() backstop),
+          // a line-height that tight makes the line box shorter than the
+          // glyphs themselves, so overflow:hidden crops the bottom of every
+          // letter. Figma's own renderer doesn't clip this way, so its number
+          // doesn't transfer literally — a normal line-height avoids the crop
+          // and the single-line visual difference is negligible.
+          lineHeight: 1,
           color: COLORS.magenta,
           letterSpacing: 1,
           maxWidth: bottomTextWidth,
