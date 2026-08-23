@@ -1,23 +1,24 @@
 name: Run Event Discovery
 
-# Dual cadence (2026-07-23, see docs/region-discovery.md): comuna coverage
-# via Tavily is broad but noisy (social media, not necessarily official art
-# venues) — bright sources are curated, official-venue listings, higher
-# signal-to-noise. Two separate cron triggers on the SAME workflow/job,
-# distinguished at runtime by `github.event.schedule` (the exact cron
-# string that fired — only populated on a `schedule` event, not
-# `workflow_dispatch`):
-#   - 1st of the month, 06:00 UTC: a normal full run — getUnitsDueForRun
-#     caps itself to `weekly_batch_size` (system_config, still that name
-#     even though the cadence isn't weekly anymore — renaming the config
-#     key needs a migration, not worth it for a label) due comunas,
-#     oldest-last_run_at-first. Any bright source that happens to also be
-#     due that day gets swept up too, harmless — it just means the
-#     Monday-only run below finds nothing new for it that week.
-#   - Every Monday, 06:00 UTC: bright_sources_only — comuna batch skipped
-#     entirely, only due bright sources processed. Their own per-source
-#     cadence (isSourceDue) is 7 days now (was 14), so this actually finds
-#     something new most weeks instead of every other one.
+# Comuna batch (Tavily) PAUSED 2026-08-23 — real data, not a hunch: as of
+# this date, ZERO currently-live events in `events` have
+# pipeline='comuna_search', and ZERO rows in `rejected_candidates` do
+# either — months of monthly full runs produced not one real event,
+# approved or rejected, while costing a real, measured ~$16.48 in Haiku
+# spend (api_usage_log) plus Tavily credits. bright_source (90 live
+# events) and instagram (42 live events) cost cents per run by comparison
+# and actually work. The monthly "1st of the month, 06:00 UTC" full-run
+# cron (comuna batch + any due bright sources swept in) is removed
+# entirely — only the weekly Monday bright-sources-only cron remains,
+# since that's the cadence doing all the real work. The comuna-search
+# CODE itself (searchUnitFn, getUnitsDueForRun, etc.) is deliberately
+# left in place, not deleted — reachable via workflow_dispatch with
+# bright_sources_only=false if this ever needs to be re-investigated or
+# re-enabled, rather than requiring a revert.
+#
+# Every Monday, 06:00 UTC: bright_sources_only — only due bright sources
+# processed. Their own per-source cadence (isSourceDue) is 7 days now (was
+# 14), so this finds something new most weeks instead of every other one.
 # workflow_dispatch stays available for a manual run any time, with its
 # own explicit bright_sources_only input (used instead of
 # github.event.schedule when NOT a schedule-triggered run). bright_source_urls
@@ -28,7 +29,9 @@ name: Run Event Discovery
 # resetting every other source's fetch state too).
 #
 # Requires the TAVILY_API_KEY repo secret (searches run via Tavily, not
-# Anthropic's web_search tool — see docs/region-discovery.md).
+# Anthropic's web_search tool — see docs/region-discovery.md). Still
+# needed for a manual full run via workflow_dispatch even though nothing
+# schedules one automatically anymore.
 #
 # RESEND_API_KEY (2026-07-19) is optional: without it, the post-run summary
 # email just logs a warning and no-ops — the run itself still succeeds.
@@ -46,7 +49,6 @@ on:
         type: string
         default: ""
   schedule:
-    - cron: "0 6 1 * *" # 1st of the month, 06:00 UTC — full run (comuna batch + any due bright sources)
     - cron: "0 6 * * 1" # every Monday, 06:00 UTC — bright sources only
 
 jobs:
@@ -73,5 +75,9 @@ jobs:
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
-          BRIGHT_SOURCES_ONLY: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.bright_sources_only || (github.event.schedule == '0 6 * * 1' && 'true' || 'false') }}
+          # Only one schedule trigger left (the weekly Monday bright-only
+          # run) since the comuna batch's monthly cron was removed — a
+          # schedule-triggered run is always bright_sources_only now, no
+          # need to branch on github.event.schedule anymore.
+          BRIGHT_SOURCES_ONLY: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.bright_sources_only || 'true' }}
           BRIGHT_SOURCE_URLS: ${{ github.event.inputs.bright_source_urls }}
