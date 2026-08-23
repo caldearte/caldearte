@@ -17,10 +17,10 @@ export async function GET(request: Request) {
     return new Response("Invalid or missing 'type' (inauguracion | no_te_la_pierdas | destacada)", { status: 400 });
   }
   const title = searchParams.get("title");
-  const location = searchParams.get("location");
+  const region = searchParams.get("region");
   const imageUrl = searchParams.get("imageUrl");
-  if (!title || !location || !imageUrl) {
-    return new Response("Missing required params: title, location, imageUrl", { status: 400 });
+  if (!title || !region || !imageUrl) {
+    return new Response("Missing required params: title, region, imageUrl", { status: 400 });
   }
 
   const input: FlyerEventInput = {
@@ -28,7 +28,8 @@ export async function GET(request: Request) {
     title,
     artist: searchParams.get("artist"),
     placeName: searchParams.get("placeName"),
-    location,
+    comuna: searchParams.get("comuna"),
+    region,
     imageUrl,
     openingDatetime: searchParams.get("openingDatetime"),
     openingTimeConfirmed: searchParams.get("openingTimeConfirmed") !== "false",

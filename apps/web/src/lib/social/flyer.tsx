@@ -34,7 +34,11 @@ export interface FlyerEventInput {
   title: string;
   artist: string | null;
   placeName: string | null;
-  location: string; // comuna, región — e.g. "Providencia, Santiago"
+  // Separate, not pre-joined into one "Providencia, Santiago" string —
+  // comuna renders as plain text, región as its own highlighted badge
+  // (Daniel 2026-08-23).
+  comuna: string | null;
+  region: string;
   imageUrl: string;
   openingDatetime: string | null; // required for "inauguracion"
   openingTimeConfirmed: boolean;
@@ -47,6 +51,24 @@ export interface FlyerEventInput {
 // approach next/og's own docs/community examples fall back on.
 function truncate(text: string, maxChars: number): string {
   return text.length <= maxChars ? text : `${text.slice(0, maxChars - 1).trimEnd()}…`;
+}
+
+// Hard-wraps into exactly 2 lines by character count, not CSS's own
+// whiteSpace:"normal" wrapping — real bug, found testing a genuinely long
+// title: relying on CSS to wrap within a maxHeight backstop is
+// unpredictable (word-boundary breaks don't line up with the char-count
+// estimate that sizes the maxHeight), and when a 3rd line snuck in it got
+// silently hard-clipped with no ellipsis, looking broken rather than
+// truncated. Two independently truncate()'d lines, each with their own
+// singleLineClip, is exactly as predictable as the single-line case this
+// file already relied on before 2-line titles were needed.
+function wrapToTwoLines(text: string, maxCharsPerLine: number): [string, string | null] {
+  if (text.length <= maxCharsPerLine) return [text, null];
+  let breakAt = text.lastIndexOf(" ", maxCharsPerLine);
+  if (breakAt <= 0) breakAt = maxCharsPerLine;
+  const line1 = text.slice(0, breakAt).trimEnd();
+  const line2 = truncate(text.slice(breakAt).trimStart(), maxCharsPerLine);
+  return [line1, line2];
 }
 
 export function buildFlyerDateLine(input: FlyerEventInput): string {
@@ -78,10 +100,24 @@ const COLORS = {
 // bigger photo. INSET_X (127px) is unchanged from the previous version —
 // only the band heights and logo moved.
 const INSET_X = 127;
-const TOP_BAND_HEIGHT = 135;
-const BOTTOM_BAND_TOP = 1116;
+// 155, not the Figma export's 135 — Daniel 2026-08-23 wanted double the
+// padding between the logo/label/badge and the photo below them (roughly
+// 20px of breathing room in the original export, now ~40px).
+const TOP_BAND_HEIGHT = 155;
+// 246 (not the Figma export's 234) for the same reason — the padding
+// between the band's top edge and the date line doubled (12px -> 24px,
+// see BOTTOM_BAND_TEXT_TOP_PADDING below), so the band needs 12px more
+// height to keep the same amount of room below the text. Sized for a
+// single-line title with room to spare. When the title needs a 2nd line,
+// Daniel 2026-08-23: the gray band should grow UPWARD into the photo to
+// fit it — artist/venue must stay put, not get pushed down toward (or
+// past) the canvas's bottom edge. BOTTOM_BAND_TOP is computed per-render
+// below (depends on whether the title actually wrapped), not a fixed
+// constant.
+const BASE_BOTTOM_BAND_HEIGHT = 246;
+const EXTRA_HEIGHT_FOR_SECOND_TITLE_LINE = 58; // 48px * 1.05 line-height + a small gap
+const BOTTOM_BAND_TEXT_TOP_PADDING = 24;
 const PHOTO_TOP = TOP_BAND_HEIGHT;
-const PHOTO_HEIGHT = BOTTOM_BAND_TOP - TOP_BAND_HEIGHT;
 
 export function FlyerImage({ input, logoDataUri }: { input: FlyerEventInput; logoDataUri: string }) {
   // Uppercased here in JS rather than via CSS text-transform, since it's
@@ -99,10 +135,15 @@ export function FlyerImage({ input, logoDataUri }: { input: FlyerEventInput; log
   // Deprioritized per Daniel 2026-08-22 — flyers are still legible
   // without tildes, revisit only if it becomes a real complaint.
   const dateLine = truncate(buildFlyerDateLine(input), 40).toUpperCase();
-  const title = truncate(input.title, 28).toUpperCase();
+  // 2 lines now, not 1 — Daniel 2026-08-23: this font size leaves too
+  // little room for most real titles on a single line. 28 chars/line is
+  // the same per-line budget the single-line version already used and
+  // proved safe at this font size/width.
+  const [titleLine1, titleLine2] = wrapToTwoLines(input.title.toUpperCase(), 28);
   const artist = input.artist ? truncate(input.artist, 60).toUpperCase() : null;
   const venue = input.placeName ? truncate(input.placeName, 60).toUpperCase() : null;
-  const location = truncate(input.location, 36).toUpperCase();
+  const comuna = input.comuna ? truncate(input.comuna, 20).toUpperCase() : null;
+  const region = truncate(input.region, 20).toUpperCase();
   // Backstop for this file's own char-count truncate() estimates — real
   // bug, found testing a long title: it bled past the canvas's right edge
   // despite already being truncate()'d, because the char-count budget was
@@ -113,6 +154,13 @@ export function FlyerImage({ input, logoDataUri }: { input: FlyerEventInput; log
   // ellipsis support as unreliable.
   const singleLineClip = { overflow: "hidden", whiteSpace: "nowrap" as const };
   const bottomTextWidth = FLYER_WIDTH - INSET_X - 30;
+  const bottomBandHeight = BASE_BOTTOM_BAND_HEIGHT + (titleLine2 ? EXTRA_HEIGHT_FOR_SECOND_TITLE_LINE : 0);
+  const bottomBandTop = FLYER_HEIGHT - bottomBandHeight;
+  const photoHeight = bottomBandTop - PHOTO_TOP;
+  // Doubled from the single 124px margin, 2026-08-23: Instagram's own
+  // carousel slide-count indicator ("5/10") sits in this exact corner and
+  // was overlapping the label/region badge.
+  const topRightMargin = 248;
 
   return (
     <div style={{ width: FLYER_WIDTH, height: FLYER_HEIGHT, position: "relative", background: "white", display: "flex" }}>
@@ -125,7 +173,7 @@ export function FlyerImage({ input, logoDataUri }: { input: FlyerEventInput; log
       <span
         style={{
           position: "absolute",
-          right: 124,
+          right: topRightMargin,
           top: 27,
           fontFamily: "Lato",
           fontWeight: 900,
@@ -137,120 +185,115 @@ export function FlyerImage({ input, logoDataUri }: { input: FlyerEventInput; log
       >
         {TOP_LABEL[input.type]}
       </span>
-      <span
-        style={{
-          position: "absolute",
-          right: 124,
-          top: 82,
-          fontFamily: "Lato",
-          fontWeight: 900,
-          fontSize: 24,
-          color: COLORS.textPrimary,
-          letterSpacing: -0.24,
-          maxWidth: 700,
-          ...singleLineClip,
-        }}
-      >
-        {location}
-      </span>
+      {/* Comuna as plain text, región as its own black badge — per Daniel
+          2026-08-23, the región needed more visual weight than the comuna,
+          not the two collapsed into one string as before. */}
+      <div style={{ position: "absolute", right: topRightMargin, top: 82, display: "flex", flexDirection: "row", alignItems: "center" }}>
+        {comuna && (
+          <span
+            style={{ fontFamily: "Lato", fontWeight: 900, fontSize: 24, color: COLORS.textPrimary, letterSpacing: -0.24, marginRight: 8 }}
+          >
+            {comuna}
+          </span>
+        )}
+        <div style={{ display: "flex", background: "black", padding: 2 }}>
+          <span style={{ fontFamily: "Lato", fontWeight: 900, fontSize: 24, color: "#d7dfe2", letterSpacing: -0.24 }}>{region}</span>
+        </div>
+      </div>
 
       {/* Photo */}
       {/* eslint-disable-next-line @next/next/no-img-element -- Satori (next/og) only supports plain <img>, not next/image */}
       <img
         src={input.imageUrl}
         alt=""
-        style={{ position: "absolute", left: 0, top: PHOTO_TOP, width: FLYER_WIDTH, height: PHOTO_HEIGHT, objectFit: "cover" }}
+        style={{ position: "absolute", left: 0, top: PHOTO_TOP, width: FLYER_WIDTH, height: photoHeight, objectFit: "cover" }}
       />
 
-      {/* Bottom band */}
+      {/* Bottom band — height (and therefore top) is dynamic: a 2-line
+          title grows it upward into the photo, per Daniel 2026-08-23, so
+          artist/venue stay anchored near the true bottom instead of ever
+          risking landing past the canvas edge. */}
       <div
         style={{
           position: "absolute",
           left: 0,
-          top: BOTTOM_BAND_TOP,
+          top: bottomBandTop,
           width: FLYER_WIDTH,
-          height: FLYER_HEIGHT - BOTTOM_BAND_TOP,
+          height: bottomBandHeight,
           background: COLORS.sage,
           display: "flex",
         }}
       />
-      <span
+      {/* flex column, not fixed absolute offsets per element — lets
+          artist/venue flow below whatever height the (now possibly
+          2-line) title actually takes. */}
+      <div
         style={{
           position: "absolute",
           left: INSET_X,
-          top: 1128,
-          fontFamily: "Lato",
-          fontWeight: 700,
-          fontSize: 40,
-          color: COLORS.textPrimary,
-          letterSpacing: -0.4,
-          maxWidth: bottomTextWidth,
-          ...singleLineClip,
+          top: bottomBandTop + BOTTOM_BAND_TEXT_TOP_PADDING,
+          display: "flex",
+          flexDirection: "column",
+          width: bottomTextWidth,
         }}
       >
-        {dateLine}
-      </span>
-      <span
-        style={{
-          position: "absolute",
-          left: INSET_X,
-          top: 1184,
-          fontFamily: "Lato",
-          fontWeight: 900,
-          fontSize: 48,
-          // NOT the 0.71 (Figma's "70.96%" leading) used elsewhere — real bug,
-          // found testing a real long title: combined with this span's own
-          // overflow:hidden (singleLineClip, needed as a truncate() backstop),
-          // a line-height that tight makes the line box shorter than the
-          // glyphs themselves, so overflow:hidden crops the bottom of every
-          // letter. Figma's own renderer doesn't clip this way, so its number
-          // doesn't transfer literally — a normal line-height avoids the crop
-          // and the single-line visual difference is negligible.
-          lineHeight: 1,
-          color: COLORS.magenta,
-          letterSpacing: 1,
-          maxWidth: bottomTextWidth,
-          ...singleLineClip,
-        }}
-      >
-        {title}
-      </span>
-      {artist && (
         <span
           style={{
-            position: "absolute",
-            left: INSET_X,
-            top: 1240,
-            fontFamily: "Geist",
-            fontWeight: 600,
-            fontSize: 20,
-            color: COLORS.textSecondary,
-            letterSpacing: 2,
-            maxWidth: bottomTextWidth,
+            fontFamily: "Lato",
+            fontWeight: 700,
+            fontSize: 40,
+            color: COLORS.textPrimary,
+            letterSpacing: -0.4,
             ...singleLineClip,
           }}
         >
-          {artist}
+          {dateLine}
         </span>
-      )}
-      {venue && (
-        <span
-          style={{
-            position: "absolute",
-            left: INSET_X,
-            top: 1292,
-            fontFamily: "Geist",
-            fontWeight: 600,
-            fontSize: 24,
-            color: COLORS.textSecondary,
-            letterSpacing: 2,
-            maxWidth: bottomTextWidth,
-            ...singleLineClip,
-          }}
-        >
-          {venue}
+        {/* NOT the 0.71 (Figma's "70.96%" leading) used elsewhere — real
+            bug, found testing a real long title: combined with
+            overflow:hidden, a line-height that tight makes the line box
+            shorter than the glyphs themselves, so overflow:hidden crops
+            the bottom of every letter. Figma's own renderer doesn't clip
+            this way, so its number doesn't transfer literally. */}
+        <span style={{ fontFamily: "Lato", fontWeight: 900, fontSize: 48, lineHeight: 1.05, color: COLORS.magenta, letterSpacing: 1, marginTop: 8, ...singleLineClip }}>
+          {titleLine1}
         </span>
-      )}
+        {titleLine2 && (
+          <span style={{ fontFamily: "Lato", fontWeight: 900, fontSize: 48, lineHeight: 1.05, color: COLORS.magenta, letterSpacing: 1, marginTop: 4, ...singleLineClip }}>
+            {titleLine2}
+          </span>
+        )}
+        {artist && (
+          <span
+            style={{
+              fontFamily: "Geist",
+              fontWeight: 600,
+              fontSize: 20,
+              color: COLORS.textSecondary,
+              letterSpacing: 2,
+              marginTop: 16,
+              ...singleLineClip,
+            }}
+          >
+            {artist}
+          </span>
+        )}
+        {venue && (
+          <span
+            style={{
+              fontFamily: "Geist",
+              fontWeight: 600,
+              fontSize: 24,
+              color: COLORS.textSecondary,
+              letterSpacing: 2,
+              marginTop: artist ? 12 : 16,
+              ...singleLineClip,
+            }}
+          >
+            {venue}
+          </span>
+        )}
+      </div>
     </div>
   );
 }
