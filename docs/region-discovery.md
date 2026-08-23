@@ -4,6 +4,18 @@ Which units (cities/comunas) get searched, how Event Discovery searches and
 curates them, and the cost-governance system that keeps it bounded. This
 document is required reading before touching any of it.
 
+**Comuna batch (Tavily) paused 2026-08-23** — the monthly full-run cron in
+`.github/workflows/event-discovery.yml` is removed. Real data: as of this
+date, zero currently-live events have `pipeline='comuna_search'` and zero
+`rejected_candidates` rows do either — months of monthly runs produced not
+one real event, approved or rejected, while costing a measured ~$16.48 in
+Haiku spend (`api_usage_log`) plus Tavily credits. bright_source (90 live
+events) and instagram (42 live events) cost cents per run and actually
+work. The code itself (everything described below under "Search: Tavily")
+is left in place, reachable via `workflow_dispatch` with
+`bright_sources_only=false`, in case this needs re-investigating later —
+nothing here was deleted, just unscheduled.
+
 ## Event Discovery — Tavily + Haiku, events only, no venues
 
 Event Discovery is implemented and in production
