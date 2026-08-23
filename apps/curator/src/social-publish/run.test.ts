@@ -18,6 +18,72 @@ test("run(): a day with nothing scheduled (e.g. Tuesday) exits without touching 
   assert.equal(publishCalled, false);
 });
 
+// Minimal fake Supabase client — just enough chainable surface for the 3
+// selects run.ts actually makes (.from().select()[.eq()][.is()]), each
+// resolving via the thenable `then` the same way the real client's query
+// builder does when awaited directly.
+function fakeSupabase(tables: Record<string, unknown[]>) {
+  return {
+    from(table: string) {
+      const data = tables[table] ?? [];
+      const builder = {
+        select: () => builder,
+        eq: () => builder,
+        is: () => builder,
+        insert: async () => ({ error: new Error("dry run should never insert") }),
+        then: (resolve: (v: { data: unknown[]; error: null }) => void) => resolve({ data, error: null }),
+      };
+      return builder;
+    },
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- test double, not the real typed client
+  } as any;
+}
+
+test("run(): dry run + forceTypes exercises the real pipeline (selection, flyer URLs, credential check) without publishing or logging", async () => {
+  let publishCalled = false;
+  let verifyCalled = false;
+  const supabase = fakeSupabase({
+    events: [
+      {
+        id: "e1",
+        title: "Evento de prueba",
+        artist: null,
+        place_name: null,
+        region_id: null,
+        image_url: "https://example.com/a.jpg",
+        description: null,
+        sensitivity_tags: [],
+        opening_datetime: "2026-08-04T20:00:00.000Z",
+        opening_time_confirmed: true,
+        run_start_date: null,
+        run_end_date: null,
+        freeform_location: "Santiago",
+      },
+    ],
+    regions: [],
+    social_post_log: [],
+  });
+
+  await run({
+    supabase,
+    now: new Date("2026-08-04T12:00:00.000Z"), // a Tuesday — would normally be a no-op
+    forceTypes: ["inauguracion"],
+    dryRun: true,
+    instagramConfig: { igBusinessAccountId: "fake-account", accessToken: "fake-token" },
+    verifyInstagramAccountFn: async () => {
+      verifyCalled = true;
+      return { username: "caldearte.oficial", mediaCount: 0 };
+    },
+    publishInstagramCarouselFn: async () => {
+      publishCalled = true;
+      return "should-not-be-called";
+    },
+  });
+
+  assert.equal(verifyCalled, true, "dry run should still verify real Instagram credentials");
+  assert.equal(publishCalled, false, "dry run should never actually publish");
+});
+
 test(
   "run(): Sunday publishes all 3 types, Monday only inauguracion, and only no_te_la_pierdas/destacada write de-dup rows",
   { skip: !hasLocalSupabase },

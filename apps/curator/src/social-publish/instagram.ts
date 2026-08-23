@@ -22,6 +22,20 @@ async function graphPost(path: string, params: Record<string, string>): Promise<
   return body as { id: string };
 }
 
+// Read-only sanity check — confirms the token/account id actually work
+// (right permissions, not expired) without touching anything. Used by the
+// dry-run path (RunDeps.dryRun in run.ts) so a manual test run gives real
+// confidence the credentials work, not just that they're present.
+export async function verifyInstagramAccount(config: InstagramClientConfig): Promise<{ username: string; mediaCount: number }> {
+  const url = new URL(`${GRAPH_API_BASE}/${config.igBusinessAccountId}`);
+  url.searchParams.set("fields", "username,media_count");
+  url.searchParams.set("access_token", config.accessToken);
+  const res = await fetch(url);
+  const body = await res.json();
+  if (!res.ok) throw new Error(`Instagram Graph API error verifying account: ${JSON.stringify(body)}`);
+  return { username: body.username, mediaCount: body.media_count };
+}
+
 // Step 1 (per image): register one carousel item, returns its creation_id.
 export async function createCarouselItem(config: InstagramClientConfig, imageUrl: string): Promise<string> {
   const { id } = await graphPost(`${config.igBusinessAccountId}/media`, {
