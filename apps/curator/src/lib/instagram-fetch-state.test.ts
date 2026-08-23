@@ -20,17 +20,17 @@ test("instagramAccountProfileUrl builds the real profile URL from a username", (
 
 test("isInstagramAccountDue: an account never fetched before is always due", () => {
   assert.equal(isInstagramAccountDue(undefined, NOW), true);
-  assert.equal(isInstagramAccountDue({ lastFetchedAt: null, intervalDays: 14, consecutiveZeroYieldAtCap: 0, isInactive: false }, NOW), true);
+  assert.equal(isInstagramAccountDue({ lastFetchedAt: null, intervalDays: 7, consecutiveZeroYieldAtCap: 0, isInactive: false }, NOW), true);
 });
 
 test("isInstagramAccountDue: not due yet within its own interval", () => {
-  const state = { lastFetchedAt: new Date(NOW.getTime() - 10 * 24 * 60 * 60 * 1000).toISOString(), intervalDays: 14, consecutiveZeroYieldAtCap: 0, isInactive: false };
+  const state = { lastFetchedAt: new Date(NOW.getTime() - 5 * 24 * 60 * 60 * 1000).toISOString(), intervalDays: 7, consecutiveZeroYieldAtCap: 0, isInactive: false };
   assert.equal(isInstagramAccountDue(state, NOW), false);
 });
 
-test("isInstagramAccountDue: due once its own interval has elapsed — respects a longer escalated interval, not the 14-day default", () => {
+test("isInstagramAccountDue: due once its own interval has elapsed — respects a longer escalated interval, not the 7-day default", () => {
   const state = { lastFetchedAt: new Date(NOW.getTime() - 20 * 24 * 60 * 60 * 1000).toISOString(), intervalDays: 28, consecutiveZeroYieldAtCap: 0, isInactive: false };
-  assert.equal(isInstagramAccountDue(state, NOW), false); // would be due under 14, not under its real 28
+  assert.equal(isInstagramAccountDue(state, NOW), false); // would be due under 7, not under its real 28
   const dueState = { lastFetchedAt: new Date(NOW.getTime() - 28 * 24 * 60 * 60 * 1000).toISOString(), intervalDays: 28, consecutiveZeroYieldAtCap: 0, isInactive: false };
   assert.equal(isInstagramAccountDue(dueState, NOW), true);
 });
@@ -56,17 +56,22 @@ test("accountCutoffDate falls back to DEFAULT_INTERVAL_DAYS back from now for a 
   assert.equal(cutoff.getTime(), NOW.getTime() - DEFAULT_INTERVAL_DAYS * 24 * 60 * 60 * 1000);
 });
 
-test("nextFetchState resets to the 14-day default, streak cleared, when the account produced a genuinely new post", () => {
+test("nextFetchState resets to the 7-day default, streak cleared, when the account produced a genuinely new post", () => {
   assert.deepEqual(nextFetchState({ intervalDays: 28, consecutiveZeroYieldAtCap: 2 }, true), {
-    intervalDays: 14,
+    intervalDays: 7,
     consecutiveZeroYieldAtCap: 0,
     isInactive: false,
   });
-  assert.deepEqual(nextFetchState(undefined, true), { intervalDays: 14, consecutiveZeroYieldAtCap: 0, isInactive: false });
+  assert.deepEqual(nextFetchState(undefined, true), { intervalDays: 7, consecutiveZeroYieldAtCap: 0, isInactive: false });
 });
 
-test("nextFetchState escalates one step (14 -> 21 -> 28) when nothing new came back, below the cap", () => {
-  assert.equal(nextFetchState(undefined, false).intervalDays, 21);
+// Floor lowered 14 -> 7 days, 2026-08-23 (Daniel: the first real Sunday
+// run only found 2 inauguraciones nationwide, suspected the 14-day floor
+// was missing real posts). Ladder is now 7 -> 14 -> 21 -> 28, same 7-day
+// step and 28-day cap as before — only the floor moved.
+test("nextFetchState escalates one step (7 -> 14 -> 21 -> 28) when nothing new came back, below the cap", () => {
+  assert.equal(nextFetchState(undefined, false).intervalDays, 14);
+  assert.equal(nextFetchState({ intervalDays: 7, consecutiveZeroYieldAtCap: 0 }, false).intervalDays, 14);
   assert.equal(nextFetchState({ intervalDays: 14, consecutiveZeroYieldAtCap: 0 }, false).intervalDays, 21);
   assert.equal(nextFetchState({ intervalDays: 21, consecutiveZeroYieldAtCap: 0 }, false).intervalDays, 28);
 });
@@ -96,4 +101,8 @@ test("nextFetchState: the 2nd consecutive empty semester marks the account inact
 
 test("MAX_INTERVAL_DAYS is still 28 — the semestral path only kicks in ON TOP of the existing cap, doesn't change it", () => {
   assert.equal(MAX_INTERVAL_DAYS, 28);
+});
+
+test("DEFAULT_INTERVAL_DAYS is 7 (lowered from 14, 2026-08-23)", () => {
+  assert.equal(DEFAULT_INTERVAL_DAYS, 7);
 });

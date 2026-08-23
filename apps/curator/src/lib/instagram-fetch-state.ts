@@ -1,14 +1,25 @@
 // Adaptive per-account fetch cadence for Instagram bright sources —
 // distinct from the shared isSourceDue/BRIGHT_SOURCE_INTERVAL_MS every
-// other bright source uses (event-discovery/run.ts). Daniel's explicit
-// request (2026-08-13): a new account starts at 14 days; a fetch that
-// finds nothing genuinely new for that account pushes it out to 21, then
-// 28 (capped there) — an account that posts rarely shouldn't burn an
-// Apify fetch every cycle for nothing. A fetch that DOES find something
-// new resets the account back to 14. Stored on the same
-// bright_source_fetch_state table every bright source already uses
-// (interval_days column, added 20260813040000 — nullable, NULL for every
-// non-Instagram row, which keeps using the shared default elsewhere).
+// other bright source uses (event-discovery/run.ts). Ladder: a new
+// account starts at 7 days; a fetch that finds nothing genuinely new for
+// that account pushes it out one step (7 -> 14 -> 21 -> 28, capped there)
+// — an account that posts rarely shouldn't burn an Apify fetch every
+// cycle for nothing. A fetch that DOES find something new resets the
+// account back to 7. Stored on the same bright_source_fetch_state table
+// every bright source already uses (interval_days column, added
+// 20260813040000 — nullable, NULL for every non-Instagram row, which
+// keeps using the shared default elsewhere).
+//
+// Floor lowered 14 -> 7 days, 2026-08-23 (Daniel's explicit request,
+// after the first real Sunday run only found 2 inauguraciones nationwide
+// — the 14-day floor was suspected of missing real posts, not just
+// costing more to check sooner). ESCALATION_STEP_DAYS/MAX_INTERVAL_DAYS
+// unchanged (still 7 and 28) — lowering only the floor keeps the ladder's
+// step size consistent (7 -> 14 -> 21 -> 28) rather than needing a new
+// step value. Every account's stored interval_days was shifted down by
+// one step (14->7, 21->14, 28 unchanged) the same day, in the same
+// migration that lowered DEFAULT_INTERVAL_DAYS — see
+// supabase/migrations/ for the exact statement.
 //
 // Extended 2026-08-15 with a dormancy path (Daniel's explicit request,
 // given right after reviewing several IG accounts worth adding despite
@@ -22,7 +33,7 @@
 import { getSupabaseClient } from "./supabase-client.js";
 import type { InstagramAccountConfig } from "./instagram-accounts.js";
 
-export const DEFAULT_INTERVAL_DAYS = 14;
+export const DEFAULT_INTERVAL_DAYS = 7;
 const ESCALATION_STEP_DAYS = 7;
 export const MAX_INTERVAL_DAYS = 28;
 export const SEMESTRAL_INTERVAL_DAYS = 182;
@@ -96,10 +107,10 @@ export function accountCutoffDate(state: InstagramAccountState | undefined, now:
 }
 
 // The full cadence state machine:
-// - Any genuinely new post -> reset all the way back to 14 days, streak
+// - Any genuinely new post -> reset all the way back to 7 days, streak
 //   cleared, never inactive.
-// - Nothing new, still below the 28-day cap -> plain +7 step (unchanged
-//   from the original 2026-08-13 behavior).
+// - Nothing new, still below the 28-day cap -> plain +7 step (7 -> 14 ->
+//   21 -> 28).
 // - Nothing new, AT the 28-day cap -> count the empty streak; the 3rd
 //   consecutive empty cycle at this cap drops to the 182-day semestral
 //   cadence (streak resets for the new tier).
