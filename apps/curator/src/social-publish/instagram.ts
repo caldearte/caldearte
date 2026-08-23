@@ -45,14 +45,42 @@ export async function verifyInstagramAccount(config: InstagramClientConfig): Pro
   return { username: body.username, mediaCount: body.media_count };
 }
 
+const MEDIA_DOWNLOAD_RETRY_ATTEMPTS = 3;
+const MEDIA_DOWNLOAD_RETRY_DELAY_MS = 5000;
+
+// Real bug found 2026-08-23: a carousel item failed with code 9004
+// ("Only photo or video can be accepted as media type" / "Media download
+// has failed") on an image URL that had published fine one minute earlier
+// in the very same run — Instagram fetches image_url itself, and that
+// fetch is occasionally flaky on their end rather than a real problem
+// with our image. Retrying just this error code (not e.g. auth or param
+// errors, which won't fix themselves) turns a transient blip into a
+// no-op instead of failing the whole carousel.
+function isMediaDownloadError(message: string): boolean {
+  return message.includes('"code":9004');
+}
+
 // Step 1 (per image): register one carousel item, returns its creation_id.
-export async function createCarouselItem(config: InstagramClientConfig, imageUrl: string): Promise<string> {
-  const { id } = await graphPost(`${config.igBusinessAccountId}/media`, {
-    image_url: imageUrl,
-    is_carousel_item: "true",
-    access_token: config.accessToken,
-  });
-  return id;
+export async function createCarouselItem(
+  config: InstagramClientConfig,
+  imageUrl: string,
+  retryDelayMs = MEDIA_DOWNLOAD_RETRY_DELAY_MS,
+): Promise<string> {
+  for (let attempt = 1; attempt <= MEDIA_DOWNLOAD_RETRY_ATTEMPTS; attempt++) {
+    try {
+      const { id } = await graphPost(`${config.igBusinessAccountId}/media`, {
+        image_url: imageUrl,
+        is_carousel_item: "true",
+        access_token: config.accessToken,
+      });
+      return id;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      if (!isMediaDownloadError(message) || attempt === MEDIA_DOWNLOAD_RETRY_ATTEMPTS) throw err;
+      await sleep(retryDelayMs);
+    }
+  }
+  throw new Error("unreachable");
 }
 
 // Step 2: bundle the item creation_ids into one carousel container,
@@ -125,13 +153,14 @@ export async function publishInstagramCarousel(
   imageUrls: string[],
   caption: string,
   pollIntervalMs = CONTAINER_POLL_INTERVAL_MS,
+  mediaRetryDelayMs = MEDIA_DOWNLOAD_RETRY_DELAY_MS,
 ): Promise<string> {
   if (imageUrls.length < 2 || imageUrls.length > 10) {
     throw new Error(`Instagram carousels need 2-10 images, got ${imageUrls.length}`);
   }
   const itemIds: string[] = [];
   for (const imageUrl of imageUrls) {
-    itemIds.push(await createCarouselItem(config, imageUrl));
+    itemIds.push(await createCarouselItem(config, imageUrl, mediaRetryDelayMs));
   }
   const containerId = await createCarouselContainer(config, itemIds, caption);
   await waitUntilContainerReady(config, containerId, pollIntervalMs);
