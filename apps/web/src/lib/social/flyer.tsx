@@ -169,7 +169,9 @@ export function FlyerImage({ input, logoDataUri }: { input: FlyerEventInput; log
         style={{ position: "absolute", left: 0, top: 0, width: FLYER_WIDTH, height: TOP_BAND_HEIGHT, background: COLORS.sage, display: "flex" }}
       />
       {/* eslint-disable-next-line @next/next/no-img-element -- Satori (next/og) only supports plain <img>, not next/image */}
-      <img src={logoDataUri} alt="" style={{ position: "absolute", left: 127.34, top: 27.4, width: 165.758, height: 80.961 }} />
+      {/* 210px wide (Daniel 2026-08-23), scaled up from the Figma export's
+          165.758×80.961 keeping its exact aspect ratio (~0.4885). */}
+      <img src={logoDataUri} alt="" style={{ position: "absolute", left: 127.34, top: 27.4, width: 210, height: 102.59 }} />
       <span
         style={{
           position: "absolute",
@@ -191,13 +193,13 @@ export function FlyerImage({ input, logoDataUri }: { input: FlyerEventInput; log
       <div style={{ position: "absolute", right: topRightMargin, top: 82, display: "flex", flexDirection: "row", alignItems: "center" }}>
         {comuna && (
           <span
-            style={{ fontFamily: "Lato", fontWeight: 900, fontSize: 24, color: COLORS.textPrimary, letterSpacing: -0.24, marginRight: 8 }}
+            style={{ fontFamily: "Lato", fontWeight: 900, fontSize: 32, color: COLORS.textPrimary, letterSpacing: -0.24, marginRight: 8 }}
           >
             {comuna}
           </span>
         )}
         <div style={{ display: "flex", background: "black", padding: 2 }}>
-          <span style={{ fontFamily: "Lato", fontWeight: 900, fontSize: 24, color: "#d7dfe2", letterSpacing: -0.24 }}>{region}</span>
+          <span style={{ fontFamily: "Lato", fontWeight: 900, fontSize: 32, color: "#d7dfe2", letterSpacing: -0.24 }}>{region}</span>
         </div>
       </div>
 
