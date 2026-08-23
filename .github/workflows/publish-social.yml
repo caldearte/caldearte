@@ -1,0 +1,43 @@
+name: Publish Instagram Social Posts
+
+# Automated Feed carousels — see docs/roadmap.md's Fase 4 section for the
+# full design. Runs every day; apps/curator/src/social-publish/run.ts
+# itself decides whether today actually publishes anything (Sunday posts
+# all 3 carousel types, Monday/Wednesday/Friday post one each, every
+# other day is a deliberate no-op) — so this workflow's schedule is
+# intentionally daily, not per-type.
+#
+# 12:00 UTC is provisional — chosen only to run comfortably after
+# event-discovery.yml/headless/instagram/google-alerts's own Monday
+# chain (currently finishes ~09:00 UTC) so Monday's inauguración post
+# has that day's freshest curated events. Once the discovery-cadence
+# Monday -> Sunday shift (also flagged in docs/roadmap.md, not built
+# yet) lands, this time should be revisited so the Sunday post also
+# follows freshly discovered data instead of the previous week's.
+on:
+  workflow_dispatch: {}
+  schedule:
+    - cron: "0 12 * * *" # Every day, 12:00 UTC
+
+jobs:
+  publish-social:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Publish scheduled Instagram carousels
+        run: pnpm --filter @caldearte/curator run publish-social
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          INSTAGRAM_ACCESS_TOKEN: ${{ secrets.INSTAGRAM_ACCESS_TOKEN }}
+          INSTAGRAM_BUSINESS_ACCOUNT_ID: ${{ secrets.INSTAGRAM_BUSINESS_ACCOUNT_ID }}
