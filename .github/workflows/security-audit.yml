@@ -1,0 +1,39 @@
+name: Weekly Security Audit
+
+# Recurring scan for exposed secrets/PII in tracked files, dependency
+# vulnerabilities (pnpm audit), and the status of GitHub's own native
+# secret-scanning/Dependabot alerts (best-effort — this script can't
+# enable those itself, they're a repo Settings > Code security toggle).
+# Deterministic/regex-based, not an LLM pass — no Anthropic cost.
+# Always emails a summary (apps/curator/src/security-audit/run.ts), even
+# when clean, so a missing email is itself a signal something broke.
+on:
+  workflow_dispatch: {}
+  schedule:
+    # Not minute 0 — see event-discovery.yml's own comment (top-of-hour
+    # congestion, real delays observed 2026-08-23).
+    - cron: "20 13 * * 2" # Every Tuesday, ~13:20 UTC (~10:20 Chile)
+
+jobs:
+  security-audit:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: read # read-only lookup of secret-scanning/Dependabot alert status
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Run security audit
+        run: pnpm --filter @caldearte/curator run security-audit
+        env:
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

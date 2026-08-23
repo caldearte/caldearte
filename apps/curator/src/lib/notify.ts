@@ -1284,3 +1284,163 @@ export async function sendDigestEmail(
     console.error(`[notify] digest email send failed for ${email}`, error);
   }
 }
+
+// Weekly (Tuesday) security audit — see security-audit/run.ts for the
+// scan itself. This file only builds/sends the summary email, same
+// pattern as the other sendXRunSummaryEmail functions above.
+export interface SecurityAuditSummary {
+  startedAt: Date;
+  filesScanned: number;
+  secrets: { file: string; line: number; pattern: string; excerpt: string }[];
+  pii: { file: string; line: number; kind: "email" | "phone"; value: string }[];
+  dependencies: { name: string; severity: "moderate" | "high" | "critical"; via: string; url: string | null }[];
+  githubFeatures: {
+    secretScanningEnabled: boolean | null;
+    openSecretScanningAlerts: number | null;
+    dependabotAlertsEnabled: boolean | null;
+    openDependabotAlerts: number | null;
+  };
+}
+
+function securityAuditHasFindings(summary: SecurityAuditSummary): boolean {
+  return (
+    summary.secrets.length > 0 ||
+    summary.pii.length > 0 ||
+    summary.dependencies.length > 0 ||
+    summary.githubFeatures.secretScanningEnabled === false ||
+    summary.githubFeatures.dependabotAlertsEnabled === false
+  );
+}
+
+export function buildSecurityAuditSubject(summary: SecurityAuditSummary): string {
+  return securityAuditHasFindings(summary)
+    ? "⚠️ Caldearte — auditoría de seguridad: hay puntos que revisar"
+    : "✅ Caldearte — auditoría de seguridad: todo despejado";
+}
+
+export function buildSecurityAuditBody(summary: SecurityAuditSummary): string {
+  const { secrets, pii, dependencies, githubFeatures } = summary;
+  const lines = [
+    `Auditoría semanal de seguridad — ${summary.startedAt.toISOString()}`,
+    `${summary.filesScanned} archivo(s) del repo escaneados.`,
+    "",
+  ];
+
+  if (!securityAuditHasFindings(summary)) {
+    lines.push("Sin hallazgos esta semana.");
+    return lines.join("\n");
+  }
+
+  if (secrets.length > 0) {
+    lines.push(`SECRETOS EXPUESTOS (${secrets.length})`);
+    for (const s of secrets) lines.push(`- ${s.file}:${s.line} [${s.pattern}] ${s.excerpt}`);
+    lines.push("");
+  }
+
+  if (pii.length > 0) {
+    lines.push(`DATOS PERSONALES NO ESPERADOS (${pii.length})`);
+    for (const p of pii) lines.push(`- ${p.file}:${p.line} [${p.kind}] ${p.value}`);
+    lines.push("");
+  }
+
+  if (dependencies.length > 0) {
+    lines.push(`VULNERABILIDADES DE DEPENDENCIAS (${dependencies.length})`);
+    for (const d of dependencies) lines.push(`- [${d.severity}] ${d.name}: ${d.via}${d.url ? ` (${d.url})` : ""}`);
+    lines.push("");
+  }
+
+  lines.push("GITHUB SECURITY (nativo)");
+  lines.push(
+    githubFeatures.secretScanningEnabled === false
+      ? "- Secret scanning: DESACTIVADO — actívalo en Settings > Code security (gratis en repos públicos)."
+      : githubFeatures.secretScanningEnabled === true
+        ? `- Secret scanning: activo, ${githubFeatures.openSecretScanningAlerts} alerta(s) abierta(s).`
+        : "- Secret scanning: no se pudo determinar el estado.",
+  );
+  lines.push(
+    githubFeatures.dependabotAlertsEnabled === false
+      ? "- Dependabot alerts: DESACTIVADO — actívalo en Settings > Code security (gratis en repos públicos)."
+      : githubFeatures.dependabotAlertsEnabled === true
+        ? `- Dependabot alerts: activo, ${githubFeatures.openDependabotAlerts} alerta(s) abierta(s).`
+        : "- Dependabot alerts: no se pudo determinar el estado.",
+  );
+
+  return lines.join("\n");
+}
+
+export function buildSecurityAuditHtmlBody(summary: SecurityAuditSummary): string {
+  const { secrets, pii, dependencies, githubFeatures } = summary;
+  const hasFindings = securityAuditHasFindings(summary);
+
+  const section = (title: string, rows: string[]) =>
+    rows.length === 0
+      ? ""
+      : `<h2 style="font-size:14px;text-transform:uppercase;letter-spacing:0.04em;color:#888;margin:24px 0 10px;border-bottom:1px solid #e2e0da;padding-bottom:6px;">${title}</h2>
+    <ul style="margin:0;padding-left:18px;font-size:13px;">${rows.map((r) => `<li>${r}</li>`).join("")}</ul>`;
+
+  return `<div style="font-family:-apple-system,Helvetica,Arial,sans-serif;max-width:720px;margin:0 auto;color:#1a1a1a;">
+    <h1 style="font-size:18px;margin:0 0 4px;">${hasFindings ? "⚠️" : "✅"} Caldearte — auditoría de seguridad</h1>
+    <p style="font-size:13px;color:#666;margin:0 0 20px;">${escapeHtml(summary.startedAt.toISOString())} &middot; ${summary.filesScanned} archivo(s) escaneados</p>
+
+    ${!hasFindings ? "<p>Sin hallazgos esta semana.</p>" : ""}
+
+    ${section(
+      `Secretos expuestos (${secrets.length})`,
+      secrets.map((s) => `<code>${escapeHtml(s.file)}:${s.line}</code> [${escapeHtml(s.pattern)}] ${escapeHtml(s.excerpt)}`),
+    )}
+
+    ${section(
+      `Datos personales no esperados (${pii.length})`,
+      pii.map((p) => `<code>${escapeHtml(p.file)}:${p.line}</code> [${p.kind}] ${escapeHtml(p.value)}`),
+    )}
+
+    ${section(
+      `Vulnerabilidades de dependencias (${dependencies.length})`,
+      dependencies.map(
+        (d) =>
+          `[${d.severity}] <b>${escapeHtml(d.name)}</b>: ${escapeHtml(d.via)}${d.url ? ` — <a href="${escapeHtml(d.url)}">detalle</a>` : ""}`,
+      ),
+    )}
+
+    <h2 style="font-size:14px;text-transform:uppercase;letter-spacing:0.04em;color:#888;margin:24px 0 10px;border-bottom:1px solid #e2e0da;padding-bottom:6px;">GitHub security (nativo)</h2>
+    <p style="font-size:13px;">
+      ${
+        githubFeatures.secretScanningEnabled === false
+          ? "Secret scanning: <b>desactivado</b> — actívalo en Settings &gt; Code security (gratis en repos públicos)."
+          : githubFeatures.secretScanningEnabled === true
+            ? `Secret scanning: activo, ${githubFeatures.openSecretScanningAlerts} alerta(s) abierta(s).`
+            : "Secret scanning: no se pudo determinar el estado."
+      }<br>
+      ${
+        githubFeatures.dependabotAlertsEnabled === false
+          ? "Dependabot alerts: <b>desactivado</b> — actívalo en Settings &gt; Code security (gratis en repos públicos)."
+          : githubFeatures.dependabotAlertsEnabled === true
+            ? `Dependabot alerts: activo, ${githubFeatures.openDependabotAlerts} alerta(s) abierta(s).`
+            : "Dependabot alerts: no se pudo determinar el estado."
+      }
+    </p>
+  </div>`;
+}
+
+// Ancillary, same defensive posture as the other sendXRunSummaryEmail
+// functions: a failed/skipped send never breaks the audit run itself.
+export async function sendSecurityAuditEmail(summary: SecurityAuditSummary): Promise<void> {
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) {
+    console.warn("sendSecurityAuditEmail: RESEND_API_KEY not set — skipping security audit email.");
+    return;
+  }
+
+  const resend = new Resend(apiKey);
+  const { error } = await resend.emails.send({
+    from: "Caldearte <contacto@caldearte.com>",
+    to: RUN_SUMMARY_RECIPIENT,
+    subject: buildSecurityAuditSubject(summary),
+    text: buildSecurityAuditBody(summary),
+    html: buildSecurityAuditHtmlBody(summary),
+  });
+
+  if (error) {
+    console.error("[notify] security audit email send failed", error);
+  }
+}

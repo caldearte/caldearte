@@ -390,6 +390,18 @@ building infra" discipline the rest of this project has followed.
 
 ## Phase 3 — Image pipeline, hardening
 
+- **Weekly security audit — shipped 2026-08-23.** Every Tuesday
+  (`.github/workflows/security-audit.yml`), a deterministic/regex-based
+  scan of every tracked file for credential-shaped secrets and
+  unexpected PII (email/phone, against an allowlist of the repo's own
+  known-accepted addresses), plus `pnpm audit` for dependency
+  vulnerabilities and a best-effort check of whether GitHub's own
+  native secret-scanning/Dependabot alerts are enabled (they aren't
+  something this script can turn on itself — that's a repo Settings >
+  Code security toggle). Always emails a summary
+  (`apps/curator/src/security-audit/run.ts`), even when clean, so a
+  missing email is itself a signal something broke. No Anthropic cost —
+  regex over an LLM pass, since secrets/PII have a recognizable shape.
 - Download and re-host images in Supabase Storage (don't depend on external
   URLs that break). **Still worth doing, lower urgency than originally
   framed**: the ~1-year retention policy and "stop showing past-date
