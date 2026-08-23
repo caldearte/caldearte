@@ -30,8 +30,16 @@ export const CAROUSEL_CAP = 10;
 // Instagram has its own content policies a flagged post could trip. A
 // smaller carousel is a fine tradeoff for never risking the account —
 // explicit decision, 2026-08-22.
-function isSafeForAutoPost(e: SocialEvent): boolean {
-  return e.sensitivityTags.length === 0;
+//
+// Also requires a real imageUrl — real bug, found testing against
+// production data 2026-08-23: selectInauguraciones/selectNoTeLaPierdas
+// didn't check for one (only selectDestacada did, as part of its own
+// "enough real content" quality bar), so an event with no image would
+// have produced a flyer with a blank/broken photo zone in a real post.
+// The flyer layout has no fallback for a missing photo — every automated
+// carousel type needs one, not just destacada.
+function isEligibleForAutoPost(e: SocialEvent): boolean {
+  return e.sensitivityTags.length === 0 && Boolean(e.imageUrl);
 }
 
 function isRunningOn(e: SocialEvent, dateStr: string): boolean {
@@ -47,7 +55,7 @@ function isRunningOn(e: SocialEvent, dateStr: string): boolean {
 // docs/roadmap.md.
 export function selectInauguraciones(events: SocialEvent[], week: { start: string; end: string }, cap = CAROUSEL_CAP): SocialEvent[] {
   const eligible = events
-    .filter(isSafeForAutoPost)
+    .filter(isEligibleForAutoPost)
     .filter((e) => e.openingDatetime && e.openingDatetime.slice(0, 10) >= week.start && e.openingDatetime.slice(0, 10) <= week.end)
     .sort((a, b) => a.openingDatetime!.localeCompare(b.openingDatetime!));
   return diversifyByComuna(eligible, cap);
@@ -67,7 +75,7 @@ export function selectNoTeLaPierdas(
   cap = CAROUSEL_CAP,
 ): SocialEvent[] {
   const eligible = events
-    .filter(isSafeForAutoPost)
+    .filter(isEligibleForAutoPost)
     .filter((e) => !alreadyPostedIds.has(e.id))
     .filter((e) => e.runEndDate && e.runEndDate >= todayStr && e.runEndDate <= week.end)
     .sort((a, b) => a.runEndDate!.localeCompare(b.runEndDate!));
@@ -91,10 +99,10 @@ export function selectDestacada(
   cap = CAROUSEL_CAP,
 ): SocialEvent[] {
   const eligible = events
-    .filter(isSafeForAutoPost)
+    .filter(isEligibleForAutoPost)
     .filter((e) => !alreadyPostedIds.has(e.id))
     .filter((e) => isRunningOn(e, todayStr))
-    .filter((e) => e.imageUrl && e.description && e.description.length >= MIN_DESCRIPTION_LENGTH)
+    .filter((e) => e.description && e.description.length >= MIN_DESCRIPTION_LENGTH)
     .sort((a, b) => {
       const aLast = lastFeaturedAt.get(a.id) ?? "";
       const bLast = lastFeaturedAt.get(b.id) ?? "";
