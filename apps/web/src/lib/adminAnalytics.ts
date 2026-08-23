@@ -31,6 +31,7 @@ export interface AdminAnalyticsPayload {
     accepted: number;
     rejected: number;
     possiblyDead: boolean;
+    category: "bright_source" | "headless" | "google_alerts";
   }>;
   instagramSources: Array<{
     username: string;
