@@ -596,6 +596,21 @@ building infra" discipline the rest of this project has followed.
       this error code up to 3 times (5s apart) inside
       `createCarouselItem`; other error codes (bad token, malformed
       params) still fail immediately, without retry.
+    - `media_publish` (the final step) can throw "Application request
+      limit reached" (code 4 — Meta's activity/abuse throttle) while the
+      post has ALREADY gone live on the real account seconds earlier —
+      confirmed for real 2026-08-23: reconstructed the actual carousel
+      from the DB and cross-checked titles against what Daniel saw on
+      the live post. Worse than a false failure: `run.ts` only writes
+      `social_post_log` after a successful `publish()` return, so a
+      thrown error here silently drops the de-dup record even though
+      the post is real — had to be manually reconstructed and backfilled
+      once. Fixed in `publishCarousel` by checking the account's own
+      recent media for a `CAROUSEL_ALBUM` with this exact caption posted
+      in the last 2 minutes before giving up — an exact-caption-plus-
+      recency match is specific enough to trust (every caption is
+      generated per-run, never static); any other error still fails
+      immediately, no guessing.
 
 ## Phase 5 — Parked / optional, doesn't block anything above
 

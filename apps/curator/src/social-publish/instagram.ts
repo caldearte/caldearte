@@ -95,14 +95,68 @@ export async function createCarouselContainer(config: InstagramClientConfig, ite
   return id;
 }
 
+// Real bug found 2026-08-23: media_publish threw "Application request
+// limit reached" (code 4, subcode 2207051 — Meta's own activity/abuse
+// throttling, not a per-item media-download issue) on a run that had
+// already posted once earlier that day plus several manual test
+// dispatches. The post was actually LIVE on the real Instagram account
+// minutes later — Meta's throttle rejected the RESPONSE, not the
+// underlying action, which had already gone through server-side. Left
+// as a thrown error, this both reports a false failure AND — worse —
+// skips run.ts's social_post_log insert (which only runs after a
+// successful publish() return), so the de-dup log silently drifts from
+// reality. Confirmed manually that day by reconstructing the actual
+// selection and cross-checking titles against the real post.
+function isActivityThrottleError(message: string): boolean {
+  return message.includes('"code":4');
+}
+
+// Best-effort recovery for isActivityThrottleError: check the account's
+// own recent media for a CAROUSEL_ALBUM with this exact caption posted
+// in the last couple of minutes. An exact-caption match within a tight
+// recency window is specific enough that a false positive is
+// effectively impossible (every caption here is generated per-run, not
+// static). Returns null (never throws) on any ambiguity — a real
+// failure should still surface as a real failure, not get silently
+// swallowed on a guess.
+async function findJustPublishedCarousel(config: InstagramClientConfig, caption: string, withinMs = 120_000): Promise<string | null> {
+  try {
+    const url = new URL(`${GRAPH_API_BASE}/${config.igBusinessAccountId}/media`);
+    url.searchParams.set("fields", "id,caption,timestamp,media_type");
+    url.searchParams.set("limit", "5");
+    url.searchParams.set("access_token", config.accessToken);
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    const body = (await res.json()) as { data?: { id: string; caption?: string; timestamp: string; media_type: string }[] };
+    const cutoff = Date.now() - withinMs;
+    const match = (body.data ?? []).find(
+      (m) => m.media_type === "CAROUSEL_ALBUM" && m.caption === caption && new Date(m.timestamp).getTime() >= cutoff,
+    );
+    return match?.id ?? null;
+  } catch {
+    return null;
+  }
+}
+
 // Step 3: publishes the container — this is the call that actually makes
-// the post go live on the profile.
-export async function publishCarousel(config: InstagramClientConfig, containerCreationId: string): Promise<string> {
-  const { id } = await graphPost(`${config.igBusinessAccountId}/media_publish`, {
-    creation_id: containerCreationId,
-    access_token: config.accessToken,
-  });
-  return id;
+// the post go live on the profile. `caption` is only used for the
+// isActivityThrottleError recovery path above — not sent to the API
+// here (the container already carries it, set in createCarouselContainer).
+export async function publishCarousel(config: InstagramClientConfig, containerCreationId: string, caption?: string): Promise<string> {
+  try {
+    const { id } = await graphPost(`${config.igBusinessAccountId}/media_publish`, {
+      creation_id: containerCreationId,
+      access_token: config.accessToken,
+    });
+    return id;
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    if (caption && isActivityThrottleError(message)) {
+      const existingId = await findJustPublishedCarousel(config, caption);
+      if (existingId) return existingId;
+    }
+    throw err;
+  }
 }
 
 function sleep(ms: number): Promise<void> {
@@ -164,5 +218,5 @@ export async function publishInstagramCarousel(
   }
   const containerId = await createCarouselContainer(config, itemIds, caption);
   await waitUntilContainerReady(config, containerId, pollIntervalMs);
-  return publishCarousel(config, containerId);
+  return publishCarousel(config, containerId, caption);
 }
