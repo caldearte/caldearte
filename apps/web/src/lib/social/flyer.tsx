@@ -72,14 +72,18 @@ const COLORS = {
   textSecondary: "#626262",
 };
 
-// 10% margin used in the Figma mockups translates to this left inset
-// (127px of 1080px ≈ 11.8%, close enough to "10%" as Daniel described it —
-// matches the exported frame exactly rather than a round number).
+// v1.2.0 Figma export (2026-08-23) — the earlier 10% margin was dropped
+// (Daniel: "el margen de 10% no era necesario voy a ajustar los
+// layouts"), and the header/footer bands shrank to make room for a
+// bigger photo. INSET_X (127px) is unchanged from the previous version —
+// only the band heights and logo moved.
 const INSET_X = 127;
-const PHOTO_TOP = 241;
-const PHOTO_HEIGHT = 747; // 988 - 241, per the Figma export
+const TOP_BAND_HEIGHT = 135;
+const BOTTOM_BAND_TOP = 1116;
+const PHOTO_TOP = TOP_BAND_HEIGHT;
+const PHOTO_HEIGHT = BOTTOM_BAND_TOP - TOP_BAND_HEIGHT;
 
-export function FlyerImage({ input }: { input: FlyerEventInput }) {
+export function FlyerImage({ input, logoDataUri }: { input: FlyerEventInput; logoDataUri: string }) {
   // Uppercased here in JS rather than via CSS text-transform, since it's
   // needed either way for FLYER-owned strings (destacada's fixed "no te
   // olvides visitar" is already correctly cased at the source) and JS's
@@ -113,43 +117,42 @@ export function FlyerImage({ input }: { input: FlyerEventInput }) {
   return (
     <div style={{ width: FLYER_WIDTH, height: FLYER_HEIGHT, position: "relative", background: "white", display: "flex" }}>
       {/* Top band */}
-      <div style={{ position: "absolute", left: 0, top: 0, width: FLYER_WIDTH, height: 241, background: COLORS.sage, display: "flex" }} />
-      <div style={{ position: "absolute", left: 128, top: 144, display: "flex", flexDirection: "column" }}>
-        <span
-          style={{
-            fontFamily: "Lato",
-            fontWeight: 900,
-            fontSize: 51,
-            lineHeight: 0.71,
-            color: COLORS.magenta,
-            letterSpacing: 0.5,
-          }}
-        >
-          CALDE
-        </span>
-        <span style={{ fontFamily: "Lato", fontWeight: 900, fontSize: 51, lineHeight: 0.71, color: COLORS.magenta, letterSpacing: 0.5 }}>
-          ARTE.
-        </span>
-      </div>
-      <div style={{ position: "absolute", right: 124, top: 147, display: "flex", flexDirection: "column", alignItems: "flex-end" }}>
-        <span style={{ fontFamily: "Lato", fontWeight: 900, fontSize: 48, lineHeight: 0.71, color: COLORS.magenta, letterSpacing: 1 }}>
-          {TOP_LABEL[input.type]}
-        </span>
-        <span
-          style={{
-            fontFamily: "Lato",
-            fontWeight: 900,
-            fontSize: 24,
-            color: COLORS.textPrimary,
-            letterSpacing: -0.24,
-            marginTop: 12,
-            maxWidth: 700,
-            ...singleLineClip,
-          }}
-        >
-          {location}
-        </span>
-      </div>
+      <div
+        style={{ position: "absolute", left: 0, top: 0, width: FLYER_WIDTH, height: TOP_BAND_HEIGHT, background: COLORS.sage, display: "flex" }}
+      />
+      {/* eslint-disable-next-line @next/next/no-img-element -- Satori (next/og) only supports plain <img>, not next/image */}
+      <img src={logoDataUri} alt="" style={{ position: "absolute", left: 127.34, top: 27.4, width: 165.758, height: 80.961 }} />
+      <span
+        style={{
+          position: "absolute",
+          right: 124,
+          top: 27,
+          fontFamily: "Lato",
+          fontWeight: 900,
+          fontSize: 48,
+          lineHeight: 0.71,
+          color: COLORS.magenta,
+          letterSpacing: 1,
+        }}
+      >
+        {TOP_LABEL[input.type]}
+      </span>
+      <span
+        style={{
+          position: "absolute",
+          right: 124,
+          top: 82,
+          fontFamily: "Lato",
+          fontWeight: 900,
+          fontSize: 24,
+          color: COLORS.textPrimary,
+          letterSpacing: -0.24,
+          maxWidth: 700,
+          ...singleLineClip,
+        }}
+      >
+        {location}
+      </span>
 
       {/* Photo */}
       {/* eslint-disable-next-line @next/next/no-img-element -- Satori (next/og) only supports plain <img>, not next/image */}
@@ -164,76 +167,82 @@ export function FlyerImage({ input }: { input: FlyerEventInput }) {
         style={{
           position: "absolute",
           left: 0,
-          top: PHOTO_TOP + PHOTO_HEIGHT,
+          top: BOTTOM_BAND_TOP,
           width: FLYER_WIDTH,
-          height: FLYER_HEIGHT - (PHOTO_TOP + PHOTO_HEIGHT),
+          height: FLYER_HEIGHT - BOTTOM_BAND_TOP,
           background: COLORS.sage,
           display: "flex",
-          flexDirection: "column",
         }}
       />
-      <div style={{ position: "absolute", left: INSET_X, top: 1007, display: "flex", flexDirection: "column" }}>
+      <span
+        style={{
+          position: "absolute",
+          left: INSET_X,
+          top: 1128,
+          fontFamily: "Lato",
+          fontWeight: 700,
+          fontSize: 40,
+          color: COLORS.textPrimary,
+          letterSpacing: -0.4,
+          maxWidth: bottomTextWidth,
+          ...singleLineClip,
+        }}
+      >
+        {dateLine}
+      </span>
+      <span
+        style={{
+          position: "absolute",
+          left: INSET_X,
+          top: 1184,
+          fontFamily: "Lato",
+          fontWeight: 900,
+          fontSize: 48,
+          lineHeight: 0.71,
+          color: COLORS.magenta,
+          letterSpacing: 1,
+          maxWidth: bottomTextWidth,
+          ...singleLineClip,
+        }}
+      >
+        {title}
+      </span>
+      {artist && (
         <span
           style={{
-            fontFamily: "Lato",
-            fontWeight: 700,
-            fontSize: 40,
-            color: COLORS.textPrimary,
-            letterSpacing: -0.4,
+            position: "absolute",
+            left: INSET_X,
+            top: 1240,
+            fontFamily: "Geist",
+            fontWeight: 600,
+            fontSize: 20,
+            color: COLORS.textSecondary,
+            letterSpacing: 2,
             maxWidth: bottomTextWidth,
             ...singleLineClip,
           }}
         >
-          {dateLine}
+          {artist}
         </span>
+      )}
+      {venue && (
         <span
           style={{
-            fontFamily: "Lato",
-            fontWeight: 900,
-            fontSize: 48,
-            lineHeight: 0.71,
-            color: COLORS.magenta,
-            letterSpacing: 1,
-            marginTop: 12,
+            position: "absolute",
+            left: INSET_X,
+            top: 1292,
+            fontFamily: "Geist",
+            fontWeight: 600,
+            fontSize: 24,
+            color: COLORS.textSecondary,
+            letterSpacing: 2,
             maxWidth: bottomTextWidth,
             ...singleLineClip,
           }}
         >
-          {title}
+          {venue}
         </span>
-        {artist && (
-          <span
-            style={{
-              fontFamily: "Geist",
-              fontWeight: 600,
-              fontSize: 20,
-              color: COLORS.textSecondary,
-              letterSpacing: 2,
-              marginTop: 20,
-              maxWidth: bottomTextWidth,
-              ...singleLineClip,
-            }}
-          >
-            {artist}
-          </span>
-        )}
-        {venue && (
-          <span
-            style={{
-              fontFamily: "Geist",
-              fontWeight: 600,
-              fontSize: 24,
-              color: COLORS.textSecondary,
-              letterSpacing: 2,
-              marginTop: artist ? 16 : 20,
-              maxWidth: bottomTextWidth,
-              ...singleLineClip,
-            }}
-          >
-            {venue}
-          </span>
-        )}
-      </div>
+      )}
     </div>
   );
 }
