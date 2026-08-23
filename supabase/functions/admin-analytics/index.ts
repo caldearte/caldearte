@@ -60,7 +60,7 @@ Deno.serve(async (req) => {
     client.from("out_of_scope_signals").select("created_at, category, pipeline, region_id"),
     client.from("rejected_candidates").select("pipeline, source_url, source_account"),
     client.from("api_usage_log").select("pipeline, estimated_cost_usd, created_at"),
-    client.from("bright_source_fetch_state").select("url, last_fetched_at, interval_days"),
+    client.from("bright_source_fetch_state").select("url, last_fetched_at, interval_days, consecutive_zero_yield_at_cap, is_inactive"),
     client.from("platform_cost_snapshots").select("platform, usage_date, amount_usd"),
     // The email half of the escalation flow (accept/reject tokens) was
     // never wired up (docs/region-discovery.md) — these rows have
@@ -214,6 +214,12 @@ Deno.serve(async (req) => {
     accepted: number;
     rejected: number;
     possiblyDead: boolean;
+    // Real cadence state (not the possiblyDead heuristic) — added
+    // 2026-08-23 for /admin/cadencia. consecutiveZeroYieldAtCap only
+    // means anything once intervalDays is at the 28-day cap or the
+    // 182-day semestral tier (see instagram-fetch-state.ts).
+    isInactive: boolean;
+    consecutiveZeroYieldAtCap: number;
   }> = [];
 
   for (const row of fetchStateRes.data ?? []) {
@@ -247,6 +253,8 @@ Deno.serve(async (req) => {
         accepted,
         rejected,
         possiblyDead: !hasYield && (atAdaptiveCap || row.last_fetched_at !== null),
+        isInactive: row.is_inactive ?? false,
+        consecutiveZeroYieldAtCap: row.consecutive_zero_yield_at_cap ?? 0,
       });
     } else if (hostname) {
       const accepted = acceptedDomains.get(hostname) ?? 0;
