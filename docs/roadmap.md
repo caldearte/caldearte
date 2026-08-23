@@ -414,56 +414,106 @@ building infra" discipline the rest of this project has followed.
   private until passing audit, requires a demo video and privacy policy.
 - Recommendation: submit for review only once the calendar already has real
   events running (better demo, better approval odds).
-- **Weekly "inauguraciones de la semana" carousel — idea captured
-  2026-08-16** (Daniel's own idea; Camila, who handles difusión separately,
-  independently asked the same day whether something automatic could be
-  posted). Goal: once a week, publish a carousel titled with the week's
-  date range (e.g. "10 al 16 de agosto") showing every inauguración
-  nationwide that week, one card per event, **ordered chronologically
-  ascending by opening date** (lunes primero, domingo al final) — "así se
-  ve primero las del lunes de esa semana y termina con las del domingo,"
-  giving a fast overview of everything new opening that week. Investigated
-  what Instagram's official API actually allows (see sources below,
-  checked 2026-08-16) and found a real capability gap that rules out doing
-  this fully automatically exactly as first imagined:
-  - **Story Highlights (the "circulitos" above the profile grid) have no
-    creation API at all** — only unofficial third-party scrapers exist for
-    *reading* other accounts' highlights, none for creating one or adding
-    a story to it. Always a manual, in-app action (drag into the
-    collection).
-  - **Story link stickers (the swipeable per-image link) can't be attached
-    via the official Graph API/Content Publishing API either** — the API
-    can publish the story's image, but the clickable link sticker has to
-    be added by hand afterward, inside the app.
-  - Feed carousel posts publish 100% via API with no manual step, but
-    Instagram doesn't allow a clickable link per photo in the feed either
-    (platform-wide restriction, not API-specific) — only the single
-    link-in-bio.
-  - Two options, both worth keeping on the roadmap rather than picking one
-    now:
-    - **(a) Manual, exactly as first imagined** — a person (Camila) posts
-      the weekly Highlight by hand: adds the per-photo link sticker and
-      drags each story into the "10 al 16 de agosto" highlight. Gets the
-      exact UX Daniel described, costs a recurring few minutes/week,
-      needs no new infrastructure.
-      **Comodín**: the automated version (b) could still generate the
-      per-event carousel *images* on a schedule and hand Camila a
-      ready-made set to post/link/highlight manually — automating the
-      design work even if the platform-side steps stay manual.
-    - **(b) Automated, scoped to what the API actually allows** — a weekly
-      Feed carousel (not a Story), auto-generated and auto-published via
-      the Instagram Graph API, images ordered lunes→domingo as above,
-      caption pointing to the single link in bio (already lands on the
-      current week by default). Needs: `@caldearte.oficial` converted to
-      a Business account, linked to a Facebook Page, a Meta developer app
-      with `instagram_content_publish` permission (basic business
-      verification, not the full 2–4 week app review needed for
-      broader-scope permissions), long-lived access token
-      management (~60-day refresh), and a new weekly cron script
-      (same pattern as the existing curator crons) that queries the
-      week's approved inauguraciones nationwide from Supabase, renders one
-      branded image per event, and publishes the carousel.
-  - Neither option is scoped/built yet — parked here until picked up.
+- **Automated national Feed cadence, 3 content types — idea captured
+  2026-08-16, design finalized 2026-08-22** (Daniel's own idea; Camila,
+  who handles difusión separately, independently asked the same day
+  whether something automatic could be posted). A daily "hoy" post was
+  considered and rejected: useful in the moment, but gives no way to
+  plan ahead. A single mixed national carousel was also considered and
+  rejected: Santiago alone can have dozens of vigente expos, too much for
+  one legible carousel. Final design:
+  - **Fully automated content is Feed-only, national, thematic — never
+    split per región.** Splitting by región was considered and rejected:
+    Instagram penalizes posting frequently to the same audience in a
+    short window (each new post competes with the previous one's reach
+    instead of adding to it — self-cannibalization), so 16 región-specific
+    posts/week would very likely reduce total reach below what a handful
+    of national posts gets, on top of follower fatigue. Regional depth
+    instead goes through **Camila's own manual track** (see below), which
+    doesn't compete for the same reach budget.
+  - **Three content types, each with its own ordering and repeat rule:**
+    - **(A) Inauguraciones** — ordered by **fecha de apertura**,
+      ascending (lunes primero). **Repeats across the week deliberately**
+      — this is the one type meant to work as a recurring reminder/push,
+      not a one-time announcement.
+    - **(B) "No te la pierdas"** — expos closing soonest, ordered by
+      **fecha de fin**, ascending. **Never repeats an expo within the
+      same week** — each appearance during the week must be a different
+      closing-soon expo than any shown earlier that week.
+    - **(C) Selección/destacadas** — not date-ordered; a quality-curated
+      rotation (photo quality, description completeness, how long since
+      it last appeared in a post). **Never repeats an expo within the
+      same week**, same rule as (B).
+    - All three capped at **10 cards per carousel** (Instagram's own
+      platform max), with **región diversity enforced within the cap** —
+      reusing the same diversity logic already built for the newsletter,
+      so Santiago doesn't fill all 10 slots on its own.
+    - Every carousel ends on a **fixed static closing slide** ("selección
+      parcial, todo en Caldearte" + the link) — generated once as a
+      reusable asset, not rendered per post.
+  - **Weekly cadence — 6 automated posts/week:**
+    - **Sunday** — all three types posted (A + B + C), timed to land the
+      day before the week it covers starts (see discovery-cadence change
+      below).
+    - **Monday** — (A) only.
+    - **Wednesday** — (B) only.
+    - **Friday** — (C) only.
+    - Kept well under generic Instagram guidance of "no more than 1-2
+      Feed posts/day, ~3-5/week for consistency without fatigue" on any
+      single day (never more than the Sunday triple), while still
+      landing above that weekly ceiling in total — a deliberate tradeoff
+      given Caldearte's actual national content volume, revisit if real
+      engagement data says otherwise once it's live.
+    - **Implementation**: (A) needs no de-dup query — its "repeats are
+      fine" rule means the same ascending-by-opening-date query can run
+      on both Sunday and Monday with no extra state. (B) and (C) need a
+      small log table (event/expo IDs already posted this week, per
+      type) so their queries can exclude what's already appeared —
+      the one real piece of new state this design needs beyond a plain
+      SELECT.
+  - **Discovery cadence moves Monday → Sunday** (headless/Instagram/
+    Google-Alerts crons + the weekly newsletter, keeping their existing
+    relative stagger, all shifted one day earlier) — so a week's events
+    are discovered and curated the day *before* that week starts, giving
+    the newsletter and the new Sunday IG drop a real one-day lead time
+    instead of announcing Monday's inauguraciones the same day they
+    happen. Touches `.github/workflows/`, so this ships as a PR Daniel
+    reviews before merging, per the standing rule for that path — not
+    something to merge autonomously.
+  - **Camila's manual track — decoupled, not built for.** Camila's own
+    content (in-depth coverage of one specific expo/inauguración, in-situ
+    coverage of an opening night, a Caldearte-the-website feature, etc.)
+    is explicitly the kind of depth automation can't produce, and stays
+    fully outside this pipeline — she posts it on her own schedule, in
+    whatever format she chooses. The one place automation still helps
+    her: **regional Stories**. Story Highlights have **no creation API at
+    all** (only unofficial scrapers exist for *reading* other accounts'
+    highlights, none for creating one or adding a story to it — always a
+    manual, in-app drag-into-collection action), and **Story link
+    stickers can't be attached via the API either** (the API can publish
+    the story image, but the clickable link sticker has to be added by
+    hand afterward). So the automated pipeline can still render
+    per-región branded images on a schedule and hand Camila a ready-made
+    set — she posts/links/organizes them into Stories and Highlights by
+    región at her own pace, which sidesteps the Feed reach-cannibalization
+    problem entirely (Stories don't compete for Feed reach the same way),
+    without needing any of this to be scoped or built as part of the
+    automated Feed pipeline itself.
+  - **Feed carousel posts publish 100% via the Graph API with no manual
+    step** — confirmed working: `@caldearte.oficial` is now a Business
+    account linked to the (pre-existing, since-2018) Caldearte Facebook
+    Page; the Meta developer app "Caldearte" is created with the
+    Instagram API use case, `instagram_business_content_publish` added
+    and in "Listo para la prueba" status, @caldearte.oficial added as an
+    Instagram tester (invitation accepted), and an access token +
+    Instagram Business Account ID generated — all via Standard/tester
+    access, deliberately **not** submitted for the full Meta App Review
+    (not needed since the app only ever publishes to accounts it already
+    administers; submitting for review is now explicitly out of scope
+    unless that changes).
+  - **Not scoped/built yet**: the flyer-image renderer, the (B)/(C)
+    de-dup log table, the cron script itself, and the discovery-cadence
+    day shift — parked here until picked up.
 
 ## Phase 5 — Parked / optional, doesn't block anything above
 
