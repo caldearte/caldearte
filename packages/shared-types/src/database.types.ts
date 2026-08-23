@@ -659,6 +659,45 @@ export type Database = {
           },
         ]
       }
+      social_post_log: {
+        Row: {
+          event_id: string
+          id: string
+          post_type: string
+          posted_at: string
+          week_start: string
+        }
+        Insert: {
+          event_id: string
+          id?: string
+          post_type: string
+          posted_at?: string
+          week_start: string
+        }
+        Update: {
+          event_id?: string
+          id?: string
+          post_type?: string
+          posted_at?: string
+          week_start?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "social_post_log_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "social_post_log_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events_public"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       system_config: {
         Row: {
           key: string
