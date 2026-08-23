@@ -8,7 +8,17 @@
 // 2026-08-22 when the social-publish pipeline needed the exact same
 // behavior for its own carousels — same reasoning applies nationwide, not
 // just within one región.
-export function diversifyByComuna<T extends { comunaName: string | null }>(events: T[], cap: number): T[] {
+// maxPerComuna (default unlimited, same as before it existed) caps how
+// many items ANY single comuna can contribute, regardless of how many
+// rounds run — round IS each bucket's own per-comuna index, so bounding
+// the round loop bounds every bucket identically. Added 2026-08-23,
+// social-publish only: without it, once every OTHER comuna's (usually
+// short) supply ran out, every remaining round only had Santiago left to
+// pull from, so a nationwide list still ended up mostly Santiago — real
+// complaint from Daniel after reviewing a real "no te la pierdas" post.
+// Trades a shorter carousel for real diversity instead of backfilling
+// with repeats from the same comuna once others are exhausted.
+export function diversifyByComuna<T extends { comunaName: string | null }>(events: T[], cap: number, maxPerComuna = Infinity): T[] {
   const buckets = new Map<string, T[]>();
   for (const e of events) {
     const key = e.comunaName ?? "__none__";
@@ -17,7 +27,7 @@ export function diversifyByComuna<T extends { comunaName: string | null }>(event
   }
   const bucketKeys = Array.from(buckets.keys());
   const result: T[] = [];
-  for (let round = 0; result.length < cap; round++) {
+  for (let round = 0; round < maxPerComuna && result.length < cap; round++) {
     let addedInRound = false;
     for (const key of bucketKeys) {
       const bucket = buckets.get(key)!;

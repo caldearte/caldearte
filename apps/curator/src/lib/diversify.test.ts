@@ -40,6 +40,21 @@ test("diversifyByComuna: stops early (no infinite loop) when there are fewer eve
   assert.equal(result.length, 2);
 });
 
+test("diversifyByComuna: maxPerComuna caps a heavy comuna instead of backfilling from it once others are exhausted — real complaint 2026-08-23, a nationwide list still read as mostly Santiago", () => {
+  const events = [
+    { id: "s1", comunaName: "Santiago" },
+    { id: "s2", comunaName: "Santiago" },
+    { id: "s3", comunaName: "Santiago" },
+    { id: "s4", comunaName: "Santiago" },
+    { id: "v1", comunaName: "Valparaíso" },
+  ];
+  const result = diversifyByComuna(events, 10, 2);
+  assert.deepEqual(
+    result.map((e) => e.id),
+    ["s1", "v1", "s2"],
+  );
+});
+
 test("diversifyByComuna: null comunaName is treated as its own bucket, not merged with others", () => {
   const events = [
     { id: "n1", comunaName: null },
