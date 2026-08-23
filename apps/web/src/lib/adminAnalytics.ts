@@ -39,6 +39,8 @@ export interface AdminAnalyticsPayload {
     accepted: number;
     rejected: number;
     possiblyDead: boolean;
+    isInactive: boolean;
+    consecutiveZeroYieldAtCap: number;
   }>;
   anthropicCostByDay: Array<{ date: string; amountUsd: number }>;
   apifyCostByDay: Array<{ date: string; amountUsd: number }>;
