@@ -270,7 +270,7 @@ export function FlyerImage({ input, logoDataUri, photoDataUri }: { input: FlyerE
             style={{
               fontFamily: "Geist",
               fontWeight: 600,
-              fontSize: 20,
+              fontSize: 26,
               color: COLORS.textSecondary,
               letterSpacing: 2,
               marginTop: 16,
@@ -285,7 +285,7 @@ export function FlyerImage({ input, logoDataUri, photoDataUri }: { input: FlyerE
             style={{
               fontFamily: "Geist",
               fontWeight: 600,
-              fontSize: 24,
+              fontSize: 32,
               color: COLORS.textSecondary,
               letterSpacing: 2,
               marginTop: artist ? 12 : 16,
