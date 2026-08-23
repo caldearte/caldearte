@@ -38,8 +38,16 @@ export const CAROUSEL_CAP = 10;
 // have produced a flyer with a blank/broken photo zone in a real post.
 // The flyer layout has no fallback for a missing photo — every automated
 // carousel type needs one, not just destacada.
+//
+// Excludes .webp images too — real bug, found in a real "destacada" post
+// failing 2026-08-23: the flyer renderer (Satori/next-og) can't determine
+// a .webp image's dimensions ("Image size cannot be determined"), so the
+// flyer route 500s and Instagram rejects the whole carousel. Only 2 of
+// 131 production events have a .webp source image — not worth adding an
+// image-conversion dependency (e.g. sharp) for, so these are simply
+// excluded from automated posts, same as no-image events.
 function isEligibleForAutoPost(e: SocialEvent): boolean {
-  return e.sensitivityTags.length === 0 && Boolean(e.imageUrl);
+  return e.sensitivityTags.length === 0 && Boolean(e.imageUrl) && !e.imageUrl!.toLowerCase().endsWith(".webp");
 }
 
 function isRunningOn(e: SocialEvent, dateStr: string): boolean {

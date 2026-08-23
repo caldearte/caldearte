@@ -70,6 +70,18 @@ test("selectInauguraciones: excludes events with no real photo — real bug foun
   );
 });
 
+test("selectInauguraciones: excludes events with a .webp photo — real bug found 2026-08-23, a real destacada post failed outright because Satori/next-og can't determine a .webp image's size", () => {
+  const events = [
+    makeEvent({ id: "jpeg-photo", openingDatetime: "2026-08-20T22:00:00+00:00" }),
+    makeEvent({ id: "webp-photo", openingDatetime: "2026-08-20T22:00:00+00:00", imageUrl: "https://example.com/img.webp" }),
+  ];
+  const result = selectInauguraciones(events, week);
+  assert.deepEqual(
+    result.map((e) => e.id),
+    ["jpeg-photo"],
+  );
+});
+
 test("selectNoTeLaPierdas: excludes events with no real photo", () => {
   const events = [makeEvent({ id: "with-photo", runEndDate: "2026-08-18" }), makeEvent({ id: "no-photo", runEndDate: "2026-08-18", imageUrl: null })];
   const result = selectNoTeLaPierdas(events, "2026-08-17", week, new Set());
