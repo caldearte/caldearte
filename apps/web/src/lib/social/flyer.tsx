@@ -119,7 +119,7 @@ const EXTRA_HEIGHT_FOR_SECOND_TITLE_LINE = 58; // 48px * 1.05 line-height + a sm
 const BOTTOM_BAND_TEXT_TOP_PADDING = 24;
 const PHOTO_TOP = TOP_BAND_HEIGHT;
 
-export function FlyerImage({ input, logoDataUri }: { input: FlyerEventInput; logoDataUri: string }) {
+export function FlyerImage({ input, logoDataUri, photoDataUri }: { input: FlyerEventInput; logoDataUri: string; photoDataUri: string }) {
   // Uppercased here in JS rather than via CSS text-transform, since it's
   // needed either way for FLYER-owned strings (destacada's fixed "no te
   // olvides visitar" is already correctly cased at the source) and JS's
@@ -206,7 +206,7 @@ export function FlyerImage({ input, logoDataUri }: { input: FlyerEventInput; log
       {/* Photo */}
       {/* eslint-disable-next-line @next/next/no-img-element -- Satori (next/og) only supports plain <img>, not next/image */}
       <img
-        src={input.imageUrl}
+        src={photoDataUri}
         alt=""
         style={{ position: "absolute", left: 0, top: PHOTO_TOP, width: FLYER_WIDTH, height: photoHeight, objectFit: "cover" }}
       />
