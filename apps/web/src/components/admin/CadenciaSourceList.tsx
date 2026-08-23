@@ -1,5 +1,7 @@
 export interface CadenciaSourceRow {
-  username: string;
+  // "@handle" for Instagram, the bare URL for every other category —
+  // CadenciaPage formats each before handing rows here.
+  label: string;
   lastFetchedAt: string | null;
   accepted: number;
   rejected: number;
@@ -30,7 +32,7 @@ function qualityLabel(accepted: number, rejected: number): string {
 
 export default function CadenciaSourceList({ sources }: { sources: CadenciaSourceRow[] }) {
   if (sources.length === 0) {
-    return <p className="font-geist text-[13px] text-text-primary/50 py-2">Ninguna cuenta en esta cadencia.</p>;
+    return <p className="font-geist text-[13px] text-text-primary/50 py-2">Ninguna fuente en esta cadencia.</p>;
   }
 
   return (
@@ -38,7 +40,7 @@ export default function CadenciaSourceList({ sources }: { sources: CadenciaSourc
       <table className="w-full font-geist text-[13px] text-text-primary border-collapse">
         <thead>
           <tr className="border-b border-text-primary/20 text-left">
-            <th className="py-2 pr-4">Cuenta</th>
+            <th className="py-2 pr-4">Fuente</th>
             <th className="py-2 pr-4">Calidad</th>
             <th className="py-2 pr-4 text-right">Días en esta cadencia</th>
             <th className="py-2 pr-4">Último fetch</th>
@@ -48,12 +50,12 @@ export default function CadenciaSourceList({ sources }: { sources: CadenciaSourc
           {sources.map((row) => {
             const days = daysSince(row.lastFetchedAt);
             return (
-              <tr key={row.username} className="border-b border-text-primary/10">
-                <td className="py-2 pr-4">
-                  @{row.username}
+              <tr key={row.label} className="border-b border-text-primary/10">
+                <td className="py-2 pr-4 break-all">
+                  {row.label}
                   {row.isInactive && <span className="ml-2 text-text-primary/40">(inactiva, no se revisa sola)</span>}
                 </td>
-                <td className="py-2 pr-4">{qualityLabel(row.accepted, row.rejected)}</td>
+                <td className="py-2 pr-4 whitespace-nowrap">{qualityLabel(row.accepted, row.rejected)}</td>
                 <td className="py-2 pr-4 text-right">{days !== null ? `${days}d` : "—"}</td>
                 <td className="py-2 pr-4 text-text-primary/60">{row.lastFetchedAt ? row.lastFetchedAt.slice(0, 10) : "nunca"}</td>
               </tr>

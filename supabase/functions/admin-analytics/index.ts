@@ -206,7 +206,19 @@ Deno.serve(async (req) => {
     accepted: number;
     rejected: number;
     possiblyDead: boolean;
+    // Which of the 3 non-Instagram bright-source pipelines this row
+    // belongs to — added 2026-08-23 for /admin/cadencia (Daniel wanted
+    // ALL bright sources there, not just Instagram, identified by
+    // category). All 3 share this same table (bright_source_fetch_state
+    // has no pipeline column of its own), so the category has to be
+    // derived from the row's own `url`: Google Alerts is tracked under a
+    // synthetic "google-alerts://..." key (never a real URL, see
+    // google-alerts-discovery/run.ts's GOOGLE_ALERTS_SOURCE_KEY), MAVI
+    // (headless) always uses its one fixed listing URL, and everything
+    // else here is a plain KNOWN_SOURCES web fetch.
+    category: "bright_source" | "headless" | "google_alerts";
   }> = [];
+  const MAVI_LISTING_URL = "https://mavi.uc.cl/exposiciones-actuales/";
   const instagramSources: Array<{
     username: string;
     lastFetchedAt: string | null;
@@ -256,7 +268,27 @@ Deno.serve(async (req) => {
         isInactive: row.is_inactive ?? false,
         consecutiveZeroYieldAtCap: row.consecutive_zero_yield_at_cap ?? 0,
       });
+    } else if (row.url.startsWith("google-alerts://")) {
+      // Only one row ever exists for this category (a single tracked
+      // feed, see GOOGLE_ALERTS_SOURCE_KEY) and its yield can't be
+      // attributed by hostname the way every other bright source's can
+      // — each entry points to a different, arbitrary external domain,
+      // not one consistent site. acceptedByPipeline/rejectedByPipeline
+      // (computed above from events/rejected_candidates' own `pipeline`
+      // column) is the correct, already-computed signal for it instead.
+      const accepted = acceptedByPipeline.get("google_alerts") ?? 0;
+      const rejected = rejectedByPipeline.get("google_alerts") ?? 0;
+      brightSources.push({
+        url: row.url,
+        lastFetchedAt: row.last_fetched_at,
+        intervalDays: row.interval_days,
+        accepted,
+        rejected,
+        possiblyDead: false,
+        category: "google_alerts",
+      });
     } else if (hostname) {
+      const category: "bright_source" | "headless" = row.url === MAVI_LISTING_URL ? "headless" : "bright_source";
       const accepted = acceptedDomains.get(hostname) ?? 0;
       const rejected = rejectedDomains.get(hostname) ?? 0;
       const hasYield = accepted > 0 || rejected > 0;
@@ -267,6 +299,7 @@ Deno.serve(async (req) => {
         accepted,
         rejected,
         possiblyDead: !hasYield && (atAdaptiveCap || row.last_fetched_at !== null),
+        category,
       });
     }
   }

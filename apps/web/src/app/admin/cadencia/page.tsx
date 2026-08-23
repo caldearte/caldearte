@@ -16,7 +16,7 @@ export default async function AdminCadenciaPage() {
 
   return (
     <AdminPageShell title="Cadencia — admin">
-      <CadenciaPage instagramSources={result.instagramSources} />
+      <CadenciaPage instagramSources={result.instagramSources} brightSources={result.brightSources} />
     </AdminPageShell>
   );
 }
