@@ -2,6 +2,10 @@ export interface CadenciaSourceRow {
   // "@handle" for Instagram, the bare URL for every other category —
   // CadenciaPage formats each before handing rows here.
   label: string;
+  // Daniel 2026-08-23: one flat list of cadence tiers regardless of
+  // origin, with the origin shown per-row instead of splitting into
+  // separate sections per category.
+  category: "Instagram" | "Web" | "Headless" | "Google Alerts";
   lastFetchedAt: string | null;
   accepted: number;
   rejected: number;
@@ -40,6 +44,7 @@ export default function CadenciaSourceList({ sources }: { sources: CadenciaSourc
       <table className="w-full font-geist text-[13px] text-text-primary border-collapse">
         <thead>
           <tr className="border-b border-text-primary/20 text-left">
+            <th className="py-2 pr-4">Origen</th>
             <th className="py-2 pr-4">Fuente</th>
             <th className="py-2 pr-4">Calidad</th>
             <th className="py-2 pr-4 text-right">Días en esta cadencia</th>
@@ -51,6 +56,11 @@ export default function CadenciaSourceList({ sources }: { sources: CadenciaSourc
             const days = daysSince(row.lastFetchedAt);
             return (
               <tr key={row.label} className="border-b border-text-primary/10">
+                <td className="py-2 pr-4 whitespace-nowrap">
+                  <span className="inline-block px-2 py-0.5 rounded-full bg-text-primary/10 text-[11px] uppercase tracking-wide">
+                    {row.category}
+                  </span>
+                </td>
                 <td className="py-2 pr-4 break-all">
                   {row.label}
                   {row.isInactive && <span className="ml-2 text-text-primary/40">(inactiva, no se revisa sola)</span>}
