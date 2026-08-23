@@ -984,8 +984,11 @@ timing/fragility cost from the main run entirely):
 - `apps/curator/src/headless-index.ts` + the `discover-headless-sources`
   npm script — separate entrypoint.
 - `.github/workflows/headless-bright-sources.yml` — separate workflow,
-  Sunday 07:00 UTC (1h after the main run) as of the 2026-08-23
-  Monday→Sunday shift, no `TAVILY_API_KEY` (this flow never searches).
+  Sunday ~07:12 UTC (1h after the main run) as of the 2026-08-23
+  Monday→Sunday shift — minute moved off :00 the same day (GitHub flags
+  the top of every hour as its highest-congestion time; real 19-51min
+  delays were observed across every cron in this repo on the first real
+  Sunday run), no `TAVILY_API_KEY` (this flow never searches).
   Installs Chromium only in this job, never the main one.
 - `lib/notify.ts`'s `HeadlessRunSummary`/`buildHeadlessSubject`/
   `buildHeadlessBody`/`sendHeadlessRunSummaryEmail` — a sibling to
@@ -1602,7 +1605,9 @@ a `schedule`-triggered run, not `workflow_dispatch`):
   weekly, the full 346-comuna rotation would have taken ~14 months
   instead of ~14 weeks. That's the intended effect this design was going
   for, not a side effect — moot now that it's paused.
-- **Every Sunday, 06:00 UTC** (moved from Monday 2026-08-23) —
+- **Every Sunday, ~06:07 UTC** (moved from Monday 2026-08-23; minute
+  moved off :00 the same day, see the headless-bright-sources.yml note
+  above) —
   `bright_sources_only: true`, comuna batch skipped entirely (the only
   branch left standing). Each bright source's own fetch cadence
   (`BRIGHT_SOURCE_INTERVAL_MS`, `run.ts`) dropped from 14 days to 7 to
@@ -3362,8 +3367,9 @@ the shared `BrightSourceItem` shape, so `curateBrightSourceItems`
 as any other bright source — no new prompt), `instagram-discovery/run.ts`
 (orchestrator), `instagram-index.ts` (entrypoint),
 `.github/workflows/instagram-bright-sources.yml` (its own cron, Sunday
-08:00 UTC as of the 2026-08-23 Monday→Sunday shift — offset from the main
-run and the other bright-source crons).
+~08:17 UTC as of the 2026-08-23 Monday→Sunday shift — offset from the main
+run and the other bright-source crons; minute moved off :00 the same day,
+see the headless-bright-sources.yml note above).
 
 **`fixedLocation`** (`{location, placeName}` on an account's config) — set
 only when the account is confirmed to operate from a single fixed
