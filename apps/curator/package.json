@@ -12,6 +12,7 @@
     "send-newsletter": "node --import tsx src/newsletter-index.ts",
     "publish-social": "node --import tsx src/social-publish-index.ts",
     "record-apify-usage": "node --import tsx src/apify-usage-snapshot-index.ts",
+    "record-instagram-insights": "node --import tsx src/instagram-insights-index.ts",
     "security-audit": "node --import tsx src/security-audit-index.ts",
     "poc-tavily": "node --env-file=../../.env --import tsx scripts/poc-tavily-discover.ts",
     "query-variant-test": "node --env-file=../../.env --import tsx scripts/query-variant-test.ts"

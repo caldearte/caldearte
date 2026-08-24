@@ -1,0 +1,42 @@
+name: Record Instagram Insights
+
+# Weekly engagement refresh (docs/roadmap.md, Fase 4) — Daniel asked
+# whether the deliberate Monday "inauguraciones" repeat (same content as
+# Sunday's, by design) is worth it or too soon after Sunday's own post.
+# Answering that needs real numbers over time: this snapshots the
+# account's followers_count/media_count once per run, and refreshes
+# reach/saved/like_count/comments_count for every post from the last 60
+# days (not just brand-new ones — engagement keeps climbing for days
+# after a post goes up).
+#
+# Monday evening, ~20:45 UTC (~17:45 Chile) — well after the day's own
+# publish-social.yml run (12:05 UTC) and every Sunday post, giving
+# engagement time to accrue before measuring. Not minute 0 — see
+# event-discovery.yml's own comment (top-of-hour congestion).
+on:
+  workflow_dispatch: {}
+  schedule:
+    - cron: "45 20 * * 1"
+
+jobs:
+  record-instagram-insights:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Record Instagram insights
+        run: pnpm --filter @caldearte/curator run record-instagram-insights
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          INSTAGRAM_ACCESS_TOKEN: ${{ secrets.INSTAGRAM_ACCESS_TOKEN }}
+          INSTAGRAM_BUSINESS_ACCOUNT_ID: ${{ secrets.INSTAGRAM_BUSINESS_ACCOUNT_ID }}

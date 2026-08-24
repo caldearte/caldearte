@@ -297,6 +297,7 @@ test(
       assert.deepEqual(postTypes, ["destacada", "no_te_la_pierdas"]);
     } finally {
       await client.from("social_post_log").delete().eq("week_start", "2026-08-17");
+      await client.from("instagram_posts").delete().eq("week_start", "2026-08-17");
       await client.from("events").delete().eq("region_id", regionId);
       await client.from("regions").delete().eq("id", regionId);
     }
