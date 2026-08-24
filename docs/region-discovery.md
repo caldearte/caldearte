@@ -1619,6 +1619,20 @@ a `schedule`-triggered run, not `workflow_dispatch`):
   genuinely-new items, was already handled by per-item dedup independent
   of fetch frequency). `headless-discovery`'s own weekly cron
   (`headless-bright-sources.yml`) works the same way.
+- **Every Wednesday, ~06:07 UTC — added 2026-08-24**, same stagger as
+  Sunday, across all 4 discovery workflows (event-discovery, headless,
+  instagram, google-alerts — NOT the newsletter, which stays Sunday-only,
+  a deliberate weekly digest rather than a discovery-frequency question).
+  Daniel: Wednesday's own `publish-social.yml` post ("no te la pierdas")
+  was otherwise only ever working off whatever the previous Sunday's run
+  found — anything announced Monday or Tuesday was invisible to it until
+  the FOLLOWING Sunday. Only possible because of the cadence-gate removal
+  above: with the old 7-day per-source/per-account gates, a Wednesday run
+  3 days after Sunday's would have found almost everything "not due" and
+  fetched nothing — Instagram's own `isInstagramAccountDue` had to drop
+  its time-elapsed check too (see `instagram-fetch-state.ts`'s own doc
+  comment), not just the 3 web/headless/Google Alerts pipelines that
+  already had no gate.
 
 ### Debugging one named bright source: `brightSourceUrlFilter`
 
