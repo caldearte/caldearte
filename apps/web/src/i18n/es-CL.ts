@@ -426,7 +426,7 @@ export const esCL = {
     // code).
     sectionHeadlinePlainStart: "RECIBE NUESTRA ",
     sectionHeadlineHighlight: "GUIA DE ARTE",
-    sectionHeadlinePlainEnd: " CADA LUNES.",
+    sectionHeadlinePlainEnd: " CADA SEMANA.",
     sectionEmailPlaceholder: "Pon tu mail aquí",
     sectionSubmit: "¡LA QUIERO!",
     sectionCaption: "¡No te pierdas ninguna inauguración!",
