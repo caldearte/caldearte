@@ -67,6 +67,25 @@ export interface AdminAnalyticsPayload {
     insertFailedCount: number;
     costUsd: number;
   }>;
+  // Instagram engagement (real question, 2026-08-24: is the deliberate
+  // Monday "inauguraciones" repeat worth it, or too soon after Sunday's
+  // own post?) — row-level, last 120 days, client buckets by
+  // granularity same as everything else here.
+  instagramPosts: Array<{
+    mediaId: string;
+    postType: "inauguracion" | "no_te_la_pierdas" | "destacada";
+    weekStart: string;
+    publishedAt: string;
+    reach: number | null;
+    saved: number | null;
+    likeCount: number | null;
+    commentsCount: number | null;
+  }>;
+  instagramAccountSnapshots: Array<{
+    snapshotDate: string;
+    followersCount: number;
+    mediaCount: number;
+  }>;
 }
 
 // Shared by every /admin/* page — same auth gate + fetch, extracted
