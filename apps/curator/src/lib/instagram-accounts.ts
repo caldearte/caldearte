@@ -846,6 +846,20 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
     addedAt: "2026-08-24",
     fixedLocation: { location: "Santiago", placeName: "Gallery +" },
   },
+  {
+    username: "museo.arteallimite",
+    note:
+      "Evaluada 2026-08-24. Museo Arte Al Límite, Lo Blanco, Panquehue, V " +
+      "Región (Valparaíso) — martes a sábado 10-18hrs. 4889 seguidores, " +
+      "vinculado a la revista/marca \"Arte al Límite\" " +
+      "(arteallimite.com, no tracked como fuente web). La grilla del " +
+      "perfil mezcla posts propios con reposts de la cuenta madre " +
+      "@arteallimite y relacionadas, pero Apify solo trae posts con " +
+      "ownerUsername exacto \"museo.arteallimite\" — esos reposts no " +
+      "entran. Local fijo confirmado.",
+    addedAt: "2026-08-24",
+    fixedLocation: { location: "Panquehue", placeName: "Museo Arte Al Límite" },
+  },
   // El resto de la lista la aporta Daniel — una decisión editorial, igual
   // que cada fuente brillante nueva se evaluó una por una. Confirmar
   // pública y activa antes de agregar cada cuenta.
