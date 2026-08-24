@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { toBrightSourceItem } from "./instagram-item.js";
+import { toBrightSourceItem, isCaptionWorthCurating } from "./instagram-item.js";
 import type { ApifyInstagramPost } from "./apify-instagram.js";
 import type { InstagramAccountConfig } from "./instagram-accounts.js";
 
@@ -127,4 +127,32 @@ test("toBrightSourceItem passes the account's fixedLocation as defaultLocation, 
 test("toBrightSourceItem maps publishedDate from the post's own timestamp (date part only)", () => {
   const item = toBrightSourceItem(POST, ACCOUNT);
   assert.equal(item.publishedDate, "2026-08-07");
+});
+
+test("isCaptionWorthCurating rejects a null caption", () => {
+  assert.equal(isCaptionWorthCurating(null), false);
+});
+
+test("isCaptionWorthCurating rejects a caption too thin to describe a real event — real rejection reason found in production: 'solo un handle de redes sociales sin información de evento'", () => {
+  assert.equal(isCaptionWorthCurating("@algunacuenta"), false);
+  assert.equal(isCaptionWorthCurating(""), false);
+});
+
+test("isCaptionWorthCurating rejects an unambiguous book-launch announcement", () => {
+  assert.equal(isCaptionWorthCurating("Este jueves lanzamiento de libro sobre archivo del artista, con conversación abierta al público"), false);
+  assert.equal(isCaptionWorthCurating("Los invitamos a la presentación de la publicación que reúne 10 años de trabajo curatorial"), false);
+});
+
+test("isCaptionWorthCurating accepts a real, substantial exhibition caption", () => {
+  assert.equal(
+    isCaptionWorthCurating("Inauguración de la exposición 'Rama torcida' de Juan Pérez, viernes 20 de agosto 19:00 hrs en el MAC Quinta Normal"),
+    true,
+  );
+});
+
+test("isCaptionWorthCurating does not false-positive on 'taller' inside an otherwise valid, substantial caption — too risky to keyword-filter blind (real venue names include it, e.g. @wall.galeriataller)", () => {
+  assert.equal(
+    isCaptionWorthCurating("Inauguración en Galería Taller Wall este sábado, exposición colectiva de artes visuales, entrada liberada"),
+    true,
+  );
 });

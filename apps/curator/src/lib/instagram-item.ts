@@ -42,6 +42,30 @@ function extractQuotedTitle(caption: string): string | null {
   return earliest?.text ?? null;
 }
 
+// Pre-Haiku deterministic filter, added 2026-08-24 after reviewing real
+// rejected_candidates reasons for the instagram pipeline — two patterns
+// stood out as safe to catch before spending an Anthropic call:
+//
+// 1. A caption too thin to possibly describe a real event ("Ítem es solo
+//    un handle de redes sociales sin información de evento" — a real
+//    rejection reason seen in production). MIN_CAPTION_LENGTH mirrors
+//    selection.ts's MIN_DESCRIPTION_LENGTH bar for the same reason: below
+//    this there's essentially no chance of a date+location+event.
+// 2. "Lanzamiento de libro"/"presentación de publicación" — book-launch
+//    announcements, seen twice in real rejections, always rejected, never
+//    approved: unambiguous phrasing, unlike "taller" or "concierto" (both
+//    appear inside otherwise-valid exhibition posts as a side detail, or
+//    as part of a real venue's own name like @wall.galeriataller — too
+//    risky to keyword-filter blind).
+const MIN_CAPTION_LENGTH = 30;
+const BOOK_LAUNCH_PATTERN = /lanzamiento de (un )?libro|presentaci[oó]n de (la )?publicaci[oó]n|presentaci[oó]n de libro/i;
+
+export function isCaptionWorthCurating(caption: string | null): boolean {
+  if (!caption || caption.trim().length < MIN_CAPTION_LENGTH) return false;
+  if (BOOK_LAUNCH_PATTERN.test(caption)) return false;
+  return true;
+}
+
 export function toBrightSourceItem(post: ApifyInstagramPost, account: InstagramAccountConfig): BrightSourceItem {
   const caption = post.caption ?? "";
   // Instagram has no "title" field — derived from the caption. Imperfect,

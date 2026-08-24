@@ -3382,12 +3382,37 @@ assigns it directly to every post from that account, overriding whatever
 Haiku might otherwise infer; setting it for a multi-venue account would
 silently mislabel posts about a different real venue.
 
-**Per-account adaptive cadence** (unlike Google Alerts' single shared
-7-day feed) — each account gets its own `bright_source_fetch_state` row,
-escalating 14 → 21 → 28 days when a fetch turns up nothing new, resetting
-to 14 when it does. Necessary because account posting frequency varies
-wildly (some post daily, some monthly) and a shared fixed interval would
-either waste Apify calls on quiet accounts or miss active ones.
+**Flat weekly cadence, every account** (`instagram-fetch-state.ts`) —
+changed 2026-08-24 from an earlier escalating ladder (7 → 14 → 21 → 28 →
+semestral → inactive) that turned out to be solving a cost problem that
+doesn't really exist: `apify/instagram-post-scraper` is pay-per-RESULT
+(~$0.0025/post), not per-account-queried, so a quiet account checked
+weekly costs the same ~$0 as one checked every 28 days — a zero-yield
+fetch returns 0 results either way (confirmed against real
+`platform_cost_snapshots` data before making the change). Checking every
+account weekly instead of on a stretched-out schedule also closes a real
+gap: `RESULTS_LIMIT_PER_ACCOUNT` (5) could silently miss posts on an
+account that posted more than 5 times since its last (infrequent) check.
+The only thing kept from the old ladder is a dormancy backstop: an
+account with nothing new for a full year (52 consecutive weekly checks)
+is marked inactive so a genuinely dead/abandoned account doesn't get
+polled forever — same `bright_source_fetch_state.is_inactive` mechanism
+as before, just a simpler path to get there.
+
+**Pre-Haiku deterministic filter** (`instagram-item.ts`'s
+`isCaptionWorthCurating`, added 2026-08-24) — catches two patterns found
+by reviewing real `rejected_candidates` reasons for this pipeline before
+they ever reach Haiku: a caption too thin to describe a real event
+(under ~30 chars — mirrors `selection.ts`'s `MIN_DESCRIPTION_LENGTH` bar)
+and an unambiguous "lanzamiento de libro"/"presentación de publicación"
+phrase (seen twice in real rejections, never once a false positive).
+Deliberately does NOT keyword-filter on "taller" or "concierto" despite
+both appearing often in real rejections — too risky: real venue names
+include "taller" (`@wall.galeriataller`), and "concierto"/"conversatorio"
+sometimes appear as a side detail inside an otherwise-valid exhibition
+post, not the whole point of it. The actual dollar savings from this
+filter are marginal (Haiku cost for this pipeline is already ~$0.02-0.05
+per run) — the value is precision, not cost.
 
 **Evaluation playbook for adding a new account** (used ~40 times
 2026-08-14, see the entry below): fetch 5-6 real recent posts (no date

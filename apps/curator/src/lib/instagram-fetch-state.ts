@@ -1,55 +1,42 @@
-// Adaptive per-account fetch cadence for Instagram bright sources —
-// distinct from the shared isSourceDue/BRIGHT_SOURCE_INTERVAL_MS every
-// other bright source uses (event-discovery/run.ts). Ladder: a new
-// account starts at 7 days; a fetch that finds nothing genuinely new for
-// that account pushes it out one step (7 -> 14 -> 21 -> 28, capped there)
-// — an account that posts rarely shouldn't burn an Apify fetch every
-// cycle for nothing. A fetch that DOES find something new resets the
-// account back to 7. Stored on the same bright_source_fetch_state table
-// every bright source already uses (interval_days column, added
-// 20260813040000 — nullable, NULL for every non-Instagram row, which
-// keeps using the shared default elsewhere).
+// Flat weekly fetch cadence for every Instagram bright source, 2026-08-24
+// — replaces the earlier escalating ladder (7 -> 14 -> 21 -> 28 ->
+// semestral -> inactive). Real data killed the cost assumption the
+// ladder was built on: Apify's `apify/instagram-post-scraper` is
+// pay-per-RESULT (~$0.0025/post), not per-account-queried, so a quiet
+// account checked weekly costs the same ~$0 as one checked every 28
+// days — a zero-yield fetch returns 0 results either way. Checking
+// weekly instead of on a stretched-out cadence also closes a real gap:
+// RESULTS_LIMIT_PER_ACCOUNT (5, apify-instagram.ts) could silently miss
+// posts on an account that posted more than 5 times since its last
+// (infrequent) check. Simulated the real cost of flat-weekly-for-all
+// against actual platform_cost_snapshots data before making this change
+// — ~1.5x more account-checks/week, negligible in absolute dollars.
 //
-// Floor lowered 14 -> 7 days, 2026-08-23 (Daniel's explicit request,
-// after the first real Sunday run only found 2 inauguraciones nationwide
-// — the 14-day floor was suspected of missing real posts, not just
-// costing more to check sooner). ESCALATION_STEP_DAYS/MAX_INTERVAL_DAYS
-// unchanged (still 7 and 28) — lowering only the floor keeps the ladder's
-// step size consistent (7 -> 14 -> 21 -> 28) rather than needing a new
-// step value. Every account's stored interval_days was shifted down by
-// one step (14->7, 21->14, 28 unchanged) the same day, in the same
-// migration that lowered DEFAULT_INTERVAL_DAYS — see
-// supabase/migrations/ for the exact statement.
-//
-// Extended 2026-08-15 with a dormancy path (Daniel's explicit request,
-// given right after reviewing several IG accounts worth adding despite
-// low current density): 3 consecutive empty cycles AT the 28-day cap
-// drops the account to a 182-day ("semestral") cadence; 2 consecutive
-// empty semesters at THAT cadence marks it inactive — never
-// automatically fetched again (see isInstagramAccountDue). This is what
-// makes it safe to add a "good venue, currently quiet" account rather
-// than only ones already posting often: cost decays on its own instead
-// of burning an Apify fetch indefinitely on a dead account.
+// The escalation ladder's dormancy path is kept, simplified: an account
+// with nothing new for a full year of weekly checks (52 in a row) is
+// marked inactive so a genuinely dead/abandoned account doesn't get
+// polled forever. Re-activating one (if it ever starts posting again) is
+// a manual action, not automatic — see instagram-accounts.ts for how to
+// do that. Reuses the same `interval_days`/`consecutive_zero_yield_at_cap`
+// columns every bright source already has (bright_source_fetch_state) —
+// interval_days is now always written as 7 for an Instagram row, and
+// consecutive_zero_yield_at_cap counts weeks instead of cycles-at-cap; no
+// migration needed, just a change in what these columns mean for this
+// pipeline.
 import { getSupabaseClient } from "./supabase-client.js";
 import type { InstagramAccountConfig } from "./instagram-accounts.js";
 
 export const DEFAULT_INTERVAL_DAYS = 7;
-const ESCALATION_STEP_DAYS = 7;
-export const MAX_INTERVAL_DAYS = 28;
-export const SEMESTRAL_INTERVAL_DAYS = 182;
-export const ZERO_YIELD_CYCLES_BEFORE_SEMESTRAL = 3;
-export const ZERO_YIELD_SEMESTERS_BEFORE_INACTIVE = 2;
+export const ZERO_YIELD_WEEKS_BEFORE_INACTIVE = 52;
 
 export interface InstagramAccountState {
   lastFetchedAt: string | null;
-  intervalDays: number;
-  consecutiveZeroYieldAtCap: number;
+  consecutiveZeroYieldWeeks: number;
   isInactive: boolean;
 }
 
 export interface NextFetchState {
-  intervalDays: number;
-  consecutiveZeroYieldAtCap: number;
+  consecutiveZeroYieldWeeks: number;
   isInactive: boolean;
 }
 
@@ -63,7 +50,7 @@ export async function loadInstagramFetchState(accounts: InstagramAccountConfig[]
 
   const { data, error } = await getSupabaseClient()
     .from("bright_source_fetch_state")
-    .select("url, last_fetched_at, interval_days, consecutive_zero_yield_at_cap, is_inactive")
+    .select("url, last_fetched_at, consecutive_zero_yield_at_cap, is_inactive")
     .in("url", urls);
 
   if (error) {
@@ -75,8 +62,7 @@ export async function loadInstagramFetchState(accounts: InstagramAccountConfig[]
       row.url,
       {
         lastFetchedAt: row.last_fetched_at,
-        intervalDays: row.interval_days ?? DEFAULT_INTERVAL_DAYS,
-        consecutiveZeroYieldAtCap: row.consecutive_zero_yield_at_cap ?? 0,
+        consecutiveZeroYieldWeeks: row.consecutive_zero_yield_at_cap ?? 0,
         isInactive: row.is_inactive ?? false,
       },
     ]),
@@ -85,13 +71,13 @@ export async function loadInstagramFetchState(accounts: InstagramAccountConfig[]
 
 // An inactive account is never due — the whole point of the dormancy
 // path above is to stop paying for Apify fetches on an account that's
-// shown nothing for a full year+ at the slowest cadence. Re-activating
-// one (if it ever starts posting again) is a manual action, not
-// automatic — see instagram-accounts.ts for how to do that.
+// shown nothing for a full year. Re-activating one (if it ever starts
+// posting again) is a manual action, not automatic — see
+// instagram-accounts.ts for how to do that.
 export function isInstagramAccountDue(state: InstagramAccountState | undefined, now: Date): boolean {
   if (state?.isInactive) return false;
   if (!state?.lastFetchedAt) return true;
-  const intervalMs = state.intervalDays * 24 * 60 * 60 * 1000;
+  const intervalMs = DEFAULT_INTERVAL_DAYS * 24 * 60 * 60 * 1000;
   return now.getTime() - new Date(state.lastFetchedAt).getTime() >= intervalMs;
 }
 
@@ -106,43 +92,18 @@ export function accountCutoffDate(state: InstagramAccountState | undefined, now:
   return new Date(now.getTime() - DEFAULT_INTERVAL_DAYS * 24 * 60 * 60 * 1000);
 }
 
-// The full cadence state machine:
-// - Any genuinely new post -> reset all the way back to 7 days, streak
-//   cleared, never inactive.
-// - Nothing new, still below the 28-day cap -> plain +7 step (7 -> 14 ->
-//   21 -> 28).
-// - Nothing new, AT the 28-day cap -> count the empty streak; the 3rd
-//   consecutive empty cycle at this cap drops to the 182-day semestral
-//   cadence (streak resets for the new tier).
-// - Nothing new, AT the semestral cadence -> count the empty streak; the
-//   2nd consecutive empty semester marks the account inactive (cadence
-//   itself stays at 182 — isInstagramAccountDue is what actually stops
-//   fetching it, not the interval).
+// Any genuinely new post resets the zero-yield streak to 0 (never
+// inactive). Nothing new just increments the streak; the 52nd
+// consecutive empty week marks the account inactive.
 export function nextFetchState(
-  state: Pick<InstagramAccountState, "intervalDays" | "consecutiveZeroYieldAtCap"> | undefined,
+  state: Pick<InstagramAccountState, "consecutiveZeroYieldWeeks"> | undefined,
   foundNewPost: boolean,
 ): NextFetchState {
   if (foundNewPost) {
-    return { intervalDays: DEFAULT_INTERVAL_DAYS, consecutiveZeroYieldAtCap: 0, isInactive: false };
+    return { consecutiveZeroYieldWeeks: 0, isInactive: false };
   }
-
-  const currentInterval = state?.intervalDays ?? DEFAULT_INTERVAL_DAYS;
-
-  if (currentInterval < MAX_INTERVAL_DAYS) {
-    return { intervalDays: Math.min(currentInterval + ESCALATION_STEP_DAYS, MAX_INTERVAL_DAYS), consecutiveZeroYieldAtCap: 0, isInactive: false };
-  }
-
-  if (currentInterval === MAX_INTERVAL_DAYS) {
-    const zeroStreak = (state?.consecutiveZeroYieldAtCap ?? 0) + 1;
-    if (zeroStreak >= ZERO_YIELD_CYCLES_BEFORE_SEMESTRAL) {
-      return { intervalDays: SEMESTRAL_INTERVAL_DAYS, consecutiveZeroYieldAtCap: 0, isInactive: false };
-    }
-    return { intervalDays: MAX_INTERVAL_DAYS, consecutiveZeroYieldAtCap: zeroStreak, isInactive: false };
-  }
-
-  // Already at semestral cadence.
-  const zeroStreak = (state?.consecutiveZeroYieldAtCap ?? 0) + 1;
-  return { intervalDays: SEMESTRAL_INTERVAL_DAYS, consecutiveZeroYieldAtCap: zeroStreak, isInactive: zeroStreak >= ZERO_YIELD_SEMESTERS_BEFORE_INACTIVE };
+  const zeroStreak = (state?.consecutiveZeroYieldWeeks ?? 0) + 1;
+  return { consecutiveZeroYieldWeeks: zeroStreak, isInactive: zeroStreak >= ZERO_YIELD_WEEKS_BEFORE_INACTIVE };
 }
 
 export async function recordInstagramFetchState(account: InstagramAccountConfig, now: Date, nextState: NextFetchState): Promise<void> {
@@ -150,8 +111,8 @@ export async function recordInstagramFetchState(account: InstagramAccountConfig,
   const { error } = await client.from("bright_source_fetch_state").upsert({
     url: instagramAccountProfileUrl(account),
     last_fetched_at: now.toISOString(),
-    interval_days: nextState.intervalDays,
-    consecutive_zero_yield_at_cap: nextState.consecutiveZeroYieldAtCap,
+    interval_days: DEFAULT_INTERVAL_DAYS,
+    consecutive_zero_yield_at_cap: nextState.consecutiveZeroYieldWeeks,
     is_inactive: nextState.isInactive,
   });
   if (error) {
