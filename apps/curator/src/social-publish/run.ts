@@ -278,6 +278,19 @@ export async function run(deps: RunDeps = {}): Promise<void> {
     const publishedId = await publish(instagramConfig, imageUrls, caption);
     console.log(`[social-publish] ${type}: published, Instagram media id ${publishedId}.`);
 
+    // Real engagement data (reach/saved/likes/comments) is filled in
+    // later by a separate weekly cron (instagram-insights/run.ts) — this
+    // just records that the post exists at all, since publishedId was
+    // only ever logged before 2026-08-24, never persisted. Motivated by
+    // a real question: is Monday's deliberate inauguracion repeat (same
+    // content as Sunday's, by design) worth it, or too soon after
+    // Sunday's own post to add real reach? Needs real numbers over time
+    // to answer, not a one-off log line.
+    const { error: postLogError } = await supabase
+      .from("instagram_posts")
+      .insert({ media_id: publishedId, post_type: type, week_start: week.start, published_at: now.toISOString() });
+    if (postLogError) console.error(`[social-publish] ${type}: published successfully but failed to record instagram_posts row: ${postLogError.message}`);
+
     if (type !== "inauguracion") {
       const rows = dynamicSlides.map((e) => ({ event_id: e.id, post_type: type, week_start: week.start }));
       const { error } = await supabase.from("social_post_log").insert(rows);
