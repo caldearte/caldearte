@@ -13,11 +13,10 @@ export interface CadenciaSourceRow {
   consecutiveZeroYieldAtCap: number;
 }
 
-// Días desde que la cuenta llegó a SU cadencia actual — last_fetched_at
-// se actualiza junto con interval_days en cada fetch real
-// (recordInstagramFetchState los escribe en el mismo upsert), así que
-// "última vez que se revisó" y "desde cuándo tiene este intervalo" son
-// siempre el mismo dato — no hay que guardar nada nuevo para esto.
+// Días desde el último fetch real. Ya no hay tramos de cadencia que
+// "alcanzar" (eliminados 2026-08-24 — todas las fuentes corren en cada
+// disparo de su cron) — esta columna es puramente informativa, frescura
+// del dato, no un indicador de en qué escalón está la cuenta.
 function daysSince(iso: string | null): number | null {
   if (!iso) return null;
   return Math.floor((Date.now() - new Date(iso).getTime()) / (24 * 60 * 60 * 1000));
@@ -47,7 +46,7 @@ export default function CadenciaSourceList({ sources }: { sources: CadenciaSourc
             <th className="py-2 pr-4">Origen</th>
             <th className="py-2 pr-4">Fuente</th>
             <th className="py-2 pr-4">Calidad</th>
-            <th className="py-2 pr-4 text-right">Días en esta cadencia</th>
+            <th className="py-2 pr-4 text-right">Hace (días)</th>
             <th className="py-2 pr-4">Último fetch</th>
           </tr>
         </thead>

@@ -32,7 +32,11 @@ regions (one row per COMUNA despite the table name — 346 Chile rows as of
   status (not_started | active | saturated | excluded),
   exclusion_reason (nullable; e.g. "OFAC sanctions" for North Korea),
   search_frequency (weekly | monthly),
-  consecutive_zero_yield_runs (int, drives the adaptive-cadence logic),
+  consecutive_zero_yield_runs (int) — both this and search_frequency are
+    DEAD: event-discovery/run.ts reads neither (comuna coverage is a
+    fixed weekly-batch pass, no saturation state machine — see that
+    file's own header comment), left in the schema unread rather than
+    migrated away for no functional reason,
   last_run_at, created_at
 
 events

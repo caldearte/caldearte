@@ -12,14 +12,17 @@ import CadenciaSourceList, { type CadenciaSourceRow } from "./CadenciaSourceList
 // propia.
 //
 // Colapsado a 2 tramos, 2026-08-24: la escalera Instagram (7/14/21/28/
-// semestral) se reemplazó por una cadencia plana semanal para todas las
-// cuentas (ver instagram-fetch-state.ts) — real, no ahorraba lo que se
-// pensaba, ya que Apify cobra por resultado devuelto, no por cuenta
-// consultada, así que una cuenta silenciosa cuesta ~$0 sin importar la
-// frecuencia de chequeo. Con eso, los tramos intermedios quedan siempre
-// vacíos — solo "semanal" e "inactivas" tienen sentido ahora.
+// semestral) se reemplazó por una cadencia plana para todas las cuentas
+// (ver instagram-fetch-state.ts) — real, no ahorraba lo que se pensaba,
+// ya que Apify cobra por resultado devuelto, no por cuenta consultada,
+// así que una cuenta silenciosa cuesta ~$0 sin importar la frecuencia de
+// chequeo. Mismo día se agregó una segunda corrida semanal (miércoles,
+// además de domingo) a las 4 fuentes de discovery — el bucket "7" sigue
+// siendo el único tramo activo (interval_days se escribe fijo en 7 solo
+// para este dashboard, no gatilla nada), pero hoy corre 2x/semana, no
+// 1x — la etiqueta ya no dice "semanal" para no sugerir lo contrario.
 const TIERS: Array<{ key: string; label: string }> = [
-  { key: "7", label: "Semanal (7d)" },
+  { key: "7", label: "Activas (sin cadencia real)" },
   { key: "inactive", label: "Inactivas" },
 ];
 
@@ -103,12 +106,13 @@ export default function CadenciaPage({
             que casi no producen eventos reales.
           </li>
           <li>
-            <strong>Cuentas cerca del año sin nada nuevo</strong> (`consecutiveZeroYieldAtCap` alto, sin llegar aún a inactiva) —
-            candidatas a revisar manualmente antes de que se marquen inactivas solas.
+            <strong>Cuentas con muchos chequeos vacíos seguidos</strong> (`consecutiveZeroYieldAtCap` alto, sin llegar aún a
+            inactiva — hoy corriendo 2x/semana, así que ~6 meses en vez de ~1 año) — candidatas a revisar manualmente antes de que
+            se marquen inactivas solas.
           </li>
           <li>
-            <strong>Volumen nacional de inauguraciones por semana</strong>, antes vs. después de pasar a cadencia plana semanal
-            (2026-08-24) — la métrica que originó este ajuste.
+            <strong>Volumen nacional de inauguraciones por semana</strong>, antes vs. después de pasar a cadencia plana (2026-08-24)
+            y de agregar la corrida de miércoles (2026-08-24) — la métrica que originó ambos ajustes.
           </li>
           <li>
             <strong>Google Alerts sin yield atribuible por dominio</strong> — su calidad se mide a nivel de pipeline completo (una
