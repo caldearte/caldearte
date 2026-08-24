@@ -23,10 +23,20 @@ import { publishInstagramCarousel, verifyInstagramAccount, type InstagramClientC
 const SITE_URL = "https://www.caldearte.com";
 const CLOSING_SLIDE_URL = `${SITE_URL}/social/ig-post-cierre.png`;
 
+// Keyword-first openers (2026-08-23) — Instagram's own discovery model
+// reads caption text (the first line especially) to decide who a post is
+// for, now that hashtags are mostly a categorization signal rather than
+// a real discovery lever (Mosseri, 2026). "Chile" stays fixed since
+// every carousel is nationwide, not comuna-specific — which comunas show
+// up changes carousel to carousel (diversifyByComuna), so a caption
+// can't name one without being wrong most weeks.
 const CAPTIONS: Record<SocialPostType, string> = {
-  inauguracion: "Inauguraciones de esta semana. Desliza para ver todas — el resto de la agenda está en el link de la bio.",
-  no_te_la_pierdas: "Últimos días para estas exposiciones. Más info en el link de la bio.",
-  destacada: "Algunas exposiciones para visitar esta semana. Toda la agenda en el link de la bio.",
+  inauguracion:
+    "Inauguraciones de arte en Chile esta semana: exposiciones nuevas en Santiago y regiones. Desliza para ver todas — la agenda completa está en el link de la bio.",
+  no_te_la_pierdas:
+    "Últimos días de estas exposiciones de arte contemporáneo en Chile — cierran esta semana. Más info y toda la agenda en el link de la bio.",
+  destacada:
+    "Exposiciones de arte para visitar esta semana en Chile — muestras, galerías y espacios culturales. Toda la agenda en el link de la bio.",
 };
 
 type EventRow = Tables<"events">;
