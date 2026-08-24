@@ -709,6 +709,103 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
       "Haiku infiere ubicación por post, igual que @ilposto.cl.",
     addedAt: "2026-08-24",
   },
+  {
+    username: "museobaburizza",
+    note:
+      "Evaluada 2026-08-24. Museo Baburizza (Museo Municipal de Bellas " +
+      "Artes de Valparaíso), en el histórico Palacio Baburizza — alberga " +
+      "una de las 4 colecciones de pintura europea/chilena más " +
+      "importantes de Chile. 30.711 seguidores, activa a diario (varios " +
+      "posts por día), tageada por @biav_valpo (Bienal Internacional de " +
+      "Artes de Valparaíso) confirmando que es un nodo activo del " +
+      "circuito de arte de Valparaíso. Local fijo confirmado. " +
+      "fixedLocation.",
+    addedAt: "2026-08-24",
+    fixedLocation: { location: "Valparaíso", placeName: "Museo Baburizza" },
+  },
+  {
+    username: "agac.cl",
+    note:
+      "Evaluada 2026-08-24. AGAC Chile, Asociación gremial de galerías de " +
+      "arte contemporáneo de Chile — no es un venue único, agrupa varias " +
+      "galerías miembro. Rendimiento esperado moderado: sus posts propios " +
+      "tienden a ser institucionales (ej. contenido educativo sobre el " +
+      "mercado del arte), no anuncios de exposición puntuales — la señal " +
+      "de exhibición real viene sobre todo de sus reposts/tags de " +
+      "galerías miembro (Museo Ralli Santiago, Galería Artespacio, " +
+      "Galería Espacio O — esta última ya es fuente propia, redundancia " +
+      "esperada ahí). Cubre galerías que hoy no tenemos individualmente " +
+      "(Ralli Santiago, Artespacio). Sin fixedLocation — no es un venue.",
+    addedAt: "2026-08-24",
+  },
+  {
+    username: "galeria1712",
+    note:
+      "Evaluada 2026-08-24. Galería 1712, Garibaldi 1712, Ñuñoa — dirigida " +
+      "por Francisco Cintolesi y Oscar Zenteno (25 años de trayectoria " +
+      "como galerista). Calendario fijo confirmado: apertura mensual, " +
+      "primer sábado de cada mes — coincide con la cadencia real " +
+      "observada (posts cada 2-4 semanas, consistente). Highlights con " +
+      "nombres de muestras pasadas (RLF, Matute#3, Pantano, Ejercicios) " +
+      "confirman que documentan cada exposición individualmente. Local " +
+      "fijo confirmado.",
+    addedAt: "2026-08-24",
+    fixedLocation: { location: "Ñuñoa", placeName: "Galería 1712" },
+  },
+  {
+    username: "espacio_londres",
+    note:
+      "Evaluada 2026-08-24. Lab. Cultural Espacio Londres, en el histórico " +
+      "Barrio París-Londres, Santiago — 57.060 seguidores, muy activa " +
+      "(posts cada 2-3 días). Espacio cultural multi-propósito, no una " +
+      "galería pura: highlights son \"Mercado\" (feria de artesanía, " +
+      "@mercadoparislondres, tageada seguido), \"Barrio\" (patrimonio), " +
+      "\"Restauración\" (restauración del edificio) y \"Galería\" — este " +
+      "último confirma programación de exposiciones real, pero mezclada " +
+      "con contenido de mercado/patrimonio urbano fuera de alcance. " +
+      "Rendimiento esperado moderado, mismo perfil que @agac.cl. Local " +
+      "fijo confirmado (Londres 55, Santiago — edificio patrimonial de " +
+      "1925; primer piso dedicado a exposiciones de arte, segundo piso a " +
+      "talleres/charlas), a diferencia de @agac.cl que no es un venue.",
+    addedAt: "2026-08-24",
+    fixedLocation: { location: "Santiago", placeName: "Espacio Londres" },
+  },
+  {
+    username: "fundacionjoseventurelli",
+    note:
+      "Evaluada 2026-08-24. Fundación José Venturelli, dedicada a " +
+      "preservar y difundir la obra del muralista chileno José " +
+      "Venturelli (creada por su hija Paz, curador Christian Leyssen " +
+      "desde 2013) — real, con actividad curatorial genuina (proyectos " +
+      "de exhibición, educativos y editoriales), 5982 seguidores, muy " +
+      "activa (varios reels/semana). Sin local fijo: sus muestras se " +
+      "montan en distintos venues (GAM, Museo de la Memoria, Espacio " +
+      "Matta, MNBA, Centro Cultural La Moneda — este ya es fuente " +
+      "propia) — Haiku infiere ubicación por post, igual que " +
+      "@ilposto.cl. Contenido mixto: bastantes reels de tono " +
+      "educativo/conmemorativo (Año Nuevo Chino, vínculo cultural " +
+      "Chile-China) mezclado con lo curatorial. Rendimiento esperado " +
+      "moderado.",
+    addedAt: "2026-08-24",
+  },
+  {
+    username: "culturaprovidencia",
+    note:
+      "Evaluada 2026-08-24. Fundación Cultural Providencia, cuenta " +
+      "oficial de la Municipalidad de Providencia — 129.969 seguidores, " +
+      "activísima (varios posts diarios). Sede en el Palacio Schacht (Av. " +
+      "Nueva Providencia 1995 esq. Pedro de Valdivia), con 5 salas de " +
+      "exposición dedicadas (una de 100m² + tres de 40m² + una en el " +
+      "auditorio) mostrando pintura, escultura, fotografía, cerámica, " +
+      "textil — programación de arte visual real y sustancial, mismo " +
+      "calibre que @museobaburizza. Contenido mixto: también cubre " +
+      "teatro (Teatro Oriente Providencia) y danza tradicional del mismo " +
+      "centro cultural, explícitamente fuera de alcance por política — " +
+      "el filtro de disciplina de Haiku debe encargarse de eso. Local " +
+      "fijo confirmado.",
+    addedAt: "2026-08-24",
+    fixedLocation: { location: "Providencia", placeName: "Fundación Cultural Providencia (Palacio Schacht)" },
+  },
   // El resto de la lista la aporta Daniel — una decisión editorial, igual
   // que cada fuente brillante nueva se evaluó una por una. Confirmar
   // pública y activa antes de agregar cada cuenta.
