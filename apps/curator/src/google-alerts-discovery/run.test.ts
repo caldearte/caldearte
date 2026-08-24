@@ -37,33 +37,10 @@ test(
     const { run } = await import("./run.js");
     const client = getSupabaseClient();
 
-    await t.test("not due yet — skips the fetch entirely and still sends a summary", async () => {
-      await client.from("bright_source_fetch_state").delete().eq("url", SOURCE_KEY);
-      await client.from("bright_source_fetch_state").upsert({ url: SOURCE_KEY, last_fetched_at: NOW.toISOString() });
-
-      let fetchCalled = false;
-      let sentSummary: GoogleAlertsRunSummary | undefined;
-
-      try {
-        await run({
-          now: NOW,
-          fetchGoogleAlertEntriesFn: async () => {
-            fetchCalled = true;
-            return [];
-          },
-          sendGoogleAlertsRunSummaryEmailFn: async (summary) => {
-            sentSummary = summary;
-          },
-        });
-
-        assert.equal(fetchCalled, false, "not due — fetchGoogleAlertEntries must never be called");
-        assert.equal(sentSummary?.dueThisRun, false);
-      } finally {
-        await client.from("bright_source_fetch_state").delete().eq("url", SOURCE_KEY);
-      }
-    });
-
-    await t.test("due — fetches, fetches the real article page, curates, inserts, and records the fetch state", async () => {
+    // No "not due yet" case anymore, 2026-08-24 — this pipeline has no
+    // cadence gate, it always fetches when its own weekly cron fires
+    // (see run.ts's own doc comment).
+    await t.test("fetches, fetches the real article page, curates, inserts, and records the fetch state", async () => {
       await client.from("bright_source_fetch_state").delete().eq("url", SOURCE_KEY);
 
       const entry: GoogleAlertEntry = {
@@ -108,7 +85,6 @@ test(
           },
         });
 
-        assert.equal(sentSummary?.dueThisRun, true);
         assert.equal(sentSummary?.candidates.total, 1);
         assert.equal(sentSummary?.candidates.insertedCount, 1);
         assert.equal(sentSummary?.eventGroups[0]?.label, "Google Alerts");
@@ -120,7 +96,7 @@ test(
         assert.equal(inserted?.[0].pipeline, "google_alerts", "a Google Alerts-derived event is attributed to the google_alerts pipeline");
 
         const { data: fetchState } = await client.from("bright_source_fetch_state").select("url").eq("url", SOURCE_KEY);
-        assert.equal(fetchState?.length, 1, "fetch state recorded so the next run doesn't re-fetch for 7 days");
+        assert.equal(fetchState?.length, 1, "fetch state recorded for last_fetched_at observability, even though nothing gates on it anymore");
       } finally {
         await client.from("events").delete().eq("title", entry.title);
         await client.from("bright_source_fetch_state").delete().eq("url", SOURCE_KEY);

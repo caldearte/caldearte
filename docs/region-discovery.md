@@ -996,9 +996,10 @@ timing/fragility cost from the main run entirely):
   posture), not a forced reuse: this run has no comunas or per-unit
   failures in the same sense, so `RunSummary`'s shape doesn't fit
   cleanly.
-- Reuses `bright_source_fetch_state` and its existing 14-day
-  `isSourceDue`/`recordBrightSourcesFetched` cadence mechanism — MAVI's
-  listing URL is just another row, no new table/migration needed.
+- Reuses `bright_source_fetch_state`/`recordBrightSourcesFetched` for
+  observability (last-fetched display only, no cadence gate since
+  2026-08-24) — MAVI's listing URL is just another row, no new
+  table/migration needed.
 
 Why Haiku is still necessary despite the API already giving clean,
 complete data (a real question raised while building this): the API
@@ -1511,9 +1512,9 @@ due comunas, so a manual bright-sources check/refresh always spent real
 Tavily/Haiku cost on a comuna batch nobody asked for.
 
 Added `RunDeps.brightSourcesOnly` (`run.ts`): skips `getUnitsDueForRun`
-and the comuna loop entirely (`units = []`), leaving bright sources'
-own 14-day due-cadence (`isSourceDue`) completely untouched — it doesn't
-force bright sources to run, only removes the comuna batch as a side
+and the comuna loop entirely (`units = []`) — bright sources themselves
+always run regardless (no cadence gate since 2026-08-24, see "Dual
+cadence" below), this flag only removes the comuna batch as a side
 effect of checking. Wired through `index.ts` (`BRIGHT_SOURCES_ONLY` env
 var) and `event-discovery.yml`'s `workflow_dispatch` as a boolean input
 — tick it on a manual run to skip the comuna batch.
@@ -1609,26 +1610,30 @@ a `schedule`-triggered run, not `workflow_dispatch`):
   moved off :00 the same day, see the headless-bright-sources.yml note
   above) —
   `bright_sources_only: true`, comuna batch skipped entirely (the only
-  branch left standing). Each bright source's own fetch cadence
-  (`BRIGHT_SOURCE_INTERVAL_MS`, `run.ts`) dropped from 14 days to 7 to
-  match — halved, so this actually finds something new most weeks
-  instead of every other one. `headless-discovery`'s own weekly cron
-  (`headless-bright-sources.yml`) needed no change — already weekly, and
-  it reuses this same constant.
+  branch left standing). Each bright source used to have its own 7-day
+  fetch cadence (`BRIGHT_SOURCE_INTERVAL_MS`) gating whether it ran
+  within this weekly cron — **removed entirely 2026-08-24**, every
+  bright source now runs on every fire of this cron, no per-source gate
+  (see the "Cadence, updated 2026-08-24" note in this doc's MAVI section
+  for the full reasoning: the real cost driver, Haiku only seeing
+  genuinely-new items, was already handled by per-item dedup independent
+  of fetch frequency). `headless-discovery`'s own weekly cron
+  (`headless-bright-sources.yml`) works the same way.
 
 ### Debugging one named bright source: `brightSourceUrlFilter`
 
 Added the same day, prompted directly by wanting arteinformado.com and
 parquecultural.cl's real logs after they failed in a production run.
-Waiting for a source's own 7-day cadence, or clearing EVERY source's
-`bright_source_fetch_state` just to force the one you actually wanted,
-were the only options before this.
+Clearing EVERY source's `bright_source_fetch_state` just to force the one
+you actually wanted was the only option before this (cadence itself was
+removed entirely 2026-08-24 — see "Dual cadence" above — but this filter
+is still useful on its own merits, for narrowing a debug run to one
+source instead of all of them).
 
 `RunDeps.brightSourceUrlFilter` (`run.ts`): an array of substrings, each
-matched against a bright source's own `url`. When set, it REPLACES the
-`isSourceDue` check entirely for the matched set — a source runs
-regardless of its own cadence, freshly-fetched or not, and every
-unmatched source is skipped (not just deprioritized). Wired through
+matched against a bright source's own `url`. When set, ONLY the matched
+source(s) run — every unmatched source is skipped entirely for that run.
+Wired through
 `event-discovery.yml`'s `workflow_dispatch` as `bright_source_urls`
 (comma-separated, e.g. `arteinformado.com,parquecultural.cl`) ->
 `BRIGHT_SOURCE_URLS` env var (`index.ts`) -> `brightSourceUrlFilter`.
@@ -1976,23 +1981,18 @@ spanning two on-site venues — Sala Bodega, Cocina de Peones) +
 not-yet-open exhibitions, empty at last check but the same pagination
 pattern as this doc's other multi-page sources).
 
-**Cadence decision, made explicit rather than silently defaulting**: this
-source shares the same uniform 7-day `BRIGHT_SOURCE_INTERVAL_MS`
-(`event-discovery/run.ts`) as every other bright source, even though a
-small regional museum won't update often. Per-source cadence infra already
-exists (`bright_source_fetch_state`, keyed by URL) — only a per-source
-*override* of the interval doesn't. Deliberately not built now: a fetch
-that finds nothing new still costs one HTTP GET (negligible) plus one
-`curateBrightSourceItems` call sized to however many items are ON the
-page at fetch time (2 today), not to how much is genuinely new — there's
-no diff-against-last-run mechanism, so cost scales with listing size, not
-staleness. At ~7 known sources and the measured ~$5-9/mo real spend, one
-more small-listing source doesn't move the needle enough to justify
-adaptive-cadence infrastructure before there's data showing it matters —
-same posture as this project's other "measure before building infra"
-decisions. Revisit if the bright-source count grows enough that several
-near-static sources' redundant weekly Haiku calls become a measurable
-fraction of spend.
+**Cadence, updated 2026-08-24**: no cadence gate at all anymore for any
+bright source (web, headless, or Google Alerts — see "Dual cadence" below
+and `event-discovery/run.ts`'s `dueBrightSources` comment) — this small
+regional museum's listing runs on every weekly cron fire, same as every
+other source. The original
+concern that motivated even considering a per-source cadence override
+here (small listing, near-static content) turned out to be moot: the
+existing `excludedSourceUrls` pre-curation dedup already filters to
+genuinely-new items PER ITEM, before Haiku ever sees them, independent of
+fetch frequency — so a near-static page just keeps returning the same
+handful of already-seen items for free (a plain HTTP GET has no real
+cost), never re-spending a Haiku call on them.
 
 **Two real, general bugs found and fixed while adding this source (not
 specific to it — both were latent for every existing source with the
@@ -3522,11 +3522,10 @@ this new orchestrator's own tests don't need real network calls.
 **No images from the feed at all** — same generic page fetch recovers one
 via `filterKnownSourceImages(extractImgTags(...))`, same mechanism.
 
-**Cadence**: the SHARED 7-day `bright_source_fetch_state`/`isSourceDue`
-— unlike Instagram (many independently-paced accounts needing per-item
-adaptive cadence), this is one continuously-updating feed, so the simpler
-shared mechanism fits without modification. The feed's own identity is
-tracked as a fixed key string (`google-alerts://inauguracion-de-arte`),
+**Cadence**: none (since 2026-08-24, same as every other bright source —
+see "Dual cadence" above) — runs every time its own weekly cron fires.
+The feed's own identity is tracked as a fixed key string
+(`google-alerts://inauguracion-de-arte`),
 never the feed URL itself (keeps the personal-data-adjacent URL out of
 any logged/stored value beyond the runtime env var).
 

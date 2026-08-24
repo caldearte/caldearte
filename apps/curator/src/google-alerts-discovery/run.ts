@@ -12,12 +12,11 @@
 // per-comuna search or a known listing page) and mapped to a
 // BrightSourceItem.
 //
-// Cadence: the SHARED 7-day bright_source_fetch_state/isSourceDue (same
-// as every KNOWN_SOURCES entry) — unlike Instagram, there's no per-item
-// variability to adapt to here (one continuously-updating feed, not many
-// independently-paced accounts), so the simpler shared mechanism fits.
-// The feed's own URL is the tracked identity, same as MAVI's constant
-// listing URL in headless-discovery/run.ts.
+// No cadence gate (2026-08-24) — runs every time its own weekly cron
+// fires, same as every other bright source. The feed's own URL is the
+// tracked identity purely for bright_source_fetch_state's last_fetched_at
+// display, same as MAVI's constant listing URL in headless-discovery/
+// run.ts.
 import Anthropic from "@anthropic-ai/sdk";
 import { recordUsage, getConfigNumber, getCurrentMonthSpend } from "../lib/usage-tracking.js";
 import { estimateCostUsd } from "../lib/pricing.js";
@@ -31,10 +30,8 @@ import type { BrightSourceItem } from "../event-discovery/extractors.js";
 import {
   insertCandidates,
   loadAllRegions,
-  loadBrightSourceFetchState,
   loadExistingKeys,
   loadRecentlyRejectedSourceUrls,
-  isSourceDue,
   recordBrightSourcesFetched,
   toCandidateSummary,
 } from "../event-discovery/run.js";
@@ -114,12 +111,14 @@ export async function run(deps: GoogleAlertsRunDeps = {}): Promise<void> {
   const fetchGoogleAlertEntriesFn = deps.fetchGoogleAlertEntriesFn ?? fetchGoogleAlertEntriesFromEnv;
   const pageFetchFn = deps.pageFetchFn ?? fetch;
 
-  const fetchState = await loadBrightSourceFetchState();
-  const due = isSourceDue(fetchState.get(GOOGLE_ALERTS_SOURCE_KEY), now);
-
+  // No cadence gate, 2026-08-24 — same reasoning as event-discovery/
+  // run.ts's bright-source loop (see that file's own 2026-08-24 doc
+  // comment) and headless-discovery/run.ts's MAVI fetch: the workflow
+  // itself only ever runs on its own weekly cron, and the real cost
+  // driver (Haiku only seeing genuinely new entries) is already handled
+  // by the sourceUrl dedup below, independent of fetch frequency.
   const summary: GoogleAlertsRunSummary = {
     startedAt: now,
-    dueThisRun: due,
     candidates: {
       total: 0,
       approvedByCuration: 0,
@@ -131,13 +130,6 @@ export async function run(deps: GoogleAlertsRunDeps = {}): Promise<void> {
     eventGroups: [],
     cost: { anthropicUsd: 0, tavilyCredits: 0, tavilyUsd: 0, totalUsd: 0, monthToDateUsd: 0, monthlyBudgetUsd: 0 },
   };
-
-  if (!due) {
-    console.log("[google-alerts-discovery] not due yet (7-day cadence) — nothing to do");
-    await recordRunSummary("google_alerts", summary.startedAt, summary.candidates, summary.eventGroups, summary.cost);
-    await (deps.sendGoogleAlertsRunSummaryEmailFn ?? sendGoogleAlertsRunSummaryEmail)(summary);
-    return;
-  }
 
   const entries = await fetchGoogleAlertEntriesFn();
   console.log(`[google-alerts-discovery] fetched ${entries.length} feed entry(ies)`);
