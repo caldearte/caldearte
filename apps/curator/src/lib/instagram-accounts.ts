@@ -860,6 +860,19 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
     addedAt: "2026-08-24",
     fixedLocation: { location: "Panquehue", placeName: "Museo Arte Al Límite" },
   },
+  {
+    username: "museopalaciovergara",
+    note:
+      "Evaluada 2026-08-24. Museo Palacio Vergara, dentro del Parque " +
+      "Quinta Vergara, Viña del Mar (Errázuriz 563/596) — martes a " +
+      "domingo 10:00-17:30hrs, entrada liberada. 33.164 seguidores, muy " +
+      "activa (posts cada 2-4 días). Highlights con categorías reales de " +
+      "museo (Exposiciones, Obras, Montajes, Esculturas, Restauración), " +
+      "mezclado con algo de contenido de talleres/actividades infantiles " +
+      "— ruido esperado normal. Local fijo confirmado.",
+    addedAt: "2026-08-24",
+    fixedLocation: { location: "Viña del Mar", placeName: "Museo Palacio Vergara" },
+  },
   // El resto de la lista la aporta Daniel — una decisión editorial, igual
   // que cada fuente brillante nueva se evaluó una por una. Confirmar
   // pública y activa antes de agregar cada cuenta.
