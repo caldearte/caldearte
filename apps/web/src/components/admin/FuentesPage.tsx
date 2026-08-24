@@ -6,9 +6,24 @@ import { enumeratePeriods, type Granularity } from "@/lib/adminAnalyticsBucketin
 import type { AdminAnalyticsPayload } from "@/lib/adminAnalytics";
 import GranularityToggle from "./GranularityToggle";
 import SourceComparisonTable from "./SourceComparisonTable";
-import BrightSourcesTable from "./BrightSourcesTable";
-import InstagramSourcesTable from "./InstagramSourcesTable";
+import TopSourcesTable, { type TopSourceRow } from "./TopSourcesTable";
 import CoberturaTable from "./CoberturaTable";
+
+const TOP_SOURCES_COUNT = 20;
+
+const CATEGORY_LABEL: Record<AdminAnalyticsPayload["brightSources"][number]["category"], TopSourceRow["category"]> = {
+  bright_source: "Web",
+  headless: "Headless",
+  google_alerts: "Google Alerts",
+};
+
+// Mismo criterio de ranking que ya usa admin-analytics/index.ts's
+// bySourceRank server-side (por categoría separada) — acá se combinan
+// las 4 categorías en una sola lista y se corta a las 20 mejores.
+function rankSource(a: { possiblyDead: boolean; accepted: number }, b: { possiblyDead: boolean; accepted: number }): number {
+  if (a.possiblyDead !== b.possiblyDead) return a.possiblyDead ? 1 : -1;
+  return b.accepted - a.accepted;
+}
 
 const ChartLoading = () => <div className="w-full h-[320px] flex items-center justify-center font-geist text-[13px] text-text-primary/50">Cargando gráfico…</div>;
 const FuentesPorPipelineChart = dynamic(() => import("./FuentesPorPipelineChart"), { ssr: false, loading: ChartLoading });
@@ -50,6 +65,29 @@ export default function FuentesPage({
 
   const periods = useMemo(() => enumeratePeriods(minDate, maxDate, granularity), [minDate, maxDate, granularity]);
 
+  const topSources = useMemo(() => {
+    const merged: TopSourceRow[] = [
+      ...instagramSources.map((s) => ({
+        label: `@${s.username}`,
+        category: "Instagram" as const,
+        lastFetchedAt: s.lastFetchedAt,
+        accepted: s.accepted,
+        rejected: s.rejected,
+        possiblyDead: s.possiblyDead || s.isInactive,
+      })),
+      ...brightSources.map((s) => ({
+        label: s.url,
+        category: CATEGORY_LABEL[s.category],
+        lastFetchedAt: s.lastFetchedAt,
+        accepted: s.accepted,
+        rejected: s.rejected,
+        possiblyDead: s.possiblyDead,
+      })),
+    ];
+    merged.sort(rankSource);
+    return merged.slice(0, TOP_SOURCES_COUNT);
+  }, [instagramSources, brightSources]);
+
   return (
     <div className="flex flex-col gap-12">
       <GranularityToggle value={granularity} onChange={setGranularity} />
@@ -84,13 +122,14 @@ export default function FuentesPage({
       </div>
 
       <section>
-        <h2 className="font-fragment-mono uppercase text-[18px] text-text-primary mb-4">Fuentes brillantes (web)</h2>
-        <BrightSourcesTable sources={brightSources} />
-      </section>
-
-      <section>
-        <h2 className="font-fragment-mono uppercase text-[18px] text-text-primary mb-4">Cuentas de Instagram</h2>
-        <InstagramSourcesTable sources={instagramSources} />
+        <h2 className="font-fragment-mono uppercase text-[18px] text-text-primary mb-4">
+          Top {TOP_SOURCES_COUNT} fuentes
+        </h2>
+        <p className="font-geist text-[14px] text-text-primary/70 mb-4">
+          Las {TOP_SOURCES_COUNT} fuentes con más eventos aprobados, de todas las categorías (Instagram, Web, Headless,
+          Google Alerts) combinadas — origen indicado por fila.
+        </p>
+        <TopSourcesTable sources={topSources} />
       </section>
 
       <section>
