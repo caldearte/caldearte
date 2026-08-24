@@ -6,8 +6,7 @@ import {
   nextFetchState,
   instagramAccountProfileUrl,
   DEFAULT_INTERVAL_DAYS,
-  MAX_INTERVAL_DAYS,
-  SEMESTRAL_INTERVAL_DAYS,
+  ZERO_YIELD_WEEKS_BEFORE_INACTIVE,
 } from "./instagram-fetch-state.js";
 import type { InstagramAccountConfig } from "./instagram-accounts.js";
 
@@ -20,26 +19,30 @@ test("instagramAccountProfileUrl builds the real profile URL from a username", (
 
 test("isInstagramAccountDue: an account never fetched before is always due", () => {
   assert.equal(isInstagramAccountDue(undefined, NOW), true);
-  assert.equal(isInstagramAccountDue({ lastFetchedAt: null, intervalDays: 7, consecutiveZeroYieldAtCap: 0, isInactive: false }, NOW), true);
+  assert.equal(isInstagramAccountDue({ lastFetchedAt: null, consecutiveZeroYieldWeeks: 0, isInactive: false }, NOW), true);
 });
 
-test("isInstagramAccountDue: not due yet within its own interval", () => {
-  const state = { lastFetchedAt: new Date(NOW.getTime() - 5 * 24 * 60 * 60 * 1000).toISOString(), intervalDays: 7, consecutiveZeroYieldAtCap: 0, isInactive: false };
+test("isInstagramAccountDue: not due yet within the 7-day window", () => {
+  const state = { lastFetchedAt: new Date(NOW.getTime() - 5 * 24 * 60 * 60 * 1000).toISOString(), consecutiveZeroYieldWeeks: 0, isInactive: false };
   assert.equal(isInstagramAccountDue(state, NOW), false);
 });
 
-test("isInstagramAccountDue: due once its own interval has elapsed — respects a longer escalated interval, not the 7-day default", () => {
-  const state = { lastFetchedAt: new Date(NOW.getTime() - 20 * 24 * 60 * 60 * 1000).toISOString(), intervalDays: 28, consecutiveZeroYieldAtCap: 0, isInactive: false };
-  assert.equal(isInstagramAccountDue(state, NOW), false); // would be due under 7, not under its real 28
-  const dueState = { lastFetchedAt: new Date(NOW.getTime() - 28 * 24 * 60 * 60 * 1000).toISOString(), intervalDays: 28, consecutiveZeroYieldAtCap: 0, isInactive: false };
+// Real bug that motivated dropping the escalating ladder, 2026-08-24:
+// Apify's actor is pay-per-RESULT, not per-account-queried, so a quiet
+// account checked weekly costs the same ~$0 as one checked every 28
+// days (a zero-yield fetch returns 0 results either way). Every account
+// now uses the same flat 7-day window, regardless of history.
+test("isInstagramAccountDue: due once 7 days have elapsed, even for an account with a long zero-yield streak", () => {
+  const state = { lastFetchedAt: new Date(NOW.getTime() - 6 * 24 * 60 * 60 * 1000).toISOString(), consecutiveZeroYieldWeeks: 20, isInactive: false };
+  assert.equal(isInstagramAccountDue(state, NOW), false);
+  const dueState = { lastFetchedAt: new Date(NOW.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString(), consecutiveZeroYieldWeeks: 20, isInactive: false };
   assert.equal(isInstagramAccountDue(dueState, NOW), true);
 });
 
 test("isInstagramAccountDue: an inactive account is never due, regardless of how long it's been", () => {
   const state = {
     lastFetchedAt: new Date(NOW.getTime() - 400 * 24 * 60 * 60 * 1000).toISOString(),
-    intervalDays: SEMESTRAL_INTERVAL_DAYS,
-    consecutiveZeroYieldAtCap: 2,
+    consecutiveZeroYieldWeeks: 52,
     isInactive: true,
   };
   assert.equal(isInstagramAccountDue(state, NOW), false);
@@ -47,7 +50,7 @@ test("isInstagramAccountDue: an inactive account is never due, regardless of how
 
 test("accountCutoffDate uses the account's own last fetch date, not a fixed rolling window", () => {
   const lastFetchedAt = "2026-07-20T00:00:00.000Z";
-  const cutoff = accountCutoffDate({ lastFetchedAt, intervalDays: 21, consecutiveZeroYieldAtCap: 0, isInactive: false }, NOW);
+  const cutoff = accountCutoffDate({ lastFetchedAt, consecutiveZeroYieldWeeks: 0, isInactive: false }, NOW);
   assert.equal(cutoff.toISOString(), lastFetchedAt);
 });
 
@@ -56,53 +59,26 @@ test("accountCutoffDate falls back to DEFAULT_INTERVAL_DAYS back from now for a 
   assert.equal(cutoff.getTime(), NOW.getTime() - DEFAULT_INTERVAL_DAYS * 24 * 60 * 60 * 1000);
 });
 
-test("nextFetchState resets to the 7-day default, streak cleared, when the account produced a genuinely new post", () => {
-  assert.deepEqual(nextFetchState({ intervalDays: 28, consecutiveZeroYieldAtCap: 2 }, true), {
-    intervalDays: 7,
-    consecutiveZeroYieldAtCap: 0,
-    isInactive: false,
-  });
-  assert.deepEqual(nextFetchState(undefined, true), { intervalDays: 7, consecutiveZeroYieldAtCap: 0, isInactive: false });
+test("nextFetchState resets the zero-yield streak to 0 when the account produced a genuinely new post", () => {
+  assert.deepEqual(nextFetchState({ consecutiveZeroYieldWeeks: 15 }, true), { consecutiveZeroYieldWeeks: 0, isInactive: false });
+  assert.deepEqual(nextFetchState(undefined, true), { consecutiveZeroYieldWeeks: 0, isInactive: false });
 });
 
-// Floor lowered 14 -> 7 days, 2026-08-23 (Daniel: the first real Sunday
-// run only found 2 inauguraciones nationwide, suspected the 14-day floor
-// was missing real posts). Ladder is now 7 -> 14 -> 21 -> 28, same 7-day
-// step and 28-day cap as before — only the floor moved.
-test("nextFetchState escalates one step (7 -> 14 -> 21 -> 28) when nothing new came back, below the cap", () => {
-  assert.equal(nextFetchState(undefined, false).intervalDays, 14);
-  assert.equal(nextFetchState({ intervalDays: 7, consecutiveZeroYieldAtCap: 0 }, false).intervalDays, 14);
-  assert.equal(nextFetchState({ intervalDays: 14, consecutiveZeroYieldAtCap: 0 }, false).intervalDays, 21);
-  assert.equal(nextFetchState({ intervalDays: 21, consecutiveZeroYieldAtCap: 0 }, false).intervalDays, 28);
+test("nextFetchState: nothing new just increments the zero-yield streak, still active well below the inactive threshold", () => {
+  assert.deepEqual(nextFetchState(undefined, false), { consecutiveZeroYieldWeeks: 1, isInactive: false });
+  assert.deepEqual(nextFetchState({ consecutiveZeroYieldWeeks: 1 }, false), { consecutiveZeroYieldWeeks: 2, isInactive: false });
+  assert.deepEqual(nextFetchState({ consecutiveZeroYieldWeeks: 50 }, false), { consecutiveZeroYieldWeeks: 51, isInactive: false });
 });
 
-test("nextFetchState: at the 28-day cap, counts consecutive empty cycles and stays at 28 until the 3rd", () => {
-  const first = nextFetchState({ intervalDays: 28, consecutiveZeroYieldAtCap: 0 }, false);
-  assert.deepEqual(first, { intervalDays: 28, consecutiveZeroYieldAtCap: 1, isInactive: false });
-
-  const second = nextFetchState({ intervalDays: 28, consecutiveZeroYieldAtCap: 1 }, false);
-  assert.deepEqual(second, { intervalDays: 28, consecutiveZeroYieldAtCap: 2, isInactive: false });
+test("nextFetchState: the 52nd consecutive empty week (a full year of weekly checks) marks the account inactive", () => {
+  const result = nextFetchState({ consecutiveZeroYieldWeeks: ZERO_YIELD_WEEKS_BEFORE_INACTIVE - 1 }, false);
+  assert.deepEqual(result, { consecutiveZeroYieldWeeks: ZERO_YIELD_WEEKS_BEFORE_INACTIVE, isInactive: true });
 });
 
-test("nextFetchState: the 3rd consecutive empty cycle at the 28-day cap drops to semestral (182 days), streak reset", () => {
-  const third = nextFetchState({ intervalDays: 28, consecutiveZeroYieldAtCap: 2 }, false);
-  assert.deepEqual(third, { intervalDays: SEMESTRAL_INTERVAL_DAYS, consecutiveZeroYieldAtCap: 0, isInactive: false });
-});
-
-test("nextFetchState: at semestral cadence, the 1st empty semester stays semestral, not yet inactive", () => {
-  const result = nextFetchState({ intervalDays: SEMESTRAL_INTERVAL_DAYS, consecutiveZeroYieldAtCap: 0 }, false);
-  assert.deepEqual(result, { intervalDays: SEMESTRAL_INTERVAL_DAYS, consecutiveZeroYieldAtCap: 1, isInactive: false });
-});
-
-test("nextFetchState: the 2nd consecutive empty semester marks the account inactive", () => {
-  const result = nextFetchState({ intervalDays: SEMESTRAL_INTERVAL_DAYS, consecutiveZeroYieldAtCap: 1 }, false);
-  assert.deepEqual(result, { intervalDays: SEMESTRAL_INTERVAL_DAYS, consecutiveZeroYieldAtCap: 2, isInactive: true });
-});
-
-test("MAX_INTERVAL_DAYS is still 28 — the semestral path only kicks in ON TOP of the existing cap, doesn't change it", () => {
-  assert.equal(MAX_INTERVAL_DAYS, 28);
-});
-
-test("DEFAULT_INTERVAL_DAYS is 7 (lowered from 14, 2026-08-23)", () => {
+test("DEFAULT_INTERVAL_DAYS is 7 — flat weekly cadence for every account, no escalation", () => {
   assert.equal(DEFAULT_INTERVAL_DAYS, 7);
+});
+
+test("ZERO_YIELD_WEEKS_BEFORE_INACTIVE is 52 — a full year of weekly checks before giving up on an account", () => {
+  assert.equal(ZERO_YIELD_WEEKS_BEFORE_INACTIVE, 52);
 });

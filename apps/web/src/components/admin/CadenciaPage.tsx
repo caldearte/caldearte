@@ -5,23 +5,21 @@ import type { AdminAnalyticsPayload } from "@/lib/adminAnalytics";
 import CadenciaSummaryBar, { type CadenciaTier } from "./CadenciaSummaryBar";
 import CadenciaSourceList, { type CadenciaSourceRow } from "./CadenciaSourceList";
 
-// Cadencia de TODAS las fuentes brillantes, en UNA sola escalera —
-// Daniel 2026-08-23, 2do ajuste: la primera versión separaba Instagram
-// (cadencia adaptativa real) de las otras 3 categorías (cadencia fija de
-// 7 días) en dos secciones distintas — "no quiero ver todo eso, solo el
-// número de cadencia, y en la lista de cada cadencia ponle si es IG,
-// web, etc". Ahora el tramo (7/14/21/28/182/inactiva) es el único eje de
-// agrupación, sin importar el origen; el origen se muestra como etiqueta
-// en cada fila (CadenciaSourceList). Las 3 categorías no-Instagram no
-// escalan nunca (cadencia fija, interval_days queda NULL en la tabla),
-// así que siempre caen en el tramo de 7 días junto con las cuentas de
-// Instagram que también estén ahí.
+// Cadencia de TODAS las fuentes brillantes — Daniel 2026-08-23, 2do
+// ajuste: "no quiero ver todo eso, solo el número de cadencia, y en la
+// lista de cada cadencia ponle si es IG, web, etc". El origen se muestra
+// como etiqueta en cada fila (CadenciaSourceList), no como sección
+// propia.
+//
+// Colapsado a 2 tramos, 2026-08-24: la escalera Instagram (7/14/21/28/
+// semestral) se reemplazó por una cadencia plana semanal para todas las
+// cuentas (ver instagram-fetch-state.ts) — real, no ahorraba lo que se
+// pensaba, ya que Apify cobra por resultado devuelto, no por cuenta
+// consultada, así que una cuenta silenciosa cuesta ~$0 sin importar la
+// frecuencia de chequeo. Con eso, los tramos intermedios quedan siempre
+// vacíos — solo "semanal" e "inactivas" tienen sentido ahora.
 const TIERS: Array<{ key: string; label: string }> = [
   { key: "7", label: "Semanal (7d)" },
-  { key: "14", label: "Cada 2 semanas (14d)" },
-  { key: "21", label: "Cada 3 semanas (21d)" },
-  { key: "28", label: "Mensual — tope (28d)" },
-  { key: "182", label: "Semestral (182d)" },
   { key: "inactive", label: "Inactivas" },
 ];
 
@@ -104,17 +102,12 @@ export default function CadenciaPage({
             que casi no producen eventos reales.
           </li>
           <li>
-            <strong>Reseteos por ruido</strong> (solo Instagram, la única categoría que escala): cuántas veces una cuenta vuelve al
-            piso (7d) por un post nuevo que Haiku termina rechazando, no aprobando — si es frecuente, el criterio de &quot;actividad
-            nueva&quot; debería basarse en aprobados, no en posts vistos.
+            <strong>Cuentas cerca del año sin nada nuevo</strong> (`consecutiveZeroYieldAtCap` alto, sin llegar aún a inactiva) —
+            candidatas a revisar manualmente antes de que se marquen inactivas solas.
           </li>
           <li>
-            <strong>Dónde se estabiliza cada cuenta de Instagram con el tiempo</strong> — si la mayoría termina en 28d+ rápido, el
-            piso de 7 fue caro sin mucho beneficio real; si muchas se quedan en 7, confirma que valió la pena.
-          </li>
-          <li>
-            <strong>Volumen nacional de inauguraciones por semana</strong>, antes vs. después del cambio de piso (14→7d,
-            2026-08-23) — la métrica que originó este ajuste.
+            <strong>Volumen nacional de inauguraciones por semana</strong>, antes vs. después de pasar a cadencia plana semanal
+            (2026-08-24) — la métrica que originó este ajuste.
           </li>
           <li>
             <strong>Google Alerts sin yield atribuible por dominio</strong> — su calidad se mide a nivel de pipeline completo (una

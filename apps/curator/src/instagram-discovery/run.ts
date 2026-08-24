@@ -27,7 +27,7 @@ import { recordUsage, getConfigNumber, getCurrentMonthSpend } from "../lib/usage
 import { estimateCostUsd } from "../lib/pricing.js";
 import { enrichCandidates, type FetchLike as PageFetchLike } from "../lib/page-fetch.js";
 import { fetchInstagramPosts } from "../lib/apify-instagram.js";
-import { toBrightSourceItem } from "../lib/instagram-item.js";
+import { toBrightSourceItem, isCaptionWorthCurating } from "../lib/instagram-item.js";
 import { INSTAGRAM_ACCOUNTS, type InstagramAccountConfig } from "../lib/instagram-accounts.js";
 import {
   loadInstagramFetchState,
@@ -129,15 +129,31 @@ export async function run(deps: InstagramRunDeps = {}): Promise<void> {
     console.log(`[instagram-discovery] ${skipped}/${items.length} post(s) already seen, skipped before curation`);
   }
 
+  // "Genuinely new" for cadence purposes (usernamesWithNewItems, below)
+  // means a new post existed at all — independent of whether its caption
+  // is actually worth spending a Haiku call on. An account that only
+  // posts book launches is still an ACTIVE account; that's a curation
+  // outcome, not a cadence signal.
   const usernamesWithNewItems = new Set(newItems.map((item) => accountForItem.get(item)?.username).filter((u): u is string => u !== undefined));
 
-  if (newItems.length > 0) {
+  // Deterministic pre-Haiku filter (instagram-item.ts) — catches an
+  // empty/near-empty caption or an unambiguous book-launch announcement
+  // before spending an Anthropic call on something that's rejected every
+  // time in practice (see instagram-item.ts's own doc comment for the
+  // real rejection reasons that motivated these two specific patterns).
+  const curatableItems = newItems.filter((item) => isCaptionWorthCurating(item.description));
+  const filteredOut = newItems.length - curatableItems.length;
+  if (filteredOut > 0) {
+    console.log(`[instagram-discovery] ${filteredOut}/${newItems.length} post(s) filtered out before curation (thin caption or book launch)`);
+  }
+
+  if (curatableItems.length > 0) {
     // No fixedLocation passed at the batch level — accounts are curated
     // together but each item still carries its own account.location via
     // toBrightSourceItem (only set for accounts with a confirmed fixed
     // venue), same per-item precedence curateBrightSourceItems already
     // gives a source-level `location` value.
-    const { candidates, usage } = await curateBrightSourceItems(messagesClient, newItems, currentMonthLabel(now));
+    const { candidates, usage } = await curateBrightSourceItems(messagesClient, curatableItems, currentMonthLabel(now));
 
     await recordUsage({ purpose: "event_discovery", model: EVENT_DISCOVERY_MODEL, pipeline: "instagram", usage });
     summary.cost.anthropicUsd = estimateCostUsd(EVENT_DISCOVERY_MODEL, usage);
@@ -162,7 +178,7 @@ export async function run(deps: InstagramRunDeps = {}): Promise<void> {
     }
     console.log(`[instagram-discovery] ${insertedCount} new approved event(s) inserted`);
   } else {
-    console.log("[instagram-discovery] nothing new, skipping curation entirely");
+    console.log("[instagram-discovery] nothing worth curating, skipping curation entirely");
   }
 
   for (const account of dueAccounts) {
@@ -170,7 +186,7 @@ export async function run(deps: InstagramRunDeps = {}): Promise<void> {
     const next = nextFetchState(state, usernamesWithNewItems.has(account.username));
     await recordInstagramFetchState(account, now, next);
     console.log(
-      `[instagram-discovery] ${account.username}: next fetch in ${next.intervalDays} day(s)${next.isInactive ? " — marked inactive, won't be fetched again automatically" : ""}`,
+      `[instagram-discovery] ${account.username}: next fetch in 7 day(s)${next.isInactive ? " — marked inactive, won't be fetched again automatically" : ""}`,
     );
   }
 
