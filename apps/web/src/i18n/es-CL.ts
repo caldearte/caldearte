@@ -329,7 +329,6 @@ export const esCL = {
     dashboard: "Dashboard",
     eventos: "Eventos",
     fuentes: "Fuentes",
-    cadencia: "Cadencia",
     costos: "Costos",
   },
 
