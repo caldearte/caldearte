@@ -873,6 +873,23 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
     addedAt: "2026-08-24",
     fixedLocation: { location: "Viña del Mar", placeName: "Museo Palacio Vergara" },
   },
+  {
+    username: "bnchile",
+    note:
+      "Evaluada 2026-08-24. Biblioteca Nacional de Chile — real, enorme " +
+      "(103.281 seguidores, varias publicaciones diarias), pero " +
+      "primariamente institución literaria/patrimonial, no un espacio de " +
+      "arte visual dedicado (highlights: Aniversario 213, 25 años RAV, " +
+      "La Proclama — radio, concursos de fotos; cuentas relacionadas " +
+      "sugeridas por Instagram son literarias — Café Literario de Ñuñoa, " +
+      "Editorial Catalonia). Rendimiento esperado bajo-moderado, con " +
+      "redundancia parcial: ya sabemos por @museoschile (Red Nacional de " +
+      "Museos, fuente web) que la Biblioteca Nacional monta exposiciones " +
+      "de arte visual reales ocasionalmente (\"Roberto Matta. Abrir la " +
+      "mirada\" fue una). fixedLocation.",
+    addedAt: "2026-08-24",
+    fixedLocation: { location: "Santiago", placeName: "Biblioteca Nacional de Chile" },
+  },
   // El resto de la lista la aporta Daniel — una decisión editorial, igual
   // que cada fuente brillante nueva se evaluó una por una. Confirmar
   // pública y activa antes de agregar cada cuenta.
