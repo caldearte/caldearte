@@ -1187,7 +1187,11 @@ test(
         assert.match(detected![0].note, /2 eventos completos/);
       });
 
-      await t.test("a bright source fetched recently is skipped until its own 7-day cadence elapses, independent of other sources", async () => {
+      // No cadence gate anymore, 2026-08-24 (see dueBrightSources' own
+      // doc comment in run.ts) — a bright source fetched moments ago
+      // still runs again on the very next call, unlike the old 7-day
+      // isSourceDue check this test used to exercise.
+      await t.test("a bright source fetched moments ago is still fetched again on the next run — no cadence gate", async () => {
         await client.from("bright_source_fetch_state").delete().neq("url", "");
         let fetchCallCount = 0;
         const fetchBrightSourcesFn = async () => {
@@ -1195,7 +1199,6 @@ test(
           return [rawBrightResult("https://agenda.cl", "fuente", BRIGHT_CONTENT)];
         };
 
-        // First run: nothing fetched yet -> due -> fetch happens, state recorded.
         await run({
           messagesClient,
           searchUnitFn: async () => ({ results: [], credits: 0 }),
@@ -1204,25 +1207,15 @@ test(
         });
         assert.equal(fetchCallCount, 1);
 
-        // Second run, 3 days later — well under the 7-day interval —
-        // must be skipped: fetchBrightSourcesFn is not called again.
+        // Same source, one minute later — would have been well under the
+        // old 7-day interval, must still fetch now.
         await run({
           messagesClient,
           searchUnitFn: async () => ({ results: [], credits: 0 }),
           fetchBrightSourcesFn,
-          now: new Date(2026, 6, 16), // July 16
+          now: new Date(2026, 6, 13, 0, 1),
         });
-        assert.equal(fetchCallCount, 1, "still 1 — 3 days is under the 7-day cadence");
-
-        // Third run, 8 days after the FIRST fetch — past the interval —
-        // due again, fetch happens.
-        await run({
-          messagesClient,
-          searchUnitFn: async () => ({ results: [], credits: 0 }),
-          fetchBrightSourcesFn,
-          now: new Date(2026, 6, 21), // July 21 — 8 days after July 13
-        });
-        assert.equal(fetchCallCount, 2, "due again once 7 days have passed since ITS OWN last fetch");
+        assert.equal(fetchCallCount, 2, "fetched again immediately — no cadence gate to wait out");
 
         await client.from("events").delete().like("title", "__test__ Brillante%");
         await client.from("detected_sources").delete().like("url", "%nuevositio.cl%");
@@ -1745,21 +1738,12 @@ test(
       });
 
       // 2026-07-23: debugging one misbehaving real bright source (e.g.
-      // arteinformado.com) meant waiting for its own 7-day cadence or
-      // clearing EVERY source's fetch state just to force the one you
-      // actually wanted logs for. brightSourceUrlFilter replaces the
-      // isSourceDue check entirely for the matched set — a real registry
-      // source, freshly marked as fetched moments ago, still runs when
-      // explicitly named.
-      await t.test("brightSourceUrlFilter matches by url substring and ignores each source's own cadence", async () => {
-        await client.from("bright_source_fetch_state").delete().neq("url", "");
-        // Mark every real source as JUST fetched — without the filter,
-        // none of them would be due.
-        const { mergeBrightSources } = await import("./sources.js");
-        const { recordBrightSourcesFetched } = await import("./run.js");
-        const allSources = mergeBrightSources([]);
-        await recordBrightSourcesFetched(allSources.map((s) => s.url), new Date(2027, 6, 5));
-
+      // arteinformado.com) meant clearing EVERY source's fetch state just
+      // to force logs for the one you actually wanted. brightSourceUrlFilter
+      // narrows to ONLY the matched set — everything else is skipped, not
+      // just deprioritized (there's no cadence to deprioritize against
+      // anymore, 2026-08-24 — every source always runs by default).
+      await t.test("brightSourceUrlFilter matches by url substring and excludes every other source", async () => {
         let capturedSources: { url: string }[] = [];
         await run({
           messagesClient,
@@ -1769,16 +1753,14 @@ test(
             return [];
           },
           brightSourceUrlFilter: ["arteinformado.com"],
-          now: new Date(2027, 6, 5, 0, 1), // 1 minute after "just fetched" above — nothing would be due otherwise
+          now: new Date(2027, 6, 5),
         });
 
         assert.ok(capturedSources.length > 0, "the filter matched at least arteinformado.com");
         assert.ok(
           capturedSources.every((s) => s.url.includes("arteinformado.com")),
-          "only the matching source was passed through, not every other (freshly-fetched, not-due) source",
+          "only the matching source was passed through, not every other source",
         );
-
-        await client.from("bright_source_fetch_state").delete().neq("url", "");
       });
 
       // Real production bug (2026-07-23, arteinformado.com): 9 genuinely

@@ -33,10 +33,8 @@ import type { BrightSourceItem } from "../event-discovery/extractors.js";
 import {
   insertCandidates,
   loadAllRegions,
-  loadBrightSourceFetchState,
   loadExistingKeys,
   loadRecentlyRejectedSourceUrls,
-  isSourceDue,
   recordBrightSourcesFetched,
   toCandidateSummary,
 } from "../event-discovery/run.js";
@@ -77,12 +75,16 @@ export async function run(deps: HeadlessRunDeps = {}): Promise<void> {
   const fetchMaviActivitiesFn = deps.fetchMaviActivitiesFn ?? fetchMaviActivities;
   const pageFetchFn = deps.pageFetchFn ?? fetch;
 
-  const fetchState = await loadBrightSourceFetchState();
-  const due = isSourceDue(fetchState.get(MAVI_SOURCE_URL), now);
-
+  // No cadence gate, 2026-08-24 — this workflow only ever runs on its
+  // own weekly cron anyway, so isSourceDue's old 7-day check was always
+  // ~true by the time it fired; removed for the same reason it was
+  // removed from event-discovery/run.ts's bright-source loop (see that
+  // file's own 2026-08-24 doc comment): the real cost driver (Haiku only
+  // seeing genuinely new items) is already handled by the sourceUrl
+  // dedup below, independent of fetch frequency.
   const summary: HeadlessRunSummary = {
     startedAt: now,
-    sourcesFetched: due ? [MAVI_SOURCE_URL] : [],
+    sourcesFetched: [MAVI_SOURCE_URL],
     candidates: {
       total: 0,
       approvedByCuration: 0,
@@ -94,13 +96,6 @@ export async function run(deps: HeadlessRunDeps = {}): Promise<void> {
     eventGroups: [],
     cost: { anthropicUsd: 0, tavilyCredits: 0, tavilyUsd: 0, totalUsd: 0, monthToDateUsd: 0, monthlyBudgetUsd: 0 },
   };
-
-  if (!due) {
-    console.log(`[headless-discovery] ${MAVI_SOURCE_URL} not due yet (7-day cadence) — nothing to do`);
-    await recordRunSummary("headless", summary.startedAt, summary.candidates, summary.eventGroups, summary.cost);
-    await (deps.sendHeadlessRunSummaryEmailFn ?? sendHeadlessRunSummaryEmail)(summary);
-    return;
-  }
 
   const activities = await fetchMaviActivitiesFn();
   console.log(`[headless-discovery] fetched ${activities.length} MAVI activity(ies)`);

@@ -569,7 +569,6 @@ export async function sendInstagramRunSummaryEmail(summary: InstagramRunSummary)
 // or "(Instagram)".
 export interface GoogleAlertsRunSummary {
   startedAt: Date;
-  dueThisRun: boolean; // this source has no per-item list, just one feed — either due or not
   candidates: RunSummary["candidates"];
   eventGroups: EventGroup[];
   cost: RunSummary["cost"];
@@ -586,7 +585,7 @@ export function buildGoogleAlertsBody(summary: GoogleAlertsRunSummary): string {
   const lines = [
     `Resumen de la corrida de fuentes brillantes (Google Alerts) — ${summary.startedAt.toISOString()}`,
     "",
-    summary.dueThisRun ? "Feed consultado esta corrida." : "No debido esta corrida (cadencia semanal) — nada que hacer.",
+    "Feed consultado esta corrida.",
     "",
     "EVENTOS",
     `Total candidatos: ${candidates.total}`,
@@ -619,7 +618,7 @@ export function buildGoogleAlertsHtmlBody(summary: GoogleAlertsRunSummary): stri
     <h1 style="font-size:18px;margin:0 0 4px;">Caldearte — resumen de fuentes brillantes (Google Alerts)</h1>
     <p style="font-size:13px;color:#666;margin:0 0 20px;">${escapeHtml(summary.startedAt.toISOString())}</p>
 
-    <p>${summary.dueThisRun ? "Feed consultado esta corrida." : "No debido esta corrida (cadencia semanal) — nada que hacer."}</p>
+    <p>Feed consultado esta corrida.</p>
 
     <p>
       <b>${candidates.total}</b> candidatos totales &middot;

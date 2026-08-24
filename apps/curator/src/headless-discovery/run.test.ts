@@ -40,33 +40,10 @@ test(
     const { run } = await import("./run.js");
     const client = getSupabaseClient();
 
-    await t.test("not due yet — skips the fetch entirely and still sends a (mostly empty) summary", async () => {
-      await client.from("bright_source_fetch_state").delete().eq("url", MAVI_SOURCE_URL);
-      await client.from("bright_source_fetch_state").upsert({ url: MAVI_SOURCE_URL, last_fetched_at: NOW.toISOString() });
-
-      let fetchCalled = false;
-      let sentSummary: HeadlessRunSummary | undefined;
-
-      try {
-        await run({
-          now: NOW,
-          fetchMaviActivitiesFn: async () => {
-            fetchCalled = true;
-            return [];
-          },
-          sendHeadlessRunSummaryEmailFn: async (summary) => {
-            sentSummary = summary;
-          },
-        });
-
-        assert.equal(fetchCalled, false, "not due — fetchMaviActivities must never be called");
-        assert.deepEqual(sentSummary?.sourcesFetched, []);
-      } finally {
-        await client.from("bright_source_fetch_state").delete().eq("url", MAVI_SOURCE_URL);
-      }
-    });
-
-    await t.test("due — fetches, curates, inserts a real event, and records the fetch state", async () => {
+    // No "not due yet" case anymore, 2026-08-24 — this pipeline has no
+    // cadence gate, it always fetches when its own weekly cron fires
+    // (see run.ts's own doc comment).
+    await t.test("fetches, curates, inserts a real event, and records the fetch state", async () => {
       await client.from("bright_source_fetch_state").delete().eq("url", MAVI_SOURCE_URL);
 
       const activity: MaviActivity = {

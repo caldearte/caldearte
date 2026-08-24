@@ -53,8 +53,9 @@ export default function CadenciaPage({
     }
     for (const source of brightSources) {
       // Nunca escalan — interval_days queda NULL en la tabla para estas 3
-      // categorías (isSourceDue usa un intervalo fijo de 7 días, ver
-      // event-discovery/run.ts), así que siempre caen en el piso.
+      // categorías, y desde 2026-08-24 ninguna fuente (ni siquiera
+      // Instagram) tiene cadencia real — todas corren cada semana, así
+      // que siempre caen en el piso.
       const bucket = buckets.get("7")!;
       bucket.push({
         label: source.url,

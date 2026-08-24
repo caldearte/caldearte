@@ -133,38 +133,11 @@ async function loadDetectedSources(): Promise<BrightSource[]> {
   }));
 }
 
-// Per-source independent fetch cadence — until now, EVERY bright source got
-// fetched on EVERY run with no gating at all. Same "due" shape as regions'
-// isDueForRun/RUN_INTERVAL_MS, but keyed by the source's own url (see the
-// bright_source_fetch_state migration for why: KNOWN_SOURCES is
-// hand-curated in code, not a DB row, so url is the only identity both
-// hand-curated and auto-detected sources share).
-//
-// 14 days -> 7 (2026-07-23, dual-cadence strategy — see
-// event-discovery.yml's own doc comment): bright sources moved to their
-// own weekly cron, separate from the comuna batch's monthly one. A 14-day
-// per-source cadence against a 7-day cron would only find something new
-// every OTHER run — halved to match.
-const BRIGHT_SOURCE_INTERVAL_MS = 7 * 24 * 60 * 60 * 1000;
-
-export function isSourceDue(lastFetchedAt: string | undefined, now: Date): boolean {
-  if (!lastFetchedAt) return true;
-  return now.getTime() - new Date(lastFetchedAt).getTime() >= BRIGHT_SOURCE_INTERVAL_MS;
-}
-
-// Exported for headless-discovery/run.ts, which shares the exact same
-// bright_source_fetch_state table/cadence — MAVI is just another bright
-// source whose fetch mechanism happens to need a real browser instead of a
-// plain fetch(), not a fundamentally different concept.
-export async function loadBrightSourceFetchState(): Promise<Map<string, string>> {
-  const { data, error } = await getSupabaseClient().from("bright_source_fetch_state").select("url, last_fetched_at");
-
-  if (error) {
-    throw new Error(`Failed to load bright source fetch state: ${error.message}`);
-  }
-
-  return new Map((data ?? []).map((row) => [row.url, row.last_fetched_at]));
-}
+// Per-source cadence gating (isSourceDue/loadBrightSourceFetchState)
+// removed 2026-08-24 — see dueBrightSources' own doc comment further
+// down for why. bright_source_fetch_state is still written to (below),
+// purely for the admin dashboard's "último fetch" display; nothing reads
+// it to decide whether to fetch anymore.
 
 // Records an attempt, not just a success — fetchBrightSources already
 // swallows a single source's failure (network error, 404, etc.) and logs
@@ -1182,22 +1155,20 @@ export interface RunDeps {
   // triggering a full run, which also picked up the next `weekly_batch_size`
   // due comunas — spending real Tavily/Haiku cost on a batch nobody asked
   // for, just to test/refresh a handful of bright sources. Skips
-  // getUnitsDueForRun and the whole comuna loop entirely; bright sources
-  // still only fetch if actually due (isSourceDue) — this doesn't force
-  // them, it only removes the comuna batch as a side effect of checking.
+  // getUnitsDueForRun and the whole comuna loop entirely — every bright
+  // source itself always runs (no cadence gate, see dueBrightSources'
+  // own comment below), this just removes the comuna batch as a side
+  // effect of checking.
   brightSourcesOnly?: boolean;
   // Added 2026-07-23: debugging one misbehaving bright source (e.g.
   // arteinformado.com's "Cannot read properties of null" failure) meant
-  // waiting for its own 7-day cadence, or clearing EVERY source's fetch
-  // state just to force the one you actually wanted logs for. A substring
-  // match against each source's own url (e.g. "arteinformado.com",
-  // "parquecultural.cl") — when set, this REPLACES the normal isSourceDue
-  // check entirely for that filtered set: a matched source runs
-  // regardless of its own cadence, and everything else is skipped, not
-  // just deprioritized. Implies brightSourcesOnly in spirit (there's
-  // rarely a reason to also want the comuna batch when debugging one
-  // named source) but doesn't force it — set both explicitly if that's
-  // not what you want.
+  // clearing EVERY source's fetch state just to force logs for the one
+  // you actually wanted. A substring match against each source's own url
+  // (e.g. "arteinformado.com", "parquecultural.cl") — when set, only the
+  // matched source(s) run, everything else is skipped. Implies
+  // brightSourcesOnly in spirit (there's rarely a reason to also want
+  // the comuna batch when debugging one named source) but doesn't force
+  // it — set both explicitly if that's not what you want.
   brightSourceUrlFilter?: string[];
 }
 
@@ -1246,10 +1217,18 @@ export async function run(deps: RunDeps = {}): Promise<void> {
   // filters the same domains from whatever Tavily actually returns, since
   // exclude_domains isn't perfectly reliable on Tavily's side.
   const excludeDomains = [...brightSources.map((s) => knownSourceDomain(s.url)), ...KNOWN_LOW_QUALITY_SOURCE_DOMAINS];
-  const fetchState = await loadBrightSourceFetchState();
+  // No cadence gate, 2026-08-24 — every bright source runs every time
+  // (unless narrowed by brightSourceUrlFilter, still a real filter for
+  // single-source debugging). Dropped the old 7-day isSourceDue check:
+  // the plain fetch() itself is free (no Apify/Tavily cost like
+  // Instagram or comuna_search), and the real cost driver — Haiku only
+  // ever seeing genuinely new items — was already fully handled by
+  // excludedSourceUrls below, independent of fetch frequency. See
+  // instagram-fetch-state.ts's own 2026-08-24 doc comment for the fuller
+  // reasoning (same principle, applied first to Instagram).
   const dueBrightSources = deps.brightSourceUrlFilter?.length
     ? brightSources.filter((s) => deps.brightSourceUrlFilter!.some((f) => s.url.includes(f)))
-    : brightSources.filter((s) => isSourceDue(fetchState.get(s.url), now));
+    : brightSources;
   const seenKeys = await loadExistingKeys();
   const regions = await loadAllRegions();
   const allCandidates: EventCandidate[] = [];
