@@ -17,16 +17,29 @@ name: Run Event Discovery
 # bright_sources_only=false if this ever needs to be re-investigated or
 # re-enabled, rather than requiring a revert.
 #
-# Every Sunday, 06:00 UTC: bright_sources_only — only due bright sources
-# processed. Their own per-source cadence (isSourceDue) is 7 days now (was
-# 14), so this finds something new most weeks instead of every other one.
-# Moved from Monday to Sunday 2026-08-23 (docs/roadmap.md's long-flagged
-# "discovery cadence moves Monday -> Sunday") along with the rest of this
-# chain (headless/instagram/google-alerts + the newsletter, same relative
-# stagger) — so a week's events are discovered and curated the day
-# *before* that week starts, giving Sunday's newsletter and IG drop a real
-# one-day lead time instead of announcing Monday's inauguraciones the same
-# day they happen.
+# Every Sunday, ~06:07 UTC: bright_sources_only — every bright source
+# processed, no per-source cadence gate anymore (removed 2026-08-24, see
+# dueBrightSources' own doc comment in run.ts — the real cost driver,
+# Haiku only seeing genuinely new items, is handled by per-item dedup
+# regardless of fetch frequency, and the plain fetch()/Tavily-free bright
+# sources have no real per-check cost either). Moved from Monday to
+# Sunday 2026-08-23 (docs/roadmap.md's long-flagged "discovery cadence
+# moves Monday -> Sunday") along with the rest of this chain (headless/
+# instagram/google-alerts + the newsletter, same relative stagger) — so
+# a week's events are discovered and curated the day *before* that week
+# starts, giving Sunday's newsletter and IG drop a real one-day lead time
+# instead of announcing Monday's inauguraciones the same day they happen.
+#
+# Added a second weekly run, Wednesday ~06:07 UTC, 2026-08-24 — same
+# stagger as Sunday, finishing well before Mon/Wed/Fri's own
+# publish-social.yml post at 12:05 UTC. Daniel: since cadence removal
+# means checking twice a week costs basically the same as once, and
+# Wednesday's own post ("no te la pierdas") was otherwise only ever
+# working off whatever the PREVIOUS Sunday found — anything announced
+# Mon/Tue was invisible to it until the following Sunday. This closes
+# that gap without adding a newsletter run (the newsletter stays
+# Sunday-only, a deliberate weekly digest, not a discovery-frequency
+# question).
 # workflow_dispatch stays available for a manual run any time, with its
 # own explicit bright_sources_only input (used instead of
 # github.event.schedule when NOT a schedule-triggered run). bright_source_urls
@@ -63,6 +76,7 @@ on:
     # observed 2026-08-23, this repo's first Sunday run under the new
     # schedule. Every cron in this repo was moved off :00 the same day.
     - cron: "7 6 * * 0" # every Sunday, ~06:07 UTC — bright sources only
+    - cron: "7 6 * * 3" # every Wednesday, ~06:07 UTC — bright sources only, feeds that day's own "no te la pierdas" post
 
 jobs:
   discover:

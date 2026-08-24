@@ -13,21 +13,22 @@ name: Run Instagram Bright Sources
 # No TAVILY_API_KEY: this flow never searches, only fetches + curates
 # already-known accounts, same as headless-bright-sources.yml.
 #
-# Cron fires weekly, but each account's own due-check
-# (instagram-discovery/run.ts's isInstagramSourceDue) only allows a fetch
-# every 14 days — a weekly cron against a 14-day per-account cadence just
-# means a given account's actual fetch happens on every OTHER run, same
-# established pattern as event-discovery/run.ts's own bright sources
-# (weekly cron, 14-day BRIGHT_SOURCE_INTERVAL_MS). Daniel's explicit
-# request (2026-08-13): Instagram content turns over slower, and each
-# fetch is real Apify spend, so a longer cadence than the plain-HTML
-# bright sources is worth it here specifically.
+# No per-account cadence gate anymore, 2026-08-24 (see
+# instagram-fetch-state.ts's own doc comment) — every account is checked
+# on every cron fire. Real data showed Apify's actor is pay-per-RESULT,
+# not per-account-queried, so checking twice a week instead of once costs
+# the same ~$0 for a quiet account. This matters specifically because of
+# the Wednesday cron added below: with the OLD 7-day due-check, a
+# Wednesday run 3 days after Sunday's would have found every account
+# "not due" and fetched nothing — the gate had to go for Wednesday to be
+# worth anything at all.
 on:
   workflow_dispatch: {}
   schedule:
     # Not minute 0 — see event-discovery.yml's own comment (top-of-hour
     # congestion, real 26-51min delays observed 2026-08-23).
     - cron: "17 8 * * 0" # Every Sunday, ~08:17 UTC — 1h after headless (moved from Monday 2026-08-23, see event-discovery.yml)
+    - cron: "17 8 * * 3" # Every Wednesday, ~08:17 UTC — 1h after headless's own Wednesday cron, added 2026-08-24 (see event-discovery.yml)
 
 jobs:
   discover-instagram:

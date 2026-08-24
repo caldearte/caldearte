@@ -14,17 +14,17 @@ name: Run Google Alerts Bright Source
 # the search, already running continuously on Google's own infrastructure,
 # for free. This workflow only reads its feed and curates what's new.
 #
-# Cadence: shared 7-day bright_source_fetch_state/isSourceDue, same as
-# every KNOWN_SOURCES entry — the cron below just needs to run at least
-# that often; weekly matches it exactly (no need for the "cron more
-# frequent than the real per-item cadence" pattern used for Instagram,
-# since there's no per-item variability here).
+# Cadence: none (removed 2026-08-24, same as every other bright source) —
+# runs every time its own cron fires, no per-item gate needed here either
+# way (one continuously-updating feed, not many independently-paced
+# accounts).
 on:
   workflow_dispatch: {}
   schedule:
     # Not minute 0 — see event-discovery.yml's own comment (top-of-hour
     # congestion, real 26-51min delays observed 2026-08-23).
     - cron: "22 9 * * 0" # Every Sunday, ~09:22 UTC — 1h after Instagram (moved from Monday 2026-08-23, see event-discovery.yml)
+    - cron: "22 9 * * 3" # Every Wednesday, ~09:22 UTC — 1h after Instagram's own Wednesday cron, added 2026-08-24 (see event-discovery.yml)
 
 jobs:
   discover-google-alerts:

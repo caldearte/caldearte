@@ -13,14 +13,13 @@
 // new thing here is HOW the content gets fetched (Apify, keyed by
 // username) and mapped to a BrightSourceItem, not how it gets curated.
 //
-// Flat weekly cadence for every account (lib/instagram-fetch-state.ts) —
-// every other bright source (web/headless/Google Alerts) has no cadence
-// gate at all since 2026-08-24, this pipeline keeps one purely because
-// Apify calls are billed per-result and there's still a real dormancy
-// concern (a genuinely dead/deleted account shouldn't be polled forever)
-// — see instagram-fetch-state.ts's own doc comment for the full
-// reasoning, including why the earlier escalating ladder (7->14->21->28
-// ->semestral) was dropped in favor of this simpler flat cadence.
+// No cadence gate at all (lib/instagram-fetch-state.ts), same as every
+// other bright source since 2026-08-24 — every account runs on every
+// cron fire, the only exception being an account marked inactive (a
+// real dormancy concern: a genuinely dead/deleted account shouldn't be
+// polled forever). See instagram-fetch-state.ts's own doc comment for
+// the full reasoning, including why the earlier escalating ladder
+// (7->14->21->28->semestral) was dropped.
 import Anthropic from "@anthropic-ai/sdk";
 import { recordUsage, getConfigNumber, getCurrentMonthSpend } from "../lib/usage-tracking.js";
 import { estimateCostUsd } from "../lib/pricing.js";
@@ -185,7 +184,7 @@ export async function run(deps: InstagramRunDeps = {}): Promise<void> {
     const next = nextFetchState(state, usernamesWithNewItems.has(account.username));
     await recordInstagramFetchState(account, now, next);
     console.log(
-      `[instagram-discovery] ${account.username}: next fetch in 7 day(s)${next.isInactive ? " — marked inactive, won't be fetched again automatically" : ""}`,
+      `[instagram-discovery] ${account.username}: will be checked on the next cron fire${next.isInactive ? " — marked inactive, won't be fetched again automatically" : ""}`,
     );
   }
 

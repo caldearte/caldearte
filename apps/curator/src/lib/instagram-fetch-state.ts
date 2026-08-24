@@ -1,42 +1,43 @@
-// Flat weekly fetch cadence for every Instagram bright source, 2026-08-24
-// — replaces the earlier escalating ladder (7 -> 14 -> 21 -> 28 ->
-// semestral -> inactive). Real data killed the cost assumption the
-// ladder was built on: Apify's `apify/instagram-post-scraper` is
-// pay-per-RESULT (~$0.0025/post), not per-account-queried, so a quiet
-// account checked weekly costs the same ~$0 as one checked every 28
-// days — a zero-yield fetch returns 0 results either way. Checking
-// weekly instead of on a stretched-out cadence also closes a real gap:
-// RESULTS_LIMIT_PER_ACCOUNT (5, apify-instagram.ts) could silently miss
-// posts on an account that posted more than 5 times since its last
-// (infrequent) check. Simulated the real cost of flat-weekly-for-all
-// against actual platform_cost_snapshots data before making this change
-// — ~1.5x more account-checks/week, negligible in absolute dollars.
+// No cadence gate for Instagram either, 2026-08-24 — same principle
+// already applied to every other bright source (event-discovery/
+// headless-discovery/google-alerts-discovery's own run.ts files): real
+// data showed Apify's `apify/instagram-post-scraper` is pay-per-RESULT
+// (~$0.0025/post), not per-account-queried, so a quiet account checked
+// twice a week costs the same ~$0 as one checked once a week — a
+// zero-yield fetch returns 0 results either way (verified against real
+// platform_cost_snapshots data before this change, and again before
+// adding the Wednesday cron in instagram-bright-sources.yml). Checking
+// more often also closes a real gap: RESULTS_LIMIT_PER_ACCOUNT (5,
+// apify-instagram.ts) could silently miss posts on an account that
+// posted more than 5 times between checks.
 //
-// The escalation ladder's dormancy path is kept, simplified: an account
-// with nothing new for a full year of weekly checks (52 in a row) is
+// A dormancy backstop is kept: an account with nothing new for 52
+// consecutive checks (however often the cron fires — currently twice a
+// week, so ~6 months, was ~1 year back when this ran weekly-only) is
 // marked inactive so a genuinely dead/abandoned account doesn't get
 // polled forever. Re-activating one (if it ever starts posting again) is
 // a manual action, not automatic — see instagram-accounts.ts for how to
 // do that. Reuses the same `interval_days`/`consecutive_zero_yield_at_cap`
 // columns every bright source already has (bright_source_fetch_state) —
-// interval_days is now always written as 7 for an Instagram row, and
-// consecutive_zero_yield_at_cap counts weeks instead of cycles-at-cap; no
-// migration needed, just a change in what these columns mean for this
+// interval_days is now always written as 7 for an Instagram row (purely
+// for the admin dashboard's display, not read to gate anything), and
+// consecutive_zero_yield_at_cap counts checks instead of cycles-at-cap;
+// no migration needed, just a change in what these columns mean for this
 // pipeline.
 import { getSupabaseClient } from "./supabase-client.js";
 import type { InstagramAccountConfig } from "./instagram-accounts.js";
 
 export const DEFAULT_INTERVAL_DAYS = 7;
-export const ZERO_YIELD_WEEKS_BEFORE_INACTIVE = 52;
+export const ZERO_YIELD_CHECKS_BEFORE_INACTIVE = 52;
 
 export interface InstagramAccountState {
   lastFetchedAt: string | null;
-  consecutiveZeroYieldWeeks: number;
+  consecutiveZeroYieldChecks: number;
   isInactive: boolean;
 }
 
 export interface NextFetchState {
-  consecutiveZeroYieldWeeks: number;
+  consecutiveZeroYieldChecks: number;
   isInactive: boolean;
 }
 
@@ -62,23 +63,20 @@ export async function loadInstagramFetchState(accounts: InstagramAccountConfig[]
       row.url,
       {
         lastFetchedAt: row.last_fetched_at,
-        consecutiveZeroYieldWeeks: row.consecutive_zero_yield_at_cap ?? 0,
+        consecutiveZeroYieldChecks: row.consecutive_zero_yield_at_cap ?? 0,
         isInactive: row.is_inactive ?? false,
       },
     ]),
   );
 }
 
-// An inactive account is never due — the whole point of the dormancy
-// path above is to stop paying for Apify fetches on an account that's
-// shown nothing for a full year. Re-activating one (if it ever starts
-// posting again) is a manual action, not automatic — see
-// instagram-accounts.ts for how to do that.
-export function isInstagramAccountDue(state: InstagramAccountState | undefined, now: Date): boolean {
-  if (state?.isInactive) return false;
-  if (!state?.lastFetchedAt) return true;
-  const intervalMs = DEFAULT_INTERVAL_DAYS * 24 * 60 * 60 * 1000;
-  return now.getTime() - new Date(state.lastFetchedAt).getTime() >= intervalMs;
+// No time-elapsed check anymore, 2026-08-24 (see this file's own header
+// comment) — an account is due unless marked inactive. `now` is kept as
+// a parameter for call-site compatibility even though it's now unused
+// here; the real per-account freshness signal is accountCutoffDate
+// below, not this function.
+export function isInstagramAccountDue(state: InstagramAccountState | undefined, _now: Date): boolean {
+  return !state?.isInactive;
 }
 
 // The cutoff Apify should use for THIS account specifically — its own
@@ -94,16 +92,16 @@ export function accountCutoffDate(state: InstagramAccountState | undefined, now:
 
 // Any genuinely new post resets the zero-yield streak to 0 (never
 // inactive). Nothing new just increments the streak; the 52nd
-// consecutive empty week marks the account inactive.
+// consecutive empty check marks the account inactive.
 export function nextFetchState(
-  state: Pick<InstagramAccountState, "consecutiveZeroYieldWeeks"> | undefined,
+  state: Pick<InstagramAccountState, "consecutiveZeroYieldChecks"> | undefined,
   foundNewPost: boolean,
 ): NextFetchState {
   if (foundNewPost) {
-    return { consecutiveZeroYieldWeeks: 0, isInactive: false };
+    return { consecutiveZeroYieldChecks: 0, isInactive: false };
   }
-  const zeroStreak = (state?.consecutiveZeroYieldWeeks ?? 0) + 1;
-  return { consecutiveZeroYieldWeeks: zeroStreak, isInactive: zeroStreak >= ZERO_YIELD_WEEKS_BEFORE_INACTIVE };
+  const zeroStreak = (state?.consecutiveZeroYieldChecks ?? 0) + 1;
+  return { consecutiveZeroYieldChecks: zeroStreak, isInactive: zeroStreak >= ZERO_YIELD_CHECKS_BEFORE_INACTIVE };
 }
 
 export async function recordInstagramFetchState(account: InstagramAccountConfig, now: Date, nextState: NextFetchState): Promise<void> {
@@ -112,7 +110,7 @@ export async function recordInstagramFetchState(account: InstagramAccountConfig,
     url: instagramAccountProfileUrl(account),
     last_fetched_at: now.toISOString(),
     interval_days: DEFAULT_INTERVAL_DAYS,
-    consecutive_zero_yield_at_cap: nextState.consecutiveZeroYieldWeeks,
+    consecutive_zero_yield_at_cap: nextState.consecutiveZeroYieldChecks,
     is_inactive: nextState.isInactive,
   });
   if (error) {
