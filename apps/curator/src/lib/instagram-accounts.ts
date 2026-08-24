@@ -692,6 +692,23 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
     addedAt: "2026-08-18",
     fixedLocation: { location: "Ovalle", placeName: "Fundación Cultural 561" },
   },
+  {
+    username: "colectivofotografasfronterizas",
+    note:
+      "Evaluada 2026-08-24, encontrada al probar Apify's hashtag-scraper " +
+      "para #artesantiago (real handle es \"colectivofotografasfronterizas\" " +
+      "— \"colectivofronterizas\" a secas no existe en Instagram). Colectivo " +
+      "de fotógrafas del sur de Chile (Temuco, Araucanía), fundado 2015 — " +
+      "real y activo, organiza el festival Wallmapu FOTO (Fondart " +
+      "Regional). Anuncio propio limpio del 29 de julio 2026 (\"Exponen: " +
+      "Cec...\"), y aparece tageada frecuentemente por @wallmapu_foto, " +
+      "@panoramastemuco, @stgofotoferia — activa en el circuito regional. " +
+      "Cubre una brecha geográfica real (sur de Chile, poco representado " +
+      "frente a Santiago). Sin fixedLocation deliberadamente: es un " +
+      "colectivo que expone en distintos espacios, no un local fijo — " +
+      "Haiku infiere ubicación por post, igual que @ilposto.cl.",
+    addedAt: "2026-08-24",
+  },
   // El resto de la lista la aporta Daniel — una decisión editorial, igual
   // que cada fuente brillante nueva se evaluó una por una. Confirmar
   // pública y activa antes de agregar cada cuenta.
