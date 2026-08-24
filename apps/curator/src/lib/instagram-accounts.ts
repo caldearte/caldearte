@@ -806,6 +806,46 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
     addedAt: "2026-08-24",
     fixedLocation: { location: "Providencia", placeName: "Fundación Cultural Providencia (Palacio Schacht)" },
   },
+  {
+    username: "collectio_collectio",
+    note:
+      "Evaluada 2026-08-24. Collectio (\"Mirar toma tiempo\"), Nueva " +
+      "Costanera 3445, Vitacura (Local 13) — martes a viernes 11-19hrs, " +
+      "también sábados. 12.582 seguidores, cadencia altísima (posts cada " +
+      "1-3 días). Highlights con nombres reales de artistas/muestras (H " +
+      "Mardones, Magdalena Rojas, \"Ser todo eso\", Minerasophia, " +
+      "\"Senderos\") — densidad de contenido real de exposición alta. " +
+      "Algo de ruido esperado (curso presencial visto en un post). No se " +
+      "cruza con ninguna fuente ya tracked. Local fijo confirmado.",
+    addedAt: "2026-08-24",
+    fixedLocation: { location: "Vitacura", placeName: "Collectio" },
+  },
+  {
+    username: "galerianemesioantunez",
+    note:
+      "Evaluada 2026-08-24. Galería Nemesio Antúnez, galería de la UMCE " +
+      "(Universidad Metropolitana de Ciencias de la Educación), Av. José " +
+      "Pedro Alessandri 774, Ñuñoa — funcionando desde 1990, martes a " +
+      "viernes 10:00-18:00hrs. 1536 seguidores, cadencia más espaciada " +
+      "(posts propios cada ~3-4 semanas), pero highlights con nombres de " +
+      "muestras reales (De trazos, Diálogos, Obsolescencia, Creativas, " +
+      "Cortafuegos) confirman actividad expositiva genuina. No se cruza " +
+      "con ninguna fuente ya tracked. Local fijo confirmado.",
+    addedAt: "2026-08-24",
+    fixedLocation: { location: "Ñuñoa", placeName: "Galería Nemesio Antúnez" },
+  },
+  {
+    username: "gallerypluscl",
+    note:
+      "Evaluada 2026-08-24. Gallery +, galería de arte contemporáneo — " +
+      "chica y nueva (942 seguidores, bio menciona \"2026\"), sin " +
+      "dirección propia en la bio, pero Daniel confirmó Monjitas 397, " +
+      "Santiago directamente. Posts con buena frecuencia (~cada 1-2 " +
+      "semanas desde junio 2026). No se cruza con ninguna fuente ya " +
+      "tracked.",
+    addedAt: "2026-08-24",
+    fixedLocation: { location: "Santiago", placeName: "Gallery +" },
+  },
   // El resto de la lista la aporta Daniel — una decisión editorial, igual
   // que cada fuente brillante nueva se evaluó una por una. Confirmar
   // pública y activa antes de agregar cada cuenta.
