@@ -51,7 +51,7 @@ Deno.serve(async (req) => {
   }
 
   // ---- events (all-time, approved, not soft-removed) -----------------
-  const [eventsRes, signalsRes, rejectedRes, usageRes, fetchStateRes, costSnapshotsRes, pendingEscalationsRes, runSummariesRes] = await Promise.all([
+  const [eventsRes, signalsRes, rejectedRes, usageRes, fetchStateRes, costSnapshotsRes, pendingEscalationsRes, runSummariesRes, instagramPostsRes, instagramSnapshotsRes] = await Promise.all([
     client
       .from("events")
       .select("opening_datetime, run_start_date, run_end_date, region_id, pipeline")
@@ -86,6 +86,22 @@ Deno.serve(async (req) => {
       )
       .gte("started_at", new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString())
       .order("started_at", { ascending: false }),
+    // Instagram engagement (docs/roadmap.md, Fase 4 — added 2026-08-24 to
+    // answer a real question: is the deliberate Monday "inauguraciones"
+    // repeat worth it, or too soon after Sunday's own post? Row-level,
+    // same posture as everything else here — client buckets by
+    // granularity. 120 days covers a full quarter of history at this
+    // project's real post volume (a handful/week), trivial to ship whole.
+    client
+      .from("instagram_posts")
+      .select("media_id, post_type, week_start, published_at, reach, saved, like_count, comments_count")
+      .gte("published_at", new Date(Date.now() - 120 * 24 * 60 * 60 * 1000).toISOString())
+      .order("published_at", { ascending: false }),
+    client
+      .from("instagram_account_snapshots")
+      .select("snapshot_date, followers_count, media_count")
+      .gte("snapshot_date", new Date(Date.now() - 120 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10))
+      .order("snapshot_date", { ascending: false }),
   ]);
   for (const [label, res] of [
     ["events", eventsRes],
@@ -96,6 +112,8 @@ Deno.serve(async (req) => {
     ["platform_cost_snapshots", costSnapshotsRes],
     ["curation_escalations", pendingEscalationsRes],
     ["discovery_run_summaries", runSummariesRes],
+    ["instagram_posts", instagramPostsRes],
+    ["instagram_account_snapshots", instagramSnapshotsRes],
   ] as const) {
     if (res.error) {
       console.error(`admin-analytics: ${label} query failed`, res.error);
@@ -339,6 +357,23 @@ Deno.serve(async (req) => {
     costUsd: Number(row.cost_usd ?? 0),
   }));
 
+  const instagramPosts = (instagramPostsRes.data ?? []).map((row) => ({
+    mediaId: row.media_id,
+    postType: row.post_type,
+    weekStart: row.week_start,
+    publishedAt: row.published_at,
+    reach: row.reach,
+    saved: row.saved,
+    likeCount: row.like_count,
+    commentsCount: row.comments_count,
+  }));
+
+  const instagramAccountSnapshots = (instagramSnapshotsRes.data ?? []).map((row) => ({
+    snapshotDate: row.snapshot_date,
+    followersCount: row.followers_count,
+    mediaCount: row.media_count,
+  }));
+
   return jsonResponse({
     generatedAt: new Date().toISOString(),
     events,
@@ -350,5 +385,7 @@ Deno.serve(async (req) => {
     apifyCostByDay,
     pendingEscalationsCount: pendingEscalationsRes.count ?? 0,
     discoveryRunSummaries,
+    instagramPosts,
+    instagramAccountSnapshots,
   });
 });

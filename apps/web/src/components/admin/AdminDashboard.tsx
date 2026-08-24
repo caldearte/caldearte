@@ -12,6 +12,7 @@ import GranularityToggle from "./GranularityToggle";
 import StackedPeriodBar from "./StackedPeriodBar";
 import CostSummaryLine from "./CostSummaryLine";
 import FuentesMetricsTable from "./FuentesMetricsTable";
+import InstagramSummaryBar from "./InstagramSummaryBar";
 import OutOfScopeTrends from "./OutOfScopeTrends";
 
 // recharts' ResponsiveContainer needs real DOM measurement (getBoundingClientRect
@@ -125,6 +126,33 @@ export default function AdminDashboard({ data }: { data: AdminAnalyticsPayload }
     granularity,
   )[0]?.count ?? 0;
 
+  // Instagram — mismo período actual que el resto de esta página.
+  // followersCount es "ahora mismo" (el snapshot más reciente, no tiene
+  // sentido acotarlo al período); followersDelta compara contra el
+  // snapshot más antiguo QUE CAE dentro del período actual, si existe
+  // (los snapshots son semanales, así que en granularidad "week" suele
+  // haber como mucho 1).
+  const instagramSummary = useMemo(() => {
+    const sortedSnapshots = [...data.instagramAccountSnapshots].sort((a, b) => (a.snapshotDate < b.snapshotDate ? 1 : -1));
+    const latest = sortedSnapshots[0] ?? null;
+    const snapshotsInPeriod = data.instagramAccountSnapshots
+      .filter((s) => bucketLabel(s.snapshotDate, granularity) === currentPeriod)
+      .sort((a, b) => (a.snapshotDate < b.snapshotDate ? -1 : 1));
+    const earliestInPeriod = snapshotsInPeriod[0] ?? null;
+    const followersDelta = latest && earliestInPeriod ? latest.followersCount - earliestInPeriod.followersCount : null;
+
+    const postsThisPeriod = data.instagramPosts.filter((p) => bucketLabel(p.publishedAt, granularity) === currentPeriod);
+    const sum = (values: (number | null)[]) => values.reduce((acc: number, v) => acc + (v ?? 0), 0);
+
+    return {
+      followersCount: latest?.followersCount ?? null,
+      followersDelta,
+      reachTotal: sum(postsThisPeriod.map((p) => p.reach)),
+      likesTotal: sum(postsThisPeriod.map((p) => p.likeCount)),
+      savedTotal: sum(postsThisPeriod.map((p) => p.saved)),
+    };
+  }, [data.instagramAccountSnapshots, data.instagramPosts, currentPeriod, granularity]);
+
   return (
     <div className="flex flex-col gap-12">
       <GranularityToggle value={granularity} onChange={setGranularity} hideTotal />
@@ -160,6 +188,17 @@ export default function AdminDashboard({ data }: { data: AdminAnalyticsPayload }
           <StackedPeriodBar segments={fuentesSegments} total={currentPeriodEvents.length} totalLabel="eventos en Chile este período" />
           <FuentesMetricsTable comparison={data.pipelineComparison} />
         </div>
+      </section>
+
+      <section>
+        <h2 className="font-fragment-mono uppercase text-[18px] text-text-primary mb-4">Instagram</h2>
+        <InstagramSummaryBar
+          followersCount={instagramSummary.followersCount}
+          followersDelta={instagramSummary.followersDelta}
+          reachTotal={instagramSummary.reachTotal}
+          likesTotal={instagramSummary.likesTotal}
+          savedTotal={instagramSummary.savedTotal}
+        />
       </section>
 
       <section>
