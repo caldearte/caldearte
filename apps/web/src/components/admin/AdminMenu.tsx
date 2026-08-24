@@ -39,9 +39,6 @@ export default function AdminMenu() {
           <Link href="/admin/fuentes" className="font-fragment-mono uppercase text-[16px]" onClick={() => setOpen(false)}>
             {esCL.adminMenu.fuentes}
           </Link>
-          <Link href="/admin/cadencia" className="font-fragment-mono uppercase text-[16px]" onClick={() => setOpen(false)}>
-            {esCL.adminMenu.cadencia}
-          </Link>
           <Link href="/admin/costos" className="font-fragment-mono uppercase text-[16px]" onClick={() => setOpen(false)}>
             {esCL.adminMenu.costos}
           </Link>
