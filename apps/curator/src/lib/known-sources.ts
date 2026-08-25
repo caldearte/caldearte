@@ -740,6 +740,45 @@ export const KNOWN_SOURCES: KnownSource[] = [
       },
     },
   },
+  {
+    url: "https://www.mhnv.gob.cl/cartelera",
+    note:
+      "Museo de Historia Natural de Valparaíso (MHNV) — encontrada 2026-08-25 " +
+      "tras un evento real perdido (\"A través del espejo\", Ervin Echeverría " +
+      "Iturra) que solo aparecía en su Instagram (no tracked). Mismo " +
+      "SNPC/Drupal template que mnba.gob.cl/museoregionalaysen.gob.cl/" +
+      "museodeancud.gob.cl — pero, igual que museoschile.gob.cl (Red " +
+      "Nacional), MHNV mezcla disciplinas: es primariamente un museo de " +
+      "historia natural (Ciencia, Zoología, Ciencias Naturales, " +
+      "Arqueología, Historia/charlas), con exposiciones reales de arte " +
+      "visual real solo ocasionalmente (tematica \"Pintura\"/\"Artes " +
+      "gráficas\" confirmadas en vivo). Mismo filtro determinístico por " +
+      "field--name-field-tematica que museoschile.gob.cl, con la misma " +
+      "técnica de lookahead acotado a `</article>` (no `views-row`, " +
+      "límite de bloque distinto en esta plantilla) para evitar el mismo " +
+      "bug de escaneo sin límite ya encontrado y corregido ahí.",
+    lastReviewedAt: "2026-08-25",
+    additionalPages: ["https://www.mhnv.gob.cl/cartelera/proximos"],
+    extractor: {
+      kind: "articleList",
+      blockRegex:
+        /<article\s+class="node node--evento[^"]*">(?=(?:(?!<\/article>)[\s\S])*?field--name-field-tematica"[^>]*>(?:Pintura|Escultura|Fotografía|Artes gráficas|Artes visuales)<)([\s\S]*?)<\/article>/g,
+      titleLinkRegex: /<h2 class="destacado__title"><a href="([^"]+)">([^<]*)<\/a><\/h2>/,
+      placeRegex: /field--name-institucion"><a[^>]*>([^<]*)<\/a>/,
+      // Mismo campo de fecha ISO que mnba.gob.cl/museoregionalaysen.gob.cl/
+      // museodeancud.gob.cl — ver su propio comentario.
+      dateRangeExtractor: {
+        pattern: /<time datetime="(?<startIso>\d{4}-\d{2}-\d{2})[^"]*"[^>]*>[\s\S]*?<time datetime="(?<endIso>\d{4}-\d{2}-\d{2})[^"]*"[^>]*>/,
+      },
+    },
+    fixedLocation: { location: "Valparaíso", placeName: "Museo de Historia Natural de Valparaíso" },
+    // Mismo contenedor "text-long" que el resto de la familia SNPC/Drupal —
+    // confirmado 2026-08-25 contra la página de detalle real de "A través
+    // del espejo".
+    descriptionExtractor: {
+      pattern: /<div class="text-long">([\s\S]*?)<\/div>/,
+    },
+  },
 ];
 
 export function knownSourceDomain(url: string): string {

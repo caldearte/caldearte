@@ -10,6 +10,7 @@ test("isAggregatorSource is true for a real known aggregator domain (no fixedLoc
 test("isAggregatorSource is false for a real single-venue source (has fixedLocation)", () => {
   assert.equal(isAggregatorSource("https://www.mnba.gob.cl/some-exhibition"), false);
   assert.equal(isAggregatorSource("https://parquecultural.cl/expo-1"), false);
+  assert.equal(isAggregatorSource("https://www.mhnv.gob.cl/cartelera/some-exhibition"), false);
 });
 
 test("isAggregatorSource is false for a URL whose domain doesn't match any KNOWN_SOURCES entry — a Tavily-discovered social post is a primary post, not a re-listing", () => {
