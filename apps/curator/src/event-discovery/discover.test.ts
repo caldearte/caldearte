@@ -4,6 +4,7 @@ import {
   applyKnownExclusionsFilter,
   applyLocationFilter,
   buildBrightSourceBlock,
+  buildBrightSourceSystemPrompt,
   buildQueries,
   currentMonthLabel,
   curateBrightSourceItems,
@@ -990,6 +991,22 @@ test("buildBrightSourceBlock tells Haiku dates are already confirmed when struct
   const block = buildBrightSourceBlock([{ ...baseBrightItem, structuredStartDate: "2026-07-05", structuredEndDate: "2026-07-31" }]);
   assert.match(block, /Fechas de exhibición ya confirmadas: 2026-07-05 a 2026-07-31/);
   assert.doesNotMatch(block, /Del 5 al 31 de julio/);
+});
+
+// Real false negative found in the 2026-08-25 audit: "Criaturas de Tierra"
+// (Museo de Artes Decorativas) had a real, unambiguous closing date in its
+// raw Instagram caption ("abierta hasta el 30 de abril del 2027"), and
+// Haiku's own curationReasoning said so explicitly — but it still left
+// runEndDate null, and enforceDateCompleteness rejected the whole
+// candidate for it. The likely cause: Haiku's confident phrasing ("no
+// requiere parsing adicional") echoed the instruction meant for a
+// DIFFERENT case — items whose dateLine already says "Fechas de
+// exhibición ya confirmadas" — and it applied that case's "leave the
+// fields null" rule to a raw-text item by mistake. This test locks in the
+// prompt clarification meant to prevent that specific confusion.
+test("buildBrightSourceSystemPrompt warns Haiku not to treat its own confidence in a date as the 'already confirmed, leave null' skip case", () => {
+  const prompt = buildBrightSourceSystemPrompt("agosto 2026", { needsLocation: false });
+  assert.match(prompt, /tu propia confianza en la fecha es precisamente la señal de que debes escribirla en el campo/);
 });
 
 test("curateBrightSourceItems merges Haiku's curatorial verdict by index onto the item's own deterministic title/sourceUrl/imageUrl — never onto whatever Haiku echoed", async () => {
