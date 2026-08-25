@@ -961,13 +961,16 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
     username: "museoartesdecorativas",
     note:
       "Evaluada 2026-08-24. Museo de Artes Decorativas (MAD), Avda. " +
-      "Recoleta 683, Santiago — museo público real (artdec.gob.cl), " +
-      "26.500 seguidores, horario propio (M-V 10-17, S 10-14). Highlight " +
+      "Recoleta 683 — museo público real (artdec.gob.cl), 26.500 " +
+      "seguidores, horario propio (M-V 10-17, S 10-14). Highlight " +
       "\"Exposiciones\" explícito y póster real de exhibición visible en " +
       "grilla (\"Cristurno de tierra\"). Ruido esperado normal (talleres, " +
-      "huerta, mediación). fixedLocation.",
+      "huerta, mediación). fixedLocation corregido 2026-08-25 (auditoría " +
+      "de curación): la dirección real está en la comuna Recoleta, no " +
+      "Santiago (error original al agregar la fuente) — confirmado que " +
+      "esta comuna existe en la tabla `regions`.",
     addedAt: "2026-08-24",
-    fixedLocation: { location: "Santiago", placeName: "Museo de Artes Decorativas" },
+    fixedLocation: { location: "Recoleta", placeName: "Museo de Artes Decorativas" },
   },
   {
     username: "laescalagaleria",
