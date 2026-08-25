@@ -333,6 +333,16 @@ export const esCL = {
     costos: "Costos",
   },
 
+  // /admin/instagram — botón para disparar manualmente el cron de
+  // instagram-insights (normalmente semanal, lunes) en vez de esperar.
+  // Es async (dispara el workflow de GitHub Actions, no espera a que
+  // termine), así que el mensaje de éxito es una expectativa de tiempo,
+  // no una confirmación de dato fresco ya disponible.
+  instagramRefreshButton: "Actualizar ahora",
+  instagramRefreshing: "Actualizando…",
+  instagramRefreshSuccess: "Actualización en curso — puede tardar 1-2 minutos. Recarga la página para ver los datos nuevos.",
+  instagramRefreshError: "No se pudo iniciar la actualización. Intenta de nuevo.",
+
   // /eventos/[id] — the shareable, individually-linkable page for one
   // event (see docs/risks.md's ToS note on scraped sources: this page's
   // whole point is to make attribution unmissable, not buried in a menu).

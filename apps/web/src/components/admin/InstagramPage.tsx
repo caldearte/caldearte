@@ -6,6 +6,7 @@ import { bucketLabel, enumeratePeriods, type Granularity } from "@/lib/adminAnal
 import type { AdminAnalyticsPayload } from "@/lib/adminAnalytics";
 import GranularityToggle from "./GranularityToggle";
 import InstagramSummaryBar from "./InstagramSummaryBar";
+import InstagramRefreshButton from "./InstagramRefreshButton";
 import InstagramTypeComparisonTable from "./InstagramTypeComparisonTable";
 import InstagramPostsTable from "./InstagramPostsTable";
 
@@ -71,7 +72,10 @@ export default function InstagramPage({
       <GranularityToggle value={granularity} onChange={setGranularity} />
 
       <section>
-        <h2 className="font-fragment-mono uppercase text-[18px] text-text-primary mb-4">Resumen del período</h2>
+        <div className="flex items-start justify-between gap-4 mb-4">
+          <h2 className="font-fragment-mono uppercase text-[18px] text-text-primary">Resumen del período</h2>
+          <InstagramRefreshButton />
+        </div>
         <InstagramSummaryBar
           followersCount={summary.followersCount}
           followersDelta={summary.followersDelta}
