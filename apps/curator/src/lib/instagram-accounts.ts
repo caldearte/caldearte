@@ -930,6 +930,19 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
     addedAt: "2026-08-24",
     fixedLocation: { location: "Vitacura", placeName: "Galería NAC" },
   },
+  {
+    username: "rojo_galeria",
+    note:
+      "Evaluada 2026-08-24. Rojo Galería, edificio patrimonial de 1887, " +
+      "Cerro Alegre, Valparaíso — fundada 2012, real, 11.900 seguidores, " +
+      "horario propio (L-S 10-18, D 10-17:30), sitio web propio " +
+      "(rojogaleria.com). Grilla con contenido real de exposición " +
+      "(muestra colectiva con público, obras en pared). Algunos " +
+      "highlights comerciales (\"Descuentos\", \"Envíos/shipping\") — " +
+      "ruido esperado, no descalifica. fixedLocation.",
+    addedAt: "2026-08-24",
+    fixedLocation: { location: "Valparaíso", placeName: "Rojo Galería" },
+  },
   // El resto de la lista la aporta Daniel — una decisión editorial, igual
   // que cada fuente brillante nueva se evaluó una por una. Confirmar
   // pública y activa antes de agregar cada cuenta.
