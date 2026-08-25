@@ -943,6 +943,20 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
     addedAt: "2026-08-24",
     fixedLocation: { location: "Valparaíso", placeName: "Rojo Galería" },
   },
+  {
+    username: "saladeartemercado",
+    note:
+      "Evaluada 2026-08-24. Sala de Arte Mercado, Municipalidad de " +
+      "Chillán — espacio expositivo dedicado en el segundo piso del " +
+      "Mercado Municipal de Chillán (Maipón 773), inaugurada 2019. 3.795 " +
+      "seguidores. Highlights con nombres de artistas individuales " +
+      "(Oscar Meneses, Mecha, Marisol) confirman programa expositivo " +
+      "real y recurrente, más un póster de evento real próximo " +
+      "(\"IN-SITU\", 5-6 de septiembre). Buena diversidad geográfica " +
+      "(Ñuble, región poco cubierta). fixedLocation.",
+    addedAt: "2026-08-24",
+    fixedLocation: { location: "Chillán", placeName: "Sala de Arte Mercado" },
+  },
   // El resto de la lista la aporta Daniel — una decisión editorial, igual
   // que cada fuente brillante nueva se evaluó una por una. Confirmar
   // pública y activa antes de agregar cada cuenta.
