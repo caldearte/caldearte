@@ -1078,6 +1078,21 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
     addedAt: "2026-08-24",
     fixedLocation: { location: "Santiago", placeName: "Arrayán Espacio" },
   },
+  {
+    username: "mapamuseo",
+    note:
+      "Evaluada 2026-08-25. Museo de Arte Popular Americano (MAPA), " +
+      "Universidad de Chile (Facultad de Artes) — real y establecido " +
+      "desde 2010, entrada gratuita, 28.500 seguidores. Su sede propia " +
+      "(según uchile.cl) está en GAM, Santiago, pero un post real " +
+      "confirmado (\"Prácticas de Encuentro\", 27 de agosto) ubica la " +
+      "inauguración en OTRA sede universitaria — MAPA Plataforma " +
+      "Cultural Universidad de Chile, Av. Grecia 3401, Ñuñoa — mismo " +
+      "patrón que arte_uah/ilposto.cl: promueve actividades en sedes de " +
+      "terceros, no un solo local propio. Sin fixedLocation deliberado — " +
+      "Haiku infiere ubicación por post.",
+    addedAt: "2026-08-25",
+  },
   // El resto de la lista la aporta Daniel — una decisión editorial, igual
   // que cada fuente brillante nueva se evaluó una por una. Confirmar
   // pública y activa antes de agregar cada cuenta.
