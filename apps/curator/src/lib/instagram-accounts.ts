@@ -1035,6 +1035,46 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
     addedAt: "2026-08-24",
     fixedLocation: { location: "Providencia", placeName: "De Sarmiento Galería" },
   },
+  {
+    username: "museoprecolombino",
+    note:
+      "Evaluada 2026-08-24. Museo Chileno de Arte Precolombino, Bandera " +
+      "361, Santiago (Palacio de la Real Aduana) — museo real y " +
+      "prestigioso, 144.000 seguidores, horario propio (M-D 10-18). " +
+      "Highlight \"CARTELERA\" confirma programación de exposiciones " +
+      "temporales real, junto con contenido educativo/talleres (ruido " +
+      "esperado). Confirmado por Daniel: colección precolombina " +
+      "(cerámica, textil, orfebrería) cuenta como arte visual en " +
+      "alcance. fixedLocation.",
+    addedAt: "2026-08-24",
+    fixedLocation: { location: "Santiago", placeName: "Museo Chileno de Arte Precolombino" },
+  },
+  {
+    username: "saladeobra",
+    note:
+      "Evaluada 2026-08-24. Sala de Obra, Tucapel 482, Local 94, " +
+      "Concepción — sala de exposiciones del Colegio de Arquitectos " +
+      "Concepción (@coarqconce). 3.219 seguidores, horario propio " +
+      "(L-V 14:30-19:00). Cartelera mensual muy limpia (highlights " +
+      "Marzo a Agosto), primer post de grilla \"CARTELERA Sala de Obra " +
+      "Agosto\" con artista nombrado. Buena diversidad geográfica " +
+      "(Concepción/Biobío, no cubierta hasta ahora). fixedLocation.",
+    addedAt: "2026-08-24",
+    fixedLocation: { location: "Concepción", placeName: "Sala de Obra" },
+  },
+  {
+    username: "arrayan_espacio",
+    note:
+      "Evaluada 2026-08-24. Arrayán Espacio, Barrio Brasil, Santiago — " +
+      "\"Lugar dedicado a la fotografía y las artes visuales\", un " +
+      "espacio de @cafe.arrayan. 1.341 seguidores. Highlight " +
+      "\"Exposiciones\" explícito, póster real de exhibición con " +
+      "artistas nombrados (Neis Alarcón, Loin y Cecilia, Felipe " +
+      "Elgueta, Matías López). Anexo a un café, pero programa " +
+      "expositivo dedicado y real. fixedLocation.",
+    addedAt: "2026-08-24",
+    fixedLocation: { location: "Santiago", placeName: "Arrayán Espacio" },
+  },
   // El resto de la lista la aporta Daniel — una decisión editorial, igual
   // que cada fuente brillante nueva se evaluó una por una. Confirmar
   // pública y activa antes de agregar cada cuenta.
