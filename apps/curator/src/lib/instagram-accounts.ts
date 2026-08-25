@@ -890,6 +890,20 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
     addedAt: "2026-08-24",
     fixedLocation: { location: "Santiago", placeName: "Biblioteca Nacional de Chile" },
   },
+  {
+    username: "bellasartesvina",
+    note:
+      "Evaluada 2026-08-24. Escuela de Bellas Artes de Viña del Mar " +
+      "(Municipalidad de Viña del Mar), ubicada dentro del Museo Palacio " +
+      "Vergara (mismo edificio que @museopalaciovergara, ya fuente propia) " +
+      "— 13.700 seguidores. Comparación directa de grillas: contenido " +
+      "distinto al del museo (exposición de fotografía en blanco y negro " +
+      "propia de la escuela, \"Día Mundial de la Fotografía\"), programa " +
+      "expositivo propio y separado del museo pese a compartir edificio — " +
+      "no redundante. fixedLocation.",
+    addedAt: "2026-08-24",
+    fixedLocation: { location: "Viña del Mar", placeName: "Museo Palacio Vergara" },
+  },
   // El resto de la lista la aporta Daniel — una decisión editorial, igual
   // que cada fuente brillante nueva se evaluó una por una. Confirmar
   // pública y activa antes de agregar cada cuenta.
