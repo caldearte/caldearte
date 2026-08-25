@@ -904,6 +904,32 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
     addedAt: "2026-08-24",
     fixedLocation: { location: "Viña del Mar", placeName: "Museo Palacio Vergara" },
   },
+  {
+    username: "galeriaemergentelab",
+    note:
+      "Evaluada 2026-08-24. Galería Emergente Lab — 793 seguidores, sin " +
+      "bio, dirección ni sitio web confirmables (búsqueda web tampoco " +
+      "encontró la dirección). Grilla con contenido real de exposición: " +
+      "inauguración con visitantes junto a un retrato al carboncillo de " +
+      "gran formato, reunión de público en la sala. Sin fixedLocation: no " +
+      "se pudo confirmar un local fijo — Haiku infiere por post, igual " +
+      "que @ilposto.cl.",
+    addedAt: "2026-08-24",
+  },
+  {
+    username: "galerianac",
+    note:
+      "Evaluada 2026-08-24. Galería NAC (Andreu Jander Sagredo), Av. " +
+      "Américo Vespucio Norte 2878, Vitacura — fundada 2015, real y " +
+      "establecida, 29.300 seguidores, horario propio (L-V 10:30-19:00, " +
+      "S 11:30-14:00), sitio web propio (galerianac.cl). Confirmada en " +
+      "AGAC y ARTEinformado con exposiciones recientes reales " +
+      "(\"Triángulo de agua\", \"Materia\", nov 2025). Highlights " +
+      "(Exposiciones, Eventos, Artistas, Ferias) confirman programa " +
+      "expositivo recurrente. fixedLocation.",
+    addedAt: "2026-08-24",
+    fixedLocation: { location: "Vitacura", placeName: "Galería NAC" },
+  },
   // El resto de la lista la aporta Daniel — una decisión editorial, igual
   // que cada fuente brillante nueva se evaluó una por una. Confirmar
   // pública y activa antes de agregar cada cuenta.
