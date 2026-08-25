@@ -1168,6 +1168,21 @@ export interface BrightSourceCurateOpts {
   fixedLocation?: { location: string; placeName: string };
 }
 
+// Cap on items sent to Haiku in a single curation call. Real incident
+// 2026-08-25: a manual full-registry Instagram run (cadence gating had
+// just been removed, see instagram-fetch-state.ts) produced 107
+// curatable items in one batch — Haiku's JSON response got cut off
+// mid-object before finishing all 107 rows, parseBrightSourceCurationRows
+// threw on the truncated output, and curateBrightSourceItems returned
+// zero candidates for the *entire* batch despite the API cost ($0.146)
+// already being spent. Worse, this wasn't a one-off: with cadence
+// gating gone, every scheduled run now fetches the whole registry, so an
+// unchunked call would keep failing (and keep costing money) on every
+// future run too. Chunking bounds each individual Haiku call to a size
+// that reliably finishes inside max_tokens, so a batch this large now
+// costs several calls instead of failing outright.
+const CURATE_CHUNK_SIZE = 20;
+
 export async function curateBrightSourceItems(
   client: MessagesClient,
   items: BrightSourceItem[],
@@ -1194,45 +1209,67 @@ export async function curateBrightSourceItems(
   // still get asked, same as any other item with no known location.
   const needsLocation = !opts.fixedLocation && !items.every((item) => item.location !== null);
   const systemPrompt = buildBrightSourceSystemPrompt(monthLabel, { needsLocation });
-  const block = buildBrightSourceBlock(items);
 
-  const response = await client.messages.create({
-    model: MODEL,
-    max_tokens: 16000,
-    system: [{ type: "text", text: systemPrompt, cache_control: { type: "ephemeral" } }],
-    messages: [{ role: "user", content: block }],
-  });
-
-  const text = response.content
-    .filter((b) => b.type === "text" && b.text)
-    .map((b) => b.text)
-    .join("");
-
-  const usage: DiscoverUsage = {
-    inputTokens: response.usage.input_tokens,
-    outputTokens: response.usage.output_tokens,
-    cacheCreationInputTokens: response.usage.cache_creation_input_tokens ?? undefined,
-    cacheReadInputTokens: response.usage.cache_read_input_tokens ?? undefined,
-  };
-
-  let rows: BrightSourceCurationRow[];
-  try {
-    rows = parseBrightSourceCurationRows(text, items.length);
-  } catch (err) {
-    console.error(`[event-discovery] curateBrightSourceItems: ${(err as Error).message}`);
-    return { candidates: [], usage };
-  }
-
-  // Built by index, not by push order — parseBrightSourceCurationRows
-  // guarantees every index 0..items.length-1 appears exactly once, but not
-  // in that order, so this keeps `merged[i]` aligned to `items[i]`.
+  const usage: DiscoverUsage = { inputTokens: 0, outputTokens: 0, cacheCreationInputTokens: 0, cacheReadInputTokens: 0 };
+  // Sparse by chunk offset, not push order — same reasoning as the old
+  // single-call version, just applied per chunk: a chunk's own rows are
+  // guaranteed to cover every local index within it, but not in order.
   const merged: EventCandidate[] = new Array(items.length);
-  for (const row of rows) {
-    merged[row.index] = mergeBrightSourceCandidate(items[row.index], row, opts.fixedLocation);
+
+  for (let chunkStart = 0; chunkStart < items.length; chunkStart += CURATE_CHUNK_SIZE) {
+    const chunk = items.slice(chunkStart, chunkStart + CURATE_CHUNK_SIZE);
+    const block = buildBrightSourceBlock(chunk);
+
+    const response = await client.messages.create({
+      model: MODEL,
+      max_tokens: 16000,
+      system: [{ type: "text", text: systemPrompt, cache_control: { type: "ephemeral" } }],
+      messages: [{ role: "user", content: block }],
+    });
+
+    const text = response.content
+      .filter((b) => b.type === "text" && b.text)
+      .map((b) => b.text)
+      .join("");
+
+    usage.inputTokens += response.usage.input_tokens;
+    usage.outputTokens += response.usage.output_tokens;
+    usage.cacheCreationInputTokens = (usage.cacheCreationInputTokens ?? 0) + (response.usage.cache_creation_input_tokens ?? 0);
+    usage.cacheReadInputTokens = (usage.cacheReadInputTokens ?? 0) + (response.usage.cache_read_input_tokens ?? 0);
+
+    let rows: BrightSourceCurationRow[];
+    try {
+      rows = parseBrightSourceCurationRows(text, chunk.length);
+    } catch (err) {
+      // Fails closed for just this chunk, not the whole batch — the other
+      // chunks' real candidates still make it through instead of being
+      // thrown away over one bad chunk (the exact loss that motivated
+      // chunking in the first place).
+      console.error(
+        `[event-discovery] curateBrightSourceItems: chunk ${chunkStart}-${chunkStart + chunk.length - 1}: ${(err as Error).message}`,
+      );
+      continue;
+    }
+
+    for (const row of rows) {
+      merged[chunkStart + row.index] = mergeBrightSourceCandidate(items[chunkStart + row.index], row, opts.fixedLocation);
+    }
   }
 
-  const convocatoriaFiltered = rejectBrightSourceConvocatorias(merged, items);
-  const dateBackfilled = fillRunStartFromPublishedDate(convocatoriaFiltered, items);
+  // Drop any holes left by a failed chunk, keeping candidates/items
+  // positionally aligned for the index-based post-processing below
+  // (rejectBrightSourceConvocatorias, fillRunStartFromPublishedDate) —
+  // both only care about matching positions, not original absolute index.
+  const presentItems: BrightSourceItem[] = [];
+  const presentCandidates: EventCandidate[] = [];
+  for (let i = 0; i < merged.length; i++) {
+    if (merged[i] === undefined) continue;
+    presentItems.push(items[i]);
+    presentCandidates.push(merged[i]);
+  }
+
+  const convocatoriaFiltered = rejectBrightSourceConvocatorias(presentCandidates, presentItems);
+  const dateBackfilled = fillRunStartFromPublishedDate(convocatoriaFiltered, presentItems);
   // Always run the deterministic Chilean-location backstop now, even for
   // fixedLocation sources — it used to be skipped for them entirely
   // (their location was always trusted as-is), but Haiku's own

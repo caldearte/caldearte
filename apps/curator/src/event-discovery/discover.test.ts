@@ -1357,3 +1357,98 @@ test("curateBrightSourceItems returns zero candidates and zero usage without cal
   assert.equal(usage.inputTokens, 0);
   assert.equal(called, false);
 });
+
+// Real incident 2026-08-25: a single unchunked Haiku call over a 107-item
+// batch got truncated mid-JSON and lost the entire batch's candidates
+// while still spending real API cost. curateBrightSourceItems now splits
+// into fixed-size chunks (CURATE_CHUNK_SIZE = 20) so one call's failure
+// only costs that chunk's candidates, not the whole run's.
+test("curateBrightSourceItems splits a batch larger than the chunk size into multiple Haiku calls and merges every chunk's candidates", async () => {
+  const items: BrightSourceItem[] = Array.from({ length: 25 }, (_, i) => ({ ...baseBrightItem, title: `Muestra ${i}` }));
+  let callCount = 0;
+  const chunkSizes: number[] = [];
+  const client: MessagesClient = {
+    messages: {
+      create: async (params: { messages: Array<{ content: string }> }) => {
+        callCount += 1;
+        const localCount = (params.messages[0].content.match(/^\[\d+\]/gm) ?? []).length;
+        chunkSizes.push(localCount);
+        const rows = Array.from({ length: localCount }, (_, i) => ({
+          index: i,
+          status: "approved",
+          artist: null,
+          runStartDate: "2026-07-05",
+          runEndDate: "2026-07-31",
+          openingDatetime: null,
+          openingTimeConfirmed: false,
+          location: null,
+          placeName: null,
+          mediumType: "tradicional",
+          sensitivityTags: [],
+          curationReasoning: "ok",
+        }));
+        return {
+          content: [{ type: "text", text: "```json\n" + JSON.stringify(rows) + "\n```" }],
+          usage: { input_tokens: 10, output_tokens: 5 },
+        };
+      },
+    },
+  };
+
+  const { candidates, usage } = await curateBrightSourceItems(client, items, "julio 2026", {
+    fixedLocation: { location: "Santiago", placeName: "Fuente" },
+  });
+
+  assert.equal(callCount, 2, "25 items over a chunk size of 20 must be split into 2 calls");
+  assert.deepEqual(chunkSizes, [20, 5]);
+  assert.equal(candidates.length, 25);
+  assert.equal(usage.inputTokens, 20, "usage must be summed across both chunk calls (10 + 10)");
+});
+
+test("curateBrightSourceItems keeps a good chunk's real candidates even when another chunk in the same batch fails closed", async () => {
+  const items: BrightSourceItem[] = Array.from({ length: 25 }, (_, i) => ({ ...baseBrightItem, title: `Muestra ${i}` }));
+  let callCount = 0;
+  const client: MessagesClient = {
+    messages: {
+      create: async (params: { messages: Array<{ content: string }> }) => {
+        callCount += 1;
+        const localCount = (params.messages[0].content.match(/^\[\d+\]/gm) ?? []).length;
+        if (callCount === 1) {
+          // First chunk (20 items): a healthy, complete response.
+          const rows = Array.from({ length: localCount }, (_, i) => ({
+            index: i,
+            status: "approved",
+            artist: null,
+            runStartDate: "2026-07-05",
+            runEndDate: "2026-07-31",
+            openingDatetime: null,
+            openingTimeConfirmed: false,
+            location: null,
+            placeName: null,
+            mediumType: "tradicional",
+            sensitivityTags: [],
+            curationReasoning: "ok",
+          }));
+          return {
+            content: [{ type: "text", text: "```json\n" + JSON.stringify(rows) + "\n```" }],
+            usage: { input_tokens: 10, output_tokens: 5 },
+          };
+        }
+        // Second chunk (5 items): simulates the real 2026-08-25 truncation
+        // — a response with fewer rows than expected.
+        const rows = [{ index: 0, status: "approved", artist: null, runStartDate: null, runEndDate: null, openingDatetime: null, openingTimeConfirmed: false, location: null, placeName: null, mediumType: "tradicional", sensitivityTags: [], curationReasoning: "ok" }];
+        return {
+          content: [{ type: "text", text: "```json\n" + JSON.stringify(rows) + "\n```" }],
+          usage: { input_tokens: 10, output_tokens: 5 },
+        };
+      },
+    },
+  };
+
+  const { candidates, usage } = await curateBrightSourceItems(client, items, "julio 2026", {
+    fixedLocation: { location: "Santiago", placeName: "Fuente" },
+  });
+
+  assert.equal(candidates.length, 20, "the first chunk's 20 real candidates must survive the second chunk's failure");
+  assert.equal(usage.inputTokens, 20, "usage is still recorded for the failed chunk's API call, not just the successful one");
+});
