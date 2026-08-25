@@ -115,17 +115,26 @@ function toSocialEvent(e: EventWithRegion): SocialEvent {
     runStartDate: e.run_start_date,
     runEndDate: e.run_end_date,
     sourceAccount: e.source_account,
+    artistInstagramHandle: e.artist_instagram_handle,
   };
 }
 
-// Appends an @mention line for every distinct Instagram-sourced venue in
-// this carousel — Daniel 2026-08-23: a tagged venue has a real incentive
-// to reshare to its own (much bigger, already-interested) audience,
-// which a caption with no tag doesn't give it. Only ever set for the
-// Instagram pipeline (bright_source events have no Instagram handle at
-// all), so a carousel with none produces the base caption unchanged.
+// Appends an @mention line for every distinct Instagram-sourced venue AND
+// artist in this carousel — Daniel 2026-08-23 (venue), extended
+// 2026-08-25 to artists after a real signal: a tagged venue resshared and
+// got a real reply, and the post's ARTIST (never tagged) still liked and
+// thanked it publicly, unprompted, on their own. Both give the tagged
+// account a real incentive to reshare to their own audience, which a
+// caption with no tag doesn't give them. Venue and artist handles are
+// deliberately kept in ONE combined, deduped list (not two separate
+// lines) — a carousel where the same account is both the venue AND
+// tagged as the artist (a solo-practice space) would otherwise repeat
+// itself. Only ever set for the Instagram pipeline, so a carousel with
+// neither produces the base caption unchanged.
 function withVenueMentions(caption: string, events: SocialEvent[]): string {
-  const handles = [...new Set(events.map((e) => e.sourceAccount).filter((h): h is string => Boolean(h)))];
+  const handles = [
+    ...new Set(events.flatMap((e) => [e.sourceAccount, e.artistInstagramHandle]).filter((h): h is string => Boolean(h))),
+  ];
   if (handles.length === 0) return caption;
   return `${caption}\n\nCon: ${handles.map((h) => `@${h}`).join(" ")}`;
 }

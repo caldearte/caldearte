@@ -1009,6 +1009,80 @@ test("buildBrightSourceSystemPrompt warns Haiku not to treat its own confidence 
   assert.match(prompt, /tu propia confianza en la fecha es precisamente la señal de que debes escribirla en el campo/);
 });
 
+// Real engagement signal, 2026-08-25: a tagged venue resshared and got a
+// real reply, and the post's ARTIST (never tagged) still liked and
+// thanked it publicly on their own. curateBrightSourceItems now also
+// extracts the artist's own Instagram handle when the source caption
+// @-mentions them, so social-publish/run.ts can tag them too.
+test("curateBrightSourceItems normalizes artistInstagramHandle — strips a leading @, trims, both fixedLocation and non-fixedLocation branches", async () => {
+  const items: BrightSourceItem[] = [baseBrightItem, { ...baseBrightItem, title: "Otra" }];
+  const client = stubBrightClient([
+    {
+      index: 0,
+      status: "approved",
+      artist: "Fulano de Tal",
+      artistInstagramHandle: "@fulano.detal",
+      runStartDate: "2026-07-05",
+      runEndDate: "2026-07-31",
+      openingDatetime: null,
+      openingTimeConfirmed: false,
+      location: null,
+      placeName: null,
+      mediumType: "tradicional",
+      sensitivityTags: [],
+      curationReasoning: "ok",
+    },
+    {
+      index: 1,
+      status: "approved",
+      artist: "Zutano",
+      artistInstagramHandle: null,
+      runStartDate: "2026-07-05",
+      runEndDate: "2026-07-31",
+      openingDatetime: null,
+      openingTimeConfirmed: false,
+      location: null,
+      placeName: null,
+      mediumType: "tradicional",
+      sensitivityTags: [],
+      curationReasoning: "ok",
+    },
+  ]);
+
+  const { candidates: fixedCandidates } = await curateBrightSourceItems(client, items, "julio 2026", {
+    fixedLocation: { location: "Santiago", placeName: "Fuente" },
+  });
+  assert.equal(fixedCandidates[0].artistInstagramHandle, "fulano.detal");
+  assert.equal(fixedCandidates[1].artistInstagramHandle, null);
+
+  const { candidates: aggregatorCandidates } = await curateBrightSourceItems(client, items, "julio 2026", {});
+  assert.equal(aggregatorCandidates[0].artistInstagramHandle, "fulano.detal");
+});
+
+test("curateBrightSourceItems discards a malformed artistInstagramHandle (whitespace, not a plausible IG handle shape) rather than trusting it into a public @-mention", async () => {
+  const items: BrightSourceItem[] = [baseBrightItem];
+  const client = stubBrightClient([
+    {
+      index: 0,
+      status: "approved",
+      artist: "Fulano",
+      artistInstagramHandle: "not a real handle with spaces",
+      runStartDate: "2026-07-05",
+      runEndDate: "2026-07-31",
+      openingDatetime: null,
+      openingTimeConfirmed: false,
+      location: null,
+      placeName: null,
+      mediumType: "tradicional",
+      sensitivityTags: [],
+      curationReasoning: "ok",
+    },
+  ]);
+
+  const { candidates } = await curateBrightSourceItems(client, items, "julio 2026", { fixedLocation: { location: "Santiago", placeName: "Fuente" } });
+  assert.equal(candidates[0].artistInstagramHandle, null);
+});
+
 test("curateBrightSourceItems merges Haiku's curatorial verdict by index onto the item's own deterministic title/sourceUrl/imageUrl — never onto whatever Haiku echoed", async () => {
   const items: BrightSourceItem[] = [baseBrightItem];
   const client = stubBrightClient([

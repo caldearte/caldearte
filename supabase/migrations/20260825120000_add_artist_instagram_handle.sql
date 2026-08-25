@@ -1,0 +1,14 @@
+-- Daniel 2026-08-25: real engagement signal found on @caldearte.oficial —
+-- a tagged venue (@liquenlab_magallanes) resshared a post and got a real
+-- reply, and the post's ARTIST (never tagged) still liked and thanked it
+-- publicly, unprompted. Tagging artists too gives them the same real
+-- incentive to reshare to their own audience that tagging the venue
+-- already does (source_account/withVenueMentions, added 2026-08-23).
+--
+-- Only ever populated on the Instagram bright-source curation path — a
+-- scraped Instagram caption is the one input that realistically contains
+-- a real "por @artista"-style @-mention to extract (see
+-- event-discovery/discover.ts's own doc comment on
+-- EventCandidate.artistInstagramHandle). Nullable, no fixedLocation-style
+-- unconditional default: most events simply won't have one.
+alter table events add column artist_instagram_handle text;

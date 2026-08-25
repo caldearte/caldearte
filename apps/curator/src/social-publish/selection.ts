@@ -28,6 +28,12 @@ export interface SocialEvent {
   // outreach lever — a tagged venue has a direct incentive to reshare to
   // its own audience, which a caption with no tag doesn't give it).
   sourceAccount: string | null;
+  // Same idea, for the ARTIST specifically (Daniel 2026-08-25) — see
+  // event-discovery/discover.ts's EventCandidate.artistInstagramHandle
+  // doc comment for the real engagement signal that prompted this. Only
+  // populated when the source post itself @-mentioned the artist by
+  // name; never guessed from their plain name.
+  artistInstagramHandle: string | null;
 }
 
 export const CAROUSEL_CAP = 10;

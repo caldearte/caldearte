@@ -285,6 +285,7 @@ export type Database = {
         Row: {
           admin_sensitive_marked_at: string | null
           artist: string | null
+          artist_instagram_handle: string | null
           created_at: string
           curation_reasoning: string | null
           curation_status: string
@@ -314,6 +315,7 @@ export type Database = {
         Insert: {
           admin_sensitive_marked_at?: string | null
           artist?: string | null
+          artist_instagram_handle?: string | null
           created_at?: string
           curation_reasoning?: string | null
           curation_status?: string
@@ -343,6 +345,7 @@ export type Database = {
         Update: {
           admin_sensitive_marked_at?: string | null
           artist?: string | null
+          artist_instagram_handle?: string | null
           created_at?: string
           curation_reasoning?: string | null
           curation_status?: string

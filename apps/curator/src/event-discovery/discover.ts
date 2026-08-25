@@ -55,6 +55,20 @@ export interface EventCandidate {
   // none of those have an "account" concept distinct from the source
   // itself.
   sourceAccount: string | null;
+  // The ARTIST's own Instagram handle (no "@"), when the source post
+  // itself @-mentions them — Daniel 2026-08-25, prompted by a real
+  // engagement signal: a tagged venue reshared a post and got a real
+  // organic reply, and the post's ARTIST (never tagged) still liked and
+  // thanked publicly, unprompted. Same mechanism as sourceAccount/
+  // withVenueMentions (social-publish/run.ts) — a tagged artist has a
+  // real incentive to reshare to their own audience. Only ever populated
+  // on the Instagram bright-source path (curateBrightSourceItems): a
+  // scraped Instagram caption is the one input that realistically
+  // contains a real "por @artista"-style mention to extract; other
+  // pipelines (comuna search, web bright sources, Google Alerts) have no
+  // comparably reliable source for this. null whenever no such mention
+  // exists in the text — never guessed from the artist's plain name.
+  artistInstagramHandle: string | null;
   // Verbatim quote grounding, added 2026-07-22 after a real production
   // audit found Haiku fabricating whole events — specific dates/hours,
   // venue names, even descriptions — with zero basis in the source text,
@@ -373,6 +387,10 @@ function parseCandidates(text: string): EventCandidate[] {
     // This path (plain comuna-search/aggregator curation) has no account
     // concept at all — Haiku's schema for it doesn't report one.
     sourceAccount: null,
+    // Only extracted on the Instagram bright-source path (see
+    // EventCandidate's own doc comment) — this path's Haiku schema
+    // doesn't report it.
+    artistInstagramHandle: null,
   }));
 }
 
@@ -946,6 +964,7 @@ Para cada ítem numerado, decide si es un evento real de arte visual dentro de a
 - \`index\`: el mismo número entre corchetes que tiene el ítem — DEBES devolver exactamente una fila por cada ítem recibido, en cualquier orden, incluyendo los rechazados (con su \`curationReasoning\` explicando por qué).
 - \`status\`: "approved" o "rejected".
 - \`artist\`: si el texto nombra un artista, o null.
+- \`artistInstagramHandle\`: SOLO si el texto @-menciona al artista por su cuenta de Instagram (ej. "obra de @nombreartista", "por @nombreartista") — repórtalo SIN el "@" (ej. "nombreartista"). Null si el artista no tiene una cuenta @-mencionada en el texto, incluso si tiene nombre. No confundas con el handle de la cuenta que publicó el post (esa cuenta es el ESPACIO/galería, no el artista) — solo cuenta un @-mención de la persona artista específicamente.
 - \`runStartDate\`/\`runEndDate\`: la mayoría de los ítems ya dicen "Fechas de exhibición ya confirmadas: ..." — en ese caso el código las usa directamente, deja estos dos campos en null, no importa. Solo para el puñado de ítems que en cambio traen "Texto de fecha de la fuente: ..." (el código no pudo parsearlo solo), interpreta ese texto y repórtalos en formato "YYYY-MM-DD" — ej. "11 jul de 2026 - 11 oct de 2026" es \`runStartDate: "2026-07-11"\`, \`runEndDate: "2026-10-11"\`. Reporta CADA fecha por separado según lo que el texto realmente confirme — si solo confirma UNA de las dos (ej. "la exposición permanece abierta hasta el 23 de septiembre", sin decir cuándo abrió), reporta esa sola (\`runEndDate: "2026-09-23"\`) y deja la otra en null; no las trates como un paquete todo-o-nada. Null en ambas solo si el texto genuinamente no permite determinar ninguna (ej. solo dice "Vigente"). Cuidado con confundir estos dos casos: que TÚ estés seguro de una fecha porque el texto la dice con claridad ("no requiere parsing adicional", "fecha confirmada") NO es lo mismo que el caso de arriba ("Fechas de exhibición ya confirmadas") — esa frase de skip es SOLO cuando el ítem la trae literalmente escrita así; en cualquier otro caso, tu propia confianza en la fecha es precisamente la señal de que debes escribirla en el campo, no de que puedes omitirla.
 - \`openingDatetime\` + \`openingTimeConfirmed\`: SOLO si el texto confirma una apertura/inauguración específica (no las fechas de vigencia de la muestra en general) — mismo criterio que para runStartDate/runEndDate: si no hay una inauguración explícita, ambos van null/false. Si hay fecha pero no hora, usa hora "00:00" con \`openingTimeConfirmed: false\`. Formato "YYYY-MM-DDTHH:mm", SIEMPRE en hora LOCAL de Chile, nunca agregues "Z" ni offset. Mismo cuidado que arriba: si el texto confirma una fecha de inauguración con claridad, ESO significa que debes escribirla en \`openingDatetime\` — tu propia certeza sobre la fecha nunca es motivo para dejarlo en null.
 ${locationInstructions}
@@ -968,7 +987,7 @@ Importante sobre fechas — regla dura, no una sugerencia: estamos armando el ca
 Etiqueta también: \`mediumType\` ("tradicional" o "intervencion_no_tradicional") y \`sensitivityTags\` (array de ["desnudo_erotismo", "guerra_violencia", "memoria_dictadura"], vacío si no aplica). Escribe un \`curationReasoning\` breve explicando tu decisión.
 
 Responde SOLO con un bloque de código \`\`\`json que contenga un array de objetos con esta forma exacta, uno por cada ítem recibido, nada más antes o después:
-[{ "index": number, "status": "approved" | "rejected", "artist": string | null, "runStartDate": string | null, "runEndDate": string | null, "openingDatetime": string | null, "openingTimeConfirmed": boolean, "location": string | null, "placeName": string | null, "mediumType": "tradicional" | "intervencion_no_tradicional", "sensitivityTags": string[], "curationReasoning": string }]`;
+[{ "index": number, "status": "approved" | "rejected", "artist": string | null, "artistInstagramHandle": string | null, "runStartDate": string | null, "runEndDate": string | null, "openingDatetime": string | null, "openingTimeConfirmed": boolean, "location": string | null, "placeName": string | null, "mediumType": "tradicional" | "intervencion_no_tradicional", "sensitivityTags": string[], "curationReasoning": string }]`;
 }
 
 interface BrightSourceCurationRow {
@@ -984,6 +1003,18 @@ interface BrightSourceCurationRow {
   mediumType: "tradicional" | "intervencion_no_tradicional";
   sensitivityTags: string[];
   curationReasoning: string;
+  artistInstagramHandle: string | null;
+}
+
+// "@nombre" or bare "nombre" (Haiku sometimes includes the "@", sometimes
+// not) → bare handle, or null if what came back doesn't look like a real
+// Instagram handle at all (own username rules: letters/digits/periods/
+// underscores only) — never trust free-form text into a field that ends
+// up in a public caption's @-mention.
+function normalizeInstagramHandle(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const bare = value.trim().replace(/^@/, "");
+  return /^[A-Za-z0-9._]{1,30}$/.test(bare) ? bare : null;
 }
 
 function extractFencedJsonBlock(text: string): string {
@@ -1026,6 +1057,7 @@ function parseBrightSourceCurationRows(text: string, expectedCount: number): Bri
       mediumType: r.mediumType === "intervencion_no_tradicional" ? "intervencion_no_tradicional" : "tradicional",
       sensitivityTags: Array.isArray(r.sensitivityTags) ? r.sensitivityTags.filter((t): t is string => typeof t === "string") : [],
       curationReasoning: typeof r.curationReasoning === "string" ? r.curationReasoning : "",
+      artistInstagramHandle: normalizeInstagramHandle(r.artistInstagramHandle),
     };
   });
 }
@@ -1073,6 +1105,7 @@ function mergeBrightSourceCandidate(
       placeName: fixedLocation.placeName,
       sourceUrl: item.sourceUrl,
       sourceAccount: item.sourceAccount ?? null,
+      artistInstagramHandle: row.artistInstagramHandle,
       dateQuote: null,
       locationQuote: null,
       runStartDateQuote: null,
@@ -1105,6 +1138,7 @@ function mergeBrightSourceCandidate(
     placeName: defaultConflictsWithExtraction ? row.placeName : (item.defaultLocation?.placeName ?? item.placeName ?? row.placeName ?? null),
     sourceUrl: item.sourceUrl,
     sourceAccount: item.sourceAccount ?? null,
+    artistInstagramHandle: row.artistInstagramHandle,
     // Grounding-quote fields don't apply on this path at all — there's
     // real source text behind every field Haiku still touches, and the
     // deterministic fields never went through Haiku in the first place.

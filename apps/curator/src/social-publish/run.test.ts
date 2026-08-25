@@ -215,6 +215,69 @@ test("run(): @mentions each distinct Instagram-sourced venue in the caption, ded
   assert.equal(capturedCaption.match(/@galeria_uno/g)?.length, 1, "same account mentioned only once");
 });
 
+// Real signal, 2026-08-25: a tagged venue resshared and got a real reply,
+// and the post's ARTIST (never tagged) still liked and thanked it
+// publicly, unprompted, on their own — extended venue tagging to artists.
+test("run(): @mentions the artist too when the source caption named one, combined with venue mentions in one deduped list", async () => {
+  const supabase = fakeSupabase({
+    events: [
+      {
+        id: "e1",
+        title: "Evento uno",
+        artist: "Artista Uno",
+        place_name: null,
+        region_id: null,
+        image_url: "https://example.com/a.jpg",
+        description: null,
+        sensitivity_tags: [],
+        opening_datetime: "2026-08-20T20:00:00.000Z",
+        opening_time_confirmed: true,
+        run_start_date: null,
+        run_end_date: null,
+        freeform_location: "Santiago",
+        source_account: "galeria_uno",
+        artist_instagram_handle: "artistauno",
+      },
+      {
+        id: "e2",
+        title: "Evento dos",
+        artist: "Artista Dos",
+        place_name: null,
+        region_id: null,
+        image_url: "https://example.com/b.jpg",
+        description: null,
+        sensitivity_tags: [],
+        opening_datetime: "2026-08-21T20:00:00.000Z",
+        opening_time_confirmed: true,
+        run_start_date: null,
+        run_end_date: null,
+        freeform_location: "Providencia",
+        source_account: "galeria_dos",
+        artist_instagram_handle: "galeria_dos", // same handle as the venue — must not repeat
+      },
+    ],
+    regions: [],
+    social_post_log: [],
+  });
+
+  let capturedCaption = "";
+  await run({
+    supabase,
+    now: new Date("2026-08-16T15:00:00.000Z"), // a Sunday
+    forceTypes: ["inauguracion"],
+    instagramConfig: { igBusinessAccountId: "fake-account", accessToken: "fake-token" },
+    publishInstagramCarouselFn: async (_config, _imageUrls, caption) => {
+      capturedCaption = caption;
+      return "fake-media-id";
+    },
+  });
+
+  assert.match(capturedCaption, /@artistauno/);
+  assert.match(capturedCaption, /@galeria_uno/);
+  assert.match(capturedCaption, /@galeria_dos/);
+  assert.equal(capturedCaption.match(/@galeria_dos/g)?.length, 1, "handle shared by venue and artist mentioned only once");
+});
+
 test(
   "run(): Sunday publishes all 3 types, Monday only inauguracion, and only no_te_la_pierdas/destacada write de-dup rows",
   { skip: !hasLocalSupabase },
