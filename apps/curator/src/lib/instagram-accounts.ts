@@ -983,6 +983,58 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
     addedAt: "2026-08-24",
     fixedLocation: { location: "Valparaíso", placeName: "La Escala Galería" },
   },
+  {
+    username: "komespaciocreacion",
+    note:
+      "Evaluada 2026-08-24. Espacio KOM, Manuel Montt 966 dpto 302, " +
+      "Temuco — \"Creación y cultura contemporánea\", real, 5.870 " +
+      "seguidores. Contenido orientado a apertura de proceso de " +
+      "residencias, formación y conversatorios más que anuncios limpios " +
+      "de exposición — mismo perfil que @liquenlab_magallanes, donde " +
+      "\"Apertura de Proceso\" se aceptó como en alcance. Ruido esperado " +
+      "de talleres/charlas. fixedLocation.",
+    addedAt: "2026-08-24",
+    fixedLocation: { location: "Temuco", placeName: "Espacio KOM" },
+  },
+  {
+    username: "galeria.artespacio",
+    note:
+      "Evaluada 2026-08-24. Galería Artespacio, Alonso de Córdova 2600, " +
+      "Vitacura — fundada 1995, real y establecida (\"30 años\"), 38.400 " +
+      "seguidores, horario propio (L-V 10-19, S 11-14), sitio web propio " +
+      "(artespacio.cl). Ya mencionada indirectamente en la nota de " +
+      "@agac.cl como galería miembro sin tracking propio; se agrega " +
+      "directamente. Contenido real reciente: XI Concurso Artespacio " +
+      "Joven 2026, participación en feria Ch.ACO, obra abstracta/" +
+      "geométrica visible en grilla. fixedLocation.",
+    addedAt: "2026-08-24",
+    fixedLocation: { location: "Vitacura", placeName: "Galería Artespacio" },
+  },
+  {
+    username: "antennaorg",
+    note:
+      "Evaluada 2026-08-24. Fundación Antenna, fundación sin fines de " +
+      "lucro real (11 años), 36.400 seguidores, antenna.cl — promueve " +
+      "artes visuales vía programas de socios y visitas guiadas. No es " +
+      "un venue fijo: sus muestras se montan en distintos espacios " +
+      "(ej. \"SEÑAL\" en Galería CIMA, otra galería). Credibilidad real " +
+      "(alianza con BTG Pactual, cobertura de prensa real). Sin " +
+      "fixedLocation — Haiku infiere por post, igual que @ilposto.cl.",
+    addedAt: "2026-08-24",
+  },
+  {
+    username: "desarmientogaleria",
+    note:
+      "Evaluada 2026-08-24. De Sarmiento Galería, Darío Urzúa 2130, " +
+      "Providencia — galería de arte contemporáneo, director Nicolás de " +
+      "Sarmiento, cuenta verificada. 1.841 seguidores. Múltiples " +
+      "highlights, cada uno con nombre de exposición real (Amén " +
+      "Madonna, Cuerpos Velados, Entreacto 02, Armadura Sensible, Cielo " +
+      "Glitter) — programa expositivo real y activo, más participación " +
+      "confirmada en la feria Art Stgo 2026. fixedLocation.",
+    addedAt: "2026-08-24",
+    fixedLocation: { location: "Providencia", placeName: "De Sarmiento Galería" },
+  },
   // El resto de la lista la aporta Daniel — una decisión editorial, igual
   // que cada fuente brillante nueva se evaluó una por una. Confirmar
   // pública y activa antes de agregar cada cuenta.
