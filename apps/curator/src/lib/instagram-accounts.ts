@@ -957,6 +957,32 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
     addedAt: "2026-08-24",
     fixedLocation: { location: "Chillán", placeName: "Sala de Arte Mercado" },
   },
+  {
+    username: "museoartesdecorativas",
+    note:
+      "Evaluada 2026-08-24. Museo de Artes Decorativas (MAD), Avda. " +
+      "Recoleta 683, Santiago — museo público real (artdec.gob.cl), " +
+      "26.500 seguidores, horario propio (M-V 10-17, S 10-14). Highlight " +
+      "\"Exposiciones\" explícito y póster real de exhibición visible en " +
+      "grilla (\"Cristurno de tierra\"). Ruido esperado normal (talleres, " +
+      "huerta, mediación). fixedLocation.",
+    addedAt: "2026-08-24",
+    fixedLocation: { location: "Santiago", placeName: "Museo de Artes Decorativas" },
+  },
+  {
+    username: "laescalagaleria",
+    note:
+      "Evaluada 2026-08-24. La Escala Galería, Cochrane 553, Barrio " +
+      "Puerto, Valparaíso — real, confirmada por visita de la Ministra " +
+      "de las Culturas (anuncio del Pase Cultural). 12.600 seguidores, " +
+      "horario propio (L-S 11-18), sitio web propio (laescala.cl). " +
+      "Highlight \"Exposiciones\" explícito y póster real de exhibición " +
+      "visible en grilla (\"NEW EXPO\", 26 de agosto). Algo de framing " +
+      "comercial (venta de obras, envíos) — ruido esperado, no " +
+      "descalifica. fixedLocation.",
+    addedAt: "2026-08-24",
+    fixedLocation: { location: "Valparaíso", placeName: "La Escala Galería" },
+  },
   // El resto de la lista la aporta Daniel — una decisión editorial, igual
   // que cada fuente brillante nueva se evaluó una por una. Confirmar
   // pública y activa antes de agregar cada cuenta.
