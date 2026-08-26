@@ -18,13 +18,18 @@ name: Run Google Alerts Bright Source
 # runs every time its own cron fires, no per-item gate needed here either
 # way (one continuously-updating feed, not many independently-paced
 # accounts).
+#
+# Back to Sunday-only, 2026-08-26 — the Wednesday cron (added 2026-08-24)
+# is dropped again: unlike Instagram, this source has no real same-day
+# urgency (a Google Alert email is itself an aggregator with inherent
+# latency, not a same-day "inauguración hoy" post), and real run data
+# showed low volume/cost here — not worth the extra weekly run.
 on:
   workflow_dispatch: {}
   schedule:
     # Not minute 0 — see event-discovery.yml's own comment (top-of-hour
     # congestion, real 26-51min delays observed 2026-08-23).
-    - cron: "22 9 * * 0" # Every Sunday, ~09:22 UTC — 1h after Instagram (moved from Monday 2026-08-23, see event-discovery.yml)
-    - cron: "22 9 * * 3" # Every Wednesday, ~09:22 UTC — 1h after Instagram's own Wednesday cron, added 2026-08-24 (see event-discovery.yml)
+    - cron: "22 9 * * 0" # Every Sunday, ~09:22 UTC — 1h after Instagram
 
 jobs:
   discover-google-alerts:
