@@ -1201,6 +1201,30 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
       "fixedLocation, Haiku infiere por post.",
     addedAt: "2026-08-26",
   },
+  {
+    username: "espacio_218",
+    note:
+      "Evaluada 2026-08-26. Espacio 218, Compañía de Jesús 960, depto " +
+      "218, Portal Fernández Concha, Santiago Centro — real y " +
+      "establecido desde 2022 (cubierto por Artishock), 19.800 " +
+      "seguidores. Participa como galería expositora en ferias " +
+      "internacionales reales (arteBA, ARCOLisboa) — confirma calidad, " +
+      "no indica que sea extranjero. fixedLocation.",
+    addedAt: "2026-08-26",
+    fixedLocation: { location: "Santiago", placeName: "Espacio 218" },
+  },
+  {
+    username: "linia_gallery",
+    note:
+      "Evaluada 2026-08-26. LINIA Galería, Huérfanos 3044, Santiago — " +
+      "espacio híbrido \"galería, café & boutique\". 1.112 seguidores. " +
+      "Contenido real de exposición visible en grilla (obra en pared, " +
+      "póster de exposición \"Escapismo\"). Comercial-leaning dado el " +
+      "café/boutique, pero programa expositivo confirmado. " +
+      "fixedLocation.",
+    addedAt: "2026-08-26",
+    fixedLocation: { location: "Santiago", placeName: "LINIA Galería" },
+  },
   // El resto de la lista la aporta Daniel — una decisión editorial, igual
   // que cada fuente brillante nueva se evaluó una por una. Confirmar
   // pública y activa antes de agregar cada cuenta.
