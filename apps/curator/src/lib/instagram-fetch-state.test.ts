@@ -66,7 +66,7 @@ test("nextFetchState: nothing new just increments the zero-yield streak, still a
   assert.deepEqual(nextFetchState({ consecutiveZeroYieldChecks: 50 }, false), { consecutiveZeroYieldChecks: 51, isInactive: false });
 });
 
-test("nextFetchState: the 52nd consecutive empty check marks the account inactive", () => {
+test("nextFetchState: the Nth consecutive empty check marks the account inactive", () => {
   const result = nextFetchState({ consecutiveZeroYieldChecks: ZERO_YIELD_CHECKS_BEFORE_INACTIVE - 1 }, false);
   assert.deepEqual(result, { consecutiveZeroYieldChecks: ZERO_YIELD_CHECKS_BEFORE_INACTIVE, isInactive: true });
 });
@@ -75,6 +75,6 @@ test("DEFAULT_INTERVAL_DAYS is 7 — used only as the never-fetched fallback for
   assert.equal(DEFAULT_INTERVAL_DAYS, 7);
 });
 
-test("ZERO_YIELD_CHECKS_BEFORE_INACTIVE is 52 — how many checks to wait before giving up on an account, independent of how often the cron fires", () => {
-  assert.equal(ZERO_YIELD_CHECKS_BEFORE_INACTIVE, 52);
+test("ZERO_YIELD_CHECKS_BEFORE_INACTIVE is 90 — how many checks to wait before giving up on an account, independent of how often the cron fires (recalculated 2026-08-26 for the every-2-days cadence, ~6 months of real silence)", () => {
+  assert.equal(ZERO_YIELD_CHECKS_BEFORE_INACTIVE, 90);
 });

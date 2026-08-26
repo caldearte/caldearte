@@ -16,19 +16,30 @@ name: Run Instagram Bright Sources
 # No per-account cadence gate anymore, 2026-08-24 (see
 # instagram-fetch-state.ts's own doc comment) — every account is checked
 # on every cron fire. Real data showed Apify's actor is pay-per-RESULT,
-# not per-account-queried, so checking twice a week instead of once costs
-# the same ~$0 for a quiet account. This matters specifically because of
-# the Wednesday cron added below: with the OLD 7-day due-check, a
-# Wednesday run 3 days after Sunday's would have found every account
-# "not due" and fetched nothing — the gate had to go for Wednesday to be
-# worth anything at all.
+# not per-account-queried, so checking more often costs the same ~$0 for
+# a quiet account — the same-week comparison confirmed this directly
+# against the real Apify dashboard, 2026-08-26 (see below).
+#
+# Bumped from twice-weekly (Sun/Wed) to every 2 days, 2026-08-26 — real
+# evidence: 2 genuine same-day inauguraciones (posted and opening the
+# same day) were lost purely because that day fell in the Sun→Wed gap,
+# already expired by the time the next scheduled run saw them
+# (event-discovery/run.ts's own "expired before insertion" backstop
+# correctly declined to show them as upcoming — not a bug, a real
+# cadence gap). Confirmed against Apify's real usage dashboard the same
+# day ($4.21/$5.00 free tier, matching platform_cost_snapshots exactly)
+# that total weekly result volume is bounded by real posting activity,
+# not check frequency — Apify cost shouldn't meaningfully rise from
+# this. `1-31/2` (every odd day-of-month) is an approximation of "every
+# 2 days" — cron has no native N-day step, and this occasionally yields
+# a 1-day gap across a month boundary (day 31 → day 1), acceptable given
+# the real goal is closing the multi-day gap, not exact parity.
 on:
   workflow_dispatch: {}
   schedule:
     # Not minute 0 — see event-discovery.yml's own comment (top-of-hour
     # congestion, real 26-51min delays observed 2026-08-23).
-    - cron: "17 8 * * 0" # Every Sunday, ~08:17 UTC — 1h after headless (moved from Monday 2026-08-23, see event-discovery.yml)
-    - cron: "17 8 * * 3" # Every Wednesday, ~08:17 UTC — 1h after headless's own Wednesday cron, added 2026-08-24 (see event-discovery.yml)
+    - cron: "17 8 1-31/2 * *" # Every 2 days, ~08:17 UTC
 
 jobs:
   discover-instagram:

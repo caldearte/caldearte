@@ -11,24 +11,32 @@
 // apify-instagram.ts) could silently miss posts on an account that
 // posted more than 5 times between checks.
 //
-// A dormancy backstop is kept: an account with nothing new for 52
-// consecutive checks (however often the cron fires — currently twice a
-// week, so ~6 months, was ~1 year back when this ran weekly-only) is
-// marked inactive so a genuinely dead/abandoned account doesn't get
-// polled forever. Re-activating one (if it ever starts posting again) is
-// a manual action, not automatic — see instagram-accounts.ts for how to
-// do that. Reuses the same `interval_days`/`consecutive_zero_yield_at_cap`
+// A dormancy backstop is kept: an account with nothing new for enough
+// consecutive checks (however often the cron fires) is marked inactive
+// so a genuinely dead/abandoned account doesn't get polled forever.
+// Re-activating one (if it ever starts posting again) is a manual
+// action, not automatic — see instagram-accounts.ts for how to do that.
+// Reuses the same `interval_days`/`consecutive_zero_yield_at_cap`
 // columns every bright source already has (bright_source_fetch_state) —
 // interval_days is now always written as 7 for an Instagram row (purely
 // for the admin dashboard's display, not read to gate anything), and
 // consecutive_zero_yield_at_cap counts checks instead of cycles-at-cap;
 // no migration needed, just a change in what these columns mean for this
 // pipeline.
+//
+// The check-count threshold is deliberately tied to real elapsed time
+// (~6 months of silence), not a fixed number — it's been recalculated
+// twice already as the cron got more frequent (52 at weekly → ~1 year;
+// 52 again at 2x/week → ~6 months) and would go stale silently otherwise.
+// Bumped to 90 on 2026-08-26 when the cadence moved to every 2 days
+// (~15.5 checks/month): keeping 52 would have shortened the real
+// dormancy window to ~3.4 months, aggressive enough to risk marking a
+// real but slow, irregularly-posting gallery inactive prematurely.
 import { getSupabaseClient } from "./supabase-client.js";
 import type { InstagramAccountConfig } from "./instagram-accounts.js";
 
 export const DEFAULT_INTERVAL_DAYS = 7;
-export const ZERO_YIELD_CHECKS_BEFORE_INACTIVE = 52;
+export const ZERO_YIELD_CHECKS_BEFORE_INACTIVE = 90;
 
 export interface InstagramAccountState {
   lastFetchedAt: string | null;
