@@ -1135,6 +1135,31 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
     addedAt: "2026-08-25",
     fixedLocation: { location: "Curarrehue", placeName: "Espacio Arte Ko-Panqui" },
   },
+  {
+    username: "galeria.biophiliaceramicas",
+    note:
+      "Evaluada 2026-08-25. Galería Biophilia, especializada en cerámica " +
+      "contemporánea, dentro de GAM (Centro Gabriela Mistral, Alameda " +
+      "227, Santiago). 8.608 seguidores. Highlight \"Inauguraciónes\" " +
+      "explícito, participación confirmada en una exposición en Berlín " +
+      "(fuera de Chile, no relevante para curación pero confirma galería " +
+      "real). Ruido esperado de clases. fixedLocation.",
+    addedAt: "2026-08-25",
+    fixedLocation: { location: "Santiago", placeName: "Galería Biophilia" },
+  },
+  {
+    username: "lacaracola_galeria",
+    note:
+      "Evaluada 2026-08-25. Galeria La Caracola, Copiapó 119, Puerto " +
+      "Montt — Pedagogía en Artes Visuales, Universidad de Los Lagos. " +
+      "1.932 seguidores. Highlights con cadencia mensual real (\"expos " +
+      "mayo\", \"Expos Agosto\") y múltiples muestras nombradas " +
+      "(SECUENCIAS TEMPO, PIECES OF PUERTO, Floración Ósea) — programa " +
+      "expositivo real y activo. Buena diversidad geográfica (Puerto " +
+      "Montt/Los Lagos). fixedLocation.",
+    addedAt: "2026-08-25",
+    fixedLocation: { location: "Puerto Montt", placeName: "Galeria La Caracola" },
+  },
   // El resto de la lista la aporta Daniel — una decisión editorial, igual
   // que cada fuente brillante nueva se evaluó una por una. Confirmar
   // pública y activa antes de agregar cada cuenta.
