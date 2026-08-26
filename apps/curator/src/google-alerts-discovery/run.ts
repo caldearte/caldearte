@@ -190,5 +190,9 @@ export async function run(deps: GoogleAlertsRunDeps = {}): Promise<void> {
   }
 
   await recordRunSummary("google_alerts", summary.startedAt, summary.candidates, summary.eventGroups, summary.cost);
-  await (deps.sendGoogleAlertsRunSummaryEmailFn ?? sendGoogleAlertsRunSummaryEmail)(summary);
+  // Individual per-pipeline email disabled 2026-08-26 — superseded by
+  // the consolidated once-a-day digest (daily-digest/run.ts).
+  // deps.sendGoogleAlertsRunSummaryEmailFn is kept for tests that still
+  // want to assert on the built GoogleAlertsRunSummary's contents.
+  await (deps.sendGoogleAlertsRunSummaryEmailFn ?? (async () => {}))(summary);
 }

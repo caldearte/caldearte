@@ -163,5 +163,9 @@ export async function run(deps: HeadlessRunDeps = {}): Promise<void> {
   }
 
   await recordRunSummary("headless", summary.startedAt, summary.candidates, summary.eventGroups, summary.cost);
-  await (deps.sendHeadlessRunSummaryEmailFn ?? sendHeadlessRunSummaryEmail)(summary);
+  // Individual per-pipeline email disabled 2026-08-26 — superseded by
+  // the consolidated once-a-day digest (daily-digest/run.ts).
+  // deps.sendHeadlessRunSummaryEmailFn is kept for tests that still want
+  // to assert on the built HeadlessRunSummary's contents.
+  await (deps.sendHeadlessRunSummaryEmailFn ?? (async () => {}))(summary);
 }
