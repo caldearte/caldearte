@@ -1093,6 +1093,20 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
       "Haiku infiere ubicación por post.",
     addedAt: "2026-08-25",
   },
+  {
+    username: "tallerlautaro",
+    note:
+      "Evaluada 2026-08-25. Taller Lautaro, Lautaro 737, Providencia — " +
+      "estudio de serigrafía/grabado/fotografía análoga y espacio de " +
+      "exposición. 3.722 seguidores. Póster real de exhibición muy " +
+      "limpio visible en grilla: \"El incesante rumiar de una paloma\" " +
+      "(Agustín Cuevas / Javier Leiva), inauguración jueves 3 de " +
+      "septiembre 19:00 hrs, hasta el 13 de septiembre 2026, dirección " +
+      "completa incluida. Ruido esperado de talleres/clases (bio " +
+      "menciona \"Clases-Tutorías\"). fixedLocation.",
+    addedAt: "2026-08-25",
+    fixedLocation: { location: "Providencia", placeName: "Taller Lautaro" },
+  },
   // El resto de la lista la aporta Daniel — una decisión editorial, igual
   // que cada fuente brillante nueva se evaluó una por una. Confirmar
   // pública y activa antes de agregar cada cuenta.
