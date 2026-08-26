@@ -1160,6 +1160,31 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
     addedAt: "2026-08-25",
     fixedLocation: { location: "Puerto Montt", placeName: "Galeria La Caracola" },
   },
+  {
+    username: "salagabrielasabatini",
+    note:
+      "Evaluada 2026-08-25. Sala Gabriela Sabatini — galería real y " +
+      "activa (2.230 seguidores, 157 posts). Highlights con múltiples " +
+      "títulos de exposición reales y variados (MOBYDICK, Piso " +
+      "Flotante, La Cuarta Pata) y grilla con fotos genuinas de obra/" +
+      "exhibición. Sin dirección confirmable (bio vacía, sin resultados " +
+      "en búsqueda web). Sin fixedLocation — Haiku infiere por post, " +
+      "igual que @ilposto.cl.",
+    addedAt: "2026-08-25",
+  },
+  {
+    username: "espaciolacochera",
+    note:
+      "Evaluada 2026-08-25. Espacio La Cochera, Huérfanos 2567, Barrio " +
+      "Yungay, Santiago — dirección confirmada directamente en un " +
+      "póster real de la grilla. Espacio cultural real y bien " +
+      "establecido, 5.325 seguidores, sitio web propio " +
+      "(espaciolacochera.cl). Highlights con cadencia anual real " +
+      "(\"Expos_2026\" a \"Expos_2022\", 5 años de programa expositivo). " +
+      "fixedLocation.",
+    addedAt: "2026-08-25",
+    fixedLocation: { location: "Santiago", placeName: "Espacio La Cochera" },
+  },
   // El resto de la lista la aporta Daniel — una decisión editorial, igual
   // que cada fuente brillante nueva se evaluó una por una. Confirmar
   // pública y activa antes de agregar cada cuenta.
