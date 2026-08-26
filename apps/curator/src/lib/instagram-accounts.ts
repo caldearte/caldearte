@@ -1185,6 +1185,22 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
     addedAt: "2026-08-25",
     fixedLocation: { location: "Santiago", placeName: "Espacio La Cochera" },
   },
+  {
+    username: "biav_valpo",
+    note:
+      "Evaluada 2026-08-26. Bienal Internacional de Artes de Valparaíso " +
+      "(BIAV), cuenta oficial real — 4.729 seguidores. Encontrada tras " +
+      "una auditoría real: su contenido solo aparecía etiquetado en la " +
+      "grilla de @museobaburizza (una de sus sedes), nunca capturado " +
+      "directamente porque el fetch por username solo trae posts con " +
+      "ownerUsername exacto. Póster real confirmado (\"XIII Bienal " +
+      "Internacional de Artes de Valparaíso\"); una convocatoria de " +
+      "postulación de esta misma XIII edición ya había sido rechazada " +
+      "correctamente antes (fuera de alcance por tipo). Itinerante — " +
+      "múltiples sedes (Baburizza, Instituto de Arte PUCV, otras) — sin " +
+      "fixedLocation, Haiku infiere por post.",
+    addedAt: "2026-08-26",
+  },
   // El resto de la lista la aporta Daniel — una decisión editorial, igual
   // que cada fuente brillante nueva se evaluó una por una. Confirmar
   // pública y activa antes de agregar cada cuenta.
