@@ -1107,6 +1107,34 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
     addedAt: "2026-08-25",
     fixedLocation: { location: "Providencia", placeName: "Taller Lautaro" },
   },
+  {
+    username: "laratonera_ed",
+    note:
+      "Evaluada 2026-08-25. La Ratonera Ediciones, editorial " +
+      "independiente de fotolibros/fanzines, Región del Biobío. 1.842 " +
+      "seguidores. Contenido real de exposición visible en grilla " +
+      "(\"MAL DE OJO — Exposición de autores...\", vinculado a FEFCO, " +
+      "festival de fotolibros), mezclado con open calls/workshops " +
+      "(\"Últimos días para postular\") fuera de alcance. Perfil de " +
+      "festival/editorial itinerante, no un local fijo — sin " +
+      "fixedLocation, mismo patrón que @ilposto.cl.",
+    addedAt: "2026-08-25",
+  },
+  {
+    username: "ko_panqui",
+    note:
+      "Evaluada 2026-08-25. Espacio Arte Ko-Panqui, Camino a Panqui Km " +
+      "5.6, Curarrehue, Región de la Araucanía — centro de residencias " +
+      "artísticas y exposiciones multidisciplinarias, real y " +
+      "establecido (celebrando 10 años en 2026, cubierto varias veces " +
+      "por el Ministerio de las Culturas). 8.167 seguidores, sitio web " +
+      "propio (espacioartekopanqui.cl). Conexión con artistas reales " +
+      "(Clarita Yañez, hija de Juan Emar; residencia dirigida por Luis " +
+      "Poirot). Ruido esperado (conciertos, talleres, travesías). Buena " +
+      "diversidad geográfica. fixedLocation.",
+    addedAt: "2026-08-25",
+    fixedLocation: { location: "Curarrehue", placeName: "Espacio Arte Ko-Panqui" },
+  },
   // El resto de la lista la aporta Daniel — una decisión editorial, igual
   // que cada fuente brillante nueva se evaluó una por una. Confirmar
   // pública y activa antes de agregar cada cuenta.
