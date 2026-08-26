@@ -1451,6 +1451,19 @@ anything genuinely ambiguous. Parked, not an active line item — see
 
 ### Run-summary email (built, 2026-07-19 — separate from the parked flow above)
 
+**Superseded 2026-08-26 by the daily digest** (see its own section below) —
+each pipeline's own `send*RunSummaryEmail` call is now a no-op by default
+(`event-discovery`/`headless-discovery`/`instagram-discovery`/
+`google-alerts-discovery`'s `run.ts` files all pass an `async () => {}`
+fallback instead), only still wired up as a dependency-injection seam for
+tests that assert on the built `RunSummary`'s own contents. The
+`RunSummary`/`buildSubject`/`buildBody`/`buildHtmlBody` machinery described
+below is unchanged and still runs every time — `recordRunSummary` still
+persists it to `discovery_run_summaries` exactly as before — only the
+SENDING of 4 separate emails per day stopped. Real reason: a day when
+multiple pipelines fire (e.g. Sunday, all 4) used to arrive as 4 separate
+emails; Daniel asked for one consolidated email instead.
+
 Not to be confused with the still-parked approve/reject flow above: after
 every run, `apps/curator/src/lib/notify.ts`'s `sendRunSummaryEmail` sends a
 report to the project owner — comunas consultadas (including any that
@@ -1501,6 +1514,53 @@ already track internally, now threaded through to the email), and the
 badge reads that outcome instead of just `status` — "✅ Aprobado y
 agregado" vs. "✅ Aprobado (ya existía)" etc., so the email actually
 answers "did this reach the site" without cross-referencing the database.
+
+---
+
+## Daily digest email (built, 2026-08-26)
+
+Consolidates whatever ran today into ONE email, replacing the 4 separate
+per-pipeline emails above (now no-ops — see that section's own "Superseded"
+note). Real motivation: Sunday alone used to fire all 4 pipelines, arriving
+as 4 separate emails.
+
+A dedicated workflow (`.github/workflows/daily-digest.yml`, cron `30 10 * *
+*`, well after every possible discovery cron for that day — event_discovery
+~06:07 UTC, headless ~07:12 UTC, Instagram ~08:17 UTC every 2 days, Google
+Alerts ~09:22 UTC Sundays only) runs `apps/curator/src/daily-digest/run.ts`,
+which:
+
+1. Computes "today" as a Santiago calendar date (`santiagoDayBoundsUtc`,
+   same "treat the local date as if it were UTC" approximation
+   `social-publish/run.ts`'s own `weekBoundsInSantiago` already uses).
+2. Reads every `discovery_run_summaries` row with `started_at` inside that
+   window — each row's `raw_summary` jsonb already has the full
+   `candidates`/`eventGroups` detail (persisted since 2026-08-17, see the
+   Run-summary email section above), so no extra queries are needed per
+   pipeline.
+3. **If zero rows, skips sending entirely** — the new every-2-days-for-
+   Instagram/Sun-Wed-for-web-and-headless/Sun-only-for-Google-Alerts cadence
+   (2026-08-26, see "Dual cadence" below) means not every pipeline fires
+   every day.
+4. Computes a real cost picture: today's Anthropic spend (`api_usage_log`)
+   and today's Apify spend (`platform_cost_snapshots`), plus the SAME two
+   figures month-to-date, each split into free-tier-covered vs. real
+   (billed) via `lib/apify-cost-split.ts`'s `splitApifyFreeTier` — a
+   deliberate small duplicate of `apps/web/src/lib/apifyCostSplit.ts`'s own
+   logic (curator and web are separate deployable packages, not sharing
+   code), reusing the same `$5/month` `APIFY_FREE_TIER_USD` constant. Shown
+   against `system_config.monthly_budget_usd` (Anthropic-only budget, same
+   as every other email already using this key — Apify's free tier is
+   reported separately, never folded into the same ceiling number).
+5. Sends one email (`lib/daily-digest.ts`'s `sendDailyDigestEmail`) with:
+   a per-pipeline results table, the cost section above, and a full
+   per-event detail section at the end (reuses `notify.ts`'s own
+   `buildEventGroupsText`/`buildEventGroupsHtml` — the exact same rendering
+   the individual emails used to have, just grouped under each pipeline's
+   own heading instead of one email per pipeline).
+
+Same ancillary posture as every other curator email: never throws, no-ops
+with a warning if `RESEND_API_KEY` isn't set.
 
 ---
 

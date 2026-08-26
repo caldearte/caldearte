@@ -1,0 +1,43 @@
+name: Send Daily Digest
+
+# Consolidated once-a-day discovery summary — replaces the 4 separate
+# per-pipeline emails (see apps/curator/src/lib/daily-digest.ts's own
+# doc comment). Daniel's explicit request, 2026-08-26: on a day multiple
+# pipelines fire (e.g. Sunday: all 4), those arrived as 4 separate
+# emails — this reads discovery_run_summaries for whatever ran TODAY and
+# sends one email with the full picture (per-pipeline results, real
+# cost today + month-to-date vs. budget/free tiers, full per-event
+# detail). Skips sending entirely on a day nothing ran.
+#
+# Fires once daily, after every possible discovery cron for that day has
+# already had time to complete: event_discovery ~06:07 UTC, headless
+# ~07:12 UTC, Instagram ~08:17 UTC (every 2 days), Google Alerts ~09:22
+# UTC (Sundays only) — 10:30 UTC leaves real margin past the latest of
+# those. Not minute 0 — see event-discovery.yml's own comment
+# (top-of-hour congestion).
+on:
+  workflow_dispatch: {}
+  schedule:
+    - cron: "30 10 * * *"
+
+jobs:
+  send-daily-digest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Send daily digest
+        run: pnpm --filter @caldearte/curator run send-daily-digest
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}

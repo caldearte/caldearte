@@ -7,7 +7,7 @@ const BUDGET_ALERT_LABEL = "budget-alert";
 // Same recipient/domain pattern as apps/web's contact route
 // (apps/web/src/app/api/contact/route.ts) — caldearte.com is already a
 // verified Resend sending domain as of the production launch.
-const RUN_SUMMARY_RECIPIENT = "daniel@probablespa.cl";
+export const RUN_SUMMARY_RECIPIENT = "daniel@probablespa.cl";
 
 interface FlagBudgetExceededInput {
   spend: number;
@@ -135,7 +135,7 @@ export interface RunSummary {
   };
 }
 
-function fmtUsd(n: number): string {
+export function fmtUsd(n: number): string {
   return `$${n.toFixed(4)}`;
 }
 
@@ -145,7 +145,7 @@ function fmtDateRange(c: CandidateSummary): string {
   return "—";
 }
 
-function escapeHtml(s: string): string {
+export function escapeHtml(s: string): string {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
 
@@ -181,7 +181,7 @@ function outcomeParts(c: CandidateSummary): { emoji: string; text: string } {
 // sent with both `text` and `html` (Resend requires at least one; both are
 // set so text-only clients still get the full event list, not just a
 // pointer to the HTML version).
-function buildEventGroupsText(eventGroups: EventGroup[]): string[] {
+export function buildEventGroupsText(eventGroups: EventGroup[]): string[] {
   if (eventGroups.length === 0) return [];
 
   const lines: string[] = [];
@@ -202,7 +202,7 @@ function buildEventGroupsText(eventGroups: EventGroup[]): string[] {
 // HTML counterpart — one table per source group, aprobados y rechazados
 // juntos, motivo de curatoría visible para poder auditar el criterio de
 // Haiku (o el filtro de código) sin ir a buscar los logs.
-function buildEventGroupsHtml(eventGroups: EventGroup[]): string {
+export function buildEventGroupsHtml(eventGroups: EventGroup[]): string {
   const nonEmptyGroups = eventGroups.filter((g) => g.candidates.length > 0);
   if (nonEmptyGroups.length === 0) return "";
 

@@ -1444,7 +1444,12 @@ export async function run(deps: RunDeps = {}): Promise<void> {
     // but a genuine API error shouldn't cost us the persisted summary
     // too, see recordRunSummary's own doc comment on why this exists).
     await recordRunSummary("event_discovery", summary.startedAt, summary.candidates, summary.eventGroups, summary.cost);
-    await (deps.sendRunSummaryEmailFn ?? sendRunSummaryEmail)(summary);
+    // Individual per-pipeline email disabled 2026-08-26 — superseded by
+    // the consolidated once-a-day digest (daily-digest/run.ts), which
+    // reads this same recorded summary from discovery_run_summaries.
+    // deps.sendRunSummaryEmailFn is kept for tests that still want to
+    // assert on the built RunSummary's contents.
+    await (deps.sendRunSummaryEmailFn ?? (async () => {}))(summary);
   } catch (err) {
     console.error(`[event-discovery] failed to build/send run-summary email: ${(err as Error).message}`);
   }

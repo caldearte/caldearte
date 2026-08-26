@@ -76,7 +76,11 @@ export async function run(deps: InstagramRunDeps = {}): Promise<void> {
   if (dueAccounts.length === 0) {
     console.log("[instagram-discovery] no accounts due yet (adaptive 7-28 day cadence) — nothing to do");
     await recordRunSummary("instagram", summary.startedAt, summary.candidates, summary.eventGroups, summary.cost);
-    await (deps.sendInstagramRunSummaryEmailFn ?? sendInstagramRunSummaryEmail)(summary);
+    // Individual per-pipeline email disabled 2026-08-26 — superseded by
+    // the consolidated once-a-day digest (daily-digest/run.ts).
+    // deps.sendInstagramRunSummaryEmailFn is kept for tests that still
+    // want to assert on the built InstagramRunSummary's contents.
+    await (deps.sendInstagramRunSummaryEmailFn ?? (async () => {}))(summary);
     return;
   }
 
