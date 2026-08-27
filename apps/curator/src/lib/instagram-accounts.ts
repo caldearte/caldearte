@@ -1619,6 +1619,16 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
       "visuales. Sin fixedLocation.",
     addedAt: "2026-08-27",
   },
+  {
+    username: "culturanunoa",
+    note:
+      "Corporación Cultural de Ñuñoa — 102 mil seguidores, \"oferta " +
+      "cultural y artística diversa y plural\". Encontrada buscando " +
+      "\"galería arte Ñuñoa\" en Instagram. Contenido mixto (cine, " +
+      "talleres) — Haiku filtra lo que no sea artes visuales. Sin " +
+      "fixedLocation.",
+    addedAt: "2026-08-27",
+  },
   // El resto de la lista la aporta Daniel — una decisión editorial, igual
   // que cada fuente brillante nueva se evaluó una por una. Confirmar
   // pública y activa antes de agregar cada cuenta.
