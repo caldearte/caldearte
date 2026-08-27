@@ -1277,6 +1277,19 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
     addedAt: "2026-08-27",
     fixedLocation: { location: "Las Condes", placeName: "Espacio A" },
   },
+  {
+    username: "museoaraucania",
+    note:
+      "Museo Regional Araucanía, Avda. Alemania 084, Temuco — museo " +
+      "público real, 13,3 mil seguidores. Encontrada navegando el feed " +
+      "real de @caldearte.oficial. Contenido mixto (historia regional, " +
+      "etnografía mapuche, además de arte) — mismo patrón que " +
+      "mhnv.gob.cl; sin filtro de disciplina por código en el pipeline " +
+      "de Instagram, Haiku descarta lo que no sea exposición visual real. " +
+      "fixedLocation.",
+    addedAt: "2026-08-27",
+    fixedLocation: { location: "Temuco", placeName: "Museo Regional Araucanía" },
+  },
   // El resto de la lista la aporta Daniel — una decisión editorial, igual
   // que cada fuente brillante nueva se evaluó una por una. Confirmar
   // pública y activa antes de agregar cada cuenta.
