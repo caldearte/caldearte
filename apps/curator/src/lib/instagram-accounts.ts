@@ -1727,6 +1727,16 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
       "no sea artes visuales. Sin fixedLocation.",
     addedAt: "2026-08-27",
   },
+  {
+    username: "culturapuconmunicipal",
+    note:
+      "Coordinación de Cultura Municipal de Pucón, Casa de la Cultura — " +
+      "Caupolicán #210, 6.733 seguidores, highlight propio \"Artistas " +
+      "locales\". Encontrada buscando \"cultura Pucón\" en Instagram. " +
+      "fixedLocation.",
+    addedAt: "2026-08-27",
+    fixedLocation: { location: "Pucón", placeName: "Casa de la Cultura de Pucón" },
+  },
   // El resto de la lista la aporta Daniel — una decisión editorial, igual
   // que cada fuente brillante nueva se evaluó una por una. Confirmar
   // pública y activa antes de agregar cada cuenta.
