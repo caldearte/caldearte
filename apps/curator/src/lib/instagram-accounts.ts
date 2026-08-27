@@ -1315,6 +1315,27 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
     addedAt: "2026-08-27",
     fixedLocation: { location: "Villa Alemana", placeName: "Centro Cultural Gabriela Mistral" },
   },
+  {
+    username: "bienalartesmediales",
+    note:
+      "Bienal Artes Mediales de Santiago — proyecto de la Corporación " +
+      "Chilena de Video, 30 años de trayectoria, 17,6 mil seguidores, " +
+      "cuenta verificada. Bienal real y prominente de artes " +
+      "mediales/nuevos medios. Encontrada buscando \"galería arte " +
+      "Santiago\" en Instagram. Itinerante — múltiples sedes por " +
+      "edición, sin fixedLocation.",
+    addedAt: "2026-08-27",
+  },
+  {
+    username: "safa_stgo",
+    note:
+      "SAFA - Santiago Festival de las Artes, \"la primera semana del " +
+      "arte en Santiago\" (6-11 octubre 2026) — 1.883 seguidores, real " +
+      "y próximo. Encontrada buscando \"galería arte Santiago\" en " +
+      "Instagram. Festival/semana con múltiples sedes — sin " +
+      "fixedLocation.",
+    addedAt: "2026-08-27",
+  },
   // El resto de la lista la aporta Daniel — una decisión editorial, igual
   // que cada fuente brillante nueva se evaluó una por una. Confirmar
   // pública y activa antes de agregar cada cuenta.
