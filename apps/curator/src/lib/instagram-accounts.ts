@@ -1498,6 +1498,16 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
       "arte Coyhaique\" en Instagram. Sin fixedLocation.",
     addedAt: "2026-08-27",
   },
+  {
+    username: "culturalcurico",
+    note:
+      "Corporación Cultural Curicó — 22,7 mil seguidores, \"acceso " +
+      "igualitario a la cultura y las artes\". Contenido mixto " +
+      "(talleres, catastros) — Haiku filtra lo que no sea artes " +
+      "visuales. Encontrada buscando \"galería arte Curicó\" en " +
+      "Instagram. Sin fixedLocation.",
+    addedAt: "2026-08-27",
+  },
   // El resto de la lista la aporta Daniel — una decisión editorial, igual
   // que cada fuente brillante nueva se evaluó una por una. Confirmar
   // pública y activa antes de agregar cada cuenta.
