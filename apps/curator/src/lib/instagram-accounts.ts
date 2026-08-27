@@ -1609,6 +1609,16 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
       "visuales. Sin fixedLocation.",
     addedAt: "2026-08-27",
   },
+  {
+    username: "maipu_cultura",
+    note:
+      "Departamento de Cultura de la Municipalidad de Maipú — 43 mil " +
+      "seguidores, bio \"potenciar las artes, las culturas y el " +
+      "patrimonio\". Encontrada buscando \"cultura Maipú\" en " +
+      "Instagram. Contenido mixto — Haiku filtra lo que no sea artes " +
+      "visuales. Sin fixedLocation.",
+    addedAt: "2026-08-27",
+  },
   // El resto de la lista la aporta Daniel — una decisión editorial, igual
   // que cada fuente brillante nueva se evaluó una por una. Confirmar
   // pública y activa antes de agregar cada cuenta.
