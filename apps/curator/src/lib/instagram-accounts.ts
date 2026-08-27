@@ -1538,6 +1538,18 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
       "deliberado, Haiku infiere por post.",
     addedAt: "2026-08-27",
   },
+  {
+    username: "centroculturalvillarricaliquen",
+    note:
+      "Liquen, Centro Cultural Municipal de Villarrica — 25,5 mil " +
+      "seguidores, bio explícita \"Exposiciones 🖼️\" (además de " +
+      "conciertos, danza, teatro, talleres, cine — Haiku filtra lo " +
+      "que no sea artes visuales), highlight propio \"Expo Thiare\". " +
+      "Encontrada buscando \"galería arte Villarrica\" en Instagram. " +
+      "fixedLocation.",
+    addedAt: "2026-08-27",
+    fixedLocation: { location: "Villarrica", placeName: "Liquen, Centro Cultural Municipal de Villarrica" },
+  },
   // El resto de la lista la aporta Daniel — una decisión editorial, igual
   // que cada fuente brillante nueva se evaluó una por una. Confirmar
   // pública y activa antes de agregar cada cuenta.
