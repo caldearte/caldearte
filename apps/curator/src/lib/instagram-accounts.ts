@@ -1560,6 +1560,16 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
     addedAt: "2026-08-27",
     fixedLocation: { location: "Valdivia", placeName: "MAC Valdivia (Museo de Arte Contemporáneo)" },
   },
+  {
+    username: "casadelaculturapuertovaras",
+    note:
+      "Casa de la Cultura Puerto Varas — Municipalidad de Puerto " +
+      "Varas, 11,3 mil seguidores, bio \"Cultura, Arte y Patrimonio\". " +
+      "Encontrada buscando \"cultura Puerto Varas\" en Instagram. " +
+      "fixedLocation.",
+    addedAt: "2026-08-27",
+    fixedLocation: { location: "Puerto Varas", placeName: "Casa de la Cultura Puerto Varas" },
+  },
   // El resto de la lista la aporta Daniel — una decisión editorial, igual
   // que cada fuente brillante nueva se evaluó una por una. Confirmar
   // pública y activa antes de agregar cada cuenta.
