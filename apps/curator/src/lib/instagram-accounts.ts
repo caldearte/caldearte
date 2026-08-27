@@ -1290,6 +1290,18 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
     addedAt: "2026-08-27",
     fixedLocation: { location: "Temuco", placeName: "Museo Regional Araucanía" },
   },
+  {
+    username: "casadelaculturalimache",
+    note:
+      "Casa de la Cultura y Escuela Municipal de Bellas Artes de " +
+      "Limache — 2.560 seguidores. Encontrada navegando el feed real de " +
+      "@caldearte.oficial: post real \"Mes de las Artes Visuales\" " +
+      "(exposición + concurso). Cuenta municipal, contenido mixto " +
+      "(también \"Mes de la Danza\") — Haiku filtra lo que no sea " +
+      "artes visuales. fixedLocation.",
+    addedAt: "2026-08-27",
+    fixedLocation: { location: "Limache", placeName: "Casa de la Cultura de Limache" },
+  },
   // El resto de la lista la aporta Daniel — una decisión editorial, igual
   // que cada fuente brillante nueva se evaluó una por una. Confirmar
   // pública y activa antes de agregar cada cuenta.
