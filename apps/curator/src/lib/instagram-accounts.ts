@@ -1302,6 +1302,19 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
     addedAt: "2026-08-27",
     fixedLocation: { location: "Limache", placeName: "Casa de la Cultura de Limache" },
   },
+  {
+    username: "ccgabrielamistral",
+    note:
+      "Centro Cultural Gabriela Mistral de Villa Alemana — 19,2 mil " +
+      "seguidores. Encontrada navegando el feed real de " +
+      "@caldearte.oficial: post real de la exposición \"Solostalgia\" " +
+      "(Daniela Lara Espinoza), dirección y fechas confirmadas (Santiago " +
+      "674, Villa Alemana). Highlight propio \"Expos\" confirma programa " +
+      "expositivo real; contenido mixto (patrimonio, cine, literatura, " +
+      "teatro) — Haiku filtra lo que no corresponda. fixedLocation.",
+    addedAt: "2026-08-27",
+    fixedLocation: { location: "Villa Alemana", placeName: "Centro Cultural Gabriela Mistral" },
+  },
   // El resto de la lista la aporta Daniel — una decisión editorial, igual
   // que cada fuente brillante nueva se evaluó una por una. Confirmar
   // pública y activa antes de agregar cada cuenta.
