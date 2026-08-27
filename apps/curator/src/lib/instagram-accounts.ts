@@ -1717,6 +1717,16 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
       "— Haiku filtra lo que no sea artes visuales. Sin fixedLocation.",
     addedAt: "2026-08-27",
   },
+  {
+    username: "cultura_angol",
+    note:
+      "Centro Cultural Angol — 7.063 seguidores, bio \"Donde el arte se " +
+      "vive y la cultura nos une\", highlight propio \"Artes\". " +
+      "Encontrada buscando \"cultura Angol\" en Instagram. Contenido " +
+      "mixto (conciertos, música, cine, teatro) — Haiku filtra lo que " +
+      "no sea artes visuales. Sin fixedLocation.",
+    addedAt: "2026-08-27",
+  },
   // El resto de la lista la aporta Daniel — una decisión editorial, igual
   // que cada fuente brillante nueva se evaluó una por una. Confirmar
   // pública y activa antes de agregar cada cuenta.
