@@ -1336,6 +1336,56 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
       "fixedLocation.",
     addedAt: "2026-08-27",
   },
+  {
+    username: "vac.valparaiso",
+    note:
+      "VAC — Red de Galerías de Arte Contemporáneo en Valparaíso, 2.313 " +
+      "seguidores. Agrupa galerías reales (Worm, El Farol, Parque " +
+      "Cultural, Sala Galia, Bahía Utópica). Encontrada buscando " +
+      "\"galería arte Valparaíso\" en Instagram. Red itinerante — sin " +
+      "fixedLocation.",
+    addedAt: "2026-08-27",
+  },
+  {
+    username: "laescalagaleria",
+    note:
+      "La Escala Galería, Valparaíso — arte emergente, venta de obras " +
+      "originales, 12,6 mil seguidores, highlight propio " +
+      "\"Exposiciones\". Encontrada buscando \"galería arte Valparaíso\" " +
+      "en Instagram. fixedLocation.",
+    addedAt: "2026-08-27",
+    fixedLocation: { location: "Valparaíso", placeName: "La Escala Galería" },
+  },
+  {
+    username: "valpocultura",
+    note:
+      "Dirección de Desarrollo Cultural, Municipio de Valparaíso — " +
+      "64,7 mil seguidores. Cuenta municipal, contenido mixto (música, " +
+      "danza, familia) — Haiku filtra lo que no sea artes visuales. " +
+      "Encontrada buscando \"galería arte Valparaíso\" en Instagram. " +
+      "Sin fixedLocation (múltiples sedes municipales).",
+    addedAt: "2026-08-27",
+  },
+  {
+    username: "estampa_valparaiso",
+    note:
+      "Estampa Valparaíso — colectivo de grabadores de la región de " +
+      "Valparaíso (creado 2019), académicos y talleristas, 3.047 " +
+      "seguidores, con exposiciones reales confirmadas (ej. MUG). " +
+      "Encontrada buscando \"galería arte Valparaíso\" en Instagram. " +
+      "Colectivo itinerante — sin fixedLocation.",
+    addedAt: "2026-08-27",
+  },
+  {
+    username: "valparaisoprofundo",
+    note:
+      "Valparaíso Profundo — centro cultural real (teatro, biblioteca, " +
+      "galería, cafetería) en los Ex Baños del Almendro, 22,6 mil " +
+      "seguidores, incluye \"Feria M.A\" de arte. Encontrada buscando " +
+      "\"galería arte Valparaíso\" en Instagram. fixedLocation.",
+    addedAt: "2026-08-27",
+    fixedLocation: { location: "Valparaíso", placeName: "Valparaíso Profundo (Ex Baños del Almendro)" },
+  },
   // El resto de la lista la aporta Daniel — una decisión editorial, igual
   // que cada fuente brillante nueva se evaluó una por una. Confirmar
   // pública y activa antes de agregar cada cuenta.
