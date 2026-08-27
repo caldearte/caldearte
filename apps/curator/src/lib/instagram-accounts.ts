@@ -1708,6 +1708,15 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
       "fixedLocation.",
     addedAt: "2026-08-27",
   },
+  {
+    username: "centroculturalrojasmagallanes",
+    note:
+      "CC Rojas Magallanes — 18,7 mil seguidores, bio \"Arte y cultura " +
+      "en el territorio\". Encontrada buscando \"cultura Magallanes\" " +
+      "en Instagram. Contenido mixto (fuerte en música/bandas/talleres) " +
+      "— Haiku filtra lo que no sea artes visuales. Sin fixedLocation.",
+    addedAt: "2026-08-27",
+  },
   // El resto de la lista la aporta Daniel — una decisión editorial, igual
   // que cada fuente brillante nueva se evaluó una por una. Confirmar
   // pública y activa antes de agregar cada cuenta.
