@@ -1405,6 +1405,16 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
       "fixedLocation (múltiples sedes municipales: CAC, OCCC, BBJ, C3).",
     addedAt: "2026-08-27",
   },
+  {
+    username: "baj_antofagasta",
+    note:
+      "Balmaceda Arte Joven Antofagasta, Arturo Prat #712, 4to piso — " +
+      "6.290 seguidores, highlight propio \"Galería\". Encontrada " +
+      "buscando \"galería arte Antofagasta\" en Instagram. " +
+      "fixedLocation.",
+    addedAt: "2026-08-27",
+    fixedLocation: { location: "Antofagasta", placeName: "Balmaceda Arte Joven Antofagasta" },
+  },
   // El resto de la lista la aporta Daniel — una decisión editorial, igual
   // que cada fuente brillante nueva se evaluó una por una. Confirmar
   // pública y activa antes de agregar cada cuenta.
