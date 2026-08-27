@@ -1698,6 +1698,16 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
     addedAt: "2026-08-27",
     fixedLocation: { location: "Viña del Mar", placeName: "La Casona Cultural de Viña del Mar" },
   },
+  {
+    username: "calamacultural",
+    note:
+      "Corporación de Cultura y Turismo Calama — 31,3 mil seguidores, " +
+      "\"generación de espacios y promoción del arte y la cultura\". " +
+      "Encontrada buscando \"cultura Calama\" en Instagram. Contenido " +
+      "mixto — Haiku filtra lo que no sea artes visuales. Sin " +
+      "fixedLocation.",
+    addedAt: "2026-08-27",
+  },
   // El resto de la lista la aporta Daniel — una decisión editorial, igual
   // que cada fuente brillante nueva se evaluó una por una. Confirmar
   // pública y activa antes de agregar cada cuenta.
