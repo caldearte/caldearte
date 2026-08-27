@@ -1464,6 +1464,18 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
       "no sea artes visuales. Sin fixedLocation.",
     addedAt: "2026-08-27",
   },
+  {
+    username: "museograficachillan",
+    note:
+      "Museo de la Gráfica de Chillán — \"museo internacional de la " +
+      "gráfica\", institución de la Dirección de Cultura, Artes y " +
+      "Patrimonio, 5.517 seguidores, sitio propio " +
+      "(museodelagrafica.cl). Museo dedicado a artes visuales. " +
+      "Encontrada buscando \"galería arte Chillán\" en Instagram. " +
+      "fixedLocation.",
+    addedAt: "2026-08-27",
+    fixedLocation: { location: "Chillán", placeName: "Museo de la Gráfica de Chillán" },
+  },
   // El resto de la lista la aporta Daniel — una decisión editorial, igual
   // que cada fuente brillante nueva se evaluó una por una. Confirmar
   // pública y activa antes de agregar cada cuenta.
