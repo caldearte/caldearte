@@ -1526,6 +1526,18 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
     addedAt: "2026-08-27",
     fixedLocation: { location: "Quillota", placeName: "Centro Cultural Leopoldo Silva Reynoard" },
   },
+  {
+    username: "mamchiloe",
+    note:
+      "Museo de Arte Moderno Chiloé — \"Centro activo de Arte " +
+      "contemporáneo\", 15,3 mil seguidores. Inauguración real " +
+      "confirmada (\"Muestra Regional\", 22 de agosto de 2026). " +
+      "Encontrada buscando \"galería arte Castro Chiloé\" en " +
+      "Instagram. Comuna exacta no verificada con certeza (sitio " +
+      "mamchiloe.cl no accesible al evaluar) — sin fixedLocation " +
+      "deliberado, Haiku infiere por post.",
+    addedAt: "2026-08-27",
+  },
   // El resto de la lista la aporta Daniel — una decisión editorial, igual
   // que cada fuente brillante nueva se evaluó una por una. Confirmar
   // pública y activa antes de agregar cada cuenta.
