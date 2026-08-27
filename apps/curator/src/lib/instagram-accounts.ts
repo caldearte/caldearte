@@ -1677,6 +1677,16 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
       "Sin fixedLocation.",
     addedAt: "2026-08-27",
   },
+  {
+    username: "centrocultural_losandes",
+    note:
+      "Centro Cultural de Los Andes — Municipalidad de Los Andes, " +
+      "10,1 mil seguidores, \"acciones artísticas culturales y " +
+      "patrimoniales\". Encontrada buscando \"cultura Los Andes\" en " +
+      "Instagram. Contenido mixto (festival, talleres, conciertos) — " +
+      "Haiku filtra lo que no sea artes visuales. Sin fixedLocation.",
+    addedAt: "2026-08-27",
+  },
   // El resto de la lista la aporta Daniel — una decisión editorial, igual
   // que cada fuente brillante nueva se evaluó una por una. Confirmar
   // pública y activa antes de agregar cada cuenta.
