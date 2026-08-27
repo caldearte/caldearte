@@ -1647,6 +1647,26 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
     addedAt: "2026-08-27",
     fixedLocation: { location: "Estación Central", placeName: "Corporación Cultural Estación Central" },
   },
+  {
+    username: "vitacuracultura",
+    note:
+      "Corporación Cultural Vitacura — desde 1996, 65,6 mil " +
+      "seguidores, highlight propio \"Artes visuales\". Encontrada " +
+      "buscando \"galería arte contemporáneo Vitacura\" en Instagram. " +
+      "Sin fixedLocation (múltiples sedes, incluye @lomattacultural).",
+    addedAt: "2026-08-27",
+  },
+  {
+    username: "lomattacultural",
+    note:
+      "Lo Matta Cultural — espacio cultural real, Monumento Nacional, " +
+      "59,5 mil seguidores, highlight propio \"Artes visuales\". " +
+      "Vinculado a Corporación Cultural Vitacura. Encontrada buscando " +
+      "\"galería arte contemporáneo Vitacura\" en Instagram. " +
+      "fixedLocation.",
+    addedAt: "2026-08-27",
+    fixedLocation: { location: "Vitacura", placeName: "Lo Matta Cultural" },
+  },
   // El resto de la lista la aporta Daniel — una decisión editorial, igual
   // que cada fuente brillante nueva se evaluó una por una. Confirmar
   // pública y activa antes de agregar cada cuenta.
