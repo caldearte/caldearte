@@ -1580,6 +1580,16 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
       "comunas). Sin fixedLocation.",
     addedAt: "2026-08-27",
   },
+  {
+    username: "culturamunisanfelipe",
+    note:
+      "Oficina de Cultura San Felipe — Av. O'Higgins 651, 6.383 " +
+      "seguidores, cuenta municipal (patrimonio, talleres, catastro). " +
+      "Encontrada buscando \"cultura San Felipe\" en Instagram. " +
+      "Contenido mixto — Haiku filtra lo que no sea artes visuales. " +
+      "Sin fixedLocation.",
+    addedAt: "2026-08-27",
+  },
   // El resto de la lista la aporta Daniel — una decisión editorial, igual
   // que cada fuente brillante nueva se evaluó una por una. Confirmar
   // pública y activa antes de agregar cada cuenta.
