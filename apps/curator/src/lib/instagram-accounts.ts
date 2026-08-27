@@ -1508,6 +1508,24 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
       "Instagram. Sin fixedLocation.",
     addedAt: "2026-08-27",
   },
+  {
+    username: "bellasartesquillota",
+    note:
+      "Academia Municipal de Bellas Artes de Quillota — 47 años de " +
+      "formación artística, 2.310 seguidores. Encontrada buscando " +
+      "\"galería arte Quillota\" en Instagram. Sin fixedLocation.",
+    addedAt: "2026-08-27",
+  },
+  {
+    username: "centroculturalquillota",
+    note:
+      "Centro Cultural Leopoldo Silva Reynoard — Dirección de Cultura " +
+      "de la Municipalidad de Quillota, 21,1 mil seguidores. " +
+      "Encontrada buscando \"galería arte Quillota\" en Instagram. " +
+      "fixedLocation.",
+    addedAt: "2026-08-27",
+    fixedLocation: { location: "Quillota", placeName: "Centro Cultural Leopoldo Silva Reynoard" },
+  },
   // El resto de la lista la aporta Daniel — una decisión editorial, igual
   // que cada fuente brillante nueva se evaluó una por una. Confirmar
   // pública y activa antes de agregar cada cuenta.
