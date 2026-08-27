@@ -1687,6 +1687,17 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
       "Haiku filtra lo que no sea artes visuales. Sin fixedLocation.",
     addedAt: "2026-08-27",
   },
+  {
+    username: "lacasona.centrodeartes",
+    note:
+      "La Casona Cultural de Viña del Mar — \"Centro de Artes " +
+      "Visuales independiente\", Errázuriz 626, Viña del Mar. 5.486 " +
+      "seguidores. Encontrada vía un post real de estampa_valparaiso " +
+      "(exposición individual de la grabadora @ineacerebi, curatoría " +
+      "@anto_auda_grabadora, 26-27 agosto 2026). fixedLocation.",
+    addedAt: "2026-08-27",
+    fixedLocation: { location: "Viña del Mar", placeName: "La Casona Cultural de Viña del Mar" },
+  },
   // El resto de la lista la aporta Daniel — una decisión editorial, igual
   // que cada fuente brillante nueva se evaluó una por una. Confirmar
   // pública y activa antes de agregar cada cuenta.
