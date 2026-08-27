@@ -1225,6 +1225,20 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
     addedAt: "2026-08-26",
     fixedLocation: { location: "Santiago", placeName: "LINIA Galería" },
   },
+  {
+    username: "mavichile",
+    note:
+      "MAVI UC (Museo de Artes Visuales, Universidad Católica), Santiago " +
+      "— museo real y prominente, 71,4 mil seguidores. Encontrada " +
+      "navegando el feed real de @caldearte.oficial: un post de un " +
+      "artista (felipe_lobos) mencionaba \"Registro en MAVI UC. Mención " +
+      "honrosa en Premio Arte Joven 2026\" — llevó a confirmar que MAVI " +
+      "UC no estaba cubierto. No confundir con @museomavi (\"Museo en " +
+      "Artes Virtuales\", espacio distinto de realidad virtual, 632 " +
+      "seguidores) — nombre similar, institución diferente.",
+    addedAt: "2026-08-26",
+    fixedLocation: { location: "Santiago", placeName: "MAVI UC" },
+  },
   // El resto de la lista la aporta Daniel — una decisión editorial, igual
   // que cada fuente brillante nueva se evaluó una por una. Confirmar
   // pública y activa antes de agregar cada cuenta.
