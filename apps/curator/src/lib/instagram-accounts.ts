@@ -1476,6 +1476,18 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
     addedAt: "2026-08-27",
     fixedLocation: { location: "Chillán", placeName: "Museo de la Gráfica de Chillán" },
   },
+  {
+    username: "museoohigginianotalca",
+    note:
+      "Museo O'Higginiano y de Bellas Artes de Talca — 11,3 mil " +
+      "seguidores, horario propio. Parte de la Red Nacional de Museos " +
+      "(museoschile.gob.cl, ya cubierta vía sitio web) pero su cuenta " +
+      "de Instagram aporta contenido propio adicional — mismo patrón " +
+      "que museoaraucania. Encontrada buscando \"galería arte Talca\" " +
+      "en Instagram. fixedLocation.",
+    addedAt: "2026-08-27",
+    fixedLocation: { location: "Talca", placeName: "Museo O'Higginiano y de Bellas Artes de Talca" },
+  },
   // El resto de la lista la aporta Daniel — una decisión editorial, igual
   // que cada fuente brillante nueva se evaluó una por una. Confirmar
   // pública y activa antes de agregar cada cuenta.
