@@ -1425,6 +1425,16 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
     addedAt: "2026-08-27",
     fixedLocation: { location: "Temuco", placeName: "Sala Exposiciones UC Temuco" },
   },
+  {
+    username: "galeria.basgmarine",
+    note:
+      "Galería de Arte Náutico, Angelmó 1878, Puerto Montt — 1.258 " +
+      "seguidores, \"Exhibiciones rotativas\", highlight propio " +
+      "\"Inauguraciones\". Encontrada buscando \"galería arte Puerto " +
+      "Montt\" en Instagram. fixedLocation.",
+    addedAt: "2026-08-27",
+    fixedLocation: { location: "Puerto Montt", placeName: "Galería de Arte Náutico" },
+  },
   // El resto de la lista la aporta Daniel — una decisión editorial, igual
   // que cada fuente brillante nueva se evaluó una por una. Confirmar
   // pública y activa antes de agregar cada cuenta.
