@@ -1415,6 +1415,16 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
     addedAt: "2026-08-27",
     fixedLocation: { location: "Antofagasta", placeName: "Balmaceda Arte Joven Antofagasta" },
   },
+  {
+    username: "salaexposicionesuct",
+    note:
+      "Sala Exposiciones UC Temuco, Universidad Católica de Temuco — " +
+      "espacio expositivo dedicado real, 1.352 seguidores, horario " +
+      "propio (10 a 18 h). Encontrada buscando \"galería arte Temuco\" " +
+      "en Instagram. fixedLocation.",
+    addedAt: "2026-08-27",
+    fixedLocation: { location: "Temuco", placeName: "Sala Exposiciones UC Temuco" },
+  },
   // El resto de la lista la aporta Daniel — una decisión editorial, igual
   // que cada fuente brillante nueva se evaluó una por una. Confirmar
   // pública y activa antes de agregar cada cuenta.
