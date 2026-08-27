@@ -1570,6 +1570,16 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
     addedAt: "2026-08-27",
     fixedLocation: { location: "Puerto Varas", placeName: "Casa de la Cultura Puerto Varas" },
   },
+  {
+    username: "culturaancud",
+    note:
+      "Corporación Cultural Municipal de Ancud — 10,6 mil seguidores, " +
+      "bio \"Arte, cultura y patrimonio de Chiloé\". Encontrada " +
+      "buscando \"corporacion cultural Arica\" en Instagram (la " +
+      "búsqueda ignoró \"Arica\" y devolvió resultados de otras " +
+      "comunas). Sin fixedLocation.",
+    addedAt: "2026-08-27",
+  },
   // El resto de la lista la aporta Daniel — una decisión editorial, igual
   // que cada fuente brillante nueva se evaluó una por una. Confirmar
   // pública y activa antes de agregar cada cuenta.
