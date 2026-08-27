@@ -1454,6 +1454,16 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
     addedAt: "2026-08-27",
     fixedLocation: { location: "Iquique", placeName: "Casa Municipal de la Cultura de Iquique" },
   },
+  {
+    username: "culturacopiapo.cl",
+    note:
+      "Cultura, Turismo y Patrimonio, Copiapó — cuenta municipal, " +
+      "10,4 mil seguidores, bio menciona \"música, teatro, arte y " +
+      "patrimonio\" explícitamente. Encontrada buscando \"galería arte " +
+      "Copiapó\" en Instagram. Contenido mixto — Haiku filtra lo que " +
+      "no sea artes visuales. Sin fixedLocation.",
+    addedAt: "2026-08-27",
+  },
   // El resto de la lista la aporta Daniel — una decisión editorial, igual
   // que cada fuente brillante nueva se evaluó una por una. Confirmar
   // pública y activa antes de agregar cada cuenta.
