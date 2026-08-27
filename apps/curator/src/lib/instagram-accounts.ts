@@ -1435,6 +1435,15 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
     addedAt: "2026-08-27",
     fixedLocation: { location: "Puerto Montt", placeName: "Galería de Arte Náutico" },
   },
+  {
+    username: "casadelaculturarancagua",
+    note:
+      "Casa de la Cultura Rancagua — 21,5 mil seguidores, highlight " +
+      "propio \"EXPOSICIONES\" (además de talleres). Encontrada " +
+      "buscando \"galería arte Rancagua\" en Instagram. fixedLocation.",
+    addedAt: "2026-08-27",
+    fixedLocation: { location: "Rancagua", placeName: "Casa de la Cultura Rancagua" },
+  },
   // El resto de la lista la aporta Daniel — una decisión editorial, igual
   // que cada fuente brillante nueva se evaluó una por una. Confirmar
   // pública y activa antes de agregar cada cuenta.
