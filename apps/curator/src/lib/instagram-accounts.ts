@@ -1488,6 +1488,16 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
     addedAt: "2026-08-27",
     fixedLocation: { location: "Talca", placeName: "Museo O'Higginiano y de Bellas Artes de Talca" },
   },
+  {
+    username: "culturacoyhaique",
+    note:
+      "Corporación Cultural Municipal de Coyhaique — 25 mil seguidores, " +
+      "\"impulsando la creatividad, el saber y las artes desde 1996\". " +
+      "Contenido mixto (cartelera, microcine, talleres) — Haiku filtra " +
+      "lo que no sea artes visuales. Encontrada buscando \"galería " +
+      "arte Coyhaique\" en Instagram. Sin fixedLocation.",
+    addedAt: "2026-08-27",
+  },
   // El resto de la lista la aporta Daniel — una decisión editorial, igual
   // que cada fuente brillante nueva se evaluó una por una. Confirmar
   // pública y activa antes de agregar cada cuenta.
