@@ -1264,6 +1264,19 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
       "fixedLocation, Haiku infiere por post.",
     addedAt: "2026-08-27",
   },
+  {
+    username: "galeriatallerespacioa",
+    note:
+      "Espacio A, galería-taller de arte real, Francisco Bulnes Correa " +
+      "1406, Las Condes (San Carlos de Apoquindo) — espacioa.cl, 10 años " +
+      "activa, 1.464 seguidores. Encontrada navegando el feed real de " +
+      "@caldearte.oficial: un escultor agradeció haber expuesto ahí por " +
+      "primera vez. Highlight propio \"Exposiciones\" confirma programa " +
+      "expositivo real (además de clases/talleres, que Haiku filtra). " +
+      "fixedLocation.",
+    addedAt: "2026-08-27",
+    fixedLocation: { location: "Las Condes", placeName: "Espacio A" },
+  },
   // El resto de la lista la aporta Daniel — una decisión editorial, igual
   // que cada fuente brillante nueva se evaluó una por una. Confirmar
   // pública y activa antes de agregar cada cuenta.
