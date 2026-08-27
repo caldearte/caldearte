@@ -1386,6 +1386,25 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
     addedAt: "2026-08-27",
     fixedLocation: { location: "Valparaíso", placeName: "Valparaíso Profundo (Ex Baños del Almendro)" },
   },
+  {
+    username: "bienalconcepcion",
+    note:
+      "Bienal Concepción Arte & Ciencia — bienal real, itinerante " +
+      "(itinerancia confirmada en la Pinacoteca), 2.490 seguidores. " +
+      "Encontrada buscando \"galería arte Concepción\" en Instagram. " +
+      "Sin fixedLocation (itinerante).",
+    addedAt: "2026-08-27",
+  },
+  {
+    username: "concepcioncultural",
+    note:
+      "Concepción Cultural — Dirección de Cultura de la Municipalidad " +
+      "de Concepción, 53,4 mil seguidores. Cuenta municipal, contenido " +
+      "mixto — Haiku filtra lo que no sea artes visuales. Encontrada " +
+      "buscando \"galería arte Concepción\" en Instagram. Sin " +
+      "fixedLocation (múltiples sedes municipales: CAC, OCCC, BBJ, C3).",
+    addedAt: "2026-08-27",
+  },
   // El resto de la lista la aporta Daniel — una decisión editorial, igual
   // que cada fuente brillante nueva se evaluó una por una. Confirmar
   // pública y activa antes de agregar cada cuenta.
