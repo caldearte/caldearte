@@ -1550,6 +1550,16 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
     addedAt: "2026-08-27",
     fixedLocation: { location: "Villarrica", placeName: "Liquen, Centro Cultural Municipal de Villarrica" },
   },
+  {
+    username: "mac_valdivia",
+    note:
+      "MAC Valdivia — Museo de Arte Contemporáneo, Universidad Austral " +
+      "de Chile — 3.951 seguidores, highlight propio \"Exposiciones\". " +
+      "Encontrada buscando \"galería arte Valdivia\" en Instagram. " +
+      "fixedLocation.",
+    addedAt: "2026-08-27",
+    fixedLocation: { location: "Valdivia", placeName: "MAC Valdivia (Museo de Arte Contemporáneo)" },
+  },
   // El resto de la lista la aporta Daniel — una decisión editorial, igual
   // que cada fuente brillante nueva se evaluó una por una. Confirmar
   // pública y activa antes de agregar cada cuenta.
