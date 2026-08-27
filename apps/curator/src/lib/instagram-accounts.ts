@@ -1239,6 +1239,31 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
     addedAt: "2026-08-26",
     fixedLocation: { location: "Santiago", placeName: "MAVI UC" },
   },
+  {
+    username: "artequinvina",
+    note:
+      "Museo Artequín Viña del Mar — museo educativo de arte para niños, " +
+      "26,4 mil seguidores. Encontrada navegando el feed real de " +
+      "@caldearte.oficial (sugerencia algorítmica). Sede única, distinta " +
+      "del Museo Artequín de Estación Central (@artequin) ya cubierto — " +
+      "misma marca, dos museos físicos independientes.",
+    addedAt: "2026-08-27",
+    fixedLocation: { location: "Viña del Mar", placeName: "Museo Artequín Viña del Mar" },
+  },
+  {
+    username: "huechurabacultura",
+    note:
+      "Departamento de Cultura Huechuraba, cuenta municipal, 11,2 mil " +
+      "seguidores. Encontrada navegando el feed real de " +
+      "@caldearte.oficial: post real de la exposición \"Transmisión " +
+      "Análoga\" (artistas Ricardo Pizarro y Billy Noise). Contenido " +
+      "mixto (talleres, eventos comunitarios, cultura) — mismo patrón " +
+      "que otras cuentas municipales ya agregadas; Haiku filtra lo que " +
+      "no es exposición visual real. Bio (\"que el arte... llegue a cada " +
+      "rincón de Huechuraba\") no confirma un venue único — sin " +
+      "fixedLocation, Haiku infiere por post.",
+    addedAt: "2026-08-27",
+  },
   // El resto de la lista la aporta Daniel — una decisión editorial, igual
   // que cada fuente brillante nueva se evaluó una por una. Confirmar
   // pública y activa antes de agregar cada cuenta.
