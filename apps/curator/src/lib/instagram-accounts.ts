@@ -1599,6 +1599,16 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
       "fixedLocation.",
     addedAt: "2026-08-27",
   },
+  {
+    username: "cultura_puentealto",
+    note:
+      "Corporación Municipal de Cultura de Puente Alto — 76,4 mil " +
+      "seguidores, cuenta oficial de una de las comunas más pobladas " +
+      "de Chile. Encontrada buscando \"cultura Puente Alto\" en " +
+      "Instagram. Contenido mixto — Haiku filtra lo que no sea artes " +
+      "visuales. Sin fixedLocation.",
+    addedAt: "2026-08-27",
+  },
   // El resto de la lista la aporta Daniel — una decisión editorial, igual
   // que cada fuente brillante nueva se evaluó una por una. Confirmar
   // pública y activa antes de agregar cada cuenta.
