@@ -1444,6 +1444,16 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
     addedAt: "2026-08-27",
     fixedLocation: { location: "Rancagua", placeName: "Casa de la Cultura Rancagua" },
   },
+  {
+    username: "casaculturaiquique",
+    note:
+      "Casa Municipal de la Cultura de Iquique — 7.064 seguidores, " +
+      "\"espacio para la creación, el encuentro y la divulgación de la " +
+      "cultura y las artes\", en el casco histórico. Encontrada " +
+      "buscando \"galería arte Iquique\" en Instagram. fixedLocation.",
+    addedAt: "2026-08-27",
+    fixedLocation: { location: "Iquique", placeName: "Casa Municipal de la Cultura de Iquique" },
+  },
   // El resto de la lista la aporta Daniel — una decisión editorial, igual
   // que cada fuente brillante nueva se evaluó una por una. Confirmar
   // pública y activa antes de agregar cada cuenta.
