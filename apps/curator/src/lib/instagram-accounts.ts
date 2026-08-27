@@ -1629,6 +1629,14 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
       "fixedLocation.",
     addedAt: "2026-08-27",
   },
+  {
+    username: "chimkowecentro",
+    note:
+      "Corporación Cultural de Peñalolén (Centro Chimkowe) — 47,7 mil " +
+      "seguidores, highlight propio \"EXPO\". Encontrada buscando " +
+      "\"cultura Peñalolén\" en Instagram. Sin fixedLocation.",
+    addedAt: "2026-08-27",
+  },
   // El resto de la lista la aporta Daniel — una decisión editorial, igual
   // que cada fuente brillante nueva se evaluó una por una. Confirmar
   // pública y activa antes de agregar cada cuenta.
