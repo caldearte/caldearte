@@ -1667,6 +1667,16 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
     addedAt: "2026-08-27",
     fixedLocation: { location: "Vitacura", placeName: "Lo Matta Cultural" },
   },
+  {
+    username: "corporacionculturallb",
+    note:
+      "Corporación Cultural de Lo Barnechea — 30,9 mil seguidores, " +
+      "\"experiencias culturales significativas\", cartelera activa. " +
+      "Encontrada buscando \"cultura Lo Barnechea\" en Instagram. " +
+      "Contenido mixto — Haiku filtra lo que no sea artes visuales. " +
+      "Sin fixedLocation.",
+    addedAt: "2026-08-27",
+  },
   // El resto de la lista la aporta Daniel — una decisión editorial, igual
   // que cada fuente brillante nueva se evaluó una por una. Confirmar
   // pública y activa antes de agregar cada cuenta.
