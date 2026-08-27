@@ -1637,6 +1637,16 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
       "\"cultura Peñalolén\" en Instagram. Sin fixedLocation.",
     addedAt: "2026-08-27",
   },
+  {
+    username: "culturalestacioncentral",
+    note:
+      "Corporación Cultural Estación Central — 17 mil seguidores, " +
+      "Nicasio Retamales 95, bio \"promoviendo y difundiendo las " +
+      "culturas, las artes y los patrimonios\". Encontrada buscando " +
+      "\"cultura Estación Central\" en Instagram. fixedLocation.",
+    addedAt: "2026-08-27",
+    fixedLocation: { location: "Estación Central", placeName: "Corporación Cultural Estación Central" },
+  },
   // El resto de la lista la aporta Daniel — una decisión editorial, igual
   // que cada fuente brillante nueva se evaluó una por una. Confirmar
   // pública y activa antes de agregar cada cuenta.
