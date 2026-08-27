@@ -1590,6 +1590,15 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
       "Sin fixedLocation.",
     addedAt: "2026-08-27",
   },
+  {
+    username: "culturasanbernardo",
+    note:
+      "Cultura y Turismo San Bernardo — cuenta municipal, 17,6 mil " +
+      "seguidores, bio \"guiados, eventos, exposiciones y talleres\". " +
+      "Encontrada buscando \"cultura San Bernardo\" en Instagram. Sin " +
+      "fixedLocation.",
+    addedAt: "2026-08-27",
+  },
   // El resto de la lista la aporta Daniel — una decisión editorial, igual
   // que cada fuente brillante nueva se evaluó una por una. Confirmar
   // pública y activa antes de agregar cada cuenta.
