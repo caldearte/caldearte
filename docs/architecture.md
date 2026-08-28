@@ -441,3 +441,68 @@ who happens to call it. Also broke a preexisting circular import
 production build (`next build` + `next start`): the 299KB/78KB-gzip
 chunk disappears entirely from the home page's served chunk list; total
 home JS drops from ~282KB to ~223KB gzip.
+
+## Second Vercel free-tier incident (2026-08-28): ISR Writes + Fast Origin Transfer, and dropping `/eventos/[id]`'s "list mode"
+
+Two Vercel usage warnings hit the same day: **ISR Writes** at 196K/200K
+(2026-08-27/28) and **Fast Origin Transfer** exceeded at 12.68/10GB. Both
+traced back to real code, not noise — and unlike the 2026-08-06 incident
+above (home page only), this one implicated a second route.
+
+**ISR Writes fix**: `app/page.tsx`'s `revalidate` and
+`fetchApprovedEvents`'s own `unstable_cache` window (`lib/events.ts`) both
+bumped 60s → 600s. Real content (curation/discovery) changes at most a
+few times a day, never per-minute, so 60s was regenerating the cache far
+more often than the underlying data could possibly have changed.
+
+**Fast Origin Transfer fix — the bigger one**: `/eventos/[id]`'s "list
+mode" (added 2026-08-06, PR #203 — position-in-list indicator, prev/next
+navigation, a full región+semana picker in a sticky top nav, the
+visitor's own current Inauguraciones/Exposiciones lists at the bottom)
+read `cookies()`/`headers()` to personalize all of that, which forces
+Next.js to render fresh on *every single request* — no ISR, no cache,
+ever. That was fine at low traffic; once the Instagram launch
+(2026-08-23) started sending real volume straight to individual event
+pages, and since `robots.ts` allows `/eventos/*` freely for crawlers too,
+this became the real driver of the Fast Origin Transfer spike.
+
+Rebuilding list mode as a client-side-personalized fetch (the same
+`HomeClient`/`api/home-data` pattern the home page already uses above)
+was seriously considered, but rejected: list mode touches nearly the
+whole page (top nav, position indicator, two full sections), so the
+"flash of standalone-then-list-mode" on every load would have been far
+more visually disruptive than home's own equivalent (which only nudges
+counts/filters within an already-settled layout). The user's call
+(2026-08-28): **drop list mode entirely.** `EventPageTopNav.tsx`,
+`EventPageCityPicker.tsx`, and the `/api/eventos/go-to-city` route were
+deleted outright. In its place, `/eventos/[id]` now computes a small,
+fully deterministic teaser — up to 4 other current exposiciones in the
+same región, same result for every visitor, no cookies — so the page is
+cache-eligible again: `generateStaticParams` + `revalidate = 600` flips
+it from `ƒ` (dynamic, on-demand) to `●` (SSG via `generateStaticParams`)
+in `next build`'s own route table. Verified live in production with
+`curl -sI` against real event URLs: `x-vercel-cache: PRERENDER` on first
+hit, `HIT` with incrementing `age` afterward.
+
+PRs: #438 (ISR Writes), #439 (Fast Origin Transfer / list-mode removal).
+
+## Cron watchdog (2026-08-28)
+
+Same day, a separate but related discovery: GitHub Actions' `schedule`
+trigger is documented as "best effort" and can silently skip firing
+during high platform load — confirmed empirically when `publish-social.yml`,
+`daily-digest.yml`, and `apify-usage-snapshot.yml` all missed their
+expected UTC firing time, with `daily-digest.yml` (merged two days
+earlier) never having fired even once. GitHub's own status page showed no
+reported outage at the time.
+
+`.github/workflows/cron-watchdog.yml` (PR #440) now runs every 4 hours
+and, for each of the repo's 10 scheduled workflows, checks how long it's
+been since that workflow's last *completed* run (any trigger type, not
+just `schedule` — so a previous watchdog-issued dispatch also "clears"
+the gap and the watchdog never re-triggers something it already caught
+up). If the gap exceeds that workflow's own `max_gap_hours` (real cadence
++ a generous buffer), it re-dispatches it via `workflow_dispatch`, using
+only the default `GITHUB_TOKEN` (`permissions: actions: write` — no new
+secret needed to dispatch other workflows in the same repo). Self-heals
+future silent misses without needing manual intervention.

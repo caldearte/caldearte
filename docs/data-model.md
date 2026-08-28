@@ -257,6 +257,37 @@ discovery_run_summaries (added 20260817120000_add_discovery_run_summaries.sql
   -- summary email whose Resend half was never configured in production;
   -- this persists it regardless, so /admin/fuentes' "Cobertura por
   -- corrida" doesn't require digging through GitHub Actions logs by hand.
+
+social_post_log (added 20260823002000_add_social_post_log.sql — see
+    roadmap.md's Fase 4)
+  id, event_id (references events, cascade delete),
+  post_type (no_te_la_pierdas | destacada — 'inauguracion' never writes a
+    row here, its weekly repeat is deliberate, nothing to de-dup),
+  week_start (Monday of the Santiago-timezone week, same convention as
+    apps/web/src/lib/date.ts's weekBoundsInSantiago), posted_at
+  -- One row per event per carousel it appeared in. Two jobs: (1) within
+  -- a week, "has this event already been featured as X" (selection.ts
+  -- excludes it if so); (2) across weeks, "how long since this event was
+  -- last a destacada" (rotates eligible expos instead of resurfacing the
+  -- same handful). Not pruned.
+
+instagram_posts, instagram_account_snapshots (both added
+    20260824010000_add_instagram_engagement_tracking.sql)
+  instagram_posts: id, media_id (unique), post_type (inauguracion |
+    no_te_la_pierdas | destacada), week_start, published_at,
+    reach, saved, like_count, comments_count (all nullable — filled in
+    later by a separate weekly cron, instagram-insights/run.ts, reading
+    them back from the Graph API; publishing and measuring are different
+    API calls at different times), metrics_updated_at, created_at
+  -- One row per published carousel (all 3 types, unlike social_post_log
+  -- above). Motivated by a real question: is Monday's deliberate
+  -- inauguracion repeat worth it, or too soon after Sunday's own post to
+  -- add real reach? Needs this real data over time to answer.
+  instagram_account_snapshots: id, snapshot_date (unique), followers_count,
+    media_count, created_at
+  -- Periodic reading of the account's own current follower/media counts —
+  -- same "snapshot, not ledger" posture as platform_cost_snapshots, no
+  -- per-event attribution for follower growth.
 ```
 
 Field types and constraints (exact `CHECK`s, defaults, nullability) live in
