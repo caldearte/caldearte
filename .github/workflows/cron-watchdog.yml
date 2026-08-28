@@ -1,0 +1,121 @@
+name: Cron Watchdog
+
+# GitHub's own docs: the `schedule` trigger is "best effort" and can be
+# delayed or silently skipped entirely during periods of high platform
+# load — this is documented, not a bug in any single workflow here. Real
+# case that prompted this file (2026-08-28): publish-social.yml,
+# daily-digest.yml and apify-usage-snapshot.yml all missed their expected
+# firing time the same day; daily-digest.yml (merged 2026-08-26) had in
+# fact NEVER fired once, two full days after being merged.
+#
+# This runs periodically and, for each workflow listed in the matrix
+# below, checks how long it's been since that workflow's last COMPLETED
+# `schedule`-triggered run. If that gap exceeds the workflow's own
+# max_gap_hours (its real cadence + a generous buffer — see each entry's
+# own comment), it re-triggers that workflow via `workflow_dispatch`,
+# using the default GITHUB_TOKEN (no new secret needed — the built-in
+# token can dispatch other workflows in the SAME repo as long as this
+# job is granted `actions: write`).
+#
+# Deliberately compares against the last COMPLETED run regardless of
+# how it got triggered (schedule OR a previous watchdog-issued dispatch)
+# — an earlier attempt that filtered to `event=schedule` would keep
+# re-triggering a workflow this same watchdog already caught up, since a
+# dispatch-triggered run doesn't count as `schedule` and never "clears"
+# the gap.
+on:
+  workflow_dispatch: {}
+  schedule:
+    - cron: "40 */4 * * *" # every 4 hours, off the top of the hour — see event-discovery.yml's own comment on :00 congestion
+
+permissions:
+  actions: write
+
+jobs:
+  check-and-retrigger:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Daily-ish (Mon-Sat + 3x Sunday) — worst real gap between
+          # completed schedule runs is Sunday's last slot (~18:05 UTC) to
+          # Monday's single slot (~12:05 UTC next day), ~18h. 30h buffer.
+          - workflow: publish-social.yml
+            max_gap_hours: 30
+            # Re-triggering with no inputs would default dry_run=true —
+            # a catch-up run must actually publish, same as any other
+            # real scheduled firing would have.
+            extra_dispatch_flag: "-f dry_run=false"
+          - workflow: daily-digest.yml
+            max_gap_hours: 30
+            extra_dispatch_flag: ""
+          - workflow: apify-usage-snapshot.yml
+            max_gap_hours: 30
+            extra_dispatch_flag: ""
+          # Sunday + Wednesday — worst gap ~4 days (Wed→Sun). 120h buffer.
+          - workflow: event-discovery.yml
+            max_gap_hours: 120
+            extra_dispatch_flag: ""
+          - workflow: headless-bright-sources.yml
+            max_gap_hours: 120
+            extra_dispatch_flag: ""
+          # Every 2 days (odd day-of-month approximation, see the
+          # workflow's own comment) — worst gap ~3 days at a month
+          # boundary. 72h buffer.
+          - workflow: instagram-bright-sources.yml
+            max_gap_hours: 72
+            extra_dispatch_flag: ""
+          # Weekly — 8-day buffer.
+          - workflow: google-alerts-bright-source.yml
+            max_gap_hours: 192
+            extra_dispatch_flag: ""
+          - workflow: weekly-newsletter.yml
+            max_gap_hours: 192
+            extra_dispatch_flag: ""
+          - workflow: instagram-insights.yml
+            max_gap_hours: 192
+            extra_dispatch_flag: ""
+          - workflow: security-audit.yml
+            max_gap_hours: 192
+            extra_dispatch_flag: ""
+    steps:
+      - name: Check ${{ matrix.workflow }} and re-trigger if overdue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+
+          # Anything already running/queued (a real firing that just
+          # hasn't finished yet, or a watchdog dispatch from an earlier
+          # tick still in flight) — never pile another one on top.
+          PENDING=$(gh api "repos/$REPO/actions/workflows/${{ matrix.workflow }}/runs" \
+            -f status=in_progress -f per_page=1 --jq '.total_count')
+          PENDING_QUEUED=$(gh api "repos/$REPO/actions/workflows/${{ matrix.workflow }}/runs" \
+            -f status=queued -f per_page=1 --jq '.total_count')
+          if [ "$PENDING" -gt 0 ] || [ "$PENDING_QUEUED" -gt 0 ]; then
+            echo "${{ matrix.workflow }}: already running/queued — skipping."
+            exit 0
+          fi
+
+          LAST=$(gh api "repos/$REPO/actions/workflows/${{ matrix.workflow }}/runs" \
+            -f status=completed -f per_page=1 --jq '.workflow_runs[0].created_at // empty')
+
+          if [ -z "$LAST" ]; then
+            echo "${{ matrix.workflow }}: no completed run found at all — triggering now."
+            gh workflow run "${{ matrix.workflow }}" ${{ matrix.extra_dispatch_flag }}
+            exit 0
+          fi
+
+          LAST_EPOCH=$(date -u -d "$LAST" +%s)
+          NOW_EPOCH=$(date -u +%s)
+          GAP_HOURS=$(( (NOW_EPOCH - LAST_EPOCH) / 3600 ))
+          echo "${{ matrix.workflow }}: last completed run $LAST (${GAP_HOURS}h ago), max_gap_hours=${{ matrix.max_gap_hours }}"
+
+          if [ "$GAP_HOURS" -gt "${{ matrix.max_gap_hours }}" ]; then
+            echo "${{ matrix.workflow }}: overdue — triggering now."
+            gh workflow run "${{ matrix.workflow }}" ${{ matrix.extra_dispatch_flag }}
+          else
+            echo "${{ matrix.workflow }}: on schedule, nothing to do."
+          fi
