@@ -17,14 +17,18 @@
   side-by-side testing showed Haiku reaching identical classification
   decisions at roughly a quarter of the cost — see
   [region-discovery.md](region-discovery.md).
-- **Search:** Tavily (a separate, LLM-oriented search API), not Anthropic's
-  own `web_search` tool — a deliberate reversal of the original "no separate
-  search service like SerpAPI" stance below. Real comparison showed
-  Anthropic's `web_search` returning mostly title/URL with no real content
-  and missing social-media coverage entirely, both of which matter directly
-  for finding informal/street art events — see
-  [region-discovery.md](region-discovery.md) for the full comparison and
-  cost data.
+- **Search:** two sources feed Event Discovery today, both cheap and
+  actually productive — **bright sources** (known-rich venue/gallery sites,
+  fetched directly) and **Instagram via Apify** (`apify-client`, actor
+  `apify/instagram-post-scraper`). The general per-comuna **Tavily**
+  search (a separate, LLM-oriented search API, chosen over Anthropic's own
+  `web_search` tool for its social-media coverage) is still in the
+  codebase but its cron has been **paused since 2026-08-23** — months of
+  runs produced zero real events (approved or rejected) at a measured
+  ~$16.48 in Haiku spend plus Tavily credits, while bright-source and
+  Instagram cost cents per run and work. See
+  [region-discovery.md](region-discovery.md) for the full comparison, the
+  pause rationale, and cost data.
 - **Email:** Resend (free tier, 3,000/month) for approval and inbound-mail
   flows (Phase 1b).
 - **Geocoding:** no external service — `nearestCityIdByCoords`

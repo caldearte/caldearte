@@ -8,7 +8,8 @@ Done: pnpm workspace, core schema deployed to production
 system shipped (`system_config`/`api_usage_log`, budget ceiling, region cap,
 change-detection foundation).
 
-Event Discovery (Tavily + Haiku, fuentes brillantes, see
+Event Discovery (Haiku curating bright sources + Instagram via Apify; Tavily
+comuna-search paused since 2026-08-23, see
 [region-discovery.md](region-discovery.md)) is implemented and in production
 (`apps/curator/src/event-discovery/`) — it's the only event-sourcing
 pipeline. It writes every event's location as freeform text; there is no
@@ -84,10 +85,14 @@ Closed out the initial project brief, moved into a dedicated repo.
   (stays inside Tavily's free tier indefinitely) — see
   [region-discovery.md](region-discovery.md) for the batch sizing and cost
   breakdown.
-- Search via Tavily (not Anthropic's `web_search`), curated by Claude
-  Haiku 4.5 — no venue matching, every event has a freeform `location`.
-  Includes a "fuentes brillantes" mechanism (known-rich sources fetched
-  directly, auto-detected + manually grown) — see region-discovery.md.
+- **Active today:** a "fuentes brillantes" mechanism (known-rich sources
+  fetched directly, auto-detected + manually grown) plus Instagram via
+  Apify — both curated by Claude Haiku 4.5, no venue matching, every event
+  has a freeform `location`. General per-comuna search via Tavily (not
+  Anthropic's `web_search`) exists in the code but its cron is **paused
+  since 2026-08-23** — real data showed zero live events ever came from it
+  despite real cost, while bright-source/Instagram cost cents and work —
+  see region-discovery.md.
 - Claude Haiku 4.5 evaluates each candidate event against the five curation
   axes, picks the featured image, and runs the Axis 5 vision check (explicit
   aggression) plus `sensitivity_tags` tagging.
