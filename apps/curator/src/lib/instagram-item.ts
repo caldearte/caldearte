@@ -20,6 +20,14 @@ const TITLE_MAX_LENGTH = 120;
 // title unquoted, e.g. "la exposición Hiperia de la artista..." — left
 // to the first-substantive-line fallback below, same accepted
 // imperfection as before).
+// Real bug found 2026-08-28 (antennaorg): some accounts run a recurring
+// weekly-roundup column ("Viernes de Antenna Recomienda") whose own fixed
+// label is the FIRST quoted phrase in the caption, ahead of the actual
+// exhibition title quoted further down ("La deriva de una línea y otros
+// vértigos"). A day-of-week + "de" label is never a real exhibition title,
+// so it's skipped in favor of the next quoted span.
+const DAY_ROUNDUP_LABEL_PATTERN = /^(lunes|martes|mi[ée]rcoles|jueves|viernes|s[áa]bado|domingo) de /i;
+
 function extractQuotedTitle(caption: string): string | null {
   const quotePairs: [string, string][] = [
     ["“", "”"],
@@ -27,19 +35,24 @@ function extractQuotedTitle(caption: string): string | null {
     ["‘", "’"],
     ['"', '"'],
   ];
-  let earliest: { index: number; text: string } | null = null;
+  const candidates: { index: number; text: string }[] = [];
   for (const [open, close] of quotePairs) {
-    const openIndex = caption.indexOf(open);
-    if (openIndex === -1) continue;
-    const closeIndex = caption.indexOf(close, openIndex + open.length);
-    if (closeIndex === -1) continue;
-    const inner = caption.slice(openIndex + open.length, closeIndex).trim();
-    if (!/[\p{L}\p{N}]/u.test(inner)) continue;
-    if (earliest === null || openIndex < earliest.index) {
-      earliest = { index: openIndex, text: inner };
+    let searchFrom = 0;
+    while (true) {
+      const openIndex = caption.indexOf(open, searchFrom);
+      if (openIndex === -1) break;
+      const closeIndex = caption.indexOf(close, openIndex + open.length);
+      if (closeIndex === -1) break;
+      const inner = caption.slice(openIndex + open.length, closeIndex).trim();
+      if (/[\p{L}\p{N}]/u.test(inner)) {
+        candidates.push({ index: openIndex, text: inner });
+      }
+      searchFrom = closeIndex + close.length;
     }
   }
-  return earliest?.text ?? null;
+  candidates.sort((a, b) => a.index - b.index);
+  const realTitle = candidates.find((c) => !DAY_ROUNDUP_LABEL_PATTERN.test(c.text));
+  return (realTitle ?? candidates[0])?.text ?? null;
 }
 
 // Pre-Haiku deterministic filter, added 2026-08-24 after reviewing real

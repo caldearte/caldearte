@@ -48,6 +48,18 @@ test("toBrightSourceItem extracts a quoted title using curly double quotes anywh
   assert.equal(item.title, "VILO: el peso del fragmento");
 });
 
+test("toBrightSourceItem skips a recurring weekly-column label quoted before the real exhibition title — real bug found 2026-08-28 (antennaorg)", () => {
+  const item = toBrightSourceItem(
+    {
+      ...POST,
+      caption:
+        '→ Hoy es "Viernes de Antenna Recomienda" 💚\n\nJunto a la artista visual, Isabel Cauas, recorrimos su exposición “La deriva de una línea y otros vértigos”, que reúne obras de los últimos tres años.',
+    },
+    ACCOUNT,
+  );
+  assert.equal(item.title, "La deriva de una línea y otros vértigos");
+});
+
 test("toBrightSourceItem falls back to the first substantive line when no quoted title exists — accepted imperfection, some captions state the real title unquoted", () => {
   const item = toBrightSourceItem({ ...POST, caption: "Conoce la obra Sempiterno de José Pérez en Museo Taller." }, ACCOUNT);
   assert.equal(item.title, "Conoce la obra Sempiterno de José Pérez en Museo Taller.");
