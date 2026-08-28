@@ -1,35 +1,29 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { cookies, headers } from "next/headers";
 import { notFound } from "next/navigation";
 import { fetchApprovedEvents } from "@/lib/events";
-import {
-  truncateDescription,
-  displayNameForCity,
-  resolveAdminRegionName,
-  filterByRegion,
-  splitInauguracionesYExpos,
-  filterActiveInRange,
-  filterUpcomingInauguraciones,
-} from "@/lib/event-utils";
-import { resolveCityPickerContext } from "@/lib/cityPickerContext";
-import { buildRegionMetaByCityId, adminRegionNameByRegionId, regionIdFromAdminRegionName } from "@/lib/cities";
-import { shortRegionName } from "@/lib/regionNames";
-import { currentWeekInSantiago, weekBoundsInSantiago, addWeeks, weekNumberSince, todayInSantiago } from "@/lib/date";
-import { FAMILY_MODE_COOKIE, TODAY_FILTER_COOKIE, VIGENTES_FILTER_COOKIE } from "@/lib/cookies";
+import { truncateDescription, displayNameForCity, resolveAdminRegionName, filterByRegion, filterActiveInRange } from "@/lib/event-utils";
+import { buildRegionMetaByCityId, regionIdFromAdminRegionName } from "@/lib/cities";
+import { currentWeekInSantiago, todayInSantiago, isCurrentOrUpcoming } from "@/lib/date";
 import { extractDomain, resolveCardImage } from "@/lib/image-source";
 import { buildEventJsonLd, jsonLdScriptContent } from "@/lib/eventJsonLd";
 import { esCL } from "@/i18n/es-CL";
 import EventDetailCard from "@/components/EventDetailCard";
 import EventCityLink from "@/components/EventCityLink";
-import EventPageTopNav from "@/components/EventPageTopNav";
 import EventPageFooter from "@/components/EventPageFooter";
-import InauguracionesSection from "@/components/InauguracionesSection";
-import ExposicionesSection from "@/components/ExposicionesSection";
+import ExpoCard from "@/components/ExpoCard";
 
 interface PageParams {
   id: string;
 }
+
+// Real content changes at most a few times a day (event discovery/
+// curation runs on a multi-day cadence, not per-minute) — matches
+// app/page.tsx's own `revalidate` and fetchApprovedEvents's own
+// unstable_cache window (lib/events.ts), same 2026-08-28 fix, same real
+// incident (see this file's own comment on generateMetadata/EventPage
+// below).
+export const revalidate = 600;
 
 export async function generateStaticParams() {
   const { events } = await fetchApprovedEvents();
@@ -70,34 +64,31 @@ export async function generateMetadata({ params }: { params: Promise<PageParams>
   };
 }
 
-// Rediseño 2.0.0 — "list mode" added 2026-08-06: a visitor who clicked
-// here from the home page's own city+week "Exposiciones actuales" list
-// (not a search result, not a shared link out of context) now stays
-// inside that list — a position row + prev/next above the date, the same
-// SEMANA/city/week-nav selector Header.tsx's own hero uses (compact, in a
-// sticky top bar here), and the same Inauguraciones/Exposiciones sliders
-// the home page itself uses at the bottom, defaulted to list view.
-// Determined purely from data, not a query param or referrer: this event
-// either belongs to the CURRENT visitor's city+week "Exposiciones
-// actuales" set or it doesn't — if it doesn't (arrived via search across
-// every comuna, or the event belongs to a different city/week than the
-// one currently selected), the page renders exactly as it always has,
-// standalone.
+// "List mode" (2026-08-06 — position-in-list, prev/next, a full región+
+// semana picker in a sticky top nav, the visitor's own current
+// Inauguraciones/Exposiciones lists at the bottom) read cookies()/
+// headers() to personalize all of that, which forced this page to render
+// fresh on every single request — no ISR, no cache, ever. That was fine
+// at low traffic; once the Instagram launch (2026-08-23) started sending
+// real volume straight to individual event pages, it became the real
+// driver of a second Vercel free-tier incident (Fast Origin Transfer,
+// exceeded 2026-08-27/28 — same underlying category as the home page's
+// own spike this same file already fixed once, 2026-08-06, see
+// app/page.tsx's comment) — every crawl (robots.ts allows /eventos/*
+// freely) and every shared-link visit was a full, uncached origin render.
 //
-// This forces the page to render dynamically per-request now (cookies()
-// is a dynamic API) — generateStaticParams still enumerates every event
-// id for the build's route manifest, but no page here is actually cached/
-// revalidated anymore the way the old `revalidate = 3600` implied. Same
-// posture the home page (app/page.tsx) already has; the tradeoff of
-// per-request rendering for a personalized page is the same one already
-// accepted there.
-export default async function EventPage({
-  params,
-  searchParams,
-}: {
-  params: Promise<PageParams>;
-  searchParams: Promise<{ semana?: string }>;
-}) {
+// Rather than rebuild list mode as a client-side-personalized fetch (the
+// same pattern app/page.tsx uses) — real option, but list mode touches
+// nearly the whole page (top nav, position indicator, two full sections),
+// so the "flash of standalone-then-list-mode" risk on every load would
+// have been far more visually disruptive than home's own equivalent
+// (which only nudges counts/filters within an already-settled layout) —
+// the user chose instead (2026-08-28) to drop list mode entirely and
+// replace it with the small deterministic teaser below: a fixed sample of
+// this event's own región's current exposiciones, computed the same way
+// for every visitor, no cookies, so the page is fully cache-eligible
+// again (see `revalidate` above).
+export default async function EventPage({ params }: { params: Promise<PageParams> }) {
   const { id } = await params;
   const { events, regions } = await fetchApprovedEvents();
   const event = events.find((e) => e.id === id);
@@ -105,126 +96,34 @@ export default async function EventPage({
 
   const domain = event.sourceUrl ? extractDomain(event.sourceUrl) : null;
   const metaByCityId = buildRegionMetaByCityId(regions);
-  // The EVENT's own comuna/región (standalone mode's "go to this comuna"
-  // pill — still shows the specific comuna, but selects its whole región)
-  // — distinct from the VIEWER's currently-selected región below, which
-  // list mode needs instead.
   const eventCityName = displayNameForCity(event);
   const eventAdminRegionName = resolveAdminRegionName(event, metaByCityId);
   const eventRegionId = regionIdFromAdminRegionName(eventAdminRegionName ?? "");
 
-  const cookieStore = await cookies();
-  const headerStore = await headers();
-  const familyModeCookie = cookieStore.get(FAMILY_MODE_COOKIE)?.value;
-  const familyMode = familyModeCookie === undefined ? true : Boolean(familyModeCookie);
-  const todayFilterOn = Boolean(cookieStore.get(TODAY_FILTER_COOKIE)?.value);
-  const vigentesFilterOn = Boolean(cookieStore.get(VIGENTES_FILTER_COOKIE)?.value);
+  // Deterministic — same input (this event's own región) for every
+  // visitor, so this stays safe to cache. Excludes the event itself; 4
+  // items matches ExposicionesSection's own desktop grid's first "big +
+  // medium" row without needing that component's client-side
+  // slider/toggle machinery this teaser doesn't need.
   const today = todayInSantiago();
-  // Same ?semana= convention as app/page.tsx — malformed/missing falls
-  // back to the real current week. Reachable here via EventPageTopNav's
-  // own prev/next links (through api/eventos/go-to-city, which carries
-  // the target week forward into the redirect URL) or a directly-shared
-  // link.
-  const { semana } = await searchParams;
-  const { start: rangeStart, end: rangeEnd } = /^\d{4}-\d{2}-\d{2}$/.test(semana ?? "") ? weekBoundsInSantiago(semana!) : currentWeekInSantiago();
-  const weekNumber = weekNumberSince(rangeStart);
-
-  const {
-    regionId: viewerRegionId,
-    cityNames,
-    cityCounts,
-    actualCityId,
-    hasPreciseLocation,
-    activeInRange,
-  } = await resolveCityPickerContext({ cookieStore, headerStore, allEvents: events, regions, rangeStart, rangeEnd, familyMode });
-
-  const viewerAdminRegionName = adminRegionNameByRegionId(regions).get(viewerRegionId) ?? viewerRegionId;
-  const cityEventsInRange = filterByRegion(activeInRange, viewerAdminRegionName, metaByCityId);
-  const split = splitInauguracionesYExpos(cityEventsInRange, rangeStart, rangeEnd);
-  const inauguracionesForCity = todayFilterOn ? filterActiveInRange(split.inauguraciones, today, today) : split.inauguraciones;
-  const exposActualesForCity = todayFilterOn ? filterActiveInRange(split.exposActuales, today, today) : split.exposActuales;
-  const inauguraciones = vigentesFilterOn ? filterUpcomingInauguraciones(inauguracionesForCity, today) : inauguracionesForCity;
-  const exposActuales = exposActualesForCity;
-
-  // List mode is always scoped to "Exposiciones actuales" (the full,
-  // inclusive set — Inauguraciones is a highlighted SUBSET that overlaps
-  // it, per splitInauguracionesYExpos's own doc comment), never to
-  // Inauguraciones itself — confirmed with the user 2026-08-06.
-  const listIndex = exposActuales.findIndex((e) => e.id === event.id);
-  const listMode = listIndex !== -1;
-  const viewerRegionName = shortRegionName(viewerAdminRegionName);
-  // Week nav can't just change a query param in place like Header.tsx's
-  // own links do (there's no calendar data on this page to re-render) —
-  // redirects through the same api/eventos/go-to-city mechanism
-  // EventPageCityPicker's own región switch already uses, región
-  // unchanged, only `semana` moves.
-  const prevWeekHref = `/api/eventos/go-to-city?regionId=${encodeURIComponent(viewerRegionId)}&semana=${addWeeks(rangeStart, -1)}`;
-  const nextWeekHref = `/api/eventos/go-to-city?regionId=${encodeURIComponent(viewerRegionId)}&semana=${addWeeks(rangeStart, 1)}`;
-
-  const topNav = listMode ? (
-    <EventPageTopNav
-      weekNumber={weekNumber}
-      rangeStart={rangeStart}
-      rangeEnd={rangeEnd}
-      prevWeekHref={prevWeekHref}
-      nextWeekHref={nextWeekHref}
-      regionId={viewerRegionId}
-      regionName={viewerRegionName}
-      actualCityId={actualCityId}
-      hasPreciseLocation={hasPreciseLocation}
-      cityCounts={cityCounts}
-      cityNames={cityNames}
-      regions={regions}
-    />
-  ) : (
-    <EventCityLink regionId={eventRegionId} cityName={eventCityName} />
-  );
+  const { start: rangeStart, end: rangeEnd } = currentWeekInSantiago();
+  const moreExpos = filterByRegion(filterActiveInRange(events, rangeStart, rangeEnd), eventAdminRegionName ?? "", metaByCityId)
+    .filter((e) => e.id !== event.id && isCurrentOrUpcoming(e, today))
+    .slice(0, 4);
 
   return (
     <main className="min-h-screen w-full bg-surface-sage px-[20px] py-8 md:px-[61px] max-w-[1280px] mx-auto">
       {/* Schema.org VisualArtsEvent — see lib/eventJsonLd.ts's own comment. */}
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdScriptContent(buildEventJsonLd(event)) }} />
-      {/* `fixed`, not `sticky` — same reasoning as Header.tsx's own top
-          nav (see that file's comment: sticky silently failed to pin
-          there, verified in-browser). Content is duplicated into a real
-          fixed bar plus an `invisible` clone right below reserving the
-          identical space in normal flow — same technique Header.tsx uses
-          (TopNavContent), necessary because list mode's own selector
-          block (SEMANA/city/week-nav, EventPageTopNav.tsx) isn't a fixed
-          height the way a single icon row would be. */}
-      <div className="fixed top-0 inset-x-0 z-40 bg-surface-sage">
-        <div className="max-w-[1280px] mx-auto flex items-start justify-between gap-2 py-[10px] md:py-[15px] px-[20px] md:px-[61px]">
-          <Link href="/" className="font-lato font-black leading-none text-brand-magenta text-[28px]">
-            {esCL.appName}
-          </Link>
-          {topNav}
-        </div>
-      </div>
-      <div className="invisible" aria-hidden="true">
-        <div className="max-w-[1280px] mx-auto flex items-start justify-between gap-2 py-[10px] md:py-[15px] px-[20px] md:px-[61px]">
-          <Link href="/" className="font-lato font-black leading-none text-brand-magenta text-[28px]">
-            {esCL.appName}
-          </Link>
-          {topNav}
-        </div>
-      </div>
-      <div className="mb-[40px] md:mb-[60px]" aria-hidden="true" />
 
-      <EventDetailCard
-        event={event}
-        domain={domain}
-        listPosition={
-          listMode
-            ? {
-                current: listIndex + 1,
-                total: exposActuales.length,
-                cityName: viewerRegionName,
-                prevHref: listIndex > 0 ? `/eventos/${exposActuales[listIndex - 1].id}?semana=${rangeStart}` : null,
-                nextHref: listIndex < exposActuales.length - 1 ? `/eventos/${exposActuales[listIndex + 1].id}?semana=${rangeStart}` : null,
-              }
-            : undefined
-        }
-      />
+      <div className="flex items-center justify-between gap-2 mb-[40px] md:mb-[60px]">
+        <Link href="/" className="font-lato font-black leading-none text-brand-magenta text-[28px]">
+          {esCL.appName}
+        </Link>
+        <EventCityLink regionId={eventRegionId} cityName={eventCityName} />
+      </div>
+
+      <EventDetailCard event={event} domain={domain} />
 
       <Link
         href="/"
@@ -233,18 +132,15 @@ export default async function EventPage({
         {esCL.eventPageBackToHome} →
       </Link>
 
-      {listMode && (
-        <div className="mt-[60px] md:mt-[100px]">
-          {/* Inauguraciones first, to give it emphasis here too — per the
-              user 2026-08-06 — then the same Exposiciones list this
-              event's own position row above navigates through, so the
-              overview stays visible without leaving the page. Sticky
-              offset overridden (stickyTopClass) — EventPageTopNav's own
-              fixed bar is taller than Header.tsx's, whose height the
-              default top-[50px]/top-[60px] was tuned for. */}
-          <InauguracionesSection events={inauguraciones} defaultView="list" stickyTopClass="top-[110px] md:top-[120px]" />
-          <ExposicionesSection events={exposActuales} defaultView="list" stickyTopClass="top-[110px] md:top-[120px]" />
-        </div>
+      {moreExpos.length > 0 && (
+        <section className="mt-16">
+          <h2 className="font-lato font-black text-[28px] md:text-[41px] text-text-primary mb-6">{esCL.eventPageMoreExposLabel}</h2>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-[20px]">
+            {moreExpos.map((e) => (
+              <ExpoCard key={e.id} event={e} />
+            ))}
+          </div>
+        </section>
       )}
 
       <EventPageFooter />
