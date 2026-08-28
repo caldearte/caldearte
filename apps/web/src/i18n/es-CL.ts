@@ -347,6 +347,12 @@ export const esCL = {
   // event (see docs/risks.md's ToS note on scraped sources: this page's
   // whole point is to make attribution unmissable, not buried in a menu).
   eventPageBackToHome: "Ver más eventos en Caldearte",
+  // Teaser strip at the bottom of the page (2026-08-28, replacing the old
+  // cookie-dependent "list mode" — see eventos/[id]/page.tsx's own
+  // comment) — a fixed, non-personalized sample of other current
+  // exposiciones in the SAME región as this event, deterministic so the
+  // page can stay cache-eligible.
+  eventPageMoreExposLabel: "TAMBIÉN EN CARTELERA",
   eventPageSourceLabel: (domain: string) => `Fuente: ${domain}`,
   eventPageSourceLink: "Ver publicación original ↗",
   eventPageAttributionNote: (domain: string) =>
