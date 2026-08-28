@@ -3708,6 +3708,21 @@ than risking the known-good regression guard. Confirmed live in
 production the same day: MSSA's real "América despierta" exhibition
 produced 3 separate rows in one run.
 
+**Bug 7 — a recurring weekly-column label won the quoted-title race,
+found 2026-08-28 via @antennaorg.** `extractQuotedTitle` picked the
+EARLIEST quoted span in the caption, but Antenna's own captions
+quote their fixed column name first ("Viernes de Antenna Recomienda"),
+ahead of the actual exhibition title quoted further down ("La deriva de
+una línea y otros vértigos") — every post from this account was titled
+with the column name, not the exhibition. Fixed: `extractQuotedTitle`
+now collects every quoted span in the caption (not just the earliest per
+quote style), sorts by position, and skips any candidate matching a
+day-of-week + "de" pattern (`DAY_ROUNDUP_LABEL_PATTERN`) — never a real
+exhibition title — falling through to the next quote. Not retroactive:
+only the one already-published event (id `0b9ba5ee-...`) was corrected
+by hand in production; older posts from this or other roundup-style
+accounts weren't re-swept. PR #441.
+
 ## Instagram accounts: 10 added in one session, no new pipeline bugs (2026-08-18)
 
 A different session shape than 2026-08-14 above: ~28 Daniel-proposed

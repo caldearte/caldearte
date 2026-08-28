@@ -611,6 +611,22 @@ building infra" discipline the rest of this project has followed.
       recency match is specific enough to trust (every caption is
       generated per-run, never static); any other error still fails
       immediately, no guessing.
+  - **2026-08-28 follow-ups**, same pipeline: the quoted-title preference
+    above wasn't the full fix — a recurring weekly-column label (e.g.
+    @antennaorg's "Viernes de Antenna Recomienda") could itself be the
+    first quoted phrase in a caption, winning over the real exhibition
+    title quoted further down; fixed to skip day-of-week-labeled matches
+    (region-discovery.md's own Bug 7). Separately, GitHub Actions'
+    `schedule` trigger silently missed firing for `publish-social.yml`
+    and other crons the same day — a documented "best effort" GitHub
+    limitation, not a bug in this repo's code — so
+    `.github/workflows/cron-watchdog.yml` now runs every 4h and
+    re-dispatches any of the 10 scheduled workflows found overdue (see
+    architecture.md's own section). Also the same day: two Vercel
+    free-tier incidents (ISR Writes, Fast Origin Transfer) traced to
+    `/eventos/[id]`'s "list mode" forcing every event page to render
+    dynamically — list mode was removed entirely in favor of a small
+    deterministic teaser, detailed in architecture.md.
 
 ## Phase 5 — Parked / optional, doesn't block anything above
 
