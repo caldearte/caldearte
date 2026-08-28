@@ -15,6 +15,19 @@ import HomeClient from "@/components/HomeClient";
 // visitor without any cookies already gets today) and lets Next.js serve
 // that from cache/ISR (see `revalidate` below) to most visitors.
 //
+// `revalidate` bumped 60 → 600s on 2026-08-28: fixing the Fast Origin
+// Transfer spike by making this route ISR-eligible traded that problem
+// for a second real one — ISR Write Units, a separate free-tier quota,
+// hit 195,880/200,000 by Aug 27 (Vercel usage dashboard), on a curve that
+// only started climbing around Aug 19 with no matching code change to
+// this route — real traffic growth, not a regression, is the likely
+// driver. Curated content changes at most a few times a day (event
+// discovery/curation runs on a multi-day cadence, not per-minute), so a
+// 10-minute-stale cache costs nothing real while cutting write volume
+// ~10x. `fetchApprovedEvents`'s own unstable_cache (lib/events.ts) was
+// bumped the same way, same reasoning — it's the other real write
+// source every page that reads events shares.
+//
 // Personalization (a returning visitor's own city, family-mode-off,
 // ?semana=/?newsletter= deep links) moves to the client: HomeClient.tsx
 // reads the visitor's real cookies/URL params after the cached HTML has
@@ -26,7 +39,7 @@ import HomeClient from "@/components/HomeClient";
 // flash of content that should have been filtered — at worst a visitor
 // briefly sees the more-filtered default before their own looser
 // preference loads in.
-export const revalidate = 60;
+export const revalidate = 600;
 
 export default async function HomePage() {
   const computed = await computeHomeViewModel({ cookieStore: EMPTY_COOKIE_READER, headerStore: new Headers() });

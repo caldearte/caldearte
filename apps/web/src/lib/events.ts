@@ -105,8 +105,10 @@ export interface RegionMeta {
 // ones that happen to also appear in regionNameById.
 //
 // Doesn't depend on the visitor's city/week cookie — only the filtering
-// callers do afterwards — so it's wrapped in unstable_cache (60s) instead
-// of re-hitting Supabase on every request. Every page that reads events
+// callers do afterwards — so it's wrapped in unstable_cache (was 60s,
+// bumped to 600s 2026-08-28 — see the matching comment on
+// `revalidate` in app/page.tsx, same real incident) instead of
+// re-hitting Supabase on every request. Every page that reads events
 // (home, /eventos/[id], sitemap, go-to-city) shares this one cache entry.
 // No client argument — always the same anon
 // singleton (getSupabaseClient()), keeping this cacheable without needing
@@ -142,5 +144,5 @@ async function fetchApprovedEventsFromDb(): Promise<{ events: EventRecord[]; reg
 }
 
 export const fetchApprovedEvents = unstable_cache(fetchApprovedEventsFromDb, ["approved-events-and-regions"], {
-  revalidate: 60,
+  revalidate: 600,
 });
