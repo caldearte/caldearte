@@ -1794,6 +1794,29 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
     addedAt: "2026-08-28",
     fixedLocation: { location: "Rancagua", placeName: "Espacio Cultural La Merced" },
   },
+  {
+    username: "taller_99",
+    note:
+      "Encontrada revisando el feed de @caldearte.oficial, 2026-08-28 " +
+      "(vía @isabelcauas, quien invitaba a su inauguración). Corporación " +
+      "Cultural Taller 99 de Grabado, Nemesio Antúnez — Zañartu 1016, " +
+      "Providencia, Santiago; taller de grabado histórico chileno " +
+      "(celebrando 70 años), con salas propias (\"Sala Museográfica\") " +
+      "y highlights dedicados \"Galería\"/\"Exposiciones\". 15,8 mil " +
+      "seguidores, muy activa (1432 publicaciones). Densidad muy alta y " +
+      "limpia en la muestra visible: al menos 3 exposiciones reales y " +
+      "completas con fecha/hora/lugar (\"Vilches Fundamental\", " +
+      "inauguración sábado 29 de agosto 12:00 hrs, Zañartu 1016; " +
+      "\"Grabados/Antigrabados: 70 años del Taller 99\", 11 de agosto " +
+      "12:00 hrs, Sala Ercilla de la Biblioteca Nacional — sede externa; " +
+      "\"Planta Viva\", memorial de grabado). Sin fixedLocation " +
+      "deliberadamente: fixedLocation es incondicional (ver PR #294), y " +
+      "esta cuenta sí publica eventos reales en sedes externas (la " +
+      "Biblioteca Nacional en el ejemplo de arriba) — forzar Providencia " +
+      "los ubicaría mal. Haiku infiere la ubicación por post, igual que " +
+      "@ilposto.cl/@mamchiloe.",
+    addedAt: "2026-08-28",
+  },
   // El resto de la lista la aporta Daniel — una decisión editorial, igual
   // que cada fuente brillante nueva se evaluó una por una. Confirmar
   // pública y activa antes de agregar cada cuenta.
