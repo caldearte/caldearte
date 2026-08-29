@@ -1775,6 +1775,25 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
       "ubicación por post, igual que @ilposto.cl.",
     addedAt: "2026-08-28",
   },
+  {
+    username: "espaciocultural.lamerced",
+    note:
+      "Encontrada revisando el feed de @caldearte.oficial, 2026-08-28. " +
+      "Espacio Cultural La Merced, Corporación de la Cultura y las Artes " +
+      "de la Ilustre Municipalidad de Rancagua — Cuevas 399, Rancagua " +
+      "(región de O'Higgins, poco cubierta hasta ahora), parte de la red " +
+      "@redmuseosoh. 8.505 seguidores, muy activa (1681 publicaciones), " +
+      "highlight propio \"EXPOSICIONES\". Densidad real alta en la " +
+      "muestra (9 posts): al menos 2 exposiciones reales y completas con " +
+      "fecha/hora/artista (\"El nombre de mis calles\" de Blanca Frisius " +
+      "Siniavschi, figuras en lana tejida, 8-30 sept, inauguración " +
+      "martes 8 sept 12:00 hrs; \"Cibermemoria\" de Jonas Coloma, joyería " +
+      "artística, 11-29 agosto) — el resto: talleres, festival de canto, " +
+      "acto cívico de bienvenida a septiembre — fuera de alcance. " +
+      "fixedLocation.",
+    addedAt: "2026-08-28",
+    fixedLocation: { location: "Rancagua", placeName: "Espacio Cultural La Merced" },
+  },
   // El resto de la lista la aporta Daniel — una decisión editorial, igual
   // que cada fuente brillante nueva se evaluó una por una. Confirmar
   // pública y activa antes de agregar cada cuenta.
