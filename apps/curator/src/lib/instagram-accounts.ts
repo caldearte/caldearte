@@ -1817,6 +1817,45 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
       "@ilposto.cl/@mamchiloe.",
     addedAt: "2026-08-28",
   },
+  {
+    username: "mhnchile",
+    note:
+      "Encontrada revisando el feed de @caldearte.oficial, 2026-08-28. " +
+      "Museo Histórico Nacional de Chile — 116 mil seguidores, muy " +
+      "activa (7292 publicaciones). Rendimiento esperado bajo, mismo " +
+      "perfil que @bnchile: primariamente contenido de colecciones/" +
+      "archivo histórico (fotos de bodas de época, útiles escolares " +
+      "antiguos, \"Zoom de Colecciones\") en vez de anuncios de " +
+      "exposición puntuales — solo 1/6 posts muestreados en la grilla " +
+      "es una exposición real y completa: \"La vida en una mirada. " +
+      "Fernando Opazo\" (fotógrafo documentalista chileno del siglo XX, " +
+      "curaduría de Carla Franceschini, desde el 31 de agosto, Sala " +
+      "Patrimonial del MHN en la estación de Metro Plaza de Armas — " +
+      "parte de su programa institucional \"Mes de la Fotografía\"). " +
+      "Sin fixedLocation: el museo tiene su sede principal pero también " +
+      "monta exposiciones en la sala patrimonial de Metro Plaza de " +
+      "Armas — Haiku infiere ubicación por post.",
+    addedAt: "2026-08-28",
+  },
+  {
+    username: "salaanacortesumce",
+    note:
+      "Encontrada revisando el feed de @caldearte.oficial, 2026-08-28. " +
+      "Sala de Artes Visuales Ana Cortés — sala de exposición y " +
+      "laboratorio de artes del Dpto. de Artes Visuales de la UMCE " +
+      "(Ex Pedagógico), distinta de @galerianemesioantunez (misma " +
+      "universidad, sala distinta, ya fuente propia) — 776 seguidores, " +
+      "activa (222 publicaciones). Contenido real de exposición " +
+      "confirmado: inauguración de \"Malditas\" (Javier Rodríguez Pino, " +
+      "en Matucana 100 — ver nota aparte) y repost de \"Pupilas: " +
+      "memorias escolares a la vista\" (Galería Nemesio Antúnez, ya " +
+      "cubierta). Algo de solapamiento esperado con esa otra fuente al " +
+      "ser reposts, pero también cubre eventos propios/de terceros que " +
+      "esa no. Sin fixedLocation: publica sobre eventos en su propia " +
+      "sala y en sedes de terceros (Matucana 100 en el ejemplo visto) — " +
+      "Haiku infiere ubicación por post.",
+    addedAt: "2026-08-28",
+  },
   // El resto de la lista la aporta Daniel — una decisión editorial, igual
   // que cada fuente brillante nueva se evaluó una por una. Confirmar
   // pública y activa antes de agregar cada cuenta.
