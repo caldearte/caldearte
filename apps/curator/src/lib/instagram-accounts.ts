@@ -1856,6 +1856,24 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
       "Haiku infiere ubicación por post.",
     addedAt: "2026-08-28",
   },
+  {
+    username: "culturallascondes",
+    note:
+      "Encontrada revisando el feed de @caldearte.oficial, 2026-08-28 " +
+      "(vía @isabelcauas anunciando su propia exposición ahí). " +
+      "Corporación Cultural Las Condes — 103 mil seguidores, muy activa " +
+      "(4087 publicaciones), agrupa varias sedes propias " +
+      "(@centrolosdominicos, @muilascondes, entre otras). Cubre TODO el " +
+      "espectro cultural (festival de cine, música familiar, feria de " +
+      "anticuarios) además de artes visuales — rendimiento esperado " +
+      "moderado, mismo perfil que @agac.cl. Exposiciones reales " +
+      "confirmadas en la muestra: \"Warmi - Warmi: Diálogo de Manos y " +
+      "Color\" (textil) y \"CEIBA\", descrita como \"la exposición del " +
+      "primer museo inmersivo de Chile\". Sin fixedLocation: agrupa " +
+      "varias sedes propias distintas — Haiku infiere ubicación por " +
+      "post, igual que @agac.cl.",
+    addedAt: "2026-08-28",
+  },
   // El resto de la lista la aporta Daniel — una decisión editorial, igual
   // que cada fuente brillante nueva se evaluó una por una. Confirmar
   // pública y activa antes de agregar cada cuenta.
