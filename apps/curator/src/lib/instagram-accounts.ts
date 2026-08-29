@@ -1737,6 +1737,44 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
     addedAt: "2026-08-27",
     fixedLocation: { location: "Pucón", placeName: "Casa de la Cultura de Pucón" },
   },
+  {
+    username: "pinacoteca_udec",
+    note:
+      "Encontrada revisando el feed de @caldearte.oficial, 2026-08-28. " +
+      "Cuenta oficial de la Casa del Arte José Clemente Orozco, " +
+      "Universidad de Concepción — 12,6 mil seguidores, muy activa (1000 " +
+      "publicaciones). Redundancia parcial con la fuente web ya existente " +
+      "(noticias.udec.cl, categoría Cultura, cubre 3 sedes de la UdeC " +
+      "incluida la Casa del Arte) — se agrega igual porque IG suele " +
+      "publicar la inauguración antes que el portal de noticias. Densidad " +
+      "real en la muestra (7 posts): 2 exposiciones reales y completas " +
+      "(\"Entre libros e imágenes: 100 años Bibliotecas UdeC\", inaugurada " +
+      "27 de agosto; \"Ciudades (no) blandas\" de Leonardo Portus, misma " +
+      "fecha) más un taller reagendado, cobertura de prensa de un evento " +
+      "infantil y visitas guiadas — fuera de alcance. fixedLocation.",
+    addedAt: "2026-08-28",
+    fixedLocation: { location: "Concepción", placeName: "Pinacoteca Universidad de Concepción" },
+  },
+  {
+    username: "cultura.unab",
+    note:
+      "Encontrada revisando el feed de @caldearte.oficial, 2026-08-28. " +
+      "Dirección de Extensión Cultural, Universidad Andrés Bello — 28,2 " +
+      "mil seguidores, muy activa (4029 publicaciones). Cubre TODO el " +
+      "espectro cultural (música, teatro, danza, escritura, además de " +
+      "artes visuales) — rendimiento esperado moderado, mismo perfil que " +
+      "@agac.cl/@espacio_londres. 2 exposiciones reales y completas en la " +
+      "muestra de 9 posts: \"Humanidad\" de Clara Murillo (fotografía, " +
+      "inauguración 8 de septiembre, R14 UNAB Campus República) y " +
+      "\"Retratos de Andrés Bello a través del Arte y la Inteligencia " +
+      "Artificial\" (Teatro Municipal de Coinco, hasta el 30 de " +
+      "septiembre) — el resto: curso online, concierto, obra de danza, " +
+      "música folclórica — fuera de alcance. Sin fixedLocation: organiza " +
+      "eventos en distintas sedes propias y de terceros (Campus " +
+      "República, Coinco, Maipú), no un solo local — Haiku infiere " +
+      "ubicación por post, igual que @ilposto.cl.",
+    addedAt: "2026-08-28",
+  },
   // El resto de la lista la aporta Daniel — una decisión editorial, igual
   // que cada fuente brillante nueva se evaluó una por una. Confirmar
   // pública y activa antes de agregar cada cuenta.
