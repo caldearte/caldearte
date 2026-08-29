@@ -1874,6 +1874,34 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
       "post, igual que @agac.cl.",
     addedAt: "2026-08-28",
   },
+  {
+    username: "matucana100",
+    note:
+      "Encontrada revisando el feed de @caldearte.oficial, 2026-08-28 " +
+      "(vía @salaanacortesumce, que reposteaba una inauguración ahí) — " +
+      "uno de los centros culturales más grandes de Santiago, 245 mil " +
+      "seguidores, muy activo (7664 publicaciones), 25 años de " +
+      "trayectoria. Se evaluó primero agregar su sitio web (m100.cl) en " +
+      "vez de Instagram, pero su página \"Esta semana en M100\" " +
+      "(m100.cl/esta-semana-en-m100) depende de un widget de calendario " +
+      "(plugin EventON) que no renderiza en HTML plano — habría que " +
+      "integrar contra ese plugin en vez de un simple fetch/parse, más " +
+      "trabajo del que amerita esta evaluación; queda como IG en su " +
+      "lugar. Cubre TODO el espectro cultural (teatro, danza, cine, " +
+      "música, talleres, artes visuales) — rendimiento esperado bajo, " +
+      "solo 1/12 posts muestreados en la grilla es una exposición real: " +
+      "\"La Ola\" de Patricio Vogel (artista visual real, vogelscl), " +
+      "sábado 29 de agosto 12:00 hrs, en su propia \"Galería Artes " +
+      "Visuales\" — sede interna dedicada exclusivamente a exposiciones, " +
+      "consistentemente etiquetada #ArtesVisuales en sus posts, lo que " +
+      "puede ayudar a Haiku a distinguir esta señal del resto del ruido " +
+      "multi-disciplina. Sin fixedLocation: aunque tiene dirección fija " +
+      "(Av. Matucana 100, Estación Central), el volumen de contenido " +
+      "fuera de alcance hace preferible que Haiku seleccione por texto " +
+      "del post en vez de asumir ubicación — mismo criterio que " +
+      "@agac.cl.",
+    addedAt: "2026-08-28",
+  },
   // El resto de la lista la aporta Daniel — una decisión editorial, igual
   // que cada fuente brillante nueva se evaluó una por una. Confirmar
   // pública y activa antes de agregar cada cuenta.
