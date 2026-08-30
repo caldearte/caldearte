@@ -510,3 +510,13 @@ up). If the gap exceeds that workflow's own `max_gap_hours` (real cadence
 only the default `GITHUB_TOKEN` (`permissions: actions: write` — no new
 secret needed to dispatch other workflows in the same repo). Self-heals
 future silent misses without needing manual intervention.
+
+**Real bug, 2026-08-29 to 2026-08-30 (PR #454):** the watchdog itself was
+silently broken for over a day — every single run failed. Root cause: its
+`gh api ".../runs" -f status=... -f per_page=...` calls omitted `-X GET`,
+and the `gh` CLI version on the runner image defaults to `POST` whenever
+any `-f` field flag is present, not `GET`. There's no POST endpoint for
+listing runs, so every check 404'd immediately. Fixed by adding `-X GET`
+explicitly to all three `gh api` calls. Caught only because Daniel noticed
+the watchdog's own failure emails — a good argument for the watchdog
+itself someday having a second-order check, but none exists yet.
