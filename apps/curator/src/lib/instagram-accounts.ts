@@ -1952,6 +1952,21 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
     addedAt: "2026-08-28",
     fixedLocation: { location: "Los Ángeles", placeName: "Centro Cultural de Los Ángeles" },
   },
+  {
+    username: "ccserhumano",
+    note:
+      "Aportada por Daniel, 2026-08-30 (siguiendo un post real de " +
+      "inauguración que había visto en su feed). Centro Cultural Ser " +
+      "Humano, Copiapó — 9.653 seguidores, activa. Exposición real y " +
+      "completa confirmada: \"Ecosistema Textil\" de la artista local " +
+      "Andrea Rivera (bordado/arpilleras), inauguración martes 1 de " +
+      "septiembre 19:00 hrs, Chacabuco 671, Copiapó — encontrada dentro " +
+      "de una \"cartelera\" con varios eventos mezclados (fiesta de " +
+      "cueca, encuentro de canto folclórico, taller infantil), de los " +
+      "cuales solo esta exposición entra en alcance. fixedLocation.",
+    addedAt: "2026-08-30",
+    fixedLocation: { location: "Copiapó", placeName: "Centro Cultural Ser Humano" },
+  },
   // El resto de la lista la aporta Daniel — una decisión editorial, igual
   // que cada fuente brillante nueva se evaluó una por una. Confirmar
   // pública y activa antes de agregar cada cuenta.
