@@ -1,15 +1,11 @@
 // No cadence gate for Instagram either, 2026-08-24 — same principle
 // already applied to every other bright source (event-discovery/
-// headless-discovery/google-alerts-discovery's own run.ts files): real
-// data showed Apify's `apify/instagram-post-scraper` is pay-per-RESULT
-// (~$0.0025/post), not per-account-queried, so a quiet account checked
-// twice a week costs the same ~$0 as one checked once a week — a
-// zero-yield fetch returns 0 results either way (verified against real
-// platform_cost_snapshots data before this change, and again before
-// adding the Wednesday cron in instagram-bright-sources.yml). Checking
-// more often also closes a real gap: RESULTS_LIMIT_PER_ACCOUNT (5,
-// apify-instagram.ts) could silently miss posts on an account that
-// posted more than 5 times between checks.
+// headless-discovery/google-alerts-discovery's own run.ts files): a
+// quiet account returns 0 results whether checked often or rarely, so
+// gating on a per-account timer buys nothing once the cron itself has a
+// fixed cadence. Checking more often also closes a real gap:
+// RESULTS_LIMIT_PER_ACCOUNT (5, apify-instagram.ts) could silently miss
+// posts on an account that posted more than 5 times between checks.
 //
 // A dormancy backstop is kept: an account with nothing new for enough
 // consecutive checks (however often the cron fires) is marked inactive
@@ -18,25 +14,40 @@
 // action, not automatic — see instagram-accounts.ts for how to do that.
 // Reuses the same `interval_days`/`consecutive_zero_yield_at_cap`
 // columns every bright source already has (bright_source_fetch_state) —
-// interval_days is now always written as 7 for an Instagram row (purely
-// for the admin dashboard's display, not read to gate anything), and
-// consecutive_zero_yield_at_cap counts checks instead of cycles-at-cap;
-// no migration needed, just a change in what these columns mean for this
-// pipeline.
+// interval_days is now always written as DEFAULT_INTERVAL_DAYS for an
+// Instagram row (purely for the admin dashboard's display, not read to
+// gate anything), and consecutive_zero_yield_at_cap counts checks
+// instead of cycles-at-cap; no migration needed, just a change in what
+// these columns mean for this pipeline.
 //
 // The check-count threshold is deliberately tied to real elapsed time
-// (~6 months of silence), not a fixed number — it's been recalculated
-// twice already as the cron got more frequent (52 at weekly → ~1 year;
-// 52 again at 2x/week → ~6 months) and would go stale silently otherwise.
-// Bumped to 90 on 2026-08-26 when the cadence moved to every 2 days
-// (~15.5 checks/month): keeping 52 would have shortened the real
-// dormancy window to ~3.4 months, aggressive enough to risk marking a
-// real but slow, irregularly-posting gallery inactive prematurely.
+// (~6 months of silence), not a fixed number — recalculated each time
+// the cron cadence changes so it doesn't go stale silently: 52 at
+// weekly → ~1 year; 52 at 2x/week → ~6 months; bumped to 90 on
+// 2026-08-26 for every-2-days (~15.5 checks/month, keeping 52 there
+// would have shortened it to ~3.4 months). Reverted to 52 on 2026-08-30
+// alongside the cadence reverting back to 2x/week (Sun/Wed) — see
+// instagram-bright-sources.yml's own comment: the every-2-days cadence
+// hit Apify's real $5/mo free-tier limit mid-month, no usage signal yet
+// to justify paying past it.
+//
+// DEFAULT_INTERVAL_DAYS dropped 7→4 the same day, for a different
+// reason: instagram-discovery/run.ts shares ONE Apify call across every
+// due account, using the OLDEST per-account cutoff as the single
+// onlyPostsNewerThan — and a newly-added account (no last_fetched_at
+// yet) fell back to a full 7 days regardless of the real Sun/Wed cadence
+// (worst real gap: 4 days, Wed→Sun). That dragged the shared window wide
+// open every time an account got added, re-fetching (and re-billing)
+// posts every other account had already seen days earlier — confirmed
+// directly in a real run's own log ("N post(s) already seen, skipped
+// before curation"). 4 days matches the real worst-case gap exactly, no
+// coverage lost for a new account, just no more unnecessarily-wide
+// fallback for everyone else's shared call.
 import { getSupabaseClient } from "./supabase-client.js";
 import type { InstagramAccountConfig } from "./instagram-accounts.js";
 
-export const DEFAULT_INTERVAL_DAYS = 7;
-export const ZERO_YIELD_CHECKS_BEFORE_INACTIVE = 90;
+export const DEFAULT_INTERVAL_DAYS = 4;
+export const ZERO_YIELD_CHECKS_BEFORE_INACTIVE = 52;
 
 export interface InstagramAccountState {
   lastFetchedAt: string | null;
