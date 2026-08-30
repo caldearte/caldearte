@@ -1902,6 +1902,56 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
       "@agac.cl.",
     addedAt: "2026-08-28",
   },
+  {
+    username: "muarse",
+    note:
+      "Encontrada 2026-08-28 buscando \"museo la serena\" en Instagram, " +
+      "como parte de una búsqueda deliberada de comunas sin cobertura " +
+      "(región de Coquimbo no tenía ninguna fuente hasta ahora). Museo " +
+      "Arqueológico de La Serena, desde 1943 — 7806 seguidores, activo " +
+      "(214 publicaciones). Rendimiento esperado bajo: primariamente " +
+      "colección permanente/patrimonio arqueológico (mismo perfil que " +
+      "@bnchile/@mhnchile), pero exposición real y significativa " +
+      "confirmada: \"Huellas del Cobre\" (orfebrería y joyería en cobre " +
+      "hechas por personas privadas de libertad del Centro Penitenciario " +
+      "Huachalalume, proyecto Fondart Regional 2026). fixedLocation.",
+    addedAt: "2026-08-28",
+    fixedLocation: { location: "La Serena", placeName: "Museo Arqueológico de La Serena" },
+  },
+  {
+    username: "espaciosculturalesarica",
+    note:
+      "Encontrada 2026-08-28 buscando \"cultura arica\" en Instagram, " +
+      "búsqueda deliberada de comunas sin cobertura — Arica solo tenía " +
+      "una fuente (@casaculturalyanulaque) hasta ahora. Corporación Red " +
+      "de Espacios Culturales de la Región de Arica y Parinacota — red " +
+      "que agrupa varios espacios miembro (Centro mb2, Patios " +
+      "Culturales, Espacio Argandoña, GalpónJiwasa, Casa Cultural " +
+      "Yanulaque entre otros, ver sus propios highlights), 3525 " +
+      "seguidores, muy activa (972 publicaciones), mismo perfil de red " +
+      "que @agac.cl. Exposición real y significativa confirmada: " +
+      "\"Confluencias II\" — 70 artistas, 115 obras, más de 1000 " +
+      "visitantes, muestra colectiva de creación visual regional. Sin " +
+      "fixedLocation — es una red de varios espacios, no un venue único.",
+    addedAt: "2026-08-28",
+  },
+  {
+    username: "ccm_la",
+    note:
+      "Encontrada 2026-08-28 buscando \"cultura los angeles\" en " +
+      "Instagram, búsqueda deliberada de comunas sin cobertura (Los " +
+      "Ángeles, Biobío, no tenía ninguna fuente). Corporación Cultural " +
+      "Municipal de Los Ángeles — 20,2 mil seguidores, muy activa (4492 " +
+      "publicaciones), con highlight y escuela propia \"Escuela de Artes " +
+      "Visuales\". Exposición real y completa confirmada: \"Enfocar la " +
+      "memoria\" (fotografía, investigación Fondart Nacional sobre el " +
+      "acervo de Jorge Aravena Llanca + obra de Rafael Herrera + " +
+      "participación fotográfica comunitaria), inauguración miércoles 5 " +
+      "de agosto 19:00 hrs, Centro Cultural de Los Ángeles, Lautaro 463. " +
+      "fixedLocation.",
+    addedAt: "2026-08-28",
+    fixedLocation: { location: "Los Ángeles", placeName: "Centro Cultural de Los Ángeles" },
+  },
   // El resto de la lista la aporta Daniel — una decisión editorial, igual
   // que cada fuente brillante nueva se evaluó una por una. Confirmar
   // pública y activa antes de agregar cada cuenta.
