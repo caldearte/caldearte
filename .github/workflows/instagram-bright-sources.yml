@@ -15,10 +15,7 @@ name: Run Instagram Bright Sources
 #
 # No per-account cadence gate anymore, 2026-08-24 (see
 # instagram-fetch-state.ts's own doc comment) — every account is checked
-# on every cron fire. Real data showed Apify's actor is pay-per-RESULT,
-# not per-account-queried, so checking more often costs the same ~$0 for
-# a quiet account — the same-week comparison confirmed this directly
-# against the real Apify dashboard, 2026-08-26 (see below).
+# on every cron fire.
 #
 # Bumped from twice-weekly (Sun/Wed) to every 2 days, 2026-08-26 — real
 # evidence: 2 genuine same-day inauguraciones (posted and opening the
@@ -26,34 +23,32 @@ name: Run Instagram Bright Sources
 # already expired by the time the next scheduled run saw them
 # (event-discovery/run.ts's own "expired before insertion" backstop
 # correctly declined to show them as upcoming — not a bug, a real
-# cadence gap). Confirmed against Apify's real usage dashboard the same
-# day ($4.21/$5.00 free tier, matching platform_cost_snapshots exactly)
-# that total weekly result volume is bounded by real posting activity,
-# not check frequency — Apify cost shouldn't meaningfully rise from
-# this. `1-31/2` (every odd day-of-month) is an approximation of "every
-# 2 days" — cron has no native N-day step, and this occasionally yields
-# a 1-day gap across a month boundary (day 31 → day 1), acceptable given
-# the real goal is closing the multi-day gap, not exact parity.
+# cadence gap).
+#
+# Reverted back to twice-weekly (Sun/Wed), 2026-08-30 — the every-2-days
+# cadence hit Apify's real $5/mo free-tier hard limit mid-month (confirmed
+# against platform_cost_snapshots: ~$0.75/run against the full account
+# registry, no per-account gating — roughly $11/mo at every-2-days versus
+# ~$5-6/mo at twice-weekly). Daniel's explicit call: no real usage signal
+# yet (IG followers/web traffic/newsletter subscribers) to justify paying
+# past the free tier, so cadence trades back some same-day-inauguración
+# coverage for staying free. Revisit once there's a real usage signal —
+# see project memory. Paired with instagram-fetch-state.ts's
+# DEFAULT_INTERVAL_DAYS drop (7→4) so a newly-added account's cutoff
+# doesn't drag the whole batch's shared onlyPostsNewerThan back to a full
+# week (the same-day comparison this run logs — "N post(s) already seen,
+# skipped before curation" — showed real re-fetched/re-billed waste from
+# that wider-than-needed window).
 on:
   workflow_dispatch: {}
   schedule:
     # Not minute 0 — see event-discovery.yml's own comment (top-of-hour
-    # congestion, real 26-51min delays observed 2026-08-23).
-    #
-    # Day-of-week pinned to Sunday (0) instead of `*`, 2026-08-30 —
-    # cron's real semantics: when BOTH day-of-month and day-of-week are
-    # restricted (neither is `*`), a day matches if it satisfies EITHER
-    # field, not both (a POSIX cron quirk, not GitHub-specific). So this
-    # still fires every 2 days via `1-31/2`, AND is now guaranteed to
-    # additionally fire every Sunday even when that Sunday lands on an
-    # even day-of-month — closing a real gap: the Sunday newsletter
-    # chain (event-discovery 06:07 → headless 07:12 → google-alerts
-    # 09:22 → weekly-newsletter 10:27, all UTC) assumed Instagram always
-    # ran that morning too, but on an even-day Sunday it silently
-    # didn't, and the newsletter went out without that week's IG-sourced
-    # events. A single cron entry, not a second schedule alongside this
-    # one, so an odd-day Sunday still fires exactly once, not twice.
-    - cron: "17 8 1-31/2 * 0" # Every 2 days, ~08:17 UTC — always including Sunday
+    # congestion, real 26-51min delays observed 2026-08-23). Same Sun/Wed
+    # slot this ran at before the 2026-08-26 cadence bump — 1h after
+    # headless-bright-sources.yml (07:12), 1h before google-alerts-
+    # bright-source.yml (09:22, whose own comment still says "1h after
+    # Instagram" — this keeps that true).
+    - cron: "17 8 * * 0,3" # Every Sunday and Wednesday, ~08:17 UTC
 
 jobs:
   discover-instagram:

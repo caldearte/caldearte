@@ -71,10 +71,10 @@ test("nextFetchState: the Nth consecutive empty check marks the account inactive
   assert.deepEqual(result, { consecutiveZeroYieldChecks: ZERO_YIELD_CHECKS_BEFORE_INACTIVE, isInactive: true });
 });
 
-test("DEFAULT_INTERVAL_DAYS is 7 — used only as the never-fetched fallback for accountCutoffDate, no longer a due-check window", () => {
-  assert.equal(DEFAULT_INTERVAL_DAYS, 7);
+test("DEFAULT_INTERVAL_DAYS is 4 — the never-fetched fallback for accountCutoffDate, matching the real worst-case Sun/Wed gap (Wed→Sun) so a newly-added account doesn't drag the shared Apify call's cutoff wider than the cadence actually needs", () => {
+  assert.equal(DEFAULT_INTERVAL_DAYS, 4);
 });
 
-test("ZERO_YIELD_CHECKS_BEFORE_INACTIVE is 90 — how many checks to wait before giving up on an account, independent of how often the cron fires (recalculated 2026-08-26 for the every-2-days cadence, ~6 months of real silence)", () => {
-  assert.equal(ZERO_YIELD_CHECKS_BEFORE_INACTIVE, 90);
+test("ZERO_YIELD_CHECKS_BEFORE_INACTIVE is 52 — how many checks to wait before giving up on an account, independent of how often the cron fires (reverted 2026-08-30 alongside the cadence reverting to 2x/week, ~6 months of real silence)", () => {
+  assert.equal(ZERO_YIELD_CHECKS_BEFORE_INACTIVE, 52);
 });

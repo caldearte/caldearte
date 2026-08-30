@@ -60,11 +60,12 @@ jobs:
           - workflow: headless-bright-sources.yml
             max_gap_hours: 120
             extra_dispatch_flag: ""
-          # Every 2 days (odd day-of-month approximation, see the
-          # workflow's own comment) — worst gap ~3 days at a month
-          # boundary. 72h buffer.
+          # Reverted from every-2-days to Sunday + Wednesday, 2026-08-30
+          # (see the workflow's own comment — real Apify free-tier cost
+          # limit). Same worst gap/buffer as the other Sun/Wed sources
+          # above.
           - workflow: instagram-bright-sources.yml
-            max_gap_hours: 72
+            max_gap_hours: 120
             extra_dispatch_flag: ""
           # Weekly — 8-day buffer.
           - workflow: google-alerts-bright-source.yml
