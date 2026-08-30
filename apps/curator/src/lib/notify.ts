@@ -145,7 +145,15 @@ function fmtDateRange(c: CandidateSummary): string {
   return "—";
 }
 
-export function escapeHtml(s: string): string {
+// s is typed as string at every call site, but CandidateSummary's fields
+// (location in particular — see instagram-item.ts's BrightSourceItem.location
+// doc comment: an IG account with no fixedLocation and a caption Haiku
+// can't place produces a genuinely null location that survives to here)
+// aren't actually guaranteed non-null at runtime. Real production crash
+// 2026-08-30: a null location reached here via daily-digest.ts and killed
+// the whole digest send.
+export function escapeHtml(s: string | null | undefined): string {
+  if (s == null) return "";
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
 

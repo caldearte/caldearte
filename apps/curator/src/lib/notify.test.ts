@@ -18,11 +18,45 @@ import {
   buildDigestSubject,
   buildDigestBody,
   buildDigestHtmlBody,
+  buildEventGroupsHtml,
+  buildEventGroupsText,
+  escapeHtml,
   type RunSummary,
   type HeadlessRunSummary,
   type EscalationSide,
   type DigestSection,
+  type EventGroup,
 } from "./notify.js";
+
+test("escapeHtml: returns an empty string for null/undefined instead of throwing", () => {
+  assert.equal(escapeHtml(null), "");
+  assert.equal(escapeHtml(undefined), "");
+  assert.equal(escapeHtml("<b>&\"x\"</b>"), "&lt;b&gt;&amp;&quot;x&quot;&lt;/b&gt;");
+});
+
+test("buildEventGroupsHtml/Text: a candidate with a null location (real production crash 2026-08-30, an Instagram bright source with no fixedLocation and an unplaceable caption) doesn't throw", () => {
+  const groups: EventGroup[] = [
+    {
+      label: "https://instagram.com/example",
+      candidates: [
+        {
+          title: "Muestra sin ubicación",
+          status: "approved",
+          location: null as unknown as string,
+          placeName: null,
+          runStartDate: null,
+          runEndDate: null,
+          curationReasoning: "ok",
+          sourceUrl: null,
+          outcome: "inserted",
+        },
+      ],
+    },
+  ];
+
+  assert.doesNotThrow(() => buildEventGroupsHtml(groups));
+  assert.doesNotThrow(() => buildEventGroupsText(groups));
+});
 
 test("flagBudgetExceeded: no-ops when GITHUB_TOKEN/GITHUB_REPOSITORY are unset", async () => {
   const originalToken = process.env.GITHUB_TOKEN;
