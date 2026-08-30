@@ -1526,7 +1526,7 @@ as 4 separate emails.
 
 A dedicated workflow (`.github/workflows/daily-digest.yml`, cron `30 10 * *
 *`, well after every possible discovery cron for that day — event_discovery
-~06:07 UTC, headless ~07:12 UTC, Instagram ~08:17 UTC every 2 days, Google
+~06:07 UTC, headless ~07:12 UTC, Instagram ~08:17 UTC Sun+Wed, Google
 Alerts ~09:22 UTC Sundays only) runs `apps/curator/src/daily-digest/run.ts`,
 which:
 
@@ -1538,10 +1538,9 @@ which:
    `candidates`/`eventGroups` detail (persisted since 2026-08-17, see the
    Run-summary email section above), so no extra queries are needed per
    pipeline.
-3. **If zero rows, skips sending entirely** — the new every-2-days-for-
-   Instagram/Sun-Wed-for-web-and-headless/Sun-only-for-Google-Alerts cadence
-   (2026-08-26, see "Dual cadence" below) means not every pipeline fires
-   every day.
+3. **If zero rows, skips sending entirely** — the Sun-Wed-for-web-and-
+   headless-and-Instagram/Sun-only-for-Google-Alerts cadence (see "Dual
+   cadence" below) means not every pipeline fires every day.
 4. Computes a real cost picture: today's Anthropic spend (`api_usage_log`)
    and today's Apify spend (`platform_cost_snapshots`), plus the SAME two
    figures month-to-date, each split into free-tier-covered vs. real
@@ -1561,6 +1560,16 @@ which:
 
 Same ancillary posture as every other curator email: never throws, no-ops
 with a warning if `RESEND_API_KEY` isn't set.
+
+**Real crash, 2026-08-30 (PR #454):** `escapeHtml` (`lib/notify.ts`) didn't
+tolerate a `null` `location` on a `CandidateSummary` — typed as `string`
+but not actually guaranteed non-null at runtime (a bright-source item with
+no `fixedLocation` and a caption Haiku couldn't place produces exactly
+this). Took down both `daily-digest.yml` and `weekly-newsletter.yml`
+outright the same day (both call `buildEventGroupsHtml`/the digest HTML
+builder, which both call `escapeHtml`). Fixed by making `escapeHtml`
+accept `string | null | undefined` and return `""` for null/undefined
+instead of throwing.
 
 ---
 
@@ -3440,9 +3449,9 @@ the shared `BrightSourceItem` shape, so `curateBrightSourceItems`
 (`discover.ts`) judges every post with the exact same scope/date criteria
 as any other bright source — no new prompt), `instagram-discovery/run.ts`
 (orchestrator), `instagram-index.ts` (entrypoint),
-`.github/workflows/instagram-bright-sources.yml` (its own cron, Sunday
-~08:17 UTC as of the 2026-08-23 Monday→Sunday shift — offset from the main
-run and the other bright-source crons; minute moved off :00 the same day,
+`.github/workflows/instagram-bright-sources.yml` (its own cron, Sun+Wed
+~08:17 UTC — offset from the main run and the other bright-source crons;
+minute moved off :00 the same day as the 2026-08-23 Monday→Sunday shift,
 see the headless-bright-sources.yml note above).
 
 **`fixedLocation`** (`{location, placeName}` on an account's config) — set
@@ -3456,22 +3465,50 @@ assigns it directly to every post from that account, overriding whatever
 Haiku might otherwise infer; setting it for a multi-venue account would
 silently mislabel posts about a different real venue.
 
-**Flat weekly cadence, every account** (`instagram-fetch-state.ts`) —
-changed 2026-08-24 from an earlier escalating ladder (7 → 14 → 21 → 28 →
-semestral → inactive) that turned out to be solving a cost problem that
-doesn't really exist: `apify/instagram-post-scraper` is pay-per-RESULT
-(~$0.0025/post), not per-account-queried, so a quiet account checked
-weekly costs the same ~$0 as one checked every 28 days — a zero-yield
-fetch returns 0 results either way (confirmed against real
-`platform_cost_snapshots` data before making the change). Checking every
-account weekly instead of on a stretched-out schedule also closes a real
-gap: `RESULTS_LIMIT_PER_ACCOUNT` (5) could silently miss posts on an
-account that posted more than 5 times since its last (infrequent) check.
-The only thing kept from the old ladder is a dormancy backstop: an
-account with nothing new for a full year (52 consecutive weekly checks)
-is marked inactive so a genuinely dead/abandoned account doesn't get
-polled forever — same `bright_source_fetch_state.is_inactive` mechanism
-as before, just a simpler path to get there.
+**Flat cadence, every account, tied to the cron's own schedule**
+(`instagram-fetch-state.ts`) — changed 2026-08-24 from an earlier
+escalating ladder (7 → 14 → 21 → 28 → semestral → inactive) that turned
+out to be solving a cost problem that doesn't really exist: a quiet
+account returns 0 results whether checked often or rarely, so per-account
+gating buys nothing once the cron itself has a fixed cadence. Checking
+every account on every cron fire instead of on a stretched-out per-account
+schedule also closes a real gap: `RESULTS_LIMIT_PER_ACCOUNT` (5) could
+silently miss posts on an account that posted more than 5 times since its
+last (infrequent) check. The dormancy backstop from the old ladder is
+kept: an account with nothing new for enough consecutive checks (tied to
+real elapsed time, ~6 months of silence — recalculated each time the cron
+cadence itself changes) is marked inactive so a genuinely dead/abandoned
+account doesn't get polled forever — same `bright_source_fetch_state.is_inactive`
+mechanism as before, just a simpler path to get there.
+
+**Cadence history and the real Apify cost limit (2026-08-30):** the cron
+itself moved from twice-weekly (Sun/Wed) → every-2-days on 2026-08-26 (2
+genuine same-day inauguraciones were lost in the Sun→Wed gap, already
+expired by the time the next run saw them) → back to twice-weekly
+(Sun/Wed) on 2026-08-30, after Apify's real $5/month free-tier usage
+limit was hit mid-August (confirmed against `platform_cost_snapshots`:
+~$0.75/run against the full ~145-account registry with no per-account
+gating, projecting to ~$11/month at every-2-days — next Apify reset
+2026-09-13). Daniel's explicit call: no real usage signal yet (Instagram
+followers, web visitors, newsletter subscribers) to justify paying past
+the free tier, so cadence trades back some same-day-inauguración coverage
+for staying free — revisit once there's a real usage signal.
+`ZERO_YIELD_CHECKS_BEFORE_INACTIVE` moved with it: 52 (weekly) → 90
+(every-2-days, keeping the same real ~6-month dormancy window) → back to
+52 (twice-weekly).
+
+Same day, a second real fix: `instagram-discovery/run.ts` shares ONE
+Apify call across every due account, using the OLDEST per-account cutoff
+as the single shared `onlyPostsNewerThan` (see `apify-instagram.ts`'s own
+comment). A newly-added account (no `last_fetched_at` yet) fell back to
+`DEFAULT_INTERVAL_DAYS` — 7 days, regardless of the real cadence —
+dragging that shared window wide open for every OTHER account too,
+re-fetching (and re-billing) posts they'd already had seen days earlier;
+confirmed directly in a real run's own log line ("N post(s) already seen,
+skipped before curation"). `DEFAULT_INTERVAL_DAYS` dropped 7→4, matching
+the real worst-case Sun/Wed gap (Wed→Sun) exactly — no coverage lost for
+a newly-added account, just no more unnecessarily-wide fallback dragging
+everyone else's shared call.
 
 **Pre-Haiku deterministic filter** (`instagram-item.ts`'s
 `isCaptionWorthCurating`, added 2026-08-24) — catches two patterns found
