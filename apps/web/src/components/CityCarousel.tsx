@@ -61,7 +61,7 @@ export default function CityCarousel({ cityCounts, cityNames, cityThumbnails, re
             >
               <div className="flex items-baseline gap-2 flex-wrap">
                 <p className="text-lg font-bold text-heading-gray">{city.name}</p>
-                <p className="text-sm text-heading-gray">— {esCL.cityStats(counts.inauguraciones, counts.exposActuales)}</p>
+                <p className="text-sm text-heading-gray">— {esCL.cityStats(counts.inauguraciones, counts.visitasGuiadas, counts.exposActuales)}</p>
               </div>
               <CityThumbnails events={cityThumbnails[city.id] ?? []} />
             </button>

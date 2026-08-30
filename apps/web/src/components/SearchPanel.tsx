@@ -22,11 +22,15 @@ const SEARCH_DEBOUNCE_MS = 200;
 
 // Same "hasn't happened yet" rule as EventDetailCard/splitInauguracionesYExpos
 // — a past-but-still-running exhibition is an "expo" row here, not an
-// "inauguración" one, regardless of whether it once had an opening date.
-// The old version of this panel just checked `openingDatetime` truthiness
-// (real bug, same class as the one fixed 2026-07-23 elsewhere).
-function variantFor(event: EventRecord): "inauguracion" | "expo" {
-  return event.openingDatetime && dateOnlyFromIso(event.openingDatetime) >= todayInSantiago() ? "inauguracion" : "expo";
+// "inauguración"/"visita_guiada" one, regardless of whether it once had a
+// dated instance. The old version of this panel just checked
+// `openingDatetime` truthiness (real bug, same class as the one fixed
+// 2026-07-23 elsewhere). Also type-aware since 2026-08-29 (event_type) —
+// a visita guiada must group separately, not fold into "inauguracion"
+// just because it shares the same date field.
+function variantFor(event: EventRecord): "inauguracion" | "visita_guiada" | "expo" {
+  if (!event.openingDatetime || dateOnlyFromIso(event.openingDatetime) < todayInSantiago()) return "expo";
+  return event.eventType === "visita_guiada" ? "visita_guiada" : "inauguracion";
 }
 
 // Rediseño 2.0.0 — full-screen modal, same chrome/behavior as
@@ -98,6 +102,9 @@ export default function SearchPanel({ open, events, onClose }: SearchPanelProps)
   const inauguracionResults = matches
     .filter((e) => variantFor(e) === "inauguracion")
     .sort((a, b) => (a.openingDatetime! < b.openingDatetime! ? -1 : a.openingDatetime! > b.openingDatetime! ? 1 : 0));
+  const visitaGuiadaResults = matches
+    .filter((e) => variantFor(e) === "visita_guiada")
+    .sort((a, b) => (a.openingDatetime! < b.openingDatetime! ? -1 : a.openingDatetime! > b.openingDatetime! ? 1 : 0));
   const expoResults = sortByRunEndAsc(matches.filter((e) => variantFor(e) === "expo"));
 
   return (
@@ -154,6 +161,18 @@ export default function SearchPanel({ open, events, onClose }: SearchPanelProps)
                   </p>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-[12px]">
                     {inauguracionResults.map((e) => (
+                      <EventHorizontalListItem key={e.id} event={e} variant="inauguracion" />
+                    ))}
+                  </div>
+                </div>
+              )}
+              {visitaGuiadaResults.length > 0 && (
+                <div>
+                  <p className="font-fragment-mono font-bold text-[14px] uppercase text-text-primary mb-[16px]">
+                    {esCL.searchGroupVisitasGuiadas}
+                  </p>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-[12px]">
+                    {visitaGuiadaResults.map((e) => (
                       <EventHorizontalListItem key={e.id} event={e} variant="inauguracion" />
                     ))}
                   </div>

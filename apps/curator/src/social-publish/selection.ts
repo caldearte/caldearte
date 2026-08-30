@@ -21,6 +21,12 @@ export interface SocialEvent {
   openingTimeConfirmed: boolean;
   runStartDate: string | null;
   runEndDate: string | null;
+  // Added 2026-08-29, alongside events.event_type — without this,
+  // selectInauguraciones (below) would start publishing "visita guiada"
+  // posts as if they were real inauguración announcements the moment a
+  // guided-tour date populates openingDatetime, since both categories
+  // reuse that same field. See lib/curation-policy.ts's EVENT_TYPE_POLICY.
+  eventType: "inauguracion" | "visita_guiada" | "exposicion";
   // Instagram handle of the account this event was sourced from — only
   // ever set for the Instagram pipeline (the account IS usually the
   // venue/artist's own), null for bright_source/other pipelines. Used to
@@ -86,6 +92,7 @@ function isRunningOn(e: SocialEvent, dateStr: string): boolean {
 export function selectInauguraciones(events: SocialEvent[], week: { start: string; end: string }, cap = CAROUSEL_CAP): SocialEvent[] {
   const eligible = events
     .filter(isEligibleForAutoPost)
+    .filter((e) => e.eventType === "inauguracion")
     .filter((e) => e.openingDatetime && e.openingDatetime.slice(0, 10) >= week.start && e.openingDatetime.slice(0, 10) <= week.end)
     .sort((a, b) => a.openingDatetime!.localeCompare(b.openingDatetime!));
   return diversifyByComuna(eligible, cap);

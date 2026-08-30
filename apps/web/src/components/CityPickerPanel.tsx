@@ -39,7 +39,7 @@ interface CityPickerPanelProps {
   onSelectRegion: (regionId: string) => void;
 }
 
-const ZERO_COUNTS: CityCounts = { inauguraciones: 0, exposActuales: 0 };
+const ZERO_COUNTS: CityCounts = { inauguraciones: 0, visitasGuiadas: 0, exposActuales: 0 };
 const SEARCH_DEBOUNCE_MS = 200;
 const MAX_RECENT_SHORTCUTS = 2;
 

@@ -9,6 +9,7 @@ export interface AdminAnalyticsPayload {
     runEnd: string | null;
     adminRegionName: string | null;
     pipeline: string | null;
+    eventType: string | null;
   }>;
   outOfScopeSignals: Array<{
     createdAt: string;

@@ -41,6 +41,7 @@ const TEST_BLOCK =
 
 const baseCandidate: EventCandidate = {
   title: "Muestra X",
+  eventType: "exposicion",
   description: null,
   artist: null,
   runStartDate: "2026-07-05",
@@ -945,6 +946,37 @@ test("curate degrades to zero candidates (not a throw) when no JSON block is pre
   assert.equal(usage.outputTokens, 45);
 });
 
+test("curate uses Haiku's own eventType when it returns a valid one — added 2026-08-29 (visita_guiada vs. inauguracion vs. exposicion, see lib/curation-policy.ts's EVENT_TYPE_POLICY)", async () => {
+  const candidate = { ...baseCandidate, eventType: "visita_guiada", openingDatetime: "2026-08-29T12:00" };
+  const client: MessagesClient = {
+    messages: {
+      create: async () => ({
+        content: [{ type: "text", text: "```json\n" + JSON.stringify([candidate]) + "\n```" }],
+        usage: { input_tokens: 10, output_tokens: 10 },
+      }),
+    },
+  };
+  const { candidates } = await curate(client, "s", "b");
+  assert.equal(candidates[0].eventType, "visita_guiada");
+});
+
+test("curate falls back to inferring eventType from openingDatetime when Haiku's row omits it or sends an invalid value — preserves the pre-eventType behavior instead of throwing on a malformed/missing field", async () => {
+  const withOpening = { ...baseCandidate, openingDatetime: "2026-08-29T12:00" };
+  delete (withOpening as { eventType?: unknown }).eventType;
+  const withoutOpening = { ...baseCandidate, eventType: "not_a_real_type" };
+  const client: MessagesClient = {
+    messages: {
+      create: async () => ({
+        content: [{ type: "text", text: "```json\n" + JSON.stringify([withOpening, withoutOpening]) + "\n```" }],
+        usage: { input_tokens: 10, output_tokens: 10 },
+      }),
+    },
+  };
+  const { candidates } = await curate(client, "s", "b");
+  assert.equal(candidates[0].eventType, "inauguracion");
+  assert.equal(candidates[1].eventType, "exposicion");
+});
+
 // --- curateBrightSourceItems: deterministic fields, curatorial-only Haiku ---
 // (2026-07-24, see docs/region-discovery.md) — a source with a real
 // extractor already gives an exact title/sourceUrl/imageUrl (and often
@@ -1137,6 +1169,55 @@ test("curateBrightSourceItems prefers Haiku's own title over item.title's mechan
 
   assert.equal(candidates.length, 1);
   assert.equal(candidates[0].title, "Vilches Fundamental");
+});
+
+test("curateBrightSourceItems uses Haiku's eventType (visita_guiada) instead of defaulting to inauguracion — real bug found 2026-08-29: a guided-tour post's own date, written into openingDatetime, was indistinguishable from the exhibition's actual opening", async () => {
+  const items: BrightSourceItem[] = [baseBrightItem];
+  const client = stubBrightClient([
+    {
+      index: 0,
+      status: "approved",
+      eventType: "visita_guiada",
+      artist: null,
+      runStartDate: null,
+      runEndDate: null,
+      openingDatetime: "2026-08-29T12:00",
+      openingTimeConfirmed: true,
+      location: null,
+      placeName: null,
+      mediumType: "tradicional",
+      sensitivityTags: [],
+      curationReasoning: "ok",
+    },
+  ]);
+
+  const { candidates } = await curateBrightSourceItems(client, items, "agosto 2026", { fixedLocation: { location: "Santiago", placeName: "Fuente" } });
+
+  assert.equal(candidates[0].eventType, "visita_guiada");
+});
+
+test("curateBrightSourceItems falls back to inferring eventType from openingDatetime when Haiku's row omits it — preserves the pre-eventType behavior", async () => {
+  const items: BrightSourceItem[] = [baseBrightItem];
+  const client = stubBrightClient([
+    {
+      index: 0,
+      status: "approved",
+      artist: null,
+      runStartDate: "2026-07-05",
+      runEndDate: "2026-07-31",
+      openingDatetime: null,
+      openingTimeConfirmed: false,
+      location: null,
+      placeName: null,
+      mediumType: "tradicional",
+      sensitivityTags: [],
+      curationReasoning: "ok",
+    },
+  ]);
+
+  const { candidates } = await curateBrightSourceItems(client, items, "julio 2026", { fixedLocation: { location: "Santiago", placeName: "Fuente" } });
+
+  assert.equal(candidates[0].eventType, "exposicion");
 });
 
 test("curateBrightSourceItems always prefers the item's own structuredStartDate/EndDate over whatever Haiku returned for those fields", async () => {

@@ -11,6 +11,7 @@ import type { CityCounts } from "@/lib/event-utils";
 import Header from "./Header";
 import RegionCountRing from "./RegionCountRing";
 import InauguracionesSection from "./InauguracionesSection";
+import VisitasGuiadasSection from "./VisitasGuiadasSection";
 import ExposicionesSection from "./ExposicionesSection";
 import CuratoriaBanner from "./CuratoriaBanner";
 import NewsletterSection from "./NewsletterSection";
@@ -24,6 +25,7 @@ import NewsletterStatusModal, { type NewsletterStatus } from "./NewsletterStatus
 
 interface CalendarViewProps {
   inauguraciones: EventRecord[];
+  visitasGuiadas: EventRecord[];
   exposActuales: EventRecord[];
   regionId: string; // the site's own selection unit — see cities.ts's "Región-level selection"
   actualCityId: string | null; // IP-geolocated comuna, recomputed every render regardless of región — CityPickerPanel's "Tu ubicación actual" row; null when there's no real signal (outside Chile, no geo header)
@@ -40,6 +42,7 @@ interface CalendarViewProps {
   prevWeekHref: string; // "/?semana=..." — real navigation, not a cookie (see page.tsx)
   nextWeekHref: string;
   chileInauguracionesCount: number; // same week/Hoy/Vigentes filter chain as inauguraciones above, nationwide — Header's ring indicators
+  chileVisitasGuiadasCount: number;
   chileExposActualesCount: number;
   cityCounts: Record<string, CityCounts>; // full-week counts, unaffected by Hoy/Vigentes — CityCarousel/city picker
   cityThumbnails: Record<string, EventRecord[]>; // up to 4 preview events per comuna — CityCarousel
@@ -68,6 +71,7 @@ interface CalendarViewProps {
 
 export default function CalendarView({
   inauguraciones,
+  visitasGuiadas,
   exposActuales,
   regionId,
   actualCityId,
@@ -83,6 +87,7 @@ export default function CalendarView({
   prevWeekHref,
   nextWeekHref,
   chileInauguracionesCount,
+  chileVisitasGuiadasCount,
   chileExposActualesCount,
   cityCounts,
   searchableEvents,
@@ -129,7 +134,12 @@ export default function CalendarView({
     onRefreshNeeded();
   }
 
-  const isEmpty = inauguraciones.length === 0 && exposActuales.length === 0;
+  const isEmpty = inauguraciones.length === 0 && visitasGuiadas.length === 0 && exposActuales.length === 0;
+  // CuratoriaBanner sits right after whichever of Inauguraciones/Visitas
+  // guiadas actually rendered — same "never floating alone right under
+  // the Header" reasoning as before, just extended from a 2-way to a
+  // 3-way split.
+  const hasTopSections = inauguraciones.length > 0 || visitasGuiadas.length > 0;
 
   return (
     <div className="w-full relative">
@@ -176,6 +186,13 @@ export default function CalendarView({
             kindLabel={esCL.regionCountRingKindInauguraciones}
           />
           <RegionCountRing
+            label={esCL.regionCountRingVisitasGuiadasLabel}
+            shortLabel={esCL.regionCountRingVisitasGuiadasShortLabel}
+            count={visitasGuiadas.length}
+            total={chileVisitasGuiadasCount}
+            kindLabel={esCL.regionCountRingKindVisitasGuiadas}
+          />
+          <RegionCountRing
             label={esCL.regionCountRingExposicionesLabel}
             shortLabel={esCL.regionCountRingExposicionesShortLabel}
             count={exposActuales.length}
@@ -208,12 +225,15 @@ export default function CalendarView({
         <>
           <InauguracionesSection events={inauguraciones} hideTodayBadge={todayFilterOn} />
 
-          {/* CuratoriaBanner sits between Inauguraciones and Exposiciones
-              only when Inauguraciones actually renders (it returns null
-              with zero events this week). Otherwise it moves down to sit
-              between Exposiciones and the "texto AI" line below, so it's
-              never floating right under the Header with nothing above it. */}
-          {inauguraciones.length > 0 && (
+          <VisitasGuiadasSection events={visitasGuiadas} hideTodayBadge={todayFilterOn} />
+
+          {/* CuratoriaBanner sits right after Inauguraciones/Visitas
+              guiadas only when at least one of them actually rendered
+              (both return null with zero events this week). Otherwise it
+              moves down to sit between Exposiciones and the "texto AI"
+              line below, so it's never floating right under the Header
+              with nothing above it. */}
+          {hasTopSections && (
             <div className="w-full flex flex-wrap justify-center">
               <CuratoriaBanner />
             </div>
@@ -221,7 +241,7 @@ export default function CalendarView({
 
           <ExposicionesSection events={exposActuales} hideTodayBadge={todayFilterOn} />
 
-          {inauguraciones.length === 0 && (
+          {!hasTopSections && (
             <div className="w-full flex flex-wrap justify-center">
               <CuratoriaBanner />
             </div>

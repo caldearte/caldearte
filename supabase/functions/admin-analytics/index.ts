@@ -54,7 +54,7 @@ Deno.serve(async (req) => {
   const [eventsRes, signalsRes, rejectedRes, usageRes, fetchStateRes, costSnapshotsRes, pendingEscalationsRes, runSummariesRes, instagramPostsRes, instagramSnapshotsRes] = await Promise.all([
     client
       .from("events")
-      .select("opening_datetime, run_start_date, run_end_date, region_id, pipeline")
+      .select("opening_datetime, run_start_date, run_end_date, region_id, pipeline, event_type")
       .eq("curation_status", "approved")
       .is("removed_at", null),
     client.from("out_of_scope_signals").select("created_at, category, pipeline, region_id"),
@@ -127,6 +127,7 @@ Deno.serve(async (req) => {
     runEnd: row.run_end_date,
     adminRegionName: row.region_id ? adminRegionNameById.get(row.region_id) ?? null : null,
     pipeline: row.pipeline,
+    eventType: row.event_type,
   }));
 
   const outOfScopeSignals = (signalsRes.data ?? []).map((row) => ({

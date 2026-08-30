@@ -115,6 +115,13 @@ export function sortByRunEndAsc(events: EventRecord[]): EventRecord[] {
 
 export interface InauguracionesYExpos {
   inauguraciones: EventRecord[];
+  // Added 2026-08-29 alongside events.event_type (Daniel's 3-category
+  // decision, ordered by how much interaction with the work they
+  // involve — see apps/curator/src/lib/curation-policy.ts's
+  // EVENT_TYPE_POLICY). Same windowing rule as `inauguraciones` below,
+  // just filtered to eventType === "visita_guiada" instead of
+  // "inauguracion".
+  visitasGuiadas: EventRecord[];
   exposActuales: EventRecord[];
 }
 
@@ -137,15 +144,23 @@ export interface InauguracionesYExpos {
 // ends of the run — caller must already have narrowed `events` to the
 // active window (filterActiveInRange) — this only splits/highlights/
 // filters exposActuales' own completeness requirement, nothing else.
+function isDatedInRange(e: EventRecord, start: string, end: string): boolean {
+  if (e.openingDatetime === null) return false;
+  const openingDate = dateOnlyFromIso(e.openingDatetime);
+  return openingDate >= start && openingDate <= end;
+}
+
 export function splitInauguracionesYExpos(events: EventRecord[], start: string, end: string): InauguracionesYExpos {
-  const inauguraciones = events.filter((e) => {
-    if (e.openingDatetime === null) return false;
-    const openingDate = dateOnlyFromIso(e.openingDatetime);
-    return openingDate >= start && openingDate <= end;
-  });
+  const inauguraciones = events.filter((e) => e.eventType === "inauguracion" && isDatedInRange(e, start, end));
+  // Same reasoning as event_type === "inauguracion" above — a visita
+  // guiada reuses openingDatetime for its own instance date, so without
+  // the eventType check it would land in `inauguraciones` too (the exact
+  // bug event_type exists to fix, see curation-policy.ts).
+  const visitasGuiadas = events.filter((e) => e.eventType === "visita_guiada" && isDatedInRange(e, start, end));
   const exposActuales = events.filter((e) => e.runStartDate !== null && e.runEndDate !== null);
   return {
     inauguraciones: sortByAnchorDesc(inauguraciones),
+    visitasGuiadas: sortByAnchorDesc(visitasGuiadas),
     exposActuales: sortByRunEndAsc(exposActuales),
   };
 }
@@ -160,8 +175,16 @@ export function filterUpcomingInauguraciones(inauguraciones: EventRecord[], toda
   return inauguraciones.filter((e) => e.openingDatetime !== null && dateOnlyFromIso(e.openingDatetime) >= todayStr);
 }
 
+// Same "Vigentes" rule, for the visitas guiadas list — kept as its own
+// function (rather than a shared one taking both lists) to mirror
+// filterUpcomingInauguraciones's own call shape 1:1 at the call site.
+export function filterUpcomingVisitasGuiadas(visitasGuiadas: EventRecord[], todayStr: string): EventRecord[] {
+  return visitasGuiadas.filter((e) => e.openingDatetime !== null && dateOnlyFromIso(e.openingDatetime) >= todayStr);
+}
+
 export interface CityCounts {
   inauguraciones: number;
+  visitasGuiadas: number;
   exposActuales: number;
 }
 
@@ -182,11 +205,12 @@ export function countByCity(events: EventRecord[], start: string, end: string): 
   for (const e of events) {
     const cityId = resolveCityId(e);
     if (cityId === OTHER_CITY.id) continue; // "otro" isn't shown in the carousel
-    if (!(cityId in counts)) counts[cityId] = { inauguraciones: 0, exposActuales: 0 };
+    if (!(cityId in counts)) counts[cityId] = { inauguraciones: 0, visitasGuiadas: 0, exposActuales: 0 };
     if (e.runStartDate !== null && e.runEndDate !== null) counts[cityId].exposActuales += 1;
     const openingDate = e.openingDatetime !== null ? dateOnlyFromIso(e.openingDatetime) : null;
     if (openingDate !== null && openingDate >= start && openingDate <= end) {
-      counts[cityId].inauguraciones += 1;
+      if (e.eventType === "inauguracion") counts[cityId].inauguraciones += 1;
+      else if (e.eventType === "visita_guiada") counts[cityId].visitasGuiadas += 1;
     }
   }
   return counts;
@@ -198,8 +222,12 @@ export function countByCity(events: EventRecord[], start: string, end: string): 
 // country total is sumCounts of every visible comuna's.
 export function sumCounts(counts: CityCounts[]): CityCounts {
   return counts.reduce(
-    (acc, c) => ({ inauguraciones: acc.inauguraciones + c.inauguraciones, exposActuales: acc.exposActuales + c.exposActuales }),
-    { inauguraciones: 0, exposActuales: 0 },
+    (acc, c) => ({
+      inauguraciones: acc.inauguraciones + c.inauguraciones,
+      visitasGuiadas: acc.visitasGuiadas + c.visitasGuiadas,
+      exposActuales: acc.exposActuales + c.exposActuales,
+    }),
+    { inauguraciones: 0, visitasGuiadas: 0, exposActuales: 0 },
   );
 }
 

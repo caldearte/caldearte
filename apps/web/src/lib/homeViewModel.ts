@@ -6,6 +6,7 @@ import {
   filterActiveInRange,
   splitInauguracionesYExpos,
   filterUpcomingInauguraciones,
+  filterUpcomingVisitasGuiadas,
   findNextEvent,
   type CityCounts,
 } from "@/lib/event-utils";
@@ -19,6 +20,7 @@ const NEWSLETTER_STATUSES: NewsletterStatus[] = ["confirmed", "already_confirmed
 
 export interface HomeViewModel {
   inauguraciones: EventRecord[];
+  visitasGuiadas: EventRecord[];
   exposActuales: EventRecord[];
   // The site's own selection unit — see cities.ts's "Región-level
   // selection" section. cityId/cityNames below stay comuna-level, only
@@ -46,6 +48,7 @@ export interface HomeViewModel {
   // would compare a filtered región count against an unfiltered national
   // one, an apples-to-oranges ratio.
   chileInauguracionesCount: number;
+  chileVisitasGuiadasCount: number;
   chileExposActualesCount: number;
   cityThumbnails: Record<string, EventRecord[]>;
   searchableEvents: EventRecord[];
@@ -111,23 +114,29 @@ export async function computeHomeViewModel({
   const cityEventsInRange = filterByRegion(activeInRange, adminRegionName, metaByCityId);
   const split = splitInauguracionesYExpos(cityEventsInRange, rangeStart, rangeEnd);
   const inauguracionesForCity = todayFilterOn ? filterActiveInRange(split.inauguraciones, today, today) : split.inauguraciones;
+  const visitasGuiadasForCity = todayFilterOn ? filterActiveInRange(split.visitasGuiadas, today, today) : split.visitasGuiadas;
   const exposActualesForCity = todayFilterOn ? filterActiveInRange(split.exposActuales, today, today) : split.exposActuales;
   const inauguraciones = vigentesFilterOn ? filterUpcomingInauguraciones(inauguracionesForCity, today) : inauguracionesForCity;
+  const visitasGuiadas = vigentesFilterOn ? filterUpcomingVisitasGuiadas(visitasGuiadasForCity, today) : visitasGuiadasForCity;
   const exposActuales = exposActualesForCity;
 
   // Same split + same Hoy/Vigentes filter chain as the región's own
-  // inauguraciones/exposActuales above, just over the unfiltered-by-región
-  // activeInRange set — the Chile-wide "de X" comparison count.
+  // inauguraciones/visitasGuiadas/exposActuales above, just over the
+  // unfiltered-by-región activeInRange set — the Chile-wide "de X"
+  // comparison count.
   const chileSplit = splitInauguracionesYExpos(activeInRange, rangeStart, rangeEnd);
   const chileInauguracionesForFilter = todayFilterOn ? filterActiveInRange(chileSplit.inauguraciones, today, today) : chileSplit.inauguraciones;
+  const chileVisitasGuiadasForFilter = todayFilterOn ? filterActiveInRange(chileSplit.visitasGuiadas, today, today) : chileSplit.visitasGuiadas;
   const chileExposActualesForFilter = todayFilterOn ? filterActiveInRange(chileSplit.exposActuales, today, today) : chileSplit.exposActuales;
   const chileInauguracionesCount = (vigentesFilterOn ? filterUpcomingInauguraciones(chileInauguracionesForFilter, today) : chileInauguracionesForFilter).length;
+  const chileVisitasGuiadasCount = (vigentesFilterOn ? filterUpcomingVisitasGuiadas(chileVisitasGuiadasForFilter, today) : chileVisitasGuiadasForFilter).length;
   const chileExposActualesCount = chileExposActualesForFilter.length;
 
   const nextEvent = findNextEvent(filterByRegion(visible, adminRegionName, metaByCityId), today, rangeEnd);
 
   return {
     inauguraciones,
+    visitasGuiadas,
     exposActuales,
     regionId,
     cityId,
@@ -146,6 +155,7 @@ export async function computeHomeViewModel({
     nextWeekHref,
     cityCounts,
     chileInauguracionesCount,
+    chileVisitasGuiadasCount,
     chileExposActualesCount,
     cityThumbnails,
     searchableEvents,

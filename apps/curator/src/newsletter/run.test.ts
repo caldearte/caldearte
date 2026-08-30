@@ -29,6 +29,11 @@ function makeEvent(overrides: Partial<EventWithRegion> = {}): EventWithRegion {
     opening_time_confirmed: true,
     run_start_date: null,
     run_end_date: null,
+    // Defaults to "inauguracion" — matches the pre-event_type behavior
+    // these existing tests were written against (any confirmed
+    // opening_datetime treated as an inauguración); tests specifically
+    // about event_type/visita_guiada override this explicitly.
+    event_type: "inauguracion",
     medium_type: null,
     sensitivity_tags: [],
     source: "discovered",
@@ -86,6 +91,25 @@ test("buildDigestSections: an event whose opening was WEEKS AGO (still running) 
   const paraVisitar = sections.find((s) => s.label === "Expos para visitar esta semana");
   assert.equal(paraVisitar?.events.length, 1);
   assert.equal(paraVisitar?.events[0].isOpeningThisWeek, false);
+});
+
+test("buildDigestSections: a visita_guiada event goes in its own 'Visitas guiadas de esta semana' section, not 'Inauguraciones' — real bug found 2026-08-29, both categories share opening_datetime", () => {
+  const event = makeEvent({ opening_datetime: "2026-08-05T20:00:00.000Z", event_type: "visita_guiada" });
+  const { sections } = buildDigestSections([event], REGION_A, WEEK);
+  assert.equal(sections.find((s) => s.label === "Inauguraciones de esta semana")?.events.length, 0);
+  const visitas = sections.find((s) => s.label === "Visitas guiadas de esta semana");
+  assert.equal(visitas?.events.length, 1);
+  assert.equal(visitas?.events[0].id, event.id);
+  // Never leaks into "Expos para visitar" either — it has no run range
+  // of its own, isRunningOn's null-means-always-running default would
+  // otherwise catch it there.
+  assert.equal(sections.find((s) => s.label === "Expos para visitar esta semana")?.events.length, 0);
+});
+
+test("buildDigestSections: 'Visitas guiadas de esta semana' is omitted entirely when there are none this week (unlike 'Inauguraciones'/'Expos para visitar', which always render with an emptyMessage)", () => {
+  const event = makeEvent({ run_start_date: "2026-08-01", run_end_date: "2026-08-20" });
+  const { sections } = buildDigestSections([event], REGION_A, WEEK);
+  assert.equal(sections.some((s) => s.label === "Visitas guiadas de esta semana"), false);
 });
 
 test("buildDigestSections: 'Expos para visitar esta semana' shows up to 10 already-running events, ending-soonest first, with no 'ver todas' link at exactly the cap", () => {
