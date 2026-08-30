@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import { enumeratePeriods, formatPeriodLabel, type Granularity } from "@/lib/adminAnalyticsBucketing";
-import { splitApifyFreeTier } from "@/lib/apifyCostSplit";
+import { splitApifyFreeTier, APIFY_FREE_TIER_USD } from "@/lib/apifyCostSplit";
 import CostTable from "./CostTable";
 import GranularityToggle from "./GranularityToggle";
 
@@ -37,6 +37,20 @@ export default function CostosPage({
   const [hoveredPeriod, setHoveredPeriod] = useState<string | null>(null);
   const highlightedPeriodLabel = hoveredPeriod ? formatPeriodLabel(hoveredPeriod, granularity) : null;
 
+  // Apify's free tier is a HARD limit, not billed overage — once this
+  // month's gross usage reaches $5, Apify itself refuses new Actor runs
+  // until the next cycle. Real incident, 2026-08-30: hit mid-month,
+  // Instagram bright sources went dark until the reset. This status line
+  // makes that explicit instead of leaving it implicit in the charts
+  // below. NOTE: the reset is Apify's own billing-anniversary date (was
+  // 2026-09-13, not the 1st) — this calendar-month grouping is an
+  // approximation, same caveat as apifyCostSplit.ts's own split logic.
+  const apifyMonthGrossUsd = useMemo(() => {
+    const thisMonth = new Date().toISOString().slice(0, 7);
+    return apifyCostByDay.filter((r) => r.date.startsWith(thisMonth)).reduce((sum, r) => sum + r.amountUsd, 0);
+  }, [apifyCostByDay]);
+  const apifyRemainingUsd = APIFY_FREE_TIER_USD - apifyMonthGrossUsd;
+
   const { minDate, maxDate } = useMemo(() => {
     const dates = [...anthropicCostByDay.map((c) => c.date), ...apifyCostByDay.map((c) => c.date)];
     if (dates.length === 0) {
@@ -61,6 +75,12 @@ export default function CostosPage({
 
   return (
     <div className="flex flex-col gap-12">
+      <p className={`font-geist text-[14px] ${apifyRemainingUsd <= 0 ? "text-red-700 font-medium" : "text-text-primary/60"}`}>
+        {apifyRemainingUsd <= 0
+          ? `⚠️ Apify: límite mensual alcanzado ($${apifyMonthGrossUsd.toFixed(2)} de $${APIFY_FREE_TIER_USD}) — sin nuevas corridas hasta el próximo ciclo`
+          : `Apify: $${apifyRemainingUsd.toFixed(2)} disponibles de $${APIFY_FREE_TIER_USD}/mes antes del límite`}
+      </p>
+
       <GranularityToggle value={granularity} onChange={setGranularity} />
 
       {/* 2 columns on desktop so both charts fit the page's existing
