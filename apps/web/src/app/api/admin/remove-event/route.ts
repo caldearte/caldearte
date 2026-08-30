@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import { auth, isAdminSession } from "@/lib/auth";
+import { APPROVED_EVENTS_CACHE_TAG } from "@/lib/events";
 
 interface RemoveEventPayload {
   eventId?: string;
@@ -47,5 +49,13 @@ export async function POST(request: Request) {
   });
 
   const data = await res.json().catch(() => ({ status: "error" }));
+  // Force-refresh the public site's own cached event list right away,
+  // instead of leaving a removed (often sensitive/wrong) event visible
+  // for up to ~10 more minutes — see events.ts's own comment on the tag.
+  // { expire: 0 } for immediate expiration, not the default "max" (stale-
+  // while-revalidate) profile — a Route Handler can't use updateTag
+  // (Server Actions only), and the whole point here is the moderator
+  // seeing their own change right away, not a background refresh.
+  if (res.ok) revalidateTag(APPROVED_EVENTS_CACHE_TAG, { expire: 0 });
   return NextResponse.json(data, { status: res.ok ? 200 : 502 });
 }
