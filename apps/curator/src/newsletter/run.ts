@@ -67,8 +67,22 @@ function isRunningOn(event: EventRow, dateStr: string): boolean {
   return true;
 }
 
-function isOpeningInWeek(event: EventRow, week: { start: string; end: string }): boolean {
+function isDatedInWeek(event: EventRow, week: { start: string; end: string }): boolean {
   return Boolean(event.opening_datetime && event.opening_datetime.slice(0, 10) >= week.start && event.opening_datetime.slice(0, 10) <= week.end);
+}
+
+// Added 2026-08-29 alongside events.event_type: openings/visitasGuiadas
+// both read opening_datetime (the same field), so without the type check
+// a "visita guiada" would show up under "Inauguraciones de esta semana"
+// as if it were the exhibition's own opening — the exact bug that
+// prompted event_type to exist. See lib/curation-policy.ts's
+// EVENT_TYPE_POLICY.
+function isOpeningInWeek(event: EventRow, week: { start: string; end: string }): boolean {
+  return event.event_type === "inauguracion" && isDatedInWeek(event, week);
+}
+
+function isVisitaGuiadaInWeek(event: EventRow, week: { start: string; end: string }): boolean {
+  return event.event_type === "visita_guiada" && isDatedInWeek(event, week);
 }
 
 function toDigestEvent(event: EventWithRegion, week: { start: string; end: string }): DigestEvent {
@@ -81,6 +95,9 @@ function toDigestEvent(event: EventWithRegion, week: { start: string; end: strin
     openingTimeConfirmed: event.opening_time_confirmed,
     runEndDate: event.run_end_date,
     imageUrl: event.image_url,
+    // Type-aware (not just "has a dated instance this week") — a visita
+    // guiada card must never show the "abre esta semana" badge, that's
+    // specifically what event_type exists to distinguish now.
     isOpeningThisWeek: isOpeningInWeek(event, week),
   };
 }
@@ -105,10 +122,19 @@ export function buildDigestSections(
   week: { start: string; end: string },
 ): DigestSectionsResult {
   const inRegion = events.filter((e) => e.adminRegionName === adminRegionName);
-  const runningThisWeek = inRegion.filter((e) => isRunningOn(e, week.end));
+  // visita_guiada events are excluded from the general "running this
+  // week"/"expos para visitar" pool below — a guided-tour instance isn't
+  // itself "the exhibition, available to visit any time," and (unlike an
+  // inauguración) it usually has no run_start_date/run_end_date of its
+  // own, so isRunningOn's null-means-always-running default would
+  // otherwise leak it into "Expos para visitar." It gets its own section
+  // instead, built from `inRegion` directly, below.
+  const runningThisWeek = inRegion.filter((e) => e.event_type !== "visita_guiada" && isRunningOn(e, week.end));
 
   const openings = runningThisWeek.filter((e) => isOpeningInWeek(e, week));
   const openingIds = new Set(openings.map((e) => e.id));
+
+  const visitasGuiadas = inRegion.filter((e) => isVisitaGuiadaInWeek(e, week));
 
   // Everything not opening this week goes in one pool, treated equally —
   // sorted ending-soonest first so it doubles as a nudge to catch it
@@ -142,7 +168,7 @@ export function buildDigestSections(
   // digest always sends, using emptyMessage below to say so explicitly
   // rather than just omitting a section and leaving the reader guessing
   // whether that's a bug or genuinely nothing this week.
-  const hasAnyContent = openings.length > 0 || alsoVisitAll.length > 0 || otherRegionsAll.length > 0;
+  const hasAnyContent = openings.length > 0 || visitasGuiadas.length > 0 || alsoVisitAll.length > 0 || otherRegionsAll.length > 0;
   if (!hasAnyContent) return { sections: [], regionTotalThisWeek: 0 };
 
   // Total across the whole country, not just the sample shown in "En
@@ -159,6 +185,20 @@ export function buildDigestSections(
     emptyMessage:
       openings.length === 0 ? "No hemos encontrado ninguna inauguración para esta semana aún. Si sabes de una, avísanos." : undefined,
   });
+
+  // Added 2026-08-29 alongside events.event_type — mismo orden que el
+  // resto del sitio (mayor a menor interacción con la obra): inauguración,
+  // visita guiada, exposición. Omitida por completo cuando no hay ninguna
+  // esta semana, no se le da su propio emptyMessage (a diferencia de las
+  // otras 2 secciones, que siempre se muestran) porque es la sección más
+  // nueva/opcional de las 3 y aún no se sabe qué tan seguido va a tener
+  // contenido real.
+  if (visitasGuiadas.length > 0) {
+    sections.push({
+      label: "Visitas guiadas de esta semana",
+      events: visitasGuiadas.map((e) => toDigestEvent(e, week)),
+    });
+  }
 
   sections.push({
     label: "Expos para visitar esta semana",

@@ -36,6 +36,11 @@ function event(overrides: Partial<EventRecord> = {}): EventRecord {
     sensitivityTags: [],
     sourceUrl: null,
     openingTimeConfirmed: true,
+    // Defaults to "inauguracion" — matches the pre-eventType behavior
+    // these existing tests were written against (any confirmed
+    // openingDatetime treated as an inauguración); tests specifically
+    // about visita_guiada override this explicitly.
+    eventType: "inauguracion",
     ...overrides,
   };
 }
@@ -140,6 +145,15 @@ test("splitInauguracionesYExpos: an opening with NO run range at all appears onl
   assert.deepEqual(exposActuales.map((e) => e.id), ["real-expo"]);
 });
 
+test("splitInauguracionesYExpos: a visita_guiada with a dated instance in-window goes in visitasGuiadas, never in inauguraciones — real bug found 2026-08-29, both categories share openingDatetime", () => {
+  const guidedTour = event({ id: "guided-tour", eventType: "visita_guiada", openingDatetime: "2026-07-11T22:00:00+00:00", runStartDate: null, runEndDate: null });
+  const realOpening = event({ id: "real-opening", eventType: "inauguracion", openingDatetime: "2026-07-11T22:00:00+00:00" });
+
+  const { inauguraciones, visitasGuiadas } = splitInauguracionesYExpos([guidedTour, realOpening], TODAY, TODAY);
+  assert.deepEqual(inauguraciones.map((e) => e.id), ["real-opening"]);
+  assert.deepEqual(visitasGuiadas.map((e) => e.id), ["guided-tour"]);
+});
+
 test("sortByRunEndAsc: soonest-closing first, falls back to the anchor date, unknown end sorts last", () => {
   const closesLast = event({ id: "closes-last", runEndDate: "2026-09-01" });
   const closesFirst = event({ id: "closes-first", runEndDate: "2026-07-15" });
@@ -164,16 +178,22 @@ test("countByCity tallies per city, dropping 'otro', for ANY comuna a real event
   const counts = countByCity(events, TODAY, TODAY);
   // Overlap-counted, matching splitInauguracionesYExpos: event "a" opens
   // today, so it counts in BOTH inauguraciones and exposActuales for Santiago.
-  assert.deepEqual(counts.santiago, { inauguraciones: 1, exposActuales: 2 });
-  assert.deepEqual(counts.valparaiso, { inauguraciones: 0, exposActuales: 1 });
-  assert.deepEqual(counts["las-condes"], { inauguraciones: 0, exposActuales: 1 });
+  assert.deepEqual(counts.santiago, { inauguraciones: 1, visitasGuiadas: 0, exposActuales: 2 });
+  assert.deepEqual(counts.valparaiso, { inauguraciones: 0, visitasGuiadas: 0, exposActuales: 1 });
+  assert.deepEqual(counts["las-condes"], { inauguraciones: 0, visitasGuiadas: 0, exposActuales: 1 });
   assert.equal(counts.otro, undefined);
 });
 
 test("countByCity: an opening with no run range counts toward inauguraciones but not exposActuales — same completeness rule as splitInauguracionesYExpos", () => {
   const events = [event({ id: "a", freeformLocation: "Sala Y, Santiago", openingDatetime: "2026-07-11T22:00:00+00:00", runStartDate: null, runEndDate: null })];
   const counts = countByCity(events, TODAY, TODAY);
-  assert.deepEqual(counts.santiago, { inauguraciones: 1, exposActuales: 0 });
+  assert.deepEqual(counts.santiago, { inauguraciones: 1, visitasGuiadas: 0, exposActuales: 0 });
+});
+
+test("countByCity: a visita_guiada counts toward visitasGuiadas, not inauguraciones — real bug found 2026-08-29, both share openingDatetime", () => {
+  const events = [event({ id: "a", freeformLocation: "Sala Y, Santiago", openingDatetime: "2026-07-11T22:00:00+00:00", eventType: "visita_guiada" })];
+  const counts = countByCity(events, TODAY, TODAY);
+  assert.deepEqual(counts.santiago, { inauguraciones: 0, visitasGuiadas: 1, exposActuales: 1 });
 });
 
 test("thumbnailsByCity groups by comuna, newest anchor date first, capped at maxPerCity, dropping 'otro'", () => {
@@ -227,18 +247,18 @@ test("findNextEvent returns null when there's nothing upcoming", () => {
   assert.equal(findNextEvent([], TODAY, TODAY), null);
 });
 
-test("sumCounts adds up inauguraciones/exposActuales across multiple CityCounts — used for región- and Chile-level totals", () => {
+test("sumCounts adds up inauguraciones/visitasGuiadas/exposActuales across multiple CityCounts — used for región- and Chile-level totals", () => {
   assert.deepEqual(
     sumCounts([
-      { inauguraciones: 1, exposActuales: 2 },
-      { inauguraciones: 3, exposActuales: 0 },
+      { inauguraciones: 1, visitasGuiadas: 1, exposActuales: 2 },
+      { inauguraciones: 3, visitasGuiadas: 0, exposActuales: 0 },
     ]),
-    { inauguraciones: 4, exposActuales: 2 },
+    { inauguraciones: 4, visitasGuiadas: 1, exposActuales: 2 },
   );
 });
 
 test("sumCounts of an empty array is all zeros", () => {
-  assert.deepEqual(sumCounts([]), { inauguraciones: 0, exposActuales: 0 });
+  assert.deepEqual(sumCounts([]), { inauguraciones: 0, visitasGuiadas: 0, exposActuales: 0 });
 });
 
 test("searchEvents matches title, artist, or placeName, accent-insensitive", () => {

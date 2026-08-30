@@ -25,6 +25,7 @@ function pluralize(n: number, singular: string, plural: string): string {
 // their own fallback — this returns "" so the caller can detect that case.
 function countsPhrase(
   inauguracionesCount: number,
+  visitasGuiadasCount: number,
   exposCount: number,
   joiner: string,
 ): string {
@@ -32,6 +33,11 @@ function countsPhrase(
   if (inauguracionesCount > 0) {
     parts.push(
       `${inauguracionesCount} ${pluralize(inauguracionesCount, "inauguración", "inauguraciones")}`,
+    );
+  }
+  if (visitasGuiadasCount > 0) {
+    parts.push(
+      `${visitasGuiadasCount} ${pluralize(visitasGuiadasCount, "visita guiada", "visitas guiadas")}`,
     );
   }
   if (exposCount > 0) {
@@ -155,12 +161,13 @@ export const esCL = {
   // page's own sections, just relabeled without "de la semana"/"actuales"
   // since a search spans every upcoming date, not one week.
   searchGroupInauguraciones: "Inauguraciones",
+  searchGroupVisitasGuiadas: "Visitas guiadas",
   searchGroupExposiciones: "Exposiciones",
 
   // Desktop only — see headerSummaryMobile below for mobile's more compact
   // single-total version.
-  headerSummary: (inauguracionesCount: number, exposCount: number) => {
-    const phrase = countsPhrase(inauguracionesCount, exposCount, " y ");
+  headerSummary: (inauguracionesCount: number, visitasGuiadasCount: number, exposCount: number) => {
+    const phrase = countsPhrase(inauguracionesCount, visitasGuiadasCount, exposCount, " y ");
     return phrase ? `${phrase} que visitar en` : "Descubre el arte que hay en";
   },
   // Mobile-only, where the header has less horizontal room — a single
@@ -200,10 +207,12 @@ export const esCL = {
   // deliberately distinct from the longer sectionInauguraciones* labels
   // used as full section headings elsewhere.
   regionCountRingInauguracionesLabel: "INAUGURACIONES",
+  regionCountRingVisitasGuiadasLabel: "VISITAS GUIADAS",
   regionCountRingExposicionesLabel: "EXPOSICIONES",
   // Mobile-only short forms — desktop has room for the full word, mobile
   // stacks the label above the ring and needs it to stay on one line.
   regionCountRingInauguracionesShortLabel: "INAU.",
+  regionCountRingVisitasGuiadasShortLabel: "VISITAS",
   regionCountRingExposicionesShortLabel: "EXPO.",
   regionCountRingOfLabel: (total: number) => `de ${total}`,
   // Visible content on the ring button is "{count}" then "de {total}"
@@ -214,10 +223,16 @@ export const esCL = {
   // two numbers apart with other words in between.
   regionCountRingTooltip: (count: number, kindLabel: string, total: number) => `${count} de ${total} ${kindLabel} en Chile para esta semana`,
   regionCountRingKindInauguraciones: "inaug.",
+  regionCountRingKindVisitasGuiadas: "visitas guiadas",
   regionCountRingKindExposiciones: "expos.",
 
   sectionInauguraciones: "INAUGURACIONES DE LA SEMANA",
   sectionInauguracionesLabel: "APERTURAS DESTACADAS",
+  // Added 2026-08-29 alongside events.event_type (Daniel's 3-category
+  // decision) — sits between Inauguraciones y Exposiciones, mismo orden
+  // de mayor a menor interacción con la obra.
+  sectionVisitasGuiadas: "VISITAS GUIADAS DE LA SEMANA",
+  sectionVisitasGuiadasLabel: "RECORRIDOS MEDIADOS",
   sectionExposActuales: "EXPOSICIONES ACTUALES",
   sectionExposActualesLabel: "CATÁLOGO VIGENTE",
   ultimosDias: "ÚLTIMOS DÍAS",
@@ -365,8 +380,8 @@ export const esCL = {
   eventPagePrevAriaLabel: "Evento anterior",
   eventPageNextAriaLabel: "Siguiente evento",
 
-  cityStats: (inauguracionesCount: number, exposCount: number) =>
-    countsPhrase(inauguracionesCount, exposCount, " · "),
+  cityStats: (inauguracionesCount: number, visitasGuiadasCount: number, exposCount: number) =>
+    countsPhrase(inauguracionesCount, visitasGuiadasCount, exposCount, " · "),
 
   tellUs: "Cuéntanos →",
   doYouKnowOne: "¿Conoces una que deberíamos sumar?",
@@ -382,7 +397,7 @@ export const esCL = {
   ) =>
     `No hay nada que mostrar ${suffix} en ${cityName}. La próxima es el ${nextDateShort} — ${nextTitle}.`,
   emptyNoEventsYet: (cityName: string) =>
-    `Todavía no tenemos inauguraciones ni exposiciones para ${cityName}.`,
+    `Todavía no tenemos inauguraciones, visitas guiadas ni exposiciones para ${cityName}.`,
 
   sensitiveOverlay: {
     label: "Contenido sensible",

@@ -20,6 +20,12 @@ export interface EventRecord extends EventDates {
   // when openingDatetime is null. EventCardBase uses this to avoid
   // displaying a fabricated hour.
   openingTimeConfirmed: boolean;
+  // 3 interaction categories (Daniel, 2026-08-29) — see
+  // apps/curator/src/lib/curation-policy.ts's EVENT_TYPE_POLICY for the
+  // full editorial definitions. Drives which of CalendarView's 3 sections
+  // an event surfaces under (InauguracionesSection/VisitasGuiadasSection/
+  // ExposicionesSection, see event-utils.ts's splitByInteractionType).
+  eventType: "inauguracion" | "visita_guiada" | "exposicion";
 }
 
 // Postgres views don't propagate the underlying table's NOT NULL
@@ -31,13 +37,14 @@ export interface EventRecord extends EventDates {
 // opening_time_confirmed defaults to true and is declared not null).
 type EventRow = Omit<
   Database["public"]["Views"]["events_public"]["Row"],
-  "id" | "title" | "freeform_location" | "sensitivity_tags" | "opening_time_confirmed"
+  "id" | "title" | "freeform_location" | "sensitivity_tags" | "opening_time_confirmed" | "event_type"
 > & {
   id: string;
   title: string;
   freeform_location: string;
   sensitivity_tags: string[];
   opening_time_confirmed: boolean;
+  event_type: "inauguracion" | "visita_guiada" | "exposicion";
 };
 
 // Same nullable-view-type caveat — id/name/country are genuinely not null
@@ -64,6 +71,7 @@ function toEventRecord(row: EventRow, regionNameById: Map<string, string>): Even
     sensitivityTags: row.sensitivity_tags,
     sourceUrl: row.source_url,
     openingTimeConfirmed: row.opening_time_confirmed,
+    eventType: row.event_type,
   };
 }
 

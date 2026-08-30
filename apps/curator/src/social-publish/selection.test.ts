@@ -15,6 +15,11 @@ function makeEvent(overrides: Partial<SocialEvent> & { id: string }): SocialEven
     openingTimeConfirmed: true,
     runStartDate: null,
     runEndDate: null,
+    // Defaults to "inauguracion" — matches the pre-event_type behavior
+    // these existing tests were written against (any confirmed
+    // openingDatetime treated as an inauguración); tests specifically
+    // about the eventType filter override this explicitly.
+    eventType: "inauguracion",
     sourceAccount: null,
     ...overrides,
   };
@@ -80,6 +85,18 @@ test("selectInauguraciones: excludes events with a .webp photo — real bug foun
   assert.deepEqual(
     result.map((e) => e.id),
     ["jpeg-photo"],
+  );
+});
+
+test("selectInauguraciones: excludes a visita_guiada event even with a valid openingDatetime in the week — real bug found 2026-08-29, both categories share the same date field, only eventType tells them apart", () => {
+  const events = [
+    makeEvent({ id: "real-opening", openingDatetime: "2026-08-20T22:00:00+00:00", eventType: "inauguracion" }),
+    makeEvent({ id: "guided-tour", openingDatetime: "2026-08-21T22:00:00+00:00", eventType: "visita_guiada" }),
+  ];
+  const result = selectInauguraciones(events, week);
+  assert.deepEqual(
+    result.map((e) => e.id),
+    ["real-opening"],
   );
 });
 

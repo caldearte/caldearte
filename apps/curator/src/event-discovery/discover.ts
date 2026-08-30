@@ -5,7 +5,7 @@
 // (apps/curator/scripts/poc-tavily-discover.ts) after extensive real-data
 // testing; keep the two in sync only in spirit — this file is now the
 // source of truth.
-import { ART_SCOPE_POLICY, TEXT_CURATION_POLICY, INSTITUTIONAL_EXCLUSION_POLICY } from "../lib/curation-policy.js";
+import { ART_SCOPE_POLICY, TEXT_CURATION_POLICY, INSTITUTIONAL_EXCLUSION_POLICY, EVENT_TYPE_POLICY } from "../lib/curation-policy.js";
 import { tavilySearch, type FetchLike, type TavilyImage } from "../lib/tavily.js";
 import { isChileanLocation, locationsOverlap, stripAccents } from "../lib/locations.js";
 import { matchesKnownExclusion, matchesKnownLowQualityDomain } from "../lib/known-exclusions.js";
@@ -19,6 +19,12 @@ export interface EventCandidate {
   title: string;
   description: string | null;
   artist: string | null;
+  // Which of the 3 interaction categories this is — see
+  // lib/curation-policy.ts's EVENT_TYPE_POLICY for the full editorial
+  // definitions (Daniel, 2026-08-29). Reuses openingDatetime as "the date
+  // of THIS specific instance" for both inauguracion and visita_guiada —
+  // no separate date column exists for visita_guiada.
+  eventType: "inauguracion" | "visita_guiada" | "exposicion";
   runStartDate: string | null; // YYYY-MM-DD
   runEndDate: string | null; // YYYY-MM-DD
   openingDatetime: string | null; // ISO datetime, only when explicitly confirmed
@@ -317,6 +323,8 @@ Regla general, para todos los campos: si un dato específico (fecha, hora, títu
 
 ${ART_SCOPE_POLICY}
 
+${EVENT_TYPE_POLICY}
+
 Excluye también, explícitamente:
 - Convocatorias (llamados a postular obras a una futura exposición) — no son un evento que esté ocurriendo, son una invitación a futuro, aunque el título mismo diga "exposición colectiva" (esto también se verifica en código: un texto con lenguaje de postulación activa fuerza el rechazo aunque lo apruebes).
 - Talleres, cuando lo que se anuncia/promociona ES la actividad de taller en sí (inscripción, cupos, aprender una técnica) — eso es participación/aprendizaje, no una muestra o intervención artística. **Importante, aclarado 2026-07-28:** esto NO excluye una exposición real y abierta al público (obras montadas, visitable) solo porque el proceso creativo que la originó fue un taller — una muestra sigue siendo una muestra válida sin importar si las obras nacieron de un taller, una convocatoria, una residencia, o cualquier otro proceso previo. Evalúa el EVENTO que se está anunciando ahora: si es "ven a exponer/aprender en el taller", rechaza; si es "ven a ver la exposición resultante", es una exposición válida como cualquier otra. **Caso real (2026-07-22):** un post sobre "164 talleres gratuitos" de una municipalidad fue aprobado como una inauguración de exposición específica — el contenido real no describía ninguna muestra montada ni visitable, solo la inscripción a los talleres mismos.
@@ -340,11 +348,15 @@ Etiqueta también: \`mediumType\` ("tradicional" o "intervencion_no_tradicional"
 \`status\` es binario: "approved" o "rejected" — no hay estado intermedio.
 
 Responde SOLO con un bloque de código \`\`\`json que contenga un array de objetos con esta forma exacta, nada más antes o después:
-[{ "title": string, "description": string | null, "artist": string | null, "runStartDate": string | null, "runEndDate": string | null, "runStartDateQuote": string | null, "runEndDateQuote": string | null, "openingDatetime": string | null, "openingTimeConfirmed": boolean, "dateQuote": string | null, "locationQuote": string | null, "mediumType": "tradicional" | "intervencion_no_tradicional", "sensitivityTags": string[], "curationReasoning": string, "imageUrl": string | null, "status": "approved" | "rejected", "location": string, "placeName": string | null, "sourceUrl": string | null }]
+[{ "title": string, "description": string | null, "artist": string | null, "eventType": "inauguracion" | "visita_guiada" | "exposicion", "runStartDate": string | null, "runEndDate": string | null, "runStartDateQuote": string | null, "runEndDateQuote": string | null, "openingDatetime": string | null, "openingTimeConfirmed": boolean, "dateQuote": string | null, "locationQuote": string | null, "mediumType": "tradicional" | "intervencion_no_tradicional", "sensitivityTags": string[], "curationReasoning": string, "imageUrl": string | null, "status": "approved" | "rejected", "location": string, "placeName": string | null, "sourceUrl": string | null }]
 
 Si no encuentras nada en scope, responde con un array vacío: \`\`\`json
 []
 \`\`\``;
+}
+
+function isValidEventType(value: unknown): value is EventCandidate["eventType"] {
+  return value === "inauguracion" || value === "visita_guiada" || value === "exposicion";
 }
 
 function parseCandidates(text: string): EventCandidate[] {
@@ -355,6 +367,7 @@ function parseCandidates(text: string): EventCandidate[] {
     );
   }
   const parsed = JSON.parse(match[1]) as (EventCandidate & {
+    eventType?: unknown;
     openingTimeConfirmed?: unknown;
     dateQuote?: unknown;
     locationQuote?: unknown;
@@ -363,6 +376,11 @@ function parseCandidates(text: string): EventCandidate[] {
   })[];
   return parsed.map((c) => ({
     ...c,
+    // Malformed/missing eventType degrades to the same inference the
+    // pre-eventType behavior already produced (openingDatetime present ->
+    // inauguracion, else exposicion) — never blocks a real candidate on a
+    // new field Haiku might occasionally omit or misspell.
+    eventType: isValidEventType(c.eventType) ? c.eventType : c.openingDatetime ? "inauguracion" : "exposicion",
     // Haiku reports openingDatetime as a plain Chile-local "YYYY-MM-DDTHH:mm"
     // (see buildSystemPrompt) — converted here to a real UTC instant via the
     // same DST-safe logic lib/opening-time.ts already uses for the
@@ -967,11 +985,13 @@ Para cada ítem numerado, decide si es un evento real de arte visual dentro de a
 - \`artist\`: si el texto nombra un artista, o null.
 - \`artistInstagramHandle\`: SOLO si el texto @-menciona al artista por su cuenta de Instagram (ej. "obra de @nombreartista", "por @nombreartista") — repórtalo SIN el "@" (ej. "nombreartista"). Null si el artista no tiene una cuenta @-mencionada en el texto, incluso si tiene nombre. No confundas con el handle de la cuenta que publicó el post (esa cuenta es el ESPACIO/galería, no el artista) — solo cuenta un @-mención de la persona artista específicamente.
 - \`runStartDate\`/\`runEndDate\`: la mayoría de los ítems ya dicen "Fechas de exhibición ya confirmadas: ..." — en ese caso el código las usa directamente, deja estos dos campos en null, no importa. Solo para el puñado de ítems que en cambio traen "Texto de fecha de la fuente: ..." (el código no pudo parsearlo solo), interpreta ese texto y repórtalos en formato "YYYY-MM-DD" — ej. "11 jul de 2026 - 11 oct de 2026" es \`runStartDate: "2026-07-11"\`, \`runEndDate: "2026-10-11"\`. Reporta CADA fecha por separado según lo que el texto realmente confirme — si solo confirma UNA de las dos (ej. "la exposición permanece abierta hasta el 23 de septiembre", sin decir cuándo abrió), reporta esa sola (\`runEndDate: "2026-09-23"\`) y deja la otra en null; no las trates como un paquete todo-o-nada. Null en ambas solo si el texto genuinamente no permite determinar ninguna (ej. solo dice "Vigente"). Cuidado con confundir estos dos casos: que TÚ estés seguro de una fecha porque el texto la dice con claridad ("no requiere parsing adicional", "fecha confirmada") NO es lo mismo que el caso de arriba ("Fechas de exhibición ya confirmadas") — esa frase de skip es SOLO cuando el ítem la trae literalmente escrita así; en cualquier otro caso, tu propia confianza en la fecha es precisamente la señal de que debes escribirla en el campo, no de que puedes omitirla.
-- \`openingDatetime\` + \`openingTimeConfirmed\`: SOLO si el texto confirma una apertura/inauguración específica (no las fechas de vigencia de la muestra en general) — mismo criterio que para runStartDate/runEndDate: si no hay una inauguración explícita, ambos van null/false. Si hay fecha pero no hora, usa hora "00:00" con \`openingTimeConfirmed: false\`. Formato "YYYY-MM-DDTHH:mm", SIEMPRE en hora LOCAL de Chile, nunca agregues "Z" ni offset. Mismo cuidado que arriba: si el texto confirma una fecha de inauguración con claridad, ESO significa que debes escribirla en \`openingDatetime\` — tu propia certeza sobre la fecha nunca es motivo para dejarlo en null.
+- \`openingDatetime\` + \`openingTimeConfirmed\`: SOLO si el texto confirma una instancia puntual con fecha propia — la apertura/inauguración de la muestra, O una visita guiada/instancia mediada dentro de una muestra ya abierta (ver \`eventType\` más abajo: ambas categorías comparten este mismo campo de fecha, no las fechas de vigencia de la muestra en general). Si no hay ninguna instancia puntual confirmada, ambos van null/false. Si hay fecha pero no hora, usa hora "00:00" con \`openingTimeConfirmed: false\`. Formato "YYYY-MM-DDTHH:mm", SIEMPRE en hora LOCAL de Chile, nunca agregues "Z" ni offset. Mismo cuidado que arriba: si el texto confirma esa fecha con claridad, ESO significa que debes escribirla en \`openingDatetime\` — tu propia certeza sobre la fecha nunca es motivo para dejarlo en null.
 ${locationInstructions}
 Regla general: si un dato no aparece en el texto, va null — nunca lo completes con un valor "razonable" o inferido de otros ítems del mismo lote. Ya no hace falta citar frases textuales para nada de esto — el texto que recibes por ítem ya es el material real de la fuente, no un bloque grande donde algo podría perderse o inventarse.
 
 ${ART_SCOPE_POLICY}
+
+${EVENT_TYPE_POLICY}
 
 Excluye también, explícitamente:
 - Convocatorias (llamados a postular obras a una futura exposición) — no son un evento que esté ocurriendo.
@@ -988,13 +1008,14 @@ Importante sobre fechas — regla dura, no una sugerencia: estamos armando el ca
 Etiqueta también: \`mediumType\` ("tradicional" o "intervencion_no_tradicional") y \`sensitivityTags\` (array de ["desnudo_erotismo", "guerra_violencia", "memoria_dictadura"], vacío si no aplica). Escribe un \`curationReasoning\` breve explicando tu decisión.
 
 Responde SOLO con un bloque de código \`\`\`json que contenga un array de objetos con esta forma exacta, uno por cada ítem recibido, nada más antes o después:
-[{ "index": number, "status": "approved" | "rejected", "title": string | null, "artist": string | null, "artistInstagramHandle": string | null, "runStartDate": string | null, "runEndDate": string | null, "openingDatetime": string | null, "openingTimeConfirmed": boolean, "location": string | null, "placeName": string | null, "mediumType": "tradicional" | "intervencion_no_tradicional", "sensitivityTags": string[], "curationReasoning": string }]`;
+[{ "index": number, "status": "approved" | "rejected", "title": string | null, "eventType": "inauguracion" | "visita_guiada" | "exposicion", "artist": string | null, "artistInstagramHandle": string | null, "runStartDate": string | null, "runEndDate": string | null, "openingDatetime": string | null, "openingTimeConfirmed": boolean, "location": string | null, "placeName": string | null, "mediumType": "tradicional" | "intervencion_no_tradicional", "sensitivityTags": string[], "curationReasoning": string }]`;
 }
 
 interface BrightSourceCurationRow {
   index: number;
   status: "approved" | "rejected";
   title: string | null;
+  eventType: "inauguracion" | "visita_guiada" | "exposicion" | null;
   artist: string | null;
   runStartDate: string | null;
   runEndDate: string | null;
@@ -1050,6 +1071,7 @@ function parseBrightSourceCurationRows(text: string, expectedCount: number): Bri
       index,
       status: r.status === "approved" ? "approved" : "rejected",
       title: typeof r.title === "string" && r.title.trim() ? r.title.trim() : null,
+      eventType: isValidEventType(r.eventType) ? r.eventType : null,
       artist: typeof r.artist === "string" ? r.artist : null,
       runStartDate: typeof r.runStartDate === "string" ? r.runStartDate : null,
       runEndDate: typeof r.runEndDate === "string" ? r.runEndDate : null,
@@ -1086,6 +1108,10 @@ function mergeBrightSourceCandidate(
 ): EventCandidate {
   const openingDatetime = row.openingDatetime ? parseLocalDatetimeToUtcIso(row.openingDatetime) : null;
   const title = row.title ?? item.title;
+  // Same fallback-when-missing posture as title above: preserves exactly
+  // the pre-eventType behavior (any confirmed instance date read as
+  // "inauguracion") if Haiku's row somehow omits it.
+  const eventType = row.eventType ?? (row.openingDatetime ? "inauguracion" : "exposicion");
 
   // Real regression found 2026-08-17: PR #294 let Haiku's own location
   // guess override a batch-level fixedLocation whenever it "conflicted" —
@@ -1103,6 +1129,7 @@ function mergeBrightSourceCandidate(
   if (fixedLocation) {
     return {
       title,
+      eventType,
       description: item.description,
       artist: row.artist,
       runStartDate: item.structuredStartDate ?? row.runStartDate,
@@ -1134,6 +1161,7 @@ function mergeBrightSourceCandidate(
   const defaultConflictsWithExtraction = Boolean(item.defaultLocation && row.location && !locationsOverlap(row.location, item.defaultLocation.location));
   return {
     title,
+    eventType,
     description: item.description,
     artist: row.artist,
     runStartDate: item.structuredStartDate ?? row.runStartDate,

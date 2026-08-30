@@ -7,30 +7,10 @@ export type Json =
   | Json[]
 
 export type Database = {
-  graphql_public: {
-    Tables: {
-      [_ in never]: never
-    }
-    Views: {
-      [_ in never]: never
-    }
-    Functions: {
-      graphql: {
-        Args: {
-          extensions?: Json
-          operationName?: string
-          query?: string
-          variables?: Json
-        }
-        Returns: Json
-      }
-    }
-    Enums: {
-      [_ in never]: never
-    }
-    CompositeTypes: {
-      [_ in never]: never
-    }
+  // Allows to automatically instantiate createClient with right options
+  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
+  __InternalSupabase: {
+    PostgrestVersion: "14.5"
   }
   public: {
     Tables: {
@@ -290,6 +270,7 @@ export type Database = {
           curation_reasoning: string | null
           curation_status: string
           description: string | null
+          event_type: string
           freeform_location: string
           id: string
           image_storage_path: string | null
@@ -320,6 +301,7 @@ export type Database = {
           curation_reasoning?: string | null
           curation_status?: string
           description?: string | null
+          event_type?: string
           freeform_location: string
           id?: string
           image_storage_path?: string | null
@@ -350,6 +332,7 @@ export type Database = {
           curation_reasoning?: string | null
           curation_status?: string
           description?: string | null
+          event_type?: string
           freeform_location?: string
           id?: string
           image_storage_path?: string | null
@@ -388,6 +371,72 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      instagram_account_snapshots: {
+        Row: {
+          created_at: string
+          followers_count: number
+          id: string
+          media_count: number
+          snapshot_date: string
+        }
+        Insert: {
+          created_at?: string
+          followers_count: number
+          id?: string
+          media_count: number
+          snapshot_date: string
+        }
+        Update: {
+          created_at?: string
+          followers_count?: number
+          id?: string
+          media_count?: number
+          snapshot_date?: string
+        }
+        Relationships: []
+      }
+      instagram_posts: {
+        Row: {
+          comments_count: number | null
+          created_at: string
+          id: string
+          like_count: number | null
+          media_id: string
+          metrics_updated_at: string | null
+          post_type: string
+          published_at: string
+          reach: number | null
+          saved: number | null
+          week_start: string
+        }
+        Insert: {
+          comments_count?: number | null
+          created_at?: string
+          id?: string
+          like_count?: number | null
+          media_id: string
+          metrics_updated_at?: string | null
+          post_type: string
+          published_at: string
+          reach?: number | null
+          saved?: number | null
+          week_start: string
+        }
+        Update: {
+          comments_count?: number | null
+          created_at?: string
+          id?: string
+          like_count?: number | null
+          media_id?: string
+          metrics_updated_at?: string | null
+          post_type?: string
+          published_at?: string
+          reach?: number | null
+          saved?: number | null
+          week_start?: string
+        }
+        Relationships: []
       }
       newsletter_subscribers: {
         Row: {
@@ -725,6 +774,7 @@ export type Database = {
         Row: {
           artist: string | null
           description: string | null
+          event_type: string | null
           freeform_location: string | null
           id: string | null
           image_url: string | null
@@ -741,6 +791,7 @@ export type Database = {
         Insert: {
           artist?: string | null
           description?: string | null
+          event_type?: string | null
           freeform_location?: string | null
           id?: string | null
           image_url?: string | null
@@ -757,6 +808,7 @@ export type Database = {
         Update: {
           artist?: string | null
           description?: string | null
+          event_type?: string | null
           freeform_location?: string | null
           id?: string | null
           image_url?: string | null
@@ -965,11 +1017,7 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
-  graphql_public: {
-    Enums: {},
-  },
   public: {
     Enums: {},
   },
 } as const
-

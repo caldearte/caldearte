@@ -47,6 +47,27 @@ export const ART_SCOPE_POLICY = `Before applying the exclusion axes below, first
 // (see VISION_AXIS5_POLICY) because it needs the actual image, not text.
 export const TEXT_CURATION_POLICY = `Apply a default-exclusion policy across four axes: (1) religion — explicit religious imagery or themes, especially Christian or Jewish; Buddhism is evaluated case by case with a more permissive standard, but isn't automatically included; (2) war or extreme violence; (3) far right or authoritarian ideologies; (4) pseudoscience and superstition (tarot, esotericism, energy healing, and similar). For any of these four axes, the default decision is EXCLUDE. The only exception is when the event declares an explicit and unambiguous critical stance against that specific institution, ideology, or conflict — for example, an installation that explicitly denounces the Church's economic power, or an exhibit with an explicit curatorial statement denouncing an occupation or a dictatorship. "Exploring," "reflecting on," "contextualizing," "documenting," or showing ambiguous aesthetic/curatorial distance isn't enough — without an explicit, declared rejection stance, the event is excluded. There's no middle ground: either the event explicitly criticizes the institution/ideology/conflict, or it's excluded, regardless of artistic quality or the venue's prestige.`;
 
+// Added 2026-08-29, editorial decision by Daniel after a real production
+// bug: a "visita guiada junto al artista" post (an already-running
+// exhibition's guided tour) got its own date written into
+// openingDatetime, indistinguishable from the exhibition's actual
+// opening party — the calendar showed it as if the show opened that day.
+// Root cause: no concept of event TYPE existed at all, only two date
+// shapes (a single dated instance vs. a run range), so ANY confirmed
+// dated instance collapsed onto the same field/meaning. These 3
+// categories, ordered by how much interaction with the work they
+// involve, are Daniel's own framing — keep the language close to his
+// wording, it's the actual editorial rationale, not just a technical
+// label.
+export const EVENT_TYPE_POLICY = `Además de decidir si el evento está dentro de alcance, clasifícalo en UNA de estas 3 categorías (\`eventType\`), ordenadas de mayor a menor interacción con la obra:
+1. \`inauguracion\` — la fiesta de apertura misma: el artista, el público y la obra conviviendo en un mismo momento. Es el evento que marca el inicio de la muestra.
+2. \`visita_guiada\` — una instancia mediada de una muestra que YA está abierta/corriendo: alguien (el artista u otra persona) guía o acompaña la experiencia, y hay personas viviendo la exposición juntas — pero no es la apertura de la muestra, es una actividad puntual dentro de su exhibición ya en curso (ej. "visita guiada junto al artista este sábado", "recorrido mediado").
+3. \`exposicion\` — la muestra en sí, sin una instancia puntual con gente reunida: el espectador se enfrenta solo a la obra, en el horario normal de la sala/galería. Es la categoría por defecto cuando el texto solo confirma que la muestra existe y está corriendo (o corrió), sin describir una fiesta de apertura ni una actividad guiada específica.
+
+Regla dura para no confundir \`inauguracion\` con \`visita_guiada\`: si el texto describe una fiesta/evento de apertura de la muestra (el momento en que la muestra empieza a mostrarse al público por primera vez), es \`inauguracion\`. Si el texto describe una actividad posterior sobre una muestra que el propio texto trata como ya abierta/en curso (aunque la lidere el mismo artista, aunque use la palabra "inauguración" de forma laxa en el copy), es \`visita_guiada\` — el criterio es si la muestra YA estaba abierta antes de esta actividad puntual, no quién la encabeza.
+
+Los talleres siguen completamente excluidos del calendario, sin importar esta clasificación — un taller nunca es \`visita_guiada\` solo porque describe gente reunida en torno a una muestra. Si lo que se anuncia es la actividad de taller en sí (inscripción, cupos, aprender una técnica), rechaza el evento igual que siempre, incluso si ocurre en el marco de una exposición o inauguración real.`;
+
 export const VISION_AXIS5_POLICY = `Apply a fifth axis, independent of the four above: exclude any event whose image shows physical or sexual aggression explicitly (graphic violence, sexual assault, gore), regardless of whether the event has denunciation intent — denunciation only enables inclusion when expressed textually, thematically, or symbolically, not through explicit imagery. This axis is about explicit aggression/violence, not sexuality or nudity in general: artistic nudity, eroticism, or non-violent sexuality aren't excluded by this criterion. If the image is not graphic/explicit under this definition, respond with exactly APPROVE. If it is, respond with exactly REJECT.`;
 
 // Institutional exclusion, independent of the axes above. Previously

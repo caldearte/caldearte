@@ -114,6 +114,10 @@ function toSocialEvent(e: EventWithRegion): SocialEvent {
     openingTimeConfirmed: e.opening_time_confirmed,
     runStartDate: e.run_start_date,
     runEndDate: e.run_end_date,
+    // Same fallback posture as discover.ts's own eventType default — a
+    // row with a real event_type always wins; this only covers a stale
+    // row somehow missing the column value.
+    eventType: (e.event_type as SocialEvent["eventType"] | null) ?? (e.opening_datetime ? "inauguracion" : "exposicion"),
     sourceAccount: e.source_account,
     artistInstagramHandle: e.artist_instagram_handle,
   };
