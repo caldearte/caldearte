@@ -39,7 +39,21 @@ on:
   schedule:
     # Not minute 0 — see event-discovery.yml's own comment (top-of-hour
     # congestion, real 26-51min delays observed 2026-08-23).
-    - cron: "17 8 1-31/2 * *" # Every 2 days, ~08:17 UTC
+    #
+    # Day-of-week pinned to Sunday (0) instead of `*`, 2026-08-30 —
+    # cron's real semantics: when BOTH day-of-month and day-of-week are
+    # restricted (neither is `*`), a day matches if it satisfies EITHER
+    # field, not both (a POSIX cron quirk, not GitHub-specific). So this
+    # still fires every 2 days via `1-31/2`, AND is now guaranteed to
+    # additionally fire every Sunday even when that Sunday lands on an
+    # even day-of-month — closing a real gap: the Sunday newsletter
+    # chain (event-discovery 06:07 → headless 07:12 → google-alerts
+    # 09:22 → weekly-newsletter 10:27, all UTC) assumed Instagram always
+    # ran that morning too, but on an even-day Sunday it silently
+    # didn't, and the newsletter went out without that week's IG-sourced
+    # events. A single cron entry, not a second schedule alongside this
+    # one, so an odd-day Sunday still fires exactly once, not twice.
+    - cron: "17 8 1-31/2 * 0" # Every 2 days, ~08:17 UTC — always including Sunday
 
 jobs:
   discover-instagram:
