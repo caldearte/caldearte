@@ -151,6 +151,17 @@ async function fetchApprovedEventsFromDb(): Promise<{ events: EventRecord[]; reg
   return { events: eventRows.map((row) => toEventRecord(row, regionNameById)), regions };
 }
 
+// Tagged so an admin mutation (Quitar / marcar sensible) can force-refresh
+// this cache on demand via revalidateTag instead of waiting out the full
+// 600s window — see api/admin/remove-event and api/admin/toggle-sensitive,
+// which call revalidateTag(APPROVED_EVENTS_CACHE_TAG) after a successful
+// write. Real gap found in a 2026-08-30 architecture review: with no
+// on-demand revalidation anywhere, a moderator's removal of a sensitive/
+// wrong event could stay publicly visible for up to ~20 minutes (this
+// cache's own 600s plus the page's independent revalidate=600).
+export const APPROVED_EVENTS_CACHE_TAG = "approved-events";
+
 export const fetchApprovedEvents = unstable_cache(fetchApprovedEventsFromDb, ["approved-events-and-regions"], {
   revalidate: 600,
+  tags: [APPROVED_EVENTS_CACHE_TAG],
 });

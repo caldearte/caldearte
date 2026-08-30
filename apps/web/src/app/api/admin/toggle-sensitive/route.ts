@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import { auth, isAdminSession } from "@/lib/auth";
+import { APPROVED_EVENTS_CACHE_TAG } from "@/lib/events";
 
 interface ToggleSensitivePayload {
   eventId?: string;
@@ -43,5 +45,8 @@ export async function POST(request: Request) {
   });
 
   const data = await res.json().catch(() => ({ status: "error" }));
+  // { expire: 0 }: immediate expiration, same reasoning as
+  // api/admin/remove-event/route.ts.
+  if (res.ok) revalidateTag(APPROVED_EVENTS_CACHE_TAG, { expire: 0 });
   return NextResponse.json(data, { status: res.ok ? 200 : 502 });
 }
