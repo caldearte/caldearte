@@ -24,6 +24,11 @@ export interface DailyDigestPipelineRun {
   candidates: { total: number; approvedByCuration: number; rejectedByCuration: number };
   eventGroups: EventGroup[];
   costUsd: number;
+  // Set when the pipeline's own fetch failed outright (currently only
+  // Instagram/Apify can report this — see apify-instagram.ts's own doc
+  // comment) — surfaced as a visible warning instead of silently reading
+  // as "0 candidates, ran fine."
+  fetchError?: string | null;
 }
 
 export interface DailyDigestCost {
@@ -53,6 +58,22 @@ export function buildDailyDigestSubject(summary: DailyDigestSummary): string {
   return `Caldearte — resumen diario (${dateStrDDMMYYYY(summary.date)}) — ${summary.runs.length} fuente(s), ${insertedTotal} evento(s) nuevo(s)`;
 }
 
+// Apify's free tier is a HARD limit (not billed overage) — once
+// apifyMonthGrossUsd reaches APIFY_FREE_TIER_USD, Apify itself refuses to
+// start new Actor runs until the next billing cycle (real incident,
+// 2026-08-30: hit mid-month, see instagram-bright-sources.yml's own
+// comment). apifyMonthRealUsd staying $0 the whole time (nothing ever
+// gets billed past the free tier on this plan) is exactly why a plain
+// "$X real of $Y budget" framing hides the thing that actually matters
+// here — this line makes the hard-limit status explicit instead.
+function apifyLimitStatusLine(cost: DailyDigestCost): string {
+  const remaining = APIFY_FREE_TIER_USD - cost.apifyMonthGrossUsd;
+  if (remaining <= 0) {
+    return `⚠️ Apify: LÍMITE MENSUAL ALCANZADO ($${cost.apifyMonthGrossUsd.toFixed(2)} de $${APIFY_FREE_TIER_USD}) — sin nuevas corridas hasta el próximo ciclo`;
+  }
+  return `Apify: $${remaining.toFixed(2)} disponibles de $${APIFY_FREE_TIER_USD}/mes antes del límite`;
+}
+
 function buildCostLines(cost: DailyDigestCost): string[] {
   const todayRealTotal = cost.anthropicTodayUsd + cost.apifyTodayRealUsd;
   const monthRealTotal = cost.anthropicMonthUsd + cost.apifyMonthRealUsd;
@@ -62,6 +83,7 @@ function buildCostLines(cost: DailyDigestCost): string[] {
     `Mes a la fecha: $${monthRealTotal.toFixed(2)} de $${cost.monthlyBudgetUsd.toFixed(2)} (techo mensual)`,
     `  Anthropic: $${cost.anthropicMonthUsd.toFixed(2)}`,
     `  Apify: $${cost.apifyMonthRealUsd.toFixed(2)} real de $${cost.apifyMonthGrossUsd.toFixed(2)} bruto ($${cost.apifyMonthFreeUsd.toFixed(2)} en capa gratuita de $${APIFY_FREE_TIER_USD}/mes, no cobrado)`,
+    `  ${apifyLimitStatusLine(cost)}`,
   ];
 }
 
@@ -77,6 +99,9 @@ export function buildDailyDigestBody(summary: DailyDigestSummary): string {
       `-- ${ENTRYPOINT_LABEL[run.entrypoint]} (${run.startedAt.toISOString()}) --`,
       `  ${run.candidates.total} candidatos · ${run.candidates.approvedByCuration} aprobados · ${run.candidates.rejectedByCuration} rechazados · costo corrida ${fmtUsd(run.costUsd)}`,
     );
+    if (run.fetchError) {
+      lines.push(`  ⚠️ BLOQUEADO — no se revisó ninguna cuenta/fuente: ${run.fetchError}`);
+    }
   }
 
   lines.push("", ...buildCostLines(summary.cost), "");
@@ -100,7 +125,11 @@ export function buildDailyDigestHtmlBody(summary: DailyDigestSummary): string {
         <td style="padding:4px 12px 4px 0;text-align:right;">${run.candidates.approvedByCuration}</td>
         <td style="padding:4px 12px 4px 0;text-align:right;">${run.candidates.rejectedByCuration}</td>
         <td style="padding:4px 0;text-align:right;">${fmtUsd(run.costUsd)}</td>
-      </tr>`,
+      </tr>${
+        run.fetchError
+          ? `<tr><td colspan="5" style="padding:0 0 8px;color:#b3261e;font-size:12px;">⚠️ BLOQUEADO — no se revisó ninguna cuenta/fuente: ${escapeHtml(run.fetchError)}</td></tr>`
+          : ""
+      }`,
     )
     .join("");
 
@@ -142,7 +171,8 @@ export function buildDailyDigestHtmlBody(summary: DailyDigestSummary): string {
       <br>
       <b>Mes a la fecha:</b> $${monthRealTotal.toFixed(2)} de $${cost.monthlyBudgetUsd.toFixed(2)} (techo mensual)<br>
       &nbsp;&nbsp;Anthropic: $${cost.anthropicMonthUsd.toFixed(2)}<br>
-      &nbsp;&nbsp;Apify: $${cost.apifyMonthRealUsd.toFixed(2)} real de $${cost.apifyMonthGrossUsd.toFixed(2)} bruto ($${cost.apifyMonthFreeUsd.toFixed(2)} en capa gratuita de $${APIFY_FREE_TIER_USD}/mes, no cobrado)
+      &nbsp;&nbsp;Apify: $${cost.apifyMonthRealUsd.toFixed(2)} real de $${cost.apifyMonthGrossUsd.toFixed(2)} bruto ($${cost.apifyMonthFreeUsd.toFixed(2)} en capa gratuita de $${APIFY_FREE_TIER_USD}/mes, no cobrado)<br>
+      &nbsp;&nbsp;<span style="${cost.apifyMonthGrossUsd >= APIFY_FREE_TIER_USD ? "color:#b3261e;font-weight:600;" : "color:#666;"}">${escapeHtml(apifyLimitStatusLine(cost))}</span>
     </p>
 
     <h2 style="font-size:14px;text-transform:uppercase;letter-spacing:0.04em;color:#888;margin:24px 0 10px;border-bottom:1px solid #e2e0da;padding-bottom:6px;">Detalle por evento</h2>

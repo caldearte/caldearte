@@ -133,3 +133,61 @@ test("buildDailyDigestHtmlBody shows a plain placeholder instead of empty tables
 
   assert.match(buildDailyDigestHtmlBody(summary), /sin candidatos hoy/);
 });
+
+test("buildDailyDigestBody/HtmlBody surface a visible warning when a pipeline's own fetch failed outright (real gap found 2026-08-30: an Apify hard-limit error read as '0 candidates, ran fine' everywhere downstream)", () => {
+  const summary = summaryWith([
+    {
+      entrypoint: "instagram",
+      startedAt: new Date("2026-08-30T08:17:00.000Z"),
+      candidates: { total: 0, approvedByCuration: 0, rejectedByCuration: 0 },
+      eventGroups: [],
+      costUsd: 0,
+      fetchError: "Monthly usage hard limit exceeded",
+    },
+  ]);
+
+  const body = buildDailyDigestBody(summary);
+  assert.match(body, /BLOQUEADO/);
+  assert.match(body, /Monthly usage hard limit exceeded/);
+
+  const html = buildDailyDigestHtmlBody(summary);
+  assert.match(html, /BLOQUEADO/);
+  assert.match(html, /Monthly usage hard limit exceeded/);
+});
+
+test("buildDailyDigestBody/HtmlBody omit the fetch-error warning when nothing failed", () => {
+  const summary = summaryWith([
+    {
+      entrypoint: "instagram",
+      startedAt: new Date("2026-08-30T08:17:00.000Z"),
+      candidates: { total: 0, approvedByCuration: 0, rejectedByCuration: 0 },
+      eventGroups: [],
+      costUsd: 0,
+    },
+  ]);
+
+  assert.doesNotMatch(buildDailyDigestBody(summary), /BLOQUEADO/);
+  assert.doesNotMatch(buildDailyDigestHtmlBody(summary), /BLOQUEADO/);
+});
+
+test("buildDailyDigestBody/HtmlBody: Apify status line shows remaining budget under the free-tier limit", () => {
+  const body = buildDailyDigestBody(summaryWith([]));
+  assert.match(body, /\$0\.79 disponibles de \$5\/mes/, "APIFY_FREE_TIER_USD 5 - apifyMonthGrossUsd 4.21 = 0.79 remaining");
+  assert.doesNotMatch(body, /LÍMITE MENSUAL ALCANZADO/);
+
+  const html = buildDailyDigestHtmlBody(summaryWith([]));
+  assert.match(html, /\$0\.79 disponibles/);
+  assert.doesNotMatch(html, /LÍMITE MENSUAL ALCANZADO/);
+});
+
+test("buildDailyDigestBody/HtmlBody: Apify status line flags the hard limit as reached once gross spend hits the free tier", () => {
+  const overLimitCost: DailyDigestSummary["cost"] = { ...baseCost, apifyMonthGrossUsd: 5.02 };
+  const summary: DailyDigestSummary = { date: "2026-08-30", runs: [], cost: overLimitCost };
+
+  const body = buildDailyDigestBody(summary);
+  assert.match(body, /LÍMITE MENSUAL ALCANZADO \(\$5\.02 de \$5\)/);
+
+  const html = buildDailyDigestHtmlBody(summary);
+  assert.match(html, /LÍMITE MENSUAL ALCANZADO/);
+  assert.match(html, /color:#b3261e/, "the over-limit status must render in the warning color, not the default gray");
+});

@@ -30,6 +30,12 @@ export async function recordRunSummary(
   candidates: RunSummaryCandidatesLike,
   eventGroups: EventGroup[],
   cost: RunSummaryCostLike,
+  // Free-form extra fields folded into raw_summary alongside the usual
+  // ones — today just instagram-discovery/run.ts's apifyError (real gap
+  // found 2026-08-30: an Apify-side failure like the monthly usage limit
+  // was silently indistinguishable from a genuinely quiet run everywhere
+  // downstream, including the daily digest).
+  extra?: Record<string, unknown>,
 ): Promise<void> {
   const outcomeCounts: Record<CandidateOutcome, number> = {
     inserted: 0,
@@ -59,7 +65,7 @@ export async function recordRunSummary(
     expired_count: outcomeCounts.expired,
     insert_failed_count: outcomeCounts.insert_failed,
     cost_usd: cost.totalUsd,
-    raw_summary: { startedAt: startedAt.toISOString(), candidates, eventGroups, cost },
+    raw_summary: { startedAt: startedAt.toISOString(), candidates, eventGroups, cost, ...extra },
   });
   if (error) {
     console.error(`[run-summary-store] failed to record run summary for "${entrypoint}": ${error.message}`);
