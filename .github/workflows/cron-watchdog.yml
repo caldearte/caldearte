@@ -90,16 +90,16 @@ jobs:
           # Anything already running/queued (a real firing that just
           # hasn't finished yet, or a watchdog dispatch from an earlier
           # tick still in flight) — never pile another one on top.
-          PENDING=$(gh api "repos/$REPO/actions/workflows/${{ matrix.workflow }}/runs" \
+          PENDING=$(gh api -X GET "repos/$REPO/actions/workflows/${{ matrix.workflow }}/runs" \
             -f status=in_progress -f per_page=1 --jq '.total_count')
-          PENDING_QUEUED=$(gh api "repos/$REPO/actions/workflows/${{ matrix.workflow }}/runs" \
+          PENDING_QUEUED=$(gh api -X GET "repos/$REPO/actions/workflows/${{ matrix.workflow }}/runs" \
             -f status=queued -f per_page=1 --jq '.total_count')
           if [ "$PENDING" -gt 0 ] || [ "$PENDING_QUEUED" -gt 0 ]; then
             echo "${{ matrix.workflow }}: already running/queued — skipping."
             exit 0
           fi
 
-          LAST=$(gh api "repos/$REPO/actions/workflows/${{ matrix.workflow }}/runs" \
+          LAST=$(gh api -X GET "repos/$REPO/actions/workflows/${{ matrix.workflow }}/runs" \
             -f status=completed -f per_page=1 --jq '.workflow_runs[0].created_at // empty')
 
           if [ -z "$LAST" ]; then
