@@ -963,6 +963,7 @@ export function buildBrightSourceSystemPrompt(monthLabel: string, opts: { needsL
 Para cada ítem numerado, decide si es un evento real de arte visual dentro de alcance y reporta:
 - \`index\`: el mismo número entre corchetes que tiene el ítem — DEBES devolver exactamente una fila por cada ítem recibido, en cualquier orden, incluyendo los rechazados (con su \`curationReasoning\` explicando por qué).
 - \`status\`: "approved" o "rejected".
+- \`title\`: el título REAL de la exposición/intervención, leyendo la \`Descripción\` completa del ítem — no el texto entre comillas que aparece junto al número del ítem (ese es solo una aproximación automática del código, a menudo el primer renglón del post o una cita mal elegida, no un título confiable). Busca el nombre propio de la muestra: suele aparecer cerca de palabras como "exposición", "muestra", "inauguración", a veces destacado en mayúsculas o entre comillas, pero no siempre — usa tu criterio de lector, no una regla mecánica. Nunca copies una pregunta retórica, una cita larga, un renglón decorativo (solo emojis/símbolos) ni una oración de invitación genérica ("Los invitamos a...") como si fuera el título. Sé breve: el título real casi siempre son pocas palabras, no un párrafo. Si el texto genuinamente no tiene un título propio distinguible (raro, pero pasa con posts de aviso/agenda sin nombre de muestra), devuelve null y el código usará su propia aproximación como respaldo.
 - \`artist\`: si el texto nombra un artista, o null.
 - \`artistInstagramHandle\`: SOLO si el texto @-menciona al artista por su cuenta de Instagram (ej. "obra de @nombreartista", "por @nombreartista") — repórtalo SIN el "@" (ej. "nombreartista"). Null si el artista no tiene una cuenta @-mencionada en el texto, incluso si tiene nombre. No confundas con el handle de la cuenta que publicó el post (esa cuenta es el ESPACIO/galería, no el artista) — solo cuenta un @-mención de la persona artista específicamente.
 - \`runStartDate\`/\`runEndDate\`: la mayoría de los ítems ya dicen "Fechas de exhibición ya confirmadas: ..." — en ese caso el código las usa directamente, deja estos dos campos en null, no importa. Solo para el puñado de ítems que en cambio traen "Texto de fecha de la fuente: ..." (el código no pudo parsearlo solo), interpreta ese texto y repórtalos en formato "YYYY-MM-DD" — ej. "11 jul de 2026 - 11 oct de 2026" es \`runStartDate: "2026-07-11"\`, \`runEndDate: "2026-10-11"\`. Reporta CADA fecha por separado según lo que el texto realmente confirme — si solo confirma UNA de las dos (ej. "la exposición permanece abierta hasta el 23 de septiembre", sin decir cuándo abrió), reporta esa sola (\`runEndDate: "2026-09-23"\`) y deja la otra en null; no las trates como un paquete todo-o-nada. Null en ambas solo si el texto genuinamente no permite determinar ninguna (ej. solo dice "Vigente"). Cuidado con confundir estos dos casos: que TÚ estés seguro de una fecha porque el texto la dice con claridad ("no requiere parsing adicional", "fecha confirmada") NO es lo mismo que el caso de arriba ("Fechas de exhibición ya confirmadas") — esa frase de skip es SOLO cuando el ítem la trae literalmente escrita así; en cualquier otro caso, tu propia confianza en la fecha es precisamente la señal de que debes escribirla en el campo, no de que puedes omitirla.
@@ -987,12 +988,13 @@ Importante sobre fechas — regla dura, no una sugerencia: estamos armando el ca
 Etiqueta también: \`mediumType\` ("tradicional" o "intervencion_no_tradicional") y \`sensitivityTags\` (array de ["desnudo_erotismo", "guerra_violencia", "memoria_dictadura"], vacío si no aplica). Escribe un \`curationReasoning\` breve explicando tu decisión.
 
 Responde SOLO con un bloque de código \`\`\`json que contenga un array de objetos con esta forma exacta, uno por cada ítem recibido, nada más antes o después:
-[{ "index": number, "status": "approved" | "rejected", "artist": string | null, "artistInstagramHandle": string | null, "runStartDate": string | null, "runEndDate": string | null, "openingDatetime": string | null, "openingTimeConfirmed": boolean, "location": string | null, "placeName": string | null, "mediumType": "tradicional" | "intervencion_no_tradicional", "sensitivityTags": string[], "curationReasoning": string }]`;
+[{ "index": number, "status": "approved" | "rejected", "title": string | null, "artist": string | null, "artistInstagramHandle": string | null, "runStartDate": string | null, "runEndDate": string | null, "openingDatetime": string | null, "openingTimeConfirmed": boolean, "location": string | null, "placeName": string | null, "mediumType": "tradicional" | "intervencion_no_tradicional", "sensitivityTags": string[], "curationReasoning": string }]`;
 }
 
 interface BrightSourceCurationRow {
   index: number;
   status: "approved" | "rejected";
+  title: string | null;
   artist: string | null;
   runStartDate: string | null;
   runEndDate: string | null;
@@ -1047,6 +1049,7 @@ function parseBrightSourceCurationRows(text: string, expectedCount: number): Bri
     return {
       index,
       status: r.status === "approved" ? "approved" : "rejected",
+      title: typeof r.title === "string" && r.title.trim() ? r.title.trim() : null,
       artist: typeof r.artist === "string" ? r.artist : null,
       runStartDate: typeof r.runStartDate === "string" ? r.runStartDate : null,
       runEndDate: typeof r.runEndDate === "string" ? r.runEndDate : null,
@@ -1062,17 +1065,27 @@ function parseBrightSourceCurationRows(text: string, expectedCount: number): Bri
   });
 }
 
-// item's own deterministic fields always win — sourceUrl/imageUrl/title
-// never came from Haiku, and a structured date (wordpressRestApi) always
-// overrides whatever Haiku wrote for that field, regardless of what the
-// row says (the prompt tells Haiku not to bother; this is the actual
-// enforcement of that, in code, not on Haiku's word).
+// item's own deterministic fields always win for sourceUrl/imageUrl, and a
+// structured date (wordpressRestApi) always overrides whatever Haiku wrote
+// for that field, regardless of what the row says (the prompt tells Haiku
+// not to bother; this is the actual enforcement of that, in code, not on
+// Haiku's word). `title` is the one deliberate exception, added
+// 2026-08-29 after a real audit of a live Instagram run found ~40% of
+// titles broken — item.title is only a mechanical guess (first quoted
+// span, or first caption line, hard-truncated at 120 chars with no regard
+// for word boundaries) that regularly picks a rhetorical question, an
+// unrelated block quote, or a decorative emoji line instead of the real
+// exhibition name, even though the real name was plainly present (often
+// unquoted) elsewhere in the same caption Haiku already reads in full.
+// Haiku's own title wins whenever it returns one; item.title is kept only
+// as the last-resort fallback for the rare case Haiku returns null.
 function mergeBrightSourceCandidate(
   item: BrightSourceItem,
   row: BrightSourceCurationRow,
   fixedLocation: { location: string; placeName: string } | undefined,
 ): EventCandidate {
   const openingDatetime = row.openingDatetime ? parseLocalDatetimeToUtcIso(row.openingDatetime) : null;
+  const title = row.title ?? item.title;
 
   // Real regression found 2026-08-17: PR #294 let Haiku's own location
   // guess override a batch-level fixedLocation whenever it "conflicted" —
@@ -1089,7 +1102,7 @@ function mergeBrightSourceCandidate(
   // just the enforcement half of that.
   if (fixedLocation) {
     return {
-      title: item.title,
+      title,
       description: item.description,
       artist: row.artist,
       runStartDate: item.structuredStartDate ?? row.runStartDate,
@@ -1120,7 +1133,7 @@ function mergeBrightSourceCandidate(
   // touring show actually in Valparaíso, not its usual Santiago venue).
   const defaultConflictsWithExtraction = Boolean(item.defaultLocation && row.location && !locationsOverlap(row.location, item.defaultLocation.location));
   return {
-    title: item.title,
+    title,
     description: item.description,
     artist: row.artist,
     runStartDate: item.structuredStartDate ?? row.runStartDate,

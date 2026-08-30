@@ -1083,7 +1083,7 @@ test("curateBrightSourceItems discards a malformed artistInstagramHandle (whites
   assert.equal(candidates[0].artistInstagramHandle, null);
 });
 
-test("curateBrightSourceItems merges Haiku's curatorial verdict by index onto the item's own deterministic title/sourceUrl/imageUrl — never onto whatever Haiku echoed", async () => {
+test("curateBrightSourceItems merges Haiku's curatorial verdict by index onto the item's own deterministic sourceUrl/imageUrl — never onto whatever Haiku echoed for those", async () => {
   const items: BrightSourceItem[] = [baseBrightItem];
   const client = stubBrightClient([
     {
@@ -1105,12 +1105,38 @@ test("curateBrightSourceItems merges Haiku's curatorial verdict by index onto th
   const { candidates } = await curateBrightSourceItems(client, items, "julio 2026", { fixedLocation: { location: "Santiago", placeName: "Fuente" } });
 
   assert.equal(candidates.length, 1);
-  assert.equal(candidates[0].title, "Muestra brillante");
+  assert.equal(candidates[0].title, "Muestra brillante", "falls back to item.title when Haiku's row omits its own title");
   assert.equal(candidates[0].sourceUrl, "https://fuente.cl/expo-1");
   assert.equal(candidates[0].imageUrl, "https://fuente.cl/img.jpg");
   assert.equal(candidates[0].status, "approved");
   assert.equal(candidates[0].dateQuote, null, "no grounding fields on this path");
   assert.equal(candidates[0].locationQuote, null);
+});
+
+test("curateBrightSourceItems prefers Haiku's own title over item.title's mechanical guess, when Haiku returns one — added 2026-08-29 after a real audit found ~40% of item.title (first quoted span or first caption line, hard-truncated at 120 chars) broken on a live run, even though Haiku already reads the full caption", async () => {
+  const items: BrightSourceItem[] = [baseBrightItem];
+  const client = stubBrightClient([
+    {
+      index: 0,
+      status: "approved",
+      title: "Vilches Fundamental",
+      artist: null,
+      runStartDate: "2026-07-05",
+      runEndDate: "2026-07-31",
+      openingDatetime: null,
+      openingTimeConfirmed: false,
+      location: null,
+      placeName: null,
+      mediumType: "tradicional",
+      sensitivityTags: [],
+      curationReasoning: "ok",
+    },
+  ]);
+
+  const { candidates } = await curateBrightSourceItems(client, items, "julio 2026", { fixedLocation: { location: "Santiago", placeName: "Fuente" } });
+
+  assert.equal(candidates.length, 1);
+  assert.equal(candidates[0].title, "Vilches Fundamental");
 });
 
 test("curateBrightSourceItems always prefers the item's own structuredStartDate/EndDate over whatever Haiku returned for those fields", async () => {
