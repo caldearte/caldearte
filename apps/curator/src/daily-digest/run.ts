@@ -24,6 +24,10 @@ export function santiagoDayBoundsUtc(now: Date): { dateStr: string; startUtc: Da
 interface RawSummaryShape {
   candidates: { total: number; approvedByCuration: number; rejectedByCuration: number };
   eventGroups: EventGroup[];
+  // Only ever present on an "instagram" row today — see
+  // run-summary-store.ts's recordRunSummary `extra` param and
+  // apify-instagram.ts's own doc comment.
+  apifyError?: string | null;
 }
 
 export interface RunDeps {
@@ -61,6 +65,7 @@ export async function run(deps: RunDeps = {}): Promise<void> {
       candidates: raw.candidates,
       eventGroups: raw.eventGroups,
       costUsd: Number(row.cost_usd),
+      fetchError: raw.apifyError ?? null,
     };
   });
 

@@ -71,6 +71,7 @@ export async function run(deps: InstagramRunDeps = {}): Promise<void> {
     },
     eventGroups: [],
     cost: { anthropicUsd: 0, tavilyCredits: 0, tavilyUsd: 0, totalUsd: 0, monthToDateUsd: 0, monthlyBudgetUsd: 0 },
+    apifyError: null,
   };
 
   if (dueAccounts.length === 0) {
@@ -94,10 +95,11 @@ export async function run(deps: InstagramRunDeps = {}): Promise<void> {
   const onlyPostsNewerThan = oldestCutoff.toISOString().slice(0, 10);
 
   const accountByUsername = new Map(dueAccounts.map((a) => [a.username, a]));
-  const posts = await fetchInstagramPostsFn(
+  const { posts, errorMessage: apifyError } = await fetchInstagramPostsFn(
     dueAccounts.map((a) => a.username),
     onlyPostsNewerThan,
   );
+  summary.apifyError = apifyError;
   console.log(`[instagram-discovery] fetched ${posts.length} post(s) across ${dueAccounts.length} account(s) (cutoff ${onlyPostsNewerThan})`);
 
   // A private/deleted account, or one with zero posts in the window,
@@ -183,7 +185,12 @@ export async function run(deps: InstagramRunDeps = {}): Promise<void> {
     console.log("[instagram-discovery] nothing worth curating, skipping curation entirely");
   }
 
-  for (const account of dueAccounts) {
+  // Skip entirely when the Apify call itself failed (e.g. the monthly
+  // usage limit) — no account was actually checked, so recording a
+  // zero-yield check for every one of them would silently erode the
+  // dormancy backstop's real ~6-month silence window on an infrastructure
+  // outage, not a real quiet account.
+  for (const account of apifyError ? [] : dueAccounts) {
     const state = fetchState.get(instagramAccountProfileUrl(account));
     const next = nextFetchState(state, usernamesWithNewItems.has(account.username));
     await recordInstagramFetchState(account, now, next);
@@ -202,6 +209,15 @@ export async function run(deps: InstagramRunDeps = {}): Promise<void> {
     console.error(`[instagram-discovery] failed to compute month-to-date spend for the summary email: ${(err as Error).message}`);
   }
 
-  await recordRunSummary("instagram", summary.startedAt, summary.candidates, summary.eventGroups, summary.cost);
-  await (deps.sendInstagramRunSummaryEmailFn ?? sendInstagramRunSummaryEmail)(summary);
+  await recordRunSummary("instagram", summary.startedAt, summary.candidates, summary.eventGroups, summary.cost, { apifyError: summary.apifyError });
+  // Individual per-pipeline email disabled 2026-08-26 — superseded by the
+  // consolidated once-a-day digest (daily-digest/run.ts). Real bug found
+  // 2026-08-30: this call site kept calling the REAL sendInstagramRunSummaryEmail
+  // by default, unlike every other pipeline's own run.ts (which all
+  // default to a no-op) — Daniel was getting this old-format email (no
+  // real Apify cost data, unlike the digest) on every Instagram run
+  // despite the digest already covering it. deps.sendInstagramRunSummaryEmailFn
+  // is kept for tests that still want to assert on the built
+  // InstagramRunSummary's contents.
+  await (deps.sendInstagramRunSummaryEmailFn ?? (async () => {}))(summary);
 }

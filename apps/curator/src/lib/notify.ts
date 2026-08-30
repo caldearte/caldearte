@@ -477,6 +477,11 @@ export interface InstagramRunSummary {
   candidates: RunSummary["candidates"];
   eventGroups: EventGroup[];
   cost: RunSummary["cost"];
+  // Set when the Apify call itself failed (e.g. "Monthly usage hard limit
+  // exceeded") — distinguishes "genuinely nothing new" from "we didn't
+  // actually get to check anything." See apify-instagram.ts's own doc
+  // comment.
+  apifyError: string | null;
 }
 
 export function buildInstagramSubject(summary: InstagramRunSummary): string {

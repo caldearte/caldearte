@@ -54,9 +54,21 @@ export function parseApifyInstagramPosts(items: unknown[]): ApifyInstagramPost[]
 
 // Never throws — a broken actor/account or an Apify outage must not take
 // down the whole instagram-discovery run, same defensive posture as
-// lib/mavi-headless.ts's fetchMaviActivities.
-export async function fetchInstagramPosts(usernames: string[], onlyPostsNewerThan: string): Promise<ApifyInstagramPost[]> {
-  if (usernames.length === 0) return [];
+// lib/mavi-headless.ts's fetchMaviActivities. `errorMessage` is returned
+// (not thrown) so the caller can still record fetch state / send its
+// summary normally, but real callers must check it — real production
+// case, 2026-08-30: Apify's own account-level "Monthly usage hard limit
+// exceeded" error was previously swallowed into a silent `[]`,
+// indistinguishable from a genuinely quiet day across every account —
+// nobody could tell from the run summary or the daily digest that
+// Instagram had actually been blocked, not just quiet.
+export interface FetchInstagramPostsResult {
+  posts: ApifyInstagramPost[];
+  errorMessage: string | null;
+}
+
+export async function fetchInstagramPosts(usernames: string[], onlyPostsNewerThan: string): Promise<FetchInstagramPostsResult> {
+  if (usernames.length === 0) return { posts: [], errorMessage: null };
 
   try {
     const client = new ApifyClient({ token: process.env.APIFY_TOKEN });
@@ -68,9 +80,10 @@ export async function fetchInstagramPosts(usernames: string[], onlyPostsNewerTha
       onlyPostsNewerThan,
     });
     const { items } = await client.dataset(run.defaultDatasetId).listItems();
-    return parseApifyInstagramPosts(items);
+    return { posts: parseApifyInstagramPosts(items), errorMessage: null };
   } catch (err) {
-    console.error(`[instagram-discovery] failed to fetch Instagram posts via Apify: ${(err as Error).message}`);
-    return [];
+    const message = (err as Error).message;
+    console.error(`[instagram-discovery] failed to fetch Instagram posts via Apify: ${message}`);
+    return { posts: [], errorMessage: message };
   }
 }
