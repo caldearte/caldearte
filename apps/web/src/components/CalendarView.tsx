@@ -223,7 +223,7 @@ export default function CalendarView({
         </div>
       ) : (
         <>
-          <InauguracionesSection events={inauguraciones} hideTodayBadge={todayFilterOn} />
+          <InauguracionesSection events={inauguraciones} regionName={regionName} hideTodayBadge={todayFilterOn} />
 
           <VisitasGuiadasSection events={visitasGuiadas} hideTodayBadge={todayFilterOn} />
 

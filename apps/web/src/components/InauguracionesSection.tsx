@@ -5,6 +5,8 @@ import { esCL } from "@/i18n/es-CL";
 import { chunk } from "@/lib/array";
 import { useSliderPaging } from "@/lib/useSliderPaging";
 import type { EventRecord } from "@/lib/events";
+import { hasShareableInauguraciones, shareInauguracionesCarousel } from "@/lib/social/shareInauguracionesCarousel";
+import { ShareGlyph } from "./CardActionIcons";
 import InauguracionBentoCard from "./InauguracionBentoCard";
 import EventHorizontalListItem from "./EventHorizontalListItem";
 
@@ -12,6 +14,9 @@ type ViewMode = "grid" | "list";
 
 interface InauguracionesSectionProps {
   events: EventRecord[];
+  // Only used to label the shared flyers' región badge (ShareCarouselMenu
+  // below) — the event list itself is already filtered to this región.
+  regionName: string;
   hideTodayBadge?: boolean;
   // "list" — used by the event detail page's own list-mode footer
   // (EventDetailCard.tsx's caller), which wants the compact row layout by
@@ -57,8 +62,61 @@ function ToggleButton({ active, onClick, ariaLabel, icon }: { active: boolean; o
   );
 }
 
+// Button next to the section title (Camila's request, 2026-08-31): grabs
+// every shareable inauguración currently shown in this section — already
+// filtered to the visitor's región + week — and hands them straight to
+// shareInauguracionesCarousel. No menu/submenu: the OS-native share sheet
+// that opens from it is already the picker (Instagram, WhatsApp, Files,
+// etc.) — an extra in-page menu step just to relabel "Instagram" ahead of
+// the same sheet would be redundant (Daniel, 2026-08-31, simplifying an
+// earlier dropdown version of this).
+function ShareCarouselButton({ events, regionName }: { events: EventRecord[]; regionName: string }) {
+  const [status, setStatus] = useState<"idle" | "working" | "error">("idle");
+  const [message, setMessage] = useState<string | null>(null);
+
+  if (!hasShareableInauguraciones(events)) return null;
+
+  async function handleShare() {
+    setStatus("working");
+    setMessage(null);
+    try {
+      const outcome = await shareInauguracionesCarousel(events, regionName);
+      setStatus("idle");
+      if (outcome === "downloaded") {
+        setMessage(esCL.shareCarouselDownloaded);
+        setTimeout(() => setMessage(null), 6000);
+      }
+    } catch {
+      setStatus("error");
+      setMessage(esCL.shareCarouselError);
+      setTimeout(() => {
+        setStatus("idle");
+        setMessage(null);
+      }, 4000);
+    }
+  }
+
+  return (
+    <div className="relative shrink-0">
+      <button
+        type="button"
+        onClick={handleShare}
+        disabled={status === "working"}
+        className="flex items-center gap-1.5 h-[36px] px-3.5 rounded-[18px] border border-text-primary font-geist text-[13px] text-text-primary disabled:opacity-50"
+      >
+        <ShareGlyph color="#3d373d" />
+        {status === "working" ? esCL.shareCarouselWorking : esCL.shareCarouselButton}
+      </button>
+      {message && (
+        <div className="absolute top-full right-0 mt-2 z-20 w-[240px] rounded-lg bg-black/80 text-white text-xs px-2.5 py-1.5">{message}</div>
+      )}
+    </div>
+  );
+}
+
 export default function InauguracionesSection({
   events,
+  regionName,
   hideTodayBadge = false,
   defaultView = "grid",
   stickyTopClass = "top-[50px] md:top-[60px]",
@@ -85,7 +143,18 @@ export default function InauguracionesSection({
   return (
     <section className="mt-6">
       <p className="font-geist font-semibold text-[15px] text-text-secondary tracking-[2px] mb-1.5">{esCL.sectionInauguracionesLabel}</p>
-      <h2 className="font-lato font-black text-[28px] md:text-[41px] text-text-primary mb-6">{esCL.sectionInauguraciones}</h2>
+      {/* flex-wrap, not a fixed row: at narrow widths there isn't room for
+          the full title next to ShareCarouselButton without either
+          overlapping it or force-breaking "INAUGURACIONES" mid-word (tried
+          both, real bugs found testing on a real mobile viewport) — wrapping
+          drops the button to its own line below the title instead, which
+          keeps the title's normal word-boundary wrapping intact. */}
+      <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-2 mb-6">
+        <h2 className="font-lato font-black text-[28px] md:text-[41px] text-text-primary">{esCL.sectionInauguraciones}</h2>
+        <div className="pt-2 md:pt-3">
+          <ShareCarouselButton events={events} regionName={regionName} />
+        </div>
+      </div>
 
       {/* Sticky right under the fixed top nav (50px mobile/60px desktop,
           measured directly off Header's own nav bar) while scrolling

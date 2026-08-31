@@ -228,6 +228,14 @@ export const esCL = {
 
   sectionInauguraciones: "INAUGURACIONES DE LA SEMANA",
   sectionInauguracionesLabel: "APERTURAS DESTACADAS",
+  // "Compartir" menu next to the inauguraciones section heading (2026-08-31,
+  // Camila's request) — lets any visitor, not just admin, grab the week's
+  // inauguraciones for a región as a ready-to-post Instagram carousel. See
+  // apps/web/src/lib/social/shareInauguracionesCarousel.ts.
+  shareCarouselButton: "Compartir",
+  shareCarouselWorking: "Preparando…",
+  shareCarouselDownloaded: "Imágenes descargadas — súbelas juntas como carrusel en Instagram.",
+  shareCarouselError: "No se pudo preparar el carrusel. Intenta de nuevo.",
   // Added 2026-08-29 alongside events.event_type (Daniel's 3-category
   // decision) — sits between Inauguraciones y Exposiciones, mismo orden
   // de mayor a menor interacción con la obra.
