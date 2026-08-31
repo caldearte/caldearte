@@ -20,42 +20,62 @@ type Status = "idle" | "compressing" | "sending" | "approved" | "rejected" | "ra
 const FIELD_CLASS = "bg-surface-white flex flex-col gap-[6px] px-[16px] py-[14px] rounded-input w-full text-left";
 const INPUT_CLASS = "bg-transparent font-geist text-[16px] text-text-primary placeholder:text-[#5e6668] focus:outline-none";
 const LABEL_TEXT_CLASS = "font-fragment-mono text-[12px] uppercase text-[#5e6668]";
-const MAX_IMAGES = 3;
 
-export default function AgregaExpoContent({ comunas }: { comunas: Comuna[] }) {
+function findComunaByName(comunas: Comuna[], name: string): Comuna | undefined {
+  const normalized = name.trim().toLowerCase();
+  return comunas.find((c) => c.name.trim().toLowerCase() === normalized);
+}
+
+export default function AgregaExpoContent({ comunas, galleries }: { comunas: Comuna[]; galleries: string[] }) {
   const [status, setStatus] = useState<Status>("idle");
   const [resultMessage, setResultMessage] = useState<string>("");
-  const [images, setImages] = useState<File[]>([]);
+  const [formError, setFormError] = useState<string>("");
+  const [image, setImage] = useState<File | null>(null);
+  const [artists, setArtists] = useState<string[]>([""]);
   const [contactOpen, setContactOpen] = useState(false);
 
-  async function handleImagesChange(fileList: FileList | null) {
-    if (!fileList) return;
-    const files = Array.from(fileList).slice(0, MAX_IMAGES);
+  async function handleImageChange(file: File | null) {
+    if (!file) {
+      setImage(null);
+      return;
+    }
     setStatus("compressing");
     try {
-      const compressed = await Promise.all(files.map(compressImage));
-      setImages(compressed);
-      setStatus("idle");
+      setImage(await compressImage(file));
     } catch {
-      setImages(files);
-      setStatus("idle");
+      setImage(file);
     }
+    setStatus("idle");
   }
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    if (images.length === 0) return;
+    setFormError("");
+    if (!image) return;
 
-    setStatus("sending");
     const form = e.currentTarget;
     const formData = new FormData(form);
+
+    const comunaInput = (formData.get("comunaName") as string)?.trim() ?? "";
+    const comuna = findComunaByName(comunas, comunaInput);
+    if (!comuna) {
+      setFormError("Elige una comuna de la lista.");
+      return;
+    }
+    formData.set("comunaName", comuna.name);
+    formData.set("regionId", comuna.id);
+
+    const artistNames = artists.map((a) => a.trim()).filter(Boolean);
+    if (artistNames.length === 0) {
+      setFormError("Agrega al menos un artista.");
+      return;
+    }
+    formData.set("artist", artistNames.join(", "));
+
     formData.delete("images");
-    for (const image of images) formData.append("images", image);
+    formData.append("images", image);
 
-    const comunaId = formData.get("regionId") as string;
-    const comuna = comunas.find((c) => c.id === comunaId);
-    if (comuna) formData.set("comunaName", comuna.name);
-
+    setStatus("sending");
     try {
       const res = await fetch("/api/submit-event", { method: "POST", body: formData });
       const data = (await res.json()) as { status: Status; message?: string };
@@ -63,7 +83,8 @@ export default function AgregaExpoContent({ comunas }: { comunas: Comuna[] }) {
       setResultMessage(data.message ?? "");
       if (data.status === "approved") {
         form.reset();
-        setImages([]);
+        setImage(null);
+        setArtists([""]);
       }
     } catch {
       setStatus("error");
@@ -126,28 +147,48 @@ export default function AgregaExpoContent({ comunas }: { comunas: Comuna[] }) {
 
           <label className={FIELD_CLASS}>
             <span className={LABEL_TEXT_CLASS}>{esCL.agregaExpo.galleryNameLabel}</span>
-            <input name="galleryName" type="text" required className={INPUT_CLASS} />
+            <input name="galleryName" type="text" required list="galleries-datalist" className={INPUT_CLASS} />
+            <datalist id="galleries-datalist">
+              {galleries.map((g) => (
+                <option key={g} value={g} />
+              ))}
+            </datalist>
           </label>
 
           <label className={FIELD_CLASS}>
             <span className={LABEL_TEXT_CLASS}>{esCL.agregaExpo.comunaLabel}</span>
-            <select name="regionId" required className={INPUT_CLASS} defaultValue="">
-              <option value="" disabled>
-                {esCL.agregaExpo.comunaPlaceholder}
-              </option>
+            <input name="comunaName" type="text" required list="comunas-datalist" placeholder={esCL.agregaExpo.comunaPlaceholder} className={INPUT_CLASS} />
+            <datalist id="comunas-datalist">
               {comunas.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                  {c.adminRegionName ? ` — ${c.adminRegionName}` : ""}
+                <option key={c.id} value={c.name}>
+                  {c.adminRegionName ?? ""}
                 </option>
               ))}
-            </select>
+            </datalist>
           </label>
 
-          <label className={FIELD_CLASS}>
+          <div className={FIELD_CLASS}>
             <span className={LABEL_TEXT_CLASS}>{esCL.agregaExpo.artistLabel}</span>
-            <input name="artist" type="text" className={INPUT_CLASS} />
-          </label>
+            <div className="flex flex-col gap-[8px]">
+              {artists.map((value, i) => (
+                <input
+                  key={i}
+                  type="text"
+                  required={i === 0}
+                  value={value}
+                  onChange={(e) => setArtists((prev) => prev.map((a, idx) => (idx === i ? e.target.value : a)))}
+                  className={INPUT_CLASS}
+                />
+              ))}
+            </div>
+            <button
+              type="button"
+              onClick={() => setArtists((prev) => [...prev, ""])}
+              className="self-start underline font-geist text-[13px] text-[#5e6668] cursor-pointer"
+            >
+              {esCL.agregaExpo.addArtist}
+            </button>
+          </div>
 
           <label className={FIELD_CLASS}>
             <span className={LABEL_TEXT_CLASS}>{esCL.agregaExpo.openingDatetimeLabel}</span>
@@ -156,7 +197,7 @@ export default function AgregaExpoContent({ comunas }: { comunas: Comuna[] }) {
 
           <label className={FIELD_CLASS}>
             <span className={LABEL_TEXT_CLASS}>{esCL.agregaExpo.runEndDateLabel}</span>
-            <input name="runEndDate" type="date" className={INPUT_CLASS} />
+            <input name="runEndDate" type="date" required className={INPUT_CLASS} />
           </label>
 
           <label className={FIELD_CLASS}>
@@ -164,35 +205,32 @@ export default function AgregaExpoContent({ comunas }: { comunas: Comuna[] }) {
             <textarea name="description" required rows={5} className={`${INPUT_CLASS} resize-none`} />
           </label>
 
-          <label className={FIELD_CLASS}>
+          <div className={FIELD_CLASS}>
             <span className={LABEL_TEXT_CLASS}>{esCL.agregaExpo.imagesLabel}</span>
+            <label
+              htmlFor="agrega-expo-image-input"
+              className="self-start cursor-pointer bg-brand-magenta text-surface-sage rounded-input px-[16px] py-[10px] font-geist font-bold text-[13px] text-center"
+            >
+              {image ? esCL.agregaExpo.changeImage : esCL.agregaExpo.chooseImage}
+            </label>
             <input
+              id="agrega-expo-image-input"
               name="images"
               type="file"
               accept="image/jpeg,image/png,image/webp"
-              multiple
               required
-              onChange={(e) => handleImagesChange(e.target.files)}
-              className={INPUT_CLASS}
+              onChange={(e) => handleImageChange(e.target.files?.[0] ?? null)}
+              className="hidden"
             />
-            {images.length > 0 && (
-              <div className="flex gap-[8px] mt-[8px]">
-                {images.map((img, i) => (
-                  // eslint-disable-next-line @next/next/no-img-element -- ephemeral local preview via createObjectURL, not a real asset
-                  <img
-                    key={i}
-                    src={URL.createObjectURL(img)}
-                    alt=""
-                    className="w-[64px] h-[64px] object-cover rounded-[4px]"
-                  />
-                ))}
-              </div>
+            {image && (
+              // eslint-disable-next-line @next/next/no-img-element -- ephemeral local preview via createObjectURL, not a real asset
+              <img src={URL.createObjectURL(image)} alt="" className="w-[96px] h-[96px] object-cover rounded-[4px] mt-[4px]" />
             )}
-          </label>
+          </div>
 
           <label className={FIELD_CLASS}>
             <span className={LABEL_TEXT_CLASS}>{esCL.agregaExpo.submitterNameLabel}</span>
-            <input name="submitterName" type="text" className={INPUT_CLASS} />
+            <input name="submitterName" type="text" required className={INPUT_CLASS} />
           </label>
 
           <label className={FIELD_CLASS}>
@@ -200,12 +238,14 @@ export default function AgregaExpoContent({ comunas }: { comunas: Comuna[] }) {
             <input name="submitterEmail" type="email" required className={INPUT_CLASS} />
           </label>
 
+          {formError && <p className="font-geist text-[13px] text-red-600">{formError}</p>}
+
           <button
             type="submit"
-            disabled={busy || images.length === 0}
+            disabled={busy || !image}
             className="w-full bg-brand-magenta text-surface-sage rounded-input py-[16px] font-geist font-bold text-[14px] text-center disabled:opacity-60"
           >
-            {status === "sending" ? esCL.agregaExpo.sending : status === "compressing" ? "Preparando imágenes..." : esCL.agregaExpo.submit}
+            {status === "sending" ? esCL.agregaExpo.sending : status === "compressing" ? "Preparando imagen..." : esCL.agregaExpo.submit}
           </button>
         </form>
       )}

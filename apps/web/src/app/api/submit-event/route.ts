@@ -47,15 +47,19 @@ export async function POST(request: Request) {
 
   const title = (form.get("title") as string | null)?.trim() ?? "";
   const description = (form.get("description") as string | null)?.trim() ?? "";
-  const artist = (form.get("artist") as string | null)?.trim() || null;
+  const artist = (form.get("artist") as string | null)?.trim() ?? "";
   const galleryName = (form.get("galleryName") as string | null)?.trim() ?? "";
   const comunaName = (form.get("comunaName") as string | null)?.trim() ?? "";
   const regionId = (form.get("regionId") as string | null)?.trim() || null;
   const openingDatetime = (form.get("openingDatetime") as string | null)?.trim() ?? "";
-  const runEndDate = (form.get("runEndDate") as string | null)?.trim() || null;
+  const runEndDate = (form.get("runEndDate") as string | null)?.trim() ?? "";
   const submitterEmail = (form.get("submitterEmail") as string | null)?.trim() ?? "";
-  const submitterName = (form.get("submitterName") as string | null)?.trim() || null;
+  const submitterName = (form.get("submitterName") as string | null)?.trim() ?? "";
 
+  // Exactly 1 for now — the multi-image (up to 3) UI wasn't legible
+  // ("elegir archivos" didn't read as a button, Daniel 2026-08-31), scaled
+  // back to a single clear "Elegir imagen" button. The events_images
+  // table/Edge Function still tolerate up to 3 for whenever that comes back.
   const images = form.getAll("images").filter((v): v is File => v instanceof File && v.size > 0);
 
   const openingDatetimeUtc = openingDatetime ? parseLocalDatetimeToUtcIso(openingDatetime) : null;
@@ -63,12 +67,15 @@ export async function POST(request: Request) {
   if (
     !title ||
     !description ||
+    !artist ||
     !galleryName ||
     !comunaName ||
+    !regionId ||
     !openingDatetimeUtc ||
+    !runEndDate ||
+    !submitterName ||
     !EMAIL_PATTERN.test(submitterEmail) ||
-    images.length === 0 ||
-    images.length > 3
+    images.length !== 1
   ) {
     return NextResponse.json({ status: "invalid" }, { status: 400 });
   }
