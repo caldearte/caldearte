@@ -9,7 +9,7 @@
 // docs/roadmap.md; this covers only the known-rot Instagram/Facebook case).
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@caldearte/shared-types";
-import { isSafeExternalUrl } from "./url-safety.js";
+import { isSafeExternalUrl } from "@caldearte/curation-policy";
 
 const BUCKET = "event-images";
 // Real measured samples (5 Instagram images, 2026-07-20): 25KB-1.9MB, one

@@ -418,6 +418,7 @@ export const esCL = {
     copyright: (year: number) => `© ${year} Caldearte`,
     contacto: "Contacto",
     privacidad: "Privacidad",
+    agregaExpo: "Agrega tu expo",
   },
 
   privacidad: {
@@ -560,6 +561,33 @@ export const esCL = {
     sending: "ENVIANDO...",
     success: "Gracias por escribirnos. Te responderemos a la brevedad.",
     error: "No pudimos enviar tu mensaje. Intenta de nuevo.",
+  },
+
+  // "Agrega tu expo" — formulario público para que una galería/espacio
+  // suba su propia inauguración, curada por Haiku al momento de enviar
+  // (mismos ejes editoriales que el resto del calendario).
+  agregaExpo: {
+    title: "Agrega tu expo",
+    intro:
+      "¿Tienes una inauguración este mes? Cuéntanos y, si califica para el calendario, queda publicada al instante.",
+    titleLabel: "Nombre de la exposición",
+    galleryNameLabel: "Galería o espacio",
+    comunaLabel: "Comuna",
+    comunaPlaceholder: "Elige una comuna",
+    artistLabel: "Artista (opcional)",
+    openingDatetimeLabel: "Fecha y hora de la inauguración",
+    runEndDateLabel: "Fecha de término de la muestra (opcional)",
+    descriptionLabel: "Descripción",
+    imagesLabel: "Imágenes (1 a 3)",
+    submitterNameLabel: "Tu nombre (opcional)",
+    submitterEmailLabel: "Tu correo",
+    submit: "Enviar",
+    sending: "Curando tu expo...",
+    approvedPrefix: "¡Listo!",
+    rejectedPrefix: "Esta vez no",
+    rateLimitedPrefix: "Un momento",
+    error: "Algo falló de nuestro lado. Intenta de nuevo en unos minutos.",
+    scopeNote: "Este formulario es solo para exposiciones con inauguración — para visitas guiadas u otro tipo de actividad, escríbenos por el ",
   },
 };
 

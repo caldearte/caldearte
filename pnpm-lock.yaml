@@ -23,6 +23,9 @@ importers:
       '@anthropic-ai/sdk':
         specifier: ^0.111.0
         version: 0.111.0(zod@4.4.3)
+      '@caldearte/curation-policy':
+        specifier: workspace:*
+        version: link:../../packages/curation-policy
       '@caldearte/shared-types':
         specifier: workspace:*
         version: link:../../packages/shared-types
@@ -45,6 +48,12 @@ importers:
 
   apps/web:
     dependencies:
+      '@anthropic-ai/sdk':
+        specifier: ^0.111.0
+        version: 0.111.0(zod@4.4.3)
+      '@caldearte/curation-policy':
+        specifier: workspace:*
+        version: link:../../packages/curation-policy
       '@caldearte/shared-types':
         specifier: workspace:*
         version: link:../../packages/shared-types
@@ -109,6 +118,12 @@ importers:
       typescript:
         specifier: ^5
         version: 5.9.3
+
+  packages/curation-policy:
+    devDependencies:
+      tsx:
+        specifier: ^4.23.0
+        version: 4.23.0
 
   packages/shared-types: {}
 

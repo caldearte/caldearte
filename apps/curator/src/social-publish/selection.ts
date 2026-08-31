@@ -25,7 +25,7 @@ export interface SocialEvent {
   // selectInauguraciones (below) would start publishing "visita guiada"
   // posts as if they were real inauguración announcements the moment a
   // guided-tour date populates openingDatetime, since both categories
-  // reuse that same field. See lib/curation-policy.ts's EVENT_TYPE_POLICY.
+  // reuse that same field. See packages/curation-policy/src/policy.ts's EVENT_TYPE_POLICY.
   eventType: "inauguracion" | "visita_guiada" | "exposicion";
   // Instagram handle of the account this event was sourced from — only
   // ever set for the Instagram pipeline (the account IS usually the

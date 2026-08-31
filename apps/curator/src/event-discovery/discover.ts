@@ -5,7 +5,7 @@
 // (apps/curator/scripts/poc-tavily-discover.ts) after extensive real-data
 // testing; keep the two in sync only in spirit — this file is now the
 // source of truth.
-import { ART_SCOPE_POLICY, TEXT_CURATION_POLICY, INSTITUTIONAL_EXCLUSION_POLICY, EVENT_TYPE_POLICY } from "../lib/curation-policy.js";
+import { ART_SCOPE_POLICY, TEXT_CURATION_POLICY, INSTITUTIONAL_EXCLUSION_POLICY, EVENT_TYPE_POLICY } from "@caldearte/curation-policy";
 import { tavilySearch, type FetchLike, type TavilyImage } from "../lib/tavily.js";
 import { isChileanLocation, locationsOverlap, stripAccents } from "../lib/locations.js";
 import { matchesKnownExclusion, matchesKnownLowQualityDomain } from "../lib/known-exclusions.js";
@@ -20,7 +20,7 @@ export interface EventCandidate {
   description: string | null;
   artist: string | null;
   // Which of the 3 interaction categories this is — see
-  // lib/curation-policy.ts's EVENT_TYPE_POLICY for the full editorial
+  // packages/curation-policy/src/policy.ts's EVENT_TYPE_POLICY for the full editorial
   // definitions (Daniel, 2026-08-29). Reuses openingDatetime as "the date
   // of THIS specific instance" for both inauguracion and visita_guiada —
   // no separate date column exists for visita_guiada.

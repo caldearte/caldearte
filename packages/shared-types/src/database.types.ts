@@ -7,10 +7,30 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instantiate createClient with right options
-  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
-  __InternalSupabase: {
-    PostgrestVersion: "14.5"
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
   }
   public: {
     Tables: {
@@ -261,6 +281,45 @@ export type Database = {
         }
         Relationships: []
       }
+      event_images: {
+        Row: {
+          created_at: string
+          event_id: string
+          id: string
+          position: number
+          storage_path: string
+        }
+        Insert: {
+          created_at?: string
+          event_id: string
+          id?: string
+          position: number
+          storage_path: string
+        }
+        Update: {
+          created_at?: string
+          event_id?: string
+          id?: string
+          position?: number
+          storage_path?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_images_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_images_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events_public"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       events: {
         Row: {
           admin_sensitive_marked_at: string | null
@@ -291,6 +350,8 @@ export type Database = {
           source: string
           source_account: string | null
           source_url: string | null
+          submitter_email: string | null
+          submitter_name: string | null
           title: string
         }
         Insert: {
@@ -322,6 +383,8 @@ export type Database = {
           source: string
           source_account?: string | null
           source_url?: string | null
+          submitter_email?: string | null
+          submitter_name?: string | null
           title: string
         }
         Update: {
@@ -353,6 +416,8 @@ export type Database = {
           source?: string
           source_account?: string | null
           source_url?: string | null
+          submitter_email?: string | null
+          submitter_name?: string | null
           title?: string
         }
         Relationships: [
@@ -1017,7 +1082,11 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {},
   },
 } as const
+

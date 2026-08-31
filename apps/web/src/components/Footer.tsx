@@ -34,6 +34,9 @@ export default function Footer({ onContactClick }: FooterProps) {
         <button type="button" onClick={onContactClick} className="uppercase cursor-pointer">
           {esCL.footer.contacto}
         </button>
+        <Link href="/agrega-tu-expo" className="uppercase">
+          {esCL.footer.agregaExpo}
+        </Link>
         <Link href="/privacidad" className="uppercase">
           {esCL.footer.privacidad}
         </Link>

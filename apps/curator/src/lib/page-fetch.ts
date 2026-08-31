@@ -35,7 +35,7 @@ import {
   utcIsoToSantiagoDateParts,
 } from "./opening-time.js";
 import { extractPublishedDate, isStalePublishYear } from "./post-freshness.js";
-import { isSafeExternalUrl } from "./url-safety.js";
+import { isSafeExternalUrl } from "@caldearte/curation-policy";
 
 export type FetchLike = (url: string) => Promise<{ ok: boolean; status: number; text(): Promise<string> }>;
 
