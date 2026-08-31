@@ -2204,6 +2204,32 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
       "infiere por post, igual que ilposto.cl.",
     addedAt: "2026-08-31",
   },
+  {
+    username: "judasgaleria",
+    note:
+      "Evaluada 2026-08-31 en Chrome (logueado), no vía Apify — pedida " +
+      "directamente por Daniel tras un contacto real de la galería. " +
+      "Judas Galería, Pasaje Gálvez 167, Valparaíso — galería de arte " +
+      "contemporáneo desde 2018, codirigida por Juvenal Barría y José " +
+      "Pemjean, representa a 22 artistas nacionales; línea curatorial " +
+      "explícita en género/identidades, crisis medioambiental y " +
+      "reivindicaciones geopolíticas descentralizadas — alineada con la " +
+      "postura editorial de Caldearte. 9750 seguidores. Grilla activa " +
+      "con posts de exposiciones reales (\"BRUXISMO\", Manuel Castillo; " +
+      "\"Alguna cosa textil / Acto silencioso: procesos lentos\"); su " +
+      "propio sitio (judasgaleria.cl) lista un historial largo de " +
+      "muestras propias (\"Delirio\", \"Hormiga\", \"Political Facts\", " +
+      "\"Otra vida\", entre otras) desde 2018, confirmando un programa " +
+      "real y sostenido, no una cuenta esporádica. Sin conflicto en " +
+      "ningún eje: la muestra más provocativa revisada (\"Contenido " +
+      "inapropiado\", 2021, sobre posporno) es de hecho un caso INCLUDE " +
+      "— postura crítica explícita contra el poder económico/histórico " +
+      "de la Iglesia católica, y el desnudo/sexualidad ahí tratado no " +
+      "cae en el eje 5 (agresión explícita), no en desnudo/erotismo " +
+      "artístico. fixedLocation.",
+    addedAt: "2026-08-31",
+    fixedLocation: { location: "Valparaíso", placeName: "Judas Galería" },
+  },
   // El resto de la lista la aporta Daniel — una decisión editorial, igual
   // que cada fuente brillante nueva se evaluó una por una. Confirmar
   // pública y activa antes de agregar cada cuenta.

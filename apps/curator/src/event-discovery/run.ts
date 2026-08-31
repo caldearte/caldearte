@@ -354,10 +354,20 @@ export interface SeenKeys {
 }
 
 export async function loadExistingKeys(): Promise<SeenKeys> {
+  // "submitted" joined 2026-08-31 alongside the "agrega tu expo" form
+  // (apps/web/src/app/api/submit-event): a gallery can now submit its own
+  // exhibition directly, and Event Discovery may ALSO scrape the same
+  // gallery's own Instagram/website later — without this, that scraped
+  // repost would sail right past every dedup signal below (all of them
+  // key off rows loaded here) and land as a real duplicate on the live
+  // calendar. Every source='submitted' row is already curation_status
+  // 'approved' (a rejected submission is never persisted — see the API
+  // route), same invariant 'discovered' rows already rely on here, so no
+  // extra status filter is needed.
   const { data, error } = await getSupabaseClient()
     .from("events")
     .select("id, title, source_url, freeform_location, place_name, opening_datetime, opening_time_confirmed, run_start_date, run_end_date")
-    .eq("source", "discovered");
+    .in("source", ["discovered", "submitted"]);
 
   if (error) {
     throw new Error(`Failed to load existing discovered events: ${error.message}`);
