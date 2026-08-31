@@ -1967,6 +1967,51 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
     addedAt: "2026-08-30",
     fixedLocation: { location: "Copiapó", placeName: "Centro Cultural Ser Humano" },
   },
+  {
+    username: "cultura_coquimbo",
+    note:
+      "Encontrada 2026-08-30 buscando comunas sin cobertura real (Coquimbo " +
+      "tenía 0 eventos en 90 días pese a tener población y actividad " +
+      "cultural real). Departamento de Cultura, Municipalidad de " +
+      "Coquimbo — 22,2 mil seguidores, muy activa (4438 publicaciones), " +
+      "cuenta oficial. Cubre varios espacios propios (Centro Cultural " +
+      "Palace, Casa de las Artes, Casa Artes Rural, bibliotecas) — la " +
+      "cuenta del Centro Cultural Palace en sí (@centroculturalpalace) " +
+      "resultó ser mayormente reposts de ESTA cuenta bajo otro " +
+      "username, así que se sigue la fuente real en vez del repost. " +
+      "Exposición real confirmada vía búsqueda web: \"Salón de Julio\" " +
+      "2026, 6ª versión, en el Centro Cultural Palace. Contenido mixto " +
+      "(feria del libro, folclor, patrimonio) — Haiku filtra lo que no " +
+      "sea artes visuales. Sin fixedLocation (múltiples sedes).",
+    addedAt: "2026-08-30",
+  },
+  {
+    username: "centro_almendral",
+    note:
+      "Encontrada 2026-08-30 buscando comunas sin cobertura (San Felipe). " +
+      "Centro de Artes y Oficios Almendral — monumento nacional " +
+      "(Registro de Museos de Chile), 6.715 seguidores. Mayormente " +
+      "contenido de talleres/escuela de oficios (forja, orfebrería) — " +
+      "excluido por política — pero con exposiciones reales " +
+      "confirmadas vía búsqueda web (\"José Venturelli: El arte como " +
+      "fuerza transformadora del humanismo\", visita guiada agosto " +
+      "2026). fixedLocation.",
+    addedAt: "2026-08-30",
+    fixedLocation: { location: "San Felipe", placeName: "Centro de Artes y Oficios Almendral" },
+  },
+  {
+    username: "artparadisegaleria",
+    note:
+      "Encontrada 2026-08-30 buscando comunas sin cobertura (San Felipe). " +
+      "Art Paradise — bio dice \"galería de arte en línea, venta de " +
+      "obras\" (riesgo de contenido mayormente comercial), pero con " +
+      "exposiciones colectivas reales confirmadas: \"Exposición " +
+      "Colectiva SALa FEM 2026\", itinerancia en San Felipe junto a " +
+      "@culturamunisanfelipe (ya cubierta), curaduría real. Sin " +
+      "fixedLocation — la propia cuenta plantea la muestra como " +
+      "itinerante.",
+    addedAt: "2026-08-30",
+  },
   // El resto de la lista la aporta Daniel — una decisión editorial, igual
   // que cada fuente brillante nueva se evaluó una por una. Confirmar
   // pública y activa antes de agregar cada cuenta.
