@@ -779,6 +779,26 @@ export const KNOWN_SOURCES: KnownSource[] = [
       pattern: /<div class="text-long">([\s\S]*?)<\/div>/,
     },
   },
+  {
+    url: "https://www.mgmistral.gob.cl/cartelera",
+    note:
+      'Museo Gabriela Mistral de Vicuña — encontrado 2026-08-30 buscando comunas sin cobertura (Vicuña). Mismo template SNPC/Drupal que mnba.gob.cl/museoregionalaysen.gob.cl/museodeancud.gob.cl/mhnv.gob.cl, confirmado contra el HTML real (2 bloques node--evento, mismo markup de título/fecha/institución). Museo dedicado a la poeta Gabriela Mistral — su cartelera real está dominada por exposiciones bibliográficas/históricas (tematica "Historia"/"Exposición" genérica), no artes visuales, así que se reutiliza el MISMO filtro determinístico por field--name-field-tematica que mhnv.gob.cl (Pintura/Escultura/Fotografía/Artes gráficas/Artes visuales) — ambos items reales muestreados quedan correctamente filtrados antes de llegar a Haiku (ninguno es arte visual), pero el museo tiene una "Sala Laura Rodig" propia que sí podría alojar una muestra visual real en el futuro; costo marginal ~0 cuando está vacío, misma razón ya usada para museoregionalaysen.gob.cl/MAM Chiloé. Sin openingTimeExtractor — no se confirmó la frase "Inauguración: ..." en la página de detalle muestreada.',
+    lastReviewedAt: "2026-08-30",
+    extractor: {
+      kind: "articleList",
+      blockRegex:
+        /<article\s+class="node node--evento[^"]*">(?=(?:(?!<\/article>)[\s\S])*?field--name-field-tematica"[^>]*>(?:Pintura|Escultura|Fotografía|Artes gráficas|Artes visuales)<)([\s\S]*?)<\/article>/g,
+      titleLinkRegex: /<h2 class="destacado__title"><a href="([^"]+)">([^<]*)<\/a><\/h2>/,
+      placeRegex: /field--name-institucion"><a[^>]*>([^<]*)<\/a>/,
+      dateRangeExtractor: {
+        pattern: /<time datetime="(?<startIso>\d{4}-\d{2}-\d{2})[^"]*"[^>]*>[\s\S]*?<time datetime="(?<endIso>\d{4}-\d{2}-\d{2})[^"]*"[^>]*>/,
+      },
+    },
+    fixedLocation: { location: "Vicuña", placeName: "Museo Gabriela Mistral de Vicuña" },
+    descriptionExtractor: {
+      pattern: /<div class="text-long">([\s\S]*?)<\/div>/,
+    },
+  },
 ];
 
 export function knownSourceDomain(url: string): string {
