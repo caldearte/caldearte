@@ -2102,6 +2102,34 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
       "(Casa de la Cultura + Club Social de Cauquenes).",
     addedAt: "2026-08-30",
   },
+  {
+    username: "culturaquilpue",
+    note:
+      "Encontrada 2026-08-30 buscando comunas sin cobertura (Quilpué). " +
+      "Dirección de Cultura, Municipalidad de Quilpué — 36 mil " +
+      "seguidores, muy activa. Centro Cultural Daniel de la Vega, " +
+      "altísima densidad de exposiciones reales confirmadas: " +
+      "\"Artequin llega a Quilpué\" (07-30 sept 2026), \"Patente " +
+      "Latente\" (bordado, Daniela Lara Espinoza), \"El Secreto que " +
+      "sostiene la Vida\", \"Mala Imagen\", \"La Galería de los " +
+      "Ilustres\". fixedLocation.",
+    addedAt: "2026-08-30",
+    fixedLocation: { location: "Quilpué", placeName: "Centro Cultural Daniel de la Vega" },
+  },
+  {
+    username: "casadelaculturachiguayante",
+    note:
+      "Encontrada 2026-08-30 buscando comunas sin cobertura " +
+      "(Chiguayante). Casa de la Cultura de Chiguayante — 17,7 mil " +
+      "seguidores, muy activa (posts casi diarios), sala de " +
+      "exposiciones dedicada. Altísima densidad de exposiciones reales " +
+      "confirmadas y vigentes: \"Todas las formas para ser\" (Roberta " +
+      "Alué, hasta 26 oct 2026), \"El Jardín Interior\" (Rocío Osses " +
+      "Lastra), \"Karukinka\", \"VOLVER. Entre neblinas a la tierra del " +
+      "sol\" (Guillermo Moscoso). fixedLocation.",
+    addedAt: "2026-08-30",
+    fixedLocation: { location: "Chiguayante", placeName: "Casa de la Cultura de Chiguayante" },
+  },
   // El resto de la lista la aporta Daniel — una decisión editorial, igual
   // que cada fuente brillante nueva se evaluó una por una. Confirmar
   // pública y activa antes de agregar cada cuenta.
