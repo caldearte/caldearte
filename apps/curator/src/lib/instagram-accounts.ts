@@ -2130,6 +2130,20 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
     addedAt: "2026-08-30",
     fixedLocation: { location: "Chiguayante", placeName: "Casa de la Cultura de Chiguayante" },
   },
+  {
+    username: "centroculturalmob",
+    note:
+      "Encontrada 2026-08-30 buscando comunas sin cobertura (San " +
+      "Javier, Maule). Centro Cultural Mario Oltra Blanco (MOB) — 35+ " +
+      "años, 3,8 mil seguidores. Contenido mayormente ballet " +
+      "folclórico, teatro infantil y talleres (excluidos), pero con " +
+      "exposiciones reales de artes plásticas confirmadas y vigentes: " +
+      "\"Exposición de Pinturas\" (20 jul-4 sept 2026, aún abierta), " +
+      "\"Artes Plásticas de un Legado\" (Cristian Orellana Fredes). " +
+      "fixedLocation.",
+    addedAt: "2026-08-30",
+    fixedLocation: { location: "San Javier", placeName: "Centro Cultural Mario Oltra Blanco" },
+  },
   // El resto de la lista la aporta Daniel — una decisión editorial, igual
   // que cada fuente brillante nueva se evaluó una por una. Confirmar
   // pública y activa antes de agregar cada cuenta.
