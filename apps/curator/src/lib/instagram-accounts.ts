@@ -2012,6 +2012,69 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
       "itinerante.",
     addedAt: "2026-08-30",
   },
+  {
+    username: "melipillacultura",
+    note:
+      "Encontrada 2026-08-30 buscando comunas sin cobertura real " +
+      "(Melipilla). Depto. de Cultura, Municipalidad de Melipilla — " +
+      "16,7 mil seguidores, muy activa (2142 publicaciones), cuenta " +
+      "oficial (Centro Cultural Teatro Serrano, Orfeón Municipal, " +
+      "Biblioteca). Exposiciones reales confirmadas vía búsqueda web: " +
+      "\"Sembrando Semillas de Color\", \"Melipilla en el Siglo XX\" " +
+      "(fotográfica), \"Exposición de Arpilleras de Melipilla\". " +
+      "Contenido mixto — Haiku filtra lo que no sea artes visuales. " +
+      "Sin fixedLocation (varios espacios).",
+    addedAt: "2026-08-30",
+  },
+  {
+    username: "museoarteyartesanialinares",
+    note:
+      "Encontrada 2026-08-30 buscando comunas sin cobertura (Linares). " +
+      "Museo de Arte y Artesanía de Linares — museo especializado del " +
+      "Servicio Nacional del Patrimonio Cultural (SNPC), 7,3 mil " +
+      "seguidores. Alta densidad de exposiciones reales confirmadas: " +
+      "\"Contenedor/Cont...\" (12 jun-11 jul 2026), \"Territorios " +
+      "Tejidos\" (Fundación Artesanías de Chile), muestra de tres " +
+      "maestros (ene-mar 2026). fixedLocation.",
+    addedAt: "2026-08-30",
+    fixedLocation: { location: "Linares", placeName: "Museo de Arte y Artesanía de Linares" },
+  },
+  {
+    username: "ccm_constitucion",
+    note:
+      "Encontrada 2026-08-30 buscando comunas sin cobertura " +
+      "(Constitución). Corporación Cultural de Constitución — 6,6 mil " +
+      "seguidores, bio \"teatro, literatura, exposiciones\". Galería de " +
+      "Bellas Artes Municipal José Caracci real y activa — exposiciones " +
+      "confirmadas: \"Espejos del Alma, la Tierra y el Mar\", " +
+      "\"Antología\" (37 obras). Contenido mixto — Haiku filtra lo que " +
+      "no sea artes visuales. Sin fixedLocation (corporación cubre " +
+      "varios espacios, incluyendo el Museo de Constitución).",
+    addedAt: "2026-08-30",
+  },
+  {
+    username: "culturas_coronel",
+    note:
+      "Encontrada 2026-08-30 buscando comunas sin cobertura (Coronel). " +
+      "Casa de la Cultura Coronel — 12,8 mil seguidores. Sala de " +
+      "Exposiciones \"Jorge Negroni Sanhueza\" dedicada, con alta " +
+      "densidad de exposiciones reales confirmadas: \"Paisajes y " +
+      "Bodegones\" (Albino Echeverría), \"Herencia\", \"Nostalgias " +
+      "Mineras\" (Roberto de la Parra). fixedLocation.",
+    addedAt: "2026-08-30",
+    fixedLocation: { location: "Coronel", placeName: "Casa de la Cultura Jorge Vigueras Llanos" },
+  },
+  {
+    username: "sppcultura",
+    note:
+      "Encontrada 2026-08-30 buscando comunas sin cobertura (San Pedro " +
+      "de la Paz). Corporación Cultural SPP — 13,2 mil seguidores, sala " +
+      "de exposiciones propia. Alta densidad de exposiciones reales " +
+      "confirmadas: \"Ñuble Íntimo\" (Jacqueline Santos Luarte), " +
+      "\"Surrealismo entre paréntesis\", \"Kabbalah\". fixedLocation.",
+    addedAt: "2026-08-30",
+    fixedLocation: { location: "San Pedro de la Paz", placeName: "Corporación Cultural San Pedro de la Paz" },
+  },
   // El resto de la lista la aporta Daniel — una decisión editorial, igual
   // que cada fuente brillante nueva se evaluó una por una. Confirmar
   // pública y activa antes de agregar cada cuenta.
