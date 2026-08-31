@@ -2164,6 +2164,25 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
     addedAt: "2026-08-31",
     fixedLocation: { location: "Valparaíso", placeName: "Centro de Arte Baños del Almendro (CABA)" },
   },
+  {
+    username: "departamentojota",
+    note:
+      "Evaluada 2026-08-31 en Chrome (logueado), no vía Apify (misma " +
+      "razón que galeriacaba). Departamento JOTA, Mosqueto 464, " +
+      "Santiago (Metro Bellas Artes) — 404 publicaciones, 7715 " +
+      "seguidores. Programa curatorial 2026 numerado y muy activo: " +
+      "\"Donde cae el cielo\" (quinta exposición del programa, Julen " +
+      "Birke + Kika Mazry, curaduría de Sebastián Márquez Mora), " +
+      "\"PAISAJISMOS\" (Fede Taus + conversatorio), \"IMPRESIONES\" " +
+      "(Lucki Luciano), \"Solo nos queda el recuerdo\" (Ismael " +
+      "Sepúlveda), \"PLANTA ALTA\", además de un evento tipo DJ set " +
+      "(\"BULLICIOS\") — mismo perfil de riesgo que casona_lagoslira: " +
+      "algunos posts de inauguración son colaborativos con la cuenta " +
+      "del curador de turno (no reposts, coautoría real de Instagram), " +
+      "no siempre publicados solo desde el feed propio. fixedLocation.",
+    addedAt: "2026-08-31",
+    fixedLocation: { location: "Santiago", placeName: "Departamento JOTA" },
+  },
   // El resto de la lista la aporta Daniel — una decisión editorial, igual
   // que cada fuente brillante nueva se evaluó una por una. Confirmar
   // pública y activa antes de agregar cada cuenta.
