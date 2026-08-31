@@ -1,5 +1,5 @@
-import { VISION_AXIS5_POLICY } from "./curation-policy.js";
-import { isSafeExternalUrl } from "./url-safety.js";
+import { VISION_AXIS5_POLICY } from "./policy";
+import { isSafeExternalUrl } from "./url-safety";
 
 export interface ImageFetcher {
   fetch(url: string): Promise<{ base64: string; mediaType: string }>;

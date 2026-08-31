@@ -75,7 +75,7 @@ function isDatedInWeek(event: EventRow, week: { start: string; end: string }): b
 // both read opening_datetime (the same field), so without the type check
 // a "visita guiada" would show up under "Inauguraciones de esta semana"
 // as if it were the exhibition's own opening — the exact bug that
-// prompted event_type to exist. See lib/curation-policy.ts's
+// prompted event_type to exist. See packages/curation-policy/src/policy.ts's
 // EVENT_TYPE_POLICY.
 function isOpeningInWeek(event: EventRow, week: { start: string; end: string }): boolean {
   return event.event_type === "inauguracion" && isDatedInWeek(event, week);

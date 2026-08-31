@@ -946,7 +946,7 @@ test("curate degrades to zero candidates (not a throw) when no JSON block is pre
   assert.equal(usage.outputTokens, 45);
 });
 
-test("curate uses Haiku's own eventType when it returns a valid one — added 2026-08-29 (visita_guiada vs. inauguracion vs. exposicion, see lib/curation-policy.ts's EVENT_TYPE_POLICY)", async () => {
+test("curate uses Haiku's own eventType when it returns a valid one — added 2026-08-29 (visita_guiada vs. inauguracion vs. exposicion, see packages/curation-policy/src/policy.ts's EVENT_TYPE_POLICY)", async () => {
   const candidate = { ...baseCandidate, eventType: "visita_guiada", openingDatetime: "2026-08-29T12:00" };
   const client: MessagesClient = {
     messages: {
