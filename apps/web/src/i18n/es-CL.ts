@@ -590,7 +590,7 @@ export const esCL = {
     rejectedPrefix: "Esta vez no",
     rateLimitedPrefix: "Un momento",
     error: "Algo falló de nuestro lado. Intenta de nuevo en unos minutos.",
-    scopeNote: "Este formulario es solo para exposiciones con inauguración — para visitas guiadas u otro tipo de actividad, escríbenos por el ",
+    scopeNote: "Este formulario es solo para exposiciones con inauguración — para todo lo demás, escríbenos por el ",
   },
 };
 
