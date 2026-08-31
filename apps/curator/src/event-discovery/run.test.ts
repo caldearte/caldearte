@@ -605,6 +605,61 @@ test(
           ]);
       });
 
+      // Real gap, found 2026-08-31 adding "agrega tu expo": loadExistingKeys
+      // used to only load source='discovered' rows, so a gallery's own
+      // form submission was invisible to every dedup signal — Event
+      // Discovery later scraping that same gallery's Instagram would have
+      // sailed straight past it and landed as a real duplicate.
+      await t.test("a form-submitted event (source='submitted') is visible to dedup — a later scraped repost is recognized as a duplicate, not inserted twice", async () => {
+        const { insertCandidates, loadExistingKeys, loadAllRegions } = await import("./run.js");
+
+        await client.from("events").insert({
+          title: "__test__ Judas Galería Inauguración",
+          freeform_location: "Valparaíso",
+          place_name: "Judas Galería",
+          opening_datetime: "2026-09-05T19:00:00-04:00",
+          opening_time_confirmed: true,
+          medium_type: "tradicional",
+          sensitivity_tags: [],
+          source: "submitted",
+          curation_status: "approved",
+          curation_reasoning: "seed",
+        });
+
+        const regions = await loadAllRegions();
+        const seen = await loadExistingKeys();
+        const scrapedRepost = {
+          title: "__test__ Judas Galería Inauguración",
+          description: null,
+          artist: null,
+          runStartDate: null,
+          runEndDate: null,
+          openingTimeConfirmed: true,
+          mediumType: "tradicional" as const,
+          sensitivityTags: [],
+          curationReasoning: "ok",
+          imageUrl: null,
+          status: "approved" as const,
+          location: "Valparaíso",
+          placeName: "Judas Galería",
+          openingDatetime: "2026-09-05T19:00:00-04:00",
+          sourceUrl: "https://instagram.com/p/__test__/",
+          dateQuote: null,
+          locationQuote: null,
+          runStartDateQuote: null,
+          runEndDateQuote: null,
+        };
+
+        const { insertedCount, outcomes } = await insertCandidates([scrapedRepost], regions, seen, new Date(2026, 8, 1), "instagram");
+        assert.equal(insertedCount, 0, "the submitted event was already in `seen` — the scraped repost must not be inserted as a fresh row");
+        assert.equal(outcomes.get(scrapedRepost), "duplicate_skipped");
+
+        const { data: rows } = await client.from("events").select("id").eq("title", "__test__ Judas Galería Inauguración");
+        assert.equal(rows?.length, 1, "still exactly one row — the original submitted one, untouched");
+
+        await client.from("events").delete().eq("title", "__test__ Judas Galería Inauguración");
+      });
+
       // Real production bug, found 2026-08-12 via a user-requested audit:
       // MAC - Parque Forestal runs a whole "temporada" of concurrent
       // exhibitions sharing the museum's season-wide open/close dates.
