@@ -2075,6 +2075,33 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
     addedAt: "2026-08-30",
     fixedLocation: { location: "San Pedro de la Paz", placeName: "Corporación Cultural San Pedro de la Paz" },
   },
+  {
+    username: "centroculturaltome",
+    note:
+      "Encontrada 2026-08-30 buscando comunas sin cobertura (Tomé). " +
+      "Centro Cultural Tomé — 10 mil seguidores, Galería Artes " +
+      "Municipal. Muy alta densidad de exposiciones reales confirmadas " +
+      "vía búsqueda web: \"Origen y Plenitud\", \"Sabiduría Ancestral\" " +
+      "(itinerante), \"Vestigios Textiles Urbanos\", \"Bordando " +
+      "Copiulemu\" (Galería Humana) — al menos 4 muestras reales " +
+      "distintas encontradas. Sin fixedLocation (múltiples espacios: " +
+      "Galería Artes Municipal, Círculo de Bellas Artes El Vagón, " +
+      "Galería Humana).",
+    addedAt: "2026-08-30",
+  },
+  {
+    username: "cultura.cauquenes",
+    note:
+      "Encontrada 2026-08-30 buscando comunas sin cobertura " +
+      "(Cauquenes). Casa de la Cultura, Depto. de Cultura, las Artes y " +
+      "el Patrimonio de la Municipalidad de Cauquenes — 5,5 mil " +
+      "seguidores. Exposiciones reales confirmadas: \"Indómita\" " +
+      "(fotográfica, Francisca Acuña), \"Cauqueninos en la Pintura\", " +
+      "muestra de pinturas y xilografía (37 obras). Contenido mixto — " +
+      "Haiku filtra lo que no sea artes visuales. Sin fixedLocation " +
+      "(Casa de la Cultura + Club Social de Cauquenes).",
+    addedAt: "2026-08-30",
+  },
   // El resto de la lista la aporta Daniel — una decisión editorial, igual
   // que cada fuente brillante nueva se evaluó una por una. Confirmar
   // pública y activa antes de agregar cada cuenta.
