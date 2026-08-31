@@ -2144,6 +2144,26 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
     addedAt: "2026-08-30",
     fixedLocation: { location: "San Javier", placeName: "Centro Cultural Mario Oltra Blanco" },
   },
+  {
+    username: "galeriacaba",
+    note:
+      "Evaluada 2026-08-31 directamente en Chrome (logueado), no vía " +
+      "Apify — política de costo: Apify ya tocó su tope real de $5/mo " +
+      "el 2026-08-30 (ver infra_cost_policy), así que las evaluaciones " +
+      "de candidatas nuevas se hacen por navegador cuando alcanza, " +
+      "reservando Apify para el fetch real de cuentas ya aprobadas. " +
+      "Centro de Arte Baños del Almendro (CABA), Pasaje Fisher 18, " +
+      "Cerro Concepción, Valparaíso — 440 publicaciones, 1940 " +
+      "seguidores, muestreo de ~10 posts reales: inauguraciones con " +
+      "fecha/hora/dirección siempre completas (\"Alliyachi 'Regenerar'\" " +
+      "de Mishelle Ramos, \"Cola de Buey\" de Manuel Pertier), charlas " +
+      "curatoriales (\"Pensamiento/materia\"), mesas de lectura, y un " +
+      "calendario mensual completo publicado (\"Programación Julio " +
+      "2026\") — cadencia real y densidad alta, sin ruido detectado en " +
+      "la muestra. fixedLocation.",
+    addedAt: "2026-08-31",
+    fixedLocation: { location: "Valparaíso", placeName: "Centro de Arte Baños del Almendro (CABA)" },
+  },
   // El resto de la lista la aporta Daniel — una decisión editorial, igual
   // que cada fuente brillante nueva se evaluó una por una. Confirmar
   // pública y activa antes de agregar cada cuenta.
