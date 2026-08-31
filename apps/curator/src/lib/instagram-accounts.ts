@@ -2183,6 +2183,27 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
     addedAt: "2026-08-31",
     fixedLocation: { location: "Santiago", placeName: "Departamento JOTA" },
   },
+  {
+    username: "estacionsuralia",
+    note:
+      "Evaluada 2026-08-31 en Chrome (logueado), no vía Apify. " +
+      "Encontrada a partir de @ptomontt.cl (cuenta municipal/de avisos " +
+      "de Puerto Montt, evaluada y descartada por ruido — 5874 " +
+      "publicaciones, en su mayoría avisos comunitarios genéricos, no " +
+      "arte), que etiquetó a esta galería-taller en un post real " +
+      "(\"Pajarón\", Franco Arriagada). Estación Suralia, Pueblito " +
+      "Melipulli, Puerto Montt — 117 publicaciones, 992 seguidores, " +
+      "\"difundimos arte sureño\". Densidad real alta: además de " +
+      "\"Pajarón\" (propia sala), \"Ricardo Paredes\" (exposición " +
+      "propia), \"DOPAMINA\" (exposición de diseño y oficios, 7-8 " +
+      "agosto, en Chester Beer, Llanquihue — sede ajena), y difunde " +
+      "charlas/presentaciones de terceros (\"Volcanes de los Andes " +
+      "Sur\", \"CAMM/Sernageomin\"). Buena cobertura geográfica (sur de " +
+      "Chile, poco representado). Sin fixedLocation: organiza también " +
+      "en sedes ajenas (Chester Beer) además de su propia sala — Haiku " +
+      "infiere por post, igual que ilposto.cl.",
+    addedAt: "2026-08-31",
+  },
   // El resto de la lista la aporta Daniel — una decisión editorial, igual
   // que cada fuente brillante nueva se evaluó una por una. Confirmar
   // pública y activa antes de agregar cada cuenta.
