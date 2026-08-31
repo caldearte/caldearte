@@ -1,7 +1,14 @@
 import { NextResponse } from "next/server";
+import { Resend } from "resend";
 import { clientIp, isWithinRateLimit } from "@/lib/rate-limit";
-import { curateSubmissionText, curateSubmissionImage, type SubmissionInput } from "@/lib/curate-submission";
+import { curateSubmissionText, curateSubmissionImage, type SubmissionInput, type CurationDecision } from "@/lib/curate-submission";
 import { parseLocalDatetimeToUtcIso } from "@/lib/santiagoTime";
+
+// Same inbox as /api/contact — Daniel wants a copy of every submission
+// (approved or rejected) with the full form content and Haiku's
+// resolution, so he doesn't have to go looking in the DB to know a
+// gallery tried to add something.
+const NOTIFY_RECIPIENT = "daniel@probablespa.cl";
 
 // 3 Haiku consultations/hour/IP, per Daniel — tight enough to bound cost
 // (each submission spends 1-2 Haiku calls: text + optionally vision), a
@@ -23,6 +30,63 @@ async function fileToBase64(file: File): Promise<string> {
 
 function retryAfterMessage(): string {
   return "Ya enviaste el máximo de 3 intentos por hora. Puedes volver a intentarlo en una hora.";
+}
+
+interface NotifyParams {
+  input: SubmissionInput;
+  submitterEmail: string;
+  submitterName: string;
+  decision: CurationDecision;
+  finalStatus: "approved" | "rejected";
+  eventId?: string;
+}
+
+// Best-effort — a Resend failure here must never fail the submitter's own
+// request (the curation decision + DB write already happened). Logged so
+// a persistent failure is still visible, same posture as every other
+// outbound email in this app.
+async function notifyDaniel(params: NotifyParams): Promise<void> {
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) {
+    console.error("[submit-event] RESEND_API_KEY not set — skipping owner notification");
+    return;
+  }
+
+  const { input, submitterEmail, submitterName, decision, finalStatus, eventId } = params;
+  const outcomeLabel = finalStatus === "approved" ? "APROBADA" : "RECHAZADA";
+  const eventLine = eventId ? `\nPublicada en: https://www.caldearte.com/eventos/${eventId}\n` : "";
+
+  const body = `Nueva expo enviada por el formulario — ${outcomeLabel}
+${eventLine}
+De: ${submitterName} <${submitterEmail}>
+
+Título: ${input.title}
+Galería/espacio: ${input.galleryName}
+Comuna: ${input.comunaName}
+Artista(s): ${input.artist}
+Inauguración: ${input.openingDatetime}
+Término de la muestra: ${input.runEndDate ?? "(no especificado)"}
+Descripción: ${input.description}
+
+--- Resolución de Haiku ---
+Estado: ${decision.status}
+Ejes sensibles: ${decision.sensitivityTags.length > 0 ? decision.sensitivityTags.join(", ") : "(ninguno)"}
+Razonamiento interno: ${decision.curationReasoning}
+Mensaje mostrado al submitter: ${decision.publicMessage}`;
+
+  try {
+    const resend = new Resend(apiKey);
+    const { error } = await resend.emails.send({
+      from: "Caldearte <contacto@caldearte.com>",
+      to: NOTIFY_RECIPIENT,
+      replyTo: submitterEmail,
+      subject: `Caldearte — expo enviada (${outcomeLabel.toLowerCase()}): ${input.title}`,
+      text: body,
+    });
+    if (error) console.error("[submit-event] owner notification send failed", error);
+  } catch (err) {
+    console.error("[submit-event] owner notification threw", err);
+  }
 }
 
 export async function POST(request: Request) {
@@ -100,25 +164,31 @@ export async function POST(request: Request) {
     images.map(async (image) => ({ base64: await fileToBase64(image), mediaType: image.type })),
   );
 
-  let finalStatus = textDecision.status;
-  if (finalStatus === "approved") {
+  const finalDecision: CurationDecision = { ...textDecision };
+  if (finalDecision.status === "approved") {
     try {
       const visionStatus = await curateSubmissionImage(encodedImages[0].base64, encodedImages[0].mediaType);
-      if (visionStatus === "rejected") finalStatus = "rejected";
+      if (visionStatus === "rejected") {
+        finalDecision.status = "rejected";
+        finalDecision.curationReasoning += " [axis5: imagen rechazada por el chequeo de visión]";
+        finalDecision.publicMessage =
+          "Gracias por escribirnos. La imagen que enviaste no cumple con nuestras políticas de contenido, así que no pudimos publicar esta expo.";
+      }
     } catch (err) {
       console.error("[submit-event] vision curation failed", err);
       return NextResponse.json({ status: "error" }, { status: 502 });
     }
   }
 
-  if (finalStatus === "rejected") {
+  if (finalDecision.status === "rejected") {
     // Never persisted — mirrors that `events` never held rejected
     // candidates either way (see rejected_candidates for the scraped-
     // pipeline equivalent, not reused here — nothing to dedupe a one-off
     // self-reported submission against).
+    await notifyDaniel({ input: submissionInput, submitterEmail, submitterName, decision: finalDecision, finalStatus: "rejected" });
     return NextResponse.json({
       status: "rejected",
-      message: textDecision.publicMessage || "Gracias por escribirnos — esta vez no pudimos publicar tu expo en el calendario.",
+      message: finalDecision.publicMessage || "Gracias por escribirnos — esta vez no pudimos publicar tu expo en el calendario.",
     });
   }
 
@@ -141,9 +211,9 @@ export async function POST(request: Request) {
       regionId,
       openingDatetime: openingDatetimeUtc,
       runEndDate,
-      sensitivityTags: textDecision.sensitivityTags,
-      curationReasoning: textDecision.curationReasoning,
-      publicMessage: textDecision.publicMessage,
+      sensitivityTags: finalDecision.sensitivityTags,
+      curationReasoning: finalDecision.curationReasoning,
+      publicMessage: finalDecision.publicMessage,
       submitterEmail,
       submitterName,
       images: encodedImages,
@@ -156,9 +226,18 @@ export async function POST(request: Request) {
     return NextResponse.json({ status: "error" }, { status: 502 });
   }
 
+  await notifyDaniel({
+    input: submissionInput,
+    submitterEmail,
+    submitterName,
+    decision: finalDecision,
+    finalStatus: "approved",
+    eventId: data.eventId,
+  });
+
   return NextResponse.json({
     status: "approved",
-    message: textDecision.publicMessage || "¡Gracias! Tu expo ya está publicada en Caldearte.",
+    message: finalDecision.publicMessage || "¡Gracias! Tu expo ya está publicada en Caldearte.",
     eventId: data.eventId,
   });
 }
