@@ -5,6 +5,7 @@
 import { truncateSafely, type BrightSourceItem } from "../event-discovery/extractors.js";
 import type { ApifyInstagramPost } from "./apify-instagram.js";
 import type { InstagramAccountConfig } from "./instagram-accounts.js";
+import { toPlainLatin } from "./plain-text.js";
 
 const TITLE_MAX_LENGTH = 120;
 
@@ -99,7 +100,16 @@ export function toBrightSourceItem(post: ApifyInstagramPost, account: InstagramA
   // all — bullets, dashes, emoji-only lines) fixes both.
   const lines = caption.split("\n").map((line) => line.trim());
   const firstSubstantiveLine = lines.find((line) => /[\p{L}\p{N}]/u.test(line));
-  const title = truncateSafely(extractQuotedTitle(caption) || firstSubstantiveLine || account.username, TITLE_MAX_LENGTH);
+  // toPlainLatin — real bug, found 2026-09-01: a venue's caption using
+  // Unicode "styled text" (𝗕𝗼𝗹𝗱, 𝘐𝘵𝘢𝘭𝘪𝘤, from a third-party "fancy font"
+  // generator, not real accented characters) got captured verbatim into
+  // the title, and rendered as blank tofu boxes in the automated Instagram
+  // flyer — Satori/next-og's loaded fonts have no glyphs for that Unicode
+  // block. The website itself never showed this (browser system-font
+  // fallback covers it), which is why it went unnoticed until then. Only
+  // applied here, not to the full caption/description — Haiku sees the
+  // raw caption for its own extraction regardless.
+  const title = toPlainLatin(truncateSafely(extractQuotedTitle(caption) || firstSubstantiveLine || account.username, TITLE_MAX_LENGTH));
 
   return {
     title,
