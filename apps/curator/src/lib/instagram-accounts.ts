@@ -2249,6 +2249,24 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
     addedAt: "2026-09-01",
     fixedLocation: { location: "Santiago", placeName: "Galería de Arte Postigo" },
   },
+  {
+    username: "museoregionalrancagua",
+    note:
+      "Evaluada 2026-09-01 en Chrome (logueado), no vía Apify. Museo " +
+      "Regional de Rancagua, Estado #685, Rancagua — museo público " +
+      "(Gobierno de Chile, entrada gratuita), 1356 publicaciones, 10,5 " +
+      "mil seguidores. Encontrada vía una inauguración real (\"Dos mil " +
+      "Novecientos Kilos\", Pía Catalán Severino, seleccionada en su " +
+      "Convocatoria 2026). Densidad mixta pero con contenido de arte " +
+      "visual real y recurrente: exposiciones temporales propias, " +
+      "actividades de mediación de exposiciones vigentes, junto con " +
+      "contenido institucional/comunitario (asambleas de consejos " +
+      "provinciales, talleres) — mismo perfil que otros museos " +
+      "regionales ya trackeados. Buena cobertura geográfica (región de " +
+      "O'Higgins, poco representada). fixedLocation.",
+    addedAt: "2026-09-01",
+    fixedLocation: { location: "Rancagua", placeName: "Museo Regional de Rancagua" },
+  },
   // El resto de la lista la aporta Daniel — una decisión editorial, igual
   // que cada fuente brillante nueva se evaluó una por una. Confirmar
   // pública y activa antes de agregar cada cuenta.
