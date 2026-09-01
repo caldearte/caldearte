@@ -28,6 +28,14 @@ test("toBrightSourceItem prefers a quoted title over the full first line — rea
   assert.equal(item.title, "Mareas");
 });
 
+test("toBrightSourceItem converts Unicode 'styled text' in the title to plain ASCII — real bug found 2026-09-01 (mhnchile): a fancy-font-generator title rendered as blank tofu boxes in the automated Instagram flyer, since Satori's loaded fonts have no glyphs for that Unicode block", () => {
+  const item = toBrightSourceItem(
+    { ...POST, caption: "𝗟𝗮 𝘃𝗶𝗱𝗮 𝗲𝗻 𝘂𝗻𝗮 𝗺𝗶𝗿𝗮𝗱𝗮. 𝗙𝗲𝗿𝗻𝗮𝗻𝗱𝗼 𝗢𝗽𝗮𝘇𝗼\n20 de agosto, 19:00hrs." },
+    ACCOUNT,
+  );
+  assert.equal(item.title, "La vida en una mirada. Fernando Opazo");
+});
+
 test("toBrightSourceItem extracts a quoted title using guillemets («»)", () => {
   const item = toBrightSourceItem(
     { ...POST, caption: "D21 invita a la inauguración de la muestra «Afecto Extraterrestre» del artista Javier González Pesce." },
