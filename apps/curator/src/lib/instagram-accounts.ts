@@ -2230,6 +2230,25 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
     addedAt: "2026-08-31",
     fixedLocation: { location: "Valparaíso", placeName: "Judas Galería" },
   },
+  {
+    username: "galeriapostigo",
+    note:
+      "Evaluada 2026-09-01 en Chrome (logueado), no vía Apify. Galería " +
+      "de Arte Postigo, Bandera con Compañía frente al 411, Santiago — " +
+      "concepto real y poco común: una galería de arte integrada en un " +
+      "quiosco clásico de calle (\"un espacio en @jardin_postigo\"). " +
+      "Recién inaugurada: 7 publicaciones, 413 seguidores, única " +
+      "muestra hasta ahora es \"Vamos? No!\" de Zaida González Ríos " +
+      "(inauguración real, viernes 7 de agosto, 19:00 hrs, con cobertura " +
+      "de prensa real — Cooperativa/El Mercurio, foto del artículo en el " +
+      "feed). No se agrega ningún evento hoy: esa inauguración ya pasó " +
+      "hace más de 3 semanas, sin fecha de cierre confirmada en ningún " +
+      "post, y sin nueva muestra anunciada aún (\"Pronto más " +
+      "novedades!\") — nada vigente que agregar en este momento, pero " +
+      "cuenta real y prometedora para futuras aperturas. fixedLocation.",
+    addedAt: "2026-09-01",
+    fixedLocation: { location: "Santiago", placeName: "Galería de Arte Postigo" },
+  },
   // El resto de la lista la aporta Daniel — una decisión editorial, igual
   // que cada fuente brillante nueva se evaluó una por una. Confirmar
   // pública y activa antes de agregar cada cuenta.
