@@ -2267,6 +2267,23 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
     addedAt: "2026-09-01",
     fixedLocation: { location: "Rancagua", placeName: "Museo Regional de Rancagua" },
   },
+  {
+    username: "anandamapu",
+    note:
+      "Evaluada 2026-09-01 en Chrome (logueado), no vía Apify. " +
+      "Anandamapu, centro cultural independiente y autogestionado, San " +
+      "Cristobal 508 esq. Caliche, Recoleta, Santiago — 1596 " +
+      "publicaciones, 10 mil seguidores. Encontrada vía una exposición " +
+      "real (\"Colección de Máscaras\", Natalia Sanzana, 3ra exposición " +
+      "del ciclo \"Arte y Territorio\" 2026). Rendimiento esperado bajo " +
+      "proporcionalmente: cubre muchísimas disciplinas (milonga, " +
+      "podcast, diáspora, arriendos, talleres varios), pero tiene un " +
+      "\"Área Artes Visuales\" propia con programa curatorial real y " +
+      "recurrente (el ciclo \"Arte y Territorio\" ya va en su 3ra " +
+      "muestra en 2026). fixedLocation — un solo local físico.",
+    addedAt: "2026-09-01",
+    fixedLocation: { location: "Recoleta", placeName: "Anandamapu" },
+  },
   // El resto de la lista la aporta Daniel — una decisión editorial, igual
   // que cada fuente brillante nueva se evaluó una por una. Confirmar
   // pública y activa antes de agregar cada cuenta.
