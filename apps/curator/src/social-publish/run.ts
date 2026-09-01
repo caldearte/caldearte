@@ -1,7 +1,9 @@
-// Instagram automated-post cron (docs/roadmap.md, Fase 4). Runs daily;
-// most days it's a no-op — only Sunday (all 3 types) and Monday/
-// Wednesday/Friday (one type each) actually publish anything, per the
-// cadence design. Wires together the 3 pure selectors
+// Instagram automated-post cron (docs/roadmap.md, Fase 4 — redesigned
+// 2026-08-31 into a single "agenda" carousel, Camila's "bitácora" request:
+// no repeats, mixed inauguraciones+visitas guiadas, short non-overlapping
+// date windows instead of one big weekly dump). Runs daily; most days it's
+// a no-op — only Monday/Wednesday/Friday post, and only if their window
+// actually has something eligible. Wires together the single pure selector
 // (./selection.ts), the flyer renderer (apps/web's /api/social/flyer,
 // deployed and publicly reachable — Instagram's Graph API fetches
 // image_url itself server-side, so no image upload step is needed here),
@@ -11,92 +13,68 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database, Tables } from "@caldearte/shared-types";
 import { getSupabaseClient } from "../lib/supabase-client.js";
 import { shortRegionName } from "../lib/regionNames.js";
-import {
-  selectInauguraciones,
-  selectNoTeLaPierdas,
-  selectDestacada,
-  type SocialEvent,
-  type SocialPostType,
-} from "./selection.js";
+import { selectUpcoming, type SocialEvent } from "./selection.js";
 import { publishInstagramCarousel, verifyInstagramAccount, type InstagramClientConfig } from "./instagram.js";
 
 const SITE_URL = "https://www.caldearte.com";
 const CLOSING_SLIDE_URL = `${SITE_URL}/social/ig-post-cierre.png`;
 
-// Keyword-first openers (2026-08-23) — Instagram's own discovery model
-// reads caption text (the first line especially) to decide who a post is
-// for, now that hashtags are mostly a categorization signal rather than
-// a real discovery lever (Mosseri, 2026). "Chile" stays fixed since
-// every carousel is nationwide, not comuna-specific — which comunas show
-// up changes carousel to carousel (diversifyByComuna), so a caption
-// can't name one without being wrong most weeks.
-const CAPTIONS: Record<SocialPostType, string> = {
-  inauguracion:
-    "Inauguraciones de arte en Chile esta semana: exposiciones nuevas en Santiago y regiones. Desliza para ver todas — la agenda completa está en el link de la bio.",
-  no_te_la_pierdas:
-    "Últimos días de estas exposiciones de arte contemporáneo en Chile — cierran esta semana. Más info y toda la agenda en el link de la bio.",
-  destacada:
-    "Exposiciones de arte para visitar esta semana en Chile — muestras, galerías y espacios culturales. Toda la agenda en el link de la bio.",
-};
+// Keyword-first opener (2026-08-23) — Instagram's own discovery model reads
+// caption text (the first line especially) to decide who a post is for,
+// now that hashtags are mostly a categorization signal rather than a real
+// discovery lever (Mosseri, 2026). "Chile" stays fixed since every
+// carousel is nationwide, not comuna-specific — which comunas show up
+// changes carousel to carousel (diversifyByComuna), so a caption can't
+// name one without being wrong most days. "Próximos días" (not "esta
+// semana") since a window is now 2-3 days, never the whole week.
+const CAPTION =
+  "Esto se viene en los próximos días: inauguraciones y visitas guiadas de arte en Chile — Santiago y regiones. Desliza para ver todas — la agenda completa está en el link de la bio.";
 
 type EventRow = Tables<"events">;
 type EventWithRegion = EventRow & { comunaName: string | null };
-
-// Same "fixed Monday-Sunday week" convention as newsletter/run.ts and
-// apps/web/src/lib/date.ts's weekBoundsInSantiago — EXCEPT on a Sunday,
-// where this resolves to the UPCOMING week (starting tomorrow), not the
-// week ending today. Real bug, found 2026-08-23 while shifting the
-// discovery cadence to Sunday: apps/web's version (a general "current
-// week" concept, correctly Sunday-inclusive for site display) was
-// duplicated here as-is, but this function's actual job is "which week
-// is Sunday's post announcing" — with the old Sunday-inclusive math,
-// week.end landed on TODAY, so selectNoTeLaPierdas's `runEndDate <=
-// week.end` filter would only ever match something closing that exact
-// day, and selectInauguraciones would show the week that just ended
-// instead of the one about to start. Monday-Saturday callers are
-// unaffected (dow!==0 branch unchanged).
-function weekBoundsInSantiago(now: Date): { start: string; end: string } {
-  const todayStr = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Santiago" }).format(now);
-  const [y, m, d] = todayStr.split("-").map(Number);
-  const asUtc = new Date(Date.UTC(y, m - 1, d));
-  const dow = asUtc.getUTCDay();
-  const mondayOffset = dow === 0 ? 1 : 1 - dow;
-  const monday = new Date(asUtc);
-  monday.setUTCDate(asUtc.getUTCDate() + mondayOffset);
-  const sunday = new Date(monday);
-  sunday.setUTCDate(monday.getUTCDate() + 6);
-  const fmt = (dt: Date) => dt.toISOString().slice(0, 10);
-  return { start: fmt(monday), end: fmt(sunday) };
-}
 
 function todayInSantiago(now: Date): string {
   return new Intl.DateTimeFormat("en-CA", { timeZone: "America/Santiago" }).format(now);
 }
 
-// Sunday posts all 3 across the week (the full plan); Monday/Wednesday/
-// Friday each post one — see docs/roadmap.md's cadence table. Every
-// other day is a deliberate no-op, not a bug. In the REAL schedule
-// (publish-social.yml), Sunday's 3 types no longer come from this
-// function returning all 3 at once — that made them post back-to-back
-// within the same script run instead of spaced across the day (real bug,
-// found 2026-08-23). The workflow now fires 3 separate Sunday crons, each
-// setting FORCE_TYPES to exactly one type, so this "all 3 for Sunday"
-// branch is only ever reached by a manual workflow_dispatch run with no
-// force_types input — a deliberate, different behavior for testing, not
-// what the automated schedule actually does anymore.
-function scheduledTypesFor(now: Date): SocialPostType[] {
+function addDays(dateStr: string, days: number): string {
+  const [y, m, d] = dateStr.split("-").map(Number);
+  const dt = new Date(Date.UTC(y, m - 1, d));
+  dt.setUTCDate(dt.getUTCDate() + days);
+  return dt.toISOString().slice(0, 10);
+}
+
+// Only used for instagram_posts/social_post_log's week_start column
+// (kept for historical-record consistency with pre-redesign rows and
+// instagram-insights' weekly grouping) — the actual posting-window logic
+// above never needs "which Monday" at all anymore.
+function mondayOfWeek(dateStr: string): string {
+  const [y, m, d] = dateStr.split("-").map(Number);
+  const dt = new Date(Date.UTC(y, m - 1, d));
+  const isoDow = dt.getUTCDay() === 0 ? 7 : dt.getUTCDay(); // Mon=1..Sun=7
+  dt.setUTCDate(dt.getUTCDate() - (isoDow - 1));
+  return dt.toISOString().slice(0, 10);
+}
+
+// The 3 fixed posting days and their (non-overlapping) date windows —
+// Camila's "bitácora" redesign, 2026-08-31: Monday covers Monday+Tuesday,
+// Wednesday covers Wednesday+Thursday, Friday covers Friday through
+// Sunday (the widest window, since real data shows weekends carry most of
+// the week's volume — see the plan doc this commit implements). Every
+// other day is a deliberate no-op, not a bug — and even on a posting day,
+// an empty window still results in no post at all (checked by the caller
+// via selectUpcoming's return length), by design: no filler content.
+function postingWindowFor(now: Date): { start: string; end: string } | null {
   const dow = new Intl.DateTimeFormat("en-US", { timeZone: "America/Santiago", weekday: "short" }).format(now);
+  const today = todayInSantiago(now);
   switch (dow) {
-    case "Sun":
-      return ["inauguracion", "no_te_la_pierdas", "destacada"];
     case "Mon":
-      return ["inauguracion"];
     case "Wed":
-      return ["no_te_la_pierdas"];
+      return { start: today, end: addDays(today, 1) };
     case "Fri":
-      return ["destacada"];
+      return { start: today, end: addDays(today, 2) };
     default:
-      return [];
+      return null;
   }
 }
 
@@ -143,9 +121,13 @@ function withVenueMentions(caption: string, events: SocialEvent[]): string {
   return `${caption}\n\nCon: ${handles.map((h) => `@${h}`).join(" ")}`;
 }
 
-function buildFlyerUrl(type: SocialPostType, e: SocialEvent, comunaAndRegion: { comuna: string | null; region: string }): string {
+// `type` comes from the EVENT's own eventType, not a post-level concept —
+// a single carousel now mixes inauguracion and visita_guiada slides, so
+// each needs its own flyer label rather than sharing one for the whole post.
+function buildFlyerUrl(e: SocialEvent, comunaAndRegion: { comuna: string | null; region: string }): string {
+  const flyerType = e.eventType === "visita_guiada" ? "visita_guiada" : "inauguracion";
   const params = new URLSearchParams({
-    type,
+    type: flyerType,
     title: e.title,
     region: comunaAndRegion.region,
     imageUrl: e.imageUrl ?? "",
@@ -175,7 +157,14 @@ export interface RunDeps {
   // workflow's own inputs can drive it without needing a code change to
   // exercise.
   dryRun?: boolean;
-  forceTypes?: SocialPostType[];
+  // Manual-testing escape hatch (env FORCE_WINDOW_START/FORCE_WINDOW_END) —
+  // lets a workflow_dispatch dry run exercise the full pipeline (real
+  // query, real selection, real flyer URLs, real credentials checked) on a
+  // day that wouldn't otherwise post anything, without needing a code
+  // change. Replaces the old forceTypes mechanism now that there's only
+  // one carousel "type" — what used to vary was WHICH type posted, now
+  // it's WHICH WINDOW is being tested.
+  forceWindow?: { start: string; end: string };
 }
 
 export async function run(deps: RunDeps = {}): Promise<void> {
@@ -183,23 +172,26 @@ export async function run(deps: RunDeps = {}): Promise<void> {
   const today = todayInSantiago(now);
   const publish = deps.publishInstagramCarouselFn ?? publishInstagramCarousel;
   const dryRun = deps.dryRun ?? process.env.DRY_RUN === "true";
-  const forceTypes = deps.forceTypes ?? (process.env.FORCE_TYPES?.split(",").filter(Boolean) as SocialPostType[] | undefined);
+  const forceWindow =
+    deps.forceWindow ??
+    (process.env.FORCE_WINDOW_START && process.env.FORCE_WINDOW_END
+      ? { start: process.env.FORCE_WINDOW_START, end: process.env.FORCE_WINDOW_END }
+      : undefined);
 
   // Checked before touching Supabase or Instagram credentials at all —
-  // most days are a no-op by design (see scheduledTypesFor), and neither
+  // most days are a no-op by design (see postingWindowFor), and neither
   // needs to be configured/reachable just to determine that. Real bug,
   // found writing this test: getSupabaseClient() used to run first
   // unconditionally, so a no-op day still required SUPABASE_URL/
   // SUPABASE_SERVICE_ROLE_KEY to be set or it would throw before ever
   // reaching the "nothing scheduled" check.
-  const types = forceTypes && forceTypes.length > 0 ? forceTypes : scheduledTypesFor(now);
-  if (types.length === 0) {
+  const window = forceWindow ?? postingWindowFor(now);
+  if (!window) {
     console.log(`[social-publish] ${today} — nothing scheduled today, exiting.`);
     return;
   }
 
   const supabase = deps.supabase ?? getSupabaseClient();
-  const week = weekBoundsInSantiago(now);
 
   const igBusinessAccountId = deps.instagramConfig?.igBusinessAccountId ?? process.env.INSTAGRAM_BUSINESS_ACCOUNT_ID;
   const accessToken = deps.instagramConfig?.accessToken ?? process.env.INSTAGRAM_ACCESS_TOKEN;
@@ -217,10 +209,11 @@ export async function run(deps: RunDeps = {}): Promise<void> {
   const [eventsRes, regionsRes, logRes] = await Promise.all([
     supabase.from("events").select("*").eq("curation_status", "approved").is("removed_at", null),
     supabase.from("regions").select("id, name, admin_region_name"),
-    // All-time, not just this week — selectDestacada needs each event's
-    // full posting history to know how long it's been since it was last
-    // featured, not just whether it was featured this week.
-    supabase.from("social_post_log").select("event_id, post_type, posted_at, week_start"),
+    // Every row ever logged, regardless of which post_type wrote it
+    // (including the old 'no_te_la_pierdas'/'destacada' rows from before
+    // this redesign) — an event already shown once should never repeat,
+    // full stop, so there's no "this week only" scoping anymore.
+    supabase.from("social_post_log").select("event_id"),
   ]);
   if (eventsRes.error) throw new Error(`Failed to load events: ${eventsRes.error.message}`);
   if (regionsRes.error) throw new Error(`Failed to load regions: ${regionsRes.error.message}`);
@@ -244,70 +237,56 @@ export async function run(deps: RunDeps = {}): Promise<void> {
   );
   const socialEvents = events.map(toSocialEvent);
 
-  const logRows = logRes.data ?? [];
-  const alreadyPostedThisWeek = new Map<SocialPostType, Set<string>>([
-    ["no_te_la_pierdas", new Set(logRows.filter((r) => r.post_type === "no_te_la_pierdas" && r.week_start === week.start).map((r) => r.event_id))],
-    ["destacada", new Set(logRows.filter((r) => r.post_type === "destacada" && r.week_start === week.start).map((r) => r.event_id))],
-  ]);
-  const lastFeaturedAsDestacada = new Map<string, string>();
-  for (const row of logRows) {
-    if (row.post_type !== "destacada") continue;
-    const current = lastFeaturedAsDestacada.get(row.event_id);
-    if (!current || row.posted_at > current) lastFeaturedAsDestacada.set(row.event_id, row.posted_at);
+  const alreadyPostedIds = new Set((logRes.data ?? []).map((r) => r.event_id));
+
+  const selected = selectUpcoming(socialEvents, window, alreadyPostedIds);
+  if (selected.length === 0) {
+    console.log(`[social-publish] ${today}: nothing eligible for ${window.start}..${window.end}, skipping.`);
+    return;
   }
 
-  for (const type of types) {
-    const selected =
-      type === "inauguracion"
-        ? selectInauguraciones(socialEvents, week)
-        : type === "no_te_la_pierdas"
-          ? selectNoTeLaPierdas(socialEvents, today, week, alreadyPostedThisWeek.get("no_te_la_pierdas")!)
-          : selectDestacada(socialEvents, today, alreadyPostedThisWeek.get("destacada")!, lastFeaturedAsDestacada);
+  // Reserve one slot for the fixed closing slide — carousels cap at 10
+  // total on Instagram's side, not 10 dynamic + 1 static.
+  const dynamicSlides = selected.slice(0, 9);
+  const imageUrls = [
+    ...dynamicSlides.map((e) => buildFlyerUrl(e, comunaAndRegionById.get(e.id) ?? { comuna: null, region: "" })),
+    CLOSING_SLIDE_URL,
+  ];
+  const caption = withVenueMentions(CAPTION, dynamicSlides);
 
-    if (selected.length === 0) {
-      console.log(`[social-publish] ${type}: nothing eligible today, skipping.`);
-      continue;
-    }
-
-    // Reserve one slot for the fixed closing slide — carousels cap at 10
-    // total on Instagram's side, not 10 dynamic + 1 static.
-    const dynamicSlides = selected.slice(0, 9);
-    const imageUrls = [
-      ...dynamicSlides.map((e) => buildFlyerUrl(type, e, comunaAndRegionById.get(e.id) ?? { comuna: null, region: "" })),
-      CLOSING_SLIDE_URL,
-    ];
-    const caption = withVenueMentions(CAPTIONS[type], dynamicSlides);
-
-    if (dryRun) {
-      console.log(
-        `[social-publish] DRY RUN — ${type}: would publish a carousel with ${dynamicSlides.length} event(s) + closing slide.\n` +
-          `  caption: ${caption}\n` +
-          imageUrls.map((url, i) => `  [${i + 1}/${imageUrls.length}] ${url}`).join("\n"),
-      );
-      continue;
-    }
-
-    console.log(`[social-publish] ${type}: publishing a carousel with ${dynamicSlides.length} event(s) + closing slide.`);
-    const publishedId = await publish(instagramConfig, imageUrls, caption);
-    console.log(`[social-publish] ${type}: published, Instagram media id ${publishedId}.`);
-
-    // Real engagement data (reach/saved/likes/comments) is filled in
-    // later by a separate weekly cron (instagram-insights/run.ts) — this
-    // just records that the post exists at all, since publishedId was
-    // only ever logged before 2026-08-24, never persisted. Motivated by
-    // a real question: is Monday's deliberate inauguracion repeat (same
-    // content as Sunday's, by design) worth it, or too soon after
-    // Sunday's own post to add real reach? Needs real numbers over time
-    // to answer, not a one-off log line.
-    const { error: postLogError } = await supabase
-      .from("instagram_posts")
-      .insert({ media_id: publishedId, post_type: type, week_start: week.start, published_at: now.toISOString() });
-    if (postLogError) console.error(`[social-publish] ${type}: published successfully but failed to record instagram_posts row: ${postLogError.message}`);
-
-    if (type !== "inauguracion") {
-      const rows = dynamicSlides.map((e) => ({ event_id: e.id, post_type: type, week_start: week.start }));
-      const { error } = await supabase.from("social_post_log").insert(rows);
-      if (error) console.error(`[social-publish] ${type}: published successfully but failed to log de-dup rows: ${error.message}`);
-    }
+  if (dryRun) {
+    console.log(
+      `[social-publish] DRY RUN — would publish a carousel with ${dynamicSlides.length} event(s) + closing slide (window ${window.start}..${window.end}).\n` +
+        `  caption: ${caption}\n` +
+        imageUrls.map((url, i) => `  [${i + 1}/${imageUrls.length}] ${url}`).join("\n"),
+    );
+    return;
   }
+
+  console.log(`[social-publish] publishing a carousel with ${dynamicSlides.length} event(s) + closing slide (window ${window.start}..${window.end}).`);
+  const publishedId = await publish(instagramConfig, imageUrls, caption);
+  console.log(`[social-publish] published, Instagram media id ${publishedId}.`);
+
+  // Real engagement data (reach/saved/likes/comments) is filled in later by
+  // a separate weekly cron (instagram-insights/run.ts) — this just records
+  // that the post exists at all. 'agenda' is the single post_type every
+  // publish writes now (see the migration widening this column's check
+  // constraint) — the old 3-value distinction doesn't apply once there's
+  // only one carousel shape; which events it contained is still visible
+  // per-event via social_post_log.
+  const weekStart = mondayOfWeek(today);
+  const { error: postLogError } = await supabase
+    .from("instagram_posts")
+    .insert({ media_id: publishedId, post_type: "agenda", week_start: weekStart, published_at: now.toISOString() });
+  if (postLogError) console.error(`[social-publish] published successfully but failed to record instagram_posts row: ${postLogError.message}`);
+
+  // Always logged now — no repeats for anything, so there's no "except
+  // inauguracion" carve-out anymore (that carve-out is exactly what made
+  // the old inauguracion type repeat weekly, which is the behavior this
+  // redesign removes). post_type/week_start are kept (columns are NOT
+  // NULL) for historical-record consistency with older rows, even though
+  // the exclusion check above no longer reads either field.
+  const rows = dynamicSlides.map((e) => ({ event_id: e.id, post_type: "agenda", week_start: weekStart }));
+  const { error } = await supabase.from("social_post_log").insert(rows);
+  if (error) console.error(`[social-publish] published successfully but failed to log de-dup rows: ${error.message}`);
 }

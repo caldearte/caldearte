@@ -451,51 +451,41 @@ building infra" discipline the rest of this project has followed.
     of national posts gets, on top of follower fatigue. Regional depth
     instead goes through **Camila's own manual track** (see below), which
     doesn't compete for the same reach budget.
-  - **Three content types, each with its own ordering and repeat rule:**
-    - **(A) Inauguraciones** — ordered by **fecha de apertura**,
-      ascending (lunes primero). **Repeats across the week deliberately**
-      — this is the one type meant to work as a recurring reminder/push,
-      not a one-time announcement.
-    - **(B) "No te la pierdas"** — expos closing soonest, ordered by
-      **fecha de fin**, ascending. **Never repeats an expo within the
-      same week** — each appearance during the week must be a different
-      closing-soon expo than any shown earlier that week.
-    - **(C) Selección/destacadas** — not date-ordered; a quality-curated
-      rotation (photo quality, description completeness, how long since
-      it last appeared in a post). **Never repeats an expo within the
-      same week**, same rule as (B).
-    - All three capped at **10 cards per carousel** (Instagram's own
-      platform max), with **región diversity enforced within the cap** —
-      reusing the same diversity logic already built for the newsletter,
-      so Santiago doesn't fill all 10 slots on its own.
-    - Every carousel ends on a **fixed static closing slide** ("selección
-      parcial, todo en Caldearte" + the link) — generated once as a
-      reusable asset, not rendered per post.
-  - **Weekly cadence — 6 automated posts/week:**
-    - **Sunday** — all three types posted (A + B + C), timed to land the
-      day before the week it covers starts (see discovery-cadence change
-      below). **Spaced across the day, not back-to-back** — real bug,
-      found 2026-08-23: the original single Sunday cron posted all 3
-      within the same script run (~1-2 minutes apart), undermining the
-      whole point of "no more than 1-2 Feed posts/day" below. Fixed via 3
-      separate Sunday crons in `publish-social.yml` (~08:05/11:05/14:05
-      Chile time), each forcing exactly one type.
-    - **Monday** — (A) only.
-    - **Wednesday** — (B) only.
-    - **Friday** — (C) only.
-    - Kept well under generic Instagram guidance of "no more than 1-2
-      Feed posts/day, ~3-5/week for consistency without fatigue" on any
-      single day (never more than the Sunday triple), while still
-      landing above that weekly ceiling in total — a deliberate tradeoff
-      given Caldearte's actual national content volume, revisit if real
-      engagement data says otherwise once it's live.
-    - **Implementation**: (A) needs no de-dup query — its "repeats are
-      fine" rule means the same ascending-by-opening-date query can run
-      on both Sunday and Monday with no extra state. (B) and (C) need a
-      small log table (event/expo IDs already posted this week, per
-      type) so their queries can exclude what's already appeared —
-      the one real piece of new state this design needs beyond a plain
-      SELECT.
+  - **Redesigned 2026-08-31 — a single "agenda" carousel, no repeats.**
+    Camila (difusión) found the original 3-type feed confusing to follow
+    (destacadas carried no date at all) and too repetitive to read as
+    anything but advertising — she wanted the account to feel like a
+    bitácora: something genuinely new each time someone checks it, not a
+    weekly content dump. "No te la pierdas" and "destacadas" are retired
+    entirely. What's left:
+    - **One carousel type**, mixing **inauguraciones + visitas guiadas**
+      — under a short posting window (below), a guided-tour slot and an
+      opening night are the same shape of urgency ("this happens on this
+      specific day"), so the old recurring-vs-one-time distinction that
+      justified separating them stops applying.
+    - **Every event posts exactly once, ever** — no more deliberate
+      weekly repeat for inauguraciones. Permanent de-dup via
+      `social_post_log` (see `apps/curator/src/social-publish/
+      selection.ts`'s `selectUpcoming`).
+    - **3 fixed posting days, short non-overlapping windows** instead of
+      one weekly dump: **Monday** covers Monday+Tuesday, **Wednesday**
+      covers Wednesday+Thursday, **Friday** covers Friday through Sunday
+      (widest window — real data showed weekends carry most of the
+      week's volume). **If a window has nothing eligible, that day just
+      doesn't post** — no filler content.
+    - Still **capped at 10 cards per carousel** (Instagram's own platform
+      max), with the same comuna-diversity logic already built for the
+      newsletter/old pipeline — reused as-is, not rebuilt. All regions
+      stay mixed in one nationwide, chronologically-ordered carousel
+      (splitting Feed posts by región is still rejected for the same
+      reach-cannibalization reason as the original 2026-08-22 design,
+      below).
+    - Every carousel still ends on the same **fixed static closing
+      slide** ("selección parcial, todo en Caldearte" + the link).
+    - `publish-social.yml`'s cron simplified from 4 entries (a Mon-Sat
+      generic one plus 3 separate Sunday slots) down to **one**, firing
+      only Mon/Wed/Fri — there's only one carousel shape now, so no more
+      per-type juggling within a single day.
   - **Discovery cadence moved Monday → Sunday, shipped 2026-08-23**
     (event-discovery bright-sources/headless/Instagram/Google-Alerts
     crons + the weekly newsletter, keeping their existing relative

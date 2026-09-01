@@ -1,15 +1,20 @@
-import { fmtOpeningHour, fmtUntilDate, parseDateOnly } from "@/lib/date";
+import { fmtOpeningHour, parseDateOnly } from "@/lib/date";
 import { esCL } from "@/i18n/es-CL";
 
 export const FLYER_WIDTH = 1080;
 export const FLYER_HEIGHT = 1350;
 
-export type FlyerType = "inauguracion" | "no_te_la_pierdas" | "destacada";
+// "no_te_la_pierdas"/"destacada" retired 2026-08-31 (automated pipeline
+// redesign — see apps/curator/src/social-publish/selection.ts's own doc
+// comment) — only inauguracion/visita_guiada get posted automatically now.
+// Kept usable here too (not deleted) since the manual "Compartir" carousel
+// feature (apps/web/src/lib/social/shareInauguracionesCarousel.ts) still
+// calls this route directly with type=inauguracion.
+export type FlyerType = "inauguracion" | "visita_guiada";
 
 const TOP_LABEL: Record<FlyerType, string> = {
   inauguracion: "INAUGURACIÓN",
-  no_te_la_pierdas: "ÚLTIMOS DÍAS",
-  destacada: "DESTACADA",
+  visita_guiada: "VISITA GUIADA",
 };
 
 const WEEKDAYS = ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"];
@@ -40,10 +45,8 @@ export interface FlyerEventInput {
   comuna: string | null;
   region: string;
   imageUrl: string;
-  openingDatetime: string | null; // required for "inauguracion"
+  openingDatetime: string | null; // required for both flyer types
   openingTimeConfirmed: boolean;
-  runEndDate: string | null; // required for "no_te_la_pierdas"
-  todayStr: string;
 }
 
 // Satori's CSS text-overflow: ellipsis support is unreliable — truncating
@@ -72,19 +75,12 @@ function wrapToTwoLines(text: string, maxCharsPerLine: number): [string, string 
 }
 
 export function buildFlyerDateLine(input: FlyerEventInput): string {
-  switch (input.type) {
-    case "inauguracion": {
-      if (!input.openingDatetime) throw new Error("inauguracion flyer requires openingDatetime");
-      return fmtInauguracionDateLine(input.openingDatetime, input.openingTimeConfirmed);
-    }
-    case "no_te_la_pierdas": {
-      const anchor = input.runEndDate ?? input.openingDatetime?.slice(0, 10);
-      if (!anchor) throw new Error("no_te_la_pierdas flyer requires runEndDate or openingDatetime");
-      return fmtUntilDate(input.runEndDate, anchor, input.todayStr);
-    }
-    case "destacada":
-      return "No te olvides visitar";
-  }
+  // Both types share the same date-line shape (a visita guiada reuses
+  // opening_datetime/opening_time_confirmed exactly like an inauguración —
+  // see the events.event_type migration's own comment) — only the
+  // TOP_LABEL badge above distinguishes them.
+  if (!input.openingDatetime) throw new Error(`${input.type} flyer requires openingDatetime`);
+  return fmtInauguracionDateLine(input.openingDatetime, input.openingTimeConfirmed);
 }
 
 const COLORS = {
@@ -121,8 +117,7 @@ const PHOTO_TOP = TOP_BAND_HEIGHT;
 
 export function FlyerImage({ input, logoDataUri, photoDataUri }: { input: FlyerEventInput; logoDataUri: string; photoDataUri: string }) {
   // Uppercased here in JS rather than via CSS text-transform, since it's
-  // needed either way for FLYER-owned strings (destacada's fixed "no te
-  // olvides visitar" is already correctly cased at the source) and JS's
+  // needed either way for runtime-sourced text below, and JS's
   // toUpperCase() is at least as correct as any CSS-level transform.
   //
   // Known open issue, not resolved: runtime-sourced text (from the

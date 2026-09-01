@@ -2,19 +2,20 @@ import { ImageResponse } from "next/og";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { FLYER_HEIGHT, FLYER_WIDTH, FlyerImage, type FlyerEventInput, type FlyerType } from "@/lib/social/flyer";
-import { todayInSantiago } from "@/lib/date";
 
-// Called by the (not-yet-built) Instagram-publishing cron over HTTP —
-// deliberately a plain query-param GET rather than fetching the event by
-// id itself: the cron already has the full EventRecord from its own
-// Supabase query, so this route stays a pure renderer (title/date-line
+// Called by the automated Instagram-publishing cron over HTTP
+// (apps/curator/src/social-publish/run.ts) and by the manual "Compartir"
+// carousel feature (apps/web/src/lib/social/shareInauguracionesCarousel.ts)
+// — deliberately a plain query-param GET rather than fetching the event by
+// id itself: both callers already have the full event record from their
+// own Supabase query, so this route stays a pure renderer (title/date-line
 // formatting only) instead of a second place that talks to the DB.
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
 
   const type = searchParams.get("type") as FlyerType | null;
-  if (type !== "inauguracion" && type !== "no_te_la_pierdas" && type !== "destacada") {
-    return new Response("Invalid or missing 'type' (inauguracion | no_te_la_pierdas | destacada)", { status: 400 });
+  if (type !== "inauguracion" && type !== "visita_guiada") {
+    return new Response("Invalid or missing 'type' (inauguracion | visita_guiada)", { status: 400 });
   }
   const title = searchParams.get("title");
   const region = searchParams.get("region");
@@ -33,8 +34,6 @@ export async function GET(request: Request) {
     imageUrl,
     openingDatetime: searchParams.get("openingDatetime"),
     openingTimeConfirmed: searchParams.get("openingTimeConfirmed") !== "false",
-    runEndDate: searchParams.get("runEndDate"),
-    todayStr: todayInSantiago(),
   };
 
   const [latoBold, latoBlack, geistSemiBold, logoSvg] = await Promise.all([

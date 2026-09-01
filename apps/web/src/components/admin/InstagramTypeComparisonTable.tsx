@@ -1,5 +1,10 @@
+// "inauguracion"/"no_te_la_pierdas"/"destacada" retired 2026-08-31 (the
+// automated pipeline now posts a single "agenda" carousel — see
+// apps/curator/src/social-publish/selection.ts's own doc comment) — kept
+// in this union only so real historical rows from before that date still
+// type and render correctly here.
 interface InstagramPostRow {
-  postType: "inauguracion" | "no_te_la_pierdas" | "destacada";
+  postType: "inauguracion" | "no_te_la_pierdas" | "destacada" | "agenda";
   reach: number | null;
   saved: number | null;
   likeCount: number | null;
@@ -9,9 +14,10 @@ const POST_TYPE_LABEL: Record<InstagramPostRow["postType"], string> = {
   inauguracion: "Inauguración (se repite en la semana)",
   no_te_la_pierdas: "No te la pierdas",
   destacada: "Destacada",
+  agenda: "Agenda",
 };
 
-const TYPE_ORDER: InstagramPostRow["postType"][] = ["inauguracion", "no_te_la_pierdas", "destacada"];
+const TYPE_ORDER: InstagramPostRow["postType"][] = ["inauguracion", "no_te_la_pierdas", "destacada", "agenda"];
 
 function avg(values: number[]): number {
   return values.length === 0 ? 0 : values.reduce((a, b) => a + b, 0) / values.length;
