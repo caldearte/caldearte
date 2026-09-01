@@ -1,41 +1,29 @@
 name: Publish Instagram Social Posts
 
-# Automated Feed carousels — see docs/roadmap.md's Fase 4 section for the
-# full design. apps/curator/src/social-publish/run.ts itself decides
-# whether today actually publishes anything (Monday/Wednesday/Friday post
-# one carousel type each, every other day is a deliberate no-op unless a
-# schedule cron below forces a type — see Sunday below).
-#
-# Sunday is 3 SEPARATE crons, not one — real bug, found 2026-08-23: the
-# original single Sunday firing posted all 3 carousel types back-to-back
-# within the same script run (~1-2min apart, however long each
-# container-poll + publish takes), not spaced across the day as
-# docs/roadmap.md's own reasoning about Feed reach cannibalization
-# ("Instagram penalizes posting frequently to the same audience in a
-# short window") already argued against. Each Sunday cron below sets
-# FORCE_TYPES to exactly one type — same mechanism already used for
-# manual dry-run testing — reusing scheduledTypesFor's Mon/Wed/Fri
-# single-type behavior instead of adding new date logic.
+# Automated "agenda" carousel — see docs/roadmap.md's Fase 4 section for
+# the full design (redesigned 2026-08-31, Camila's "bitácora" request: one
+# mixed inauguraciones+visitas-guiadas carousel, no repeats, short
+# non-overlapping date windows instead of a weekly dump — see
+# apps/curator/src/social-publish/selection.ts's own doc comment).
+# apps/curator/src/social-publish/run.ts itself decides whether today
+# actually publishes anything: only Monday/Wednesday/Friday post, and only
+# if their window has something eligible — every other day (including this
+# cron's own off days) is a deliberate no-op. No more per-type scheduling
+# to juggle here — there's only one carousel shape now, so a single daily
+# cron restricted to Mon/Wed/Fri is enough (the old Sunday-3-crons
+# workaround for spacing 3 types across one day no longer applies).
 on:
   workflow_dispatch:
     inputs:
       dry_run:
-        description: "Dry run — verify credentials/build the carousel(s) but don't actually publish to Instagram"
+        description: "Dry run — verify credentials/build the carousel but don't actually publish to Instagram"
         type: boolean
         default: true
-      force_types:
-        description: "Comma-separated post types to test regardless of today's day-of-week (inauguracion,no_te_la_pierdas,destacada) — leave empty to use today's real schedule"
-        type: string
-        default: ""
   schedule:
-    # Not minute 0 on any of these — GitHub's own docs flag the top of
-    # every hour as the highest-congestion time for scheduled workflows;
-    # real 45+ minute delays were observed across every cron in this repo
-    # 2026-08-23.
-    - cron: "5 12 * * 1-6" # Monday-Saturday, ~12:05 UTC — unchanged single-type-or-noop behavior (Mon/Wed/Fri post, others no-op)
-    - cron: "5 12 * * 0" # Sunday slot 1, ~12:05 UTC (~08:05 Chile) — inauguraciones, right after the discovery chain finishes
-    - cron: "5 15 * * 0" # Sunday slot 2, ~15:05 UTC (~11:05 Chile) — no te la pierdas
-    - cron: "5 18 * * 0" # Sunday slot 3, ~18:05 UTC (~14:05 Chile) — destacada
+    # Not minute 0 — GitHub's own docs flag the top of every hour as the
+    # highest-congestion time for scheduled workflows; real 45+ minute
+    # delays were observed across every cron in this repo 2026-08-23.
+    - cron: "5 12 * * 1,3,5" # Monday, Wednesday, Friday, ~12:05 UTC
 
 jobs:
   publish-social:
@@ -52,7 +40,7 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
-      - name: Publish scheduled Instagram carousels
+      - name: Publish scheduled Instagram carousel
         run: pnpm --filter @caldearte/curator run publish-social
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
@@ -60,16 +48,7 @@ jobs:
           INSTAGRAM_ACCESS_TOKEN: ${{ secrets.INSTAGRAM_ACCESS_TOKEN }}
           INSTAGRAM_BUSINESS_ACCOUNT_ID: ${{ secrets.INSTAGRAM_BUSINESS_ACCOUNT_ID }}
           # Only set on a manual run — a real scheduled run always
-          # publishes for real, with today's actual schedule. github.event.inputs
+          # publishes for real, with today's actual window. github.event.inputs
           # is empty (not "true"/"false") on a schedule trigger, so DRY_RUN
           # correctly evaluates to false there via run.ts's own "=== 'true'" check.
           DRY_RUN: ${{ inputs.dry_run }}
-          # The Mon-Sat cron and a manual dispatch both use the real
-          # per-day schedule (empty FORCE_TYPES, falls through to
-          # scheduledTypesFor in run.ts) unless force_types was
-          # explicitly typed in. Each of the 3 Sunday crons instead
-          # forces exactly one type, matching which cron string fired
-          # (github.event.schedule — only populated on a real schedule
-          # trigger, not workflow_dispatch) — see this file's own header
-          # comment for why Sunday needs 3 separate crons instead of one.
-          FORCE_TYPES: ${{ github.event_name == 'workflow_dispatch' && inputs.force_types || github.event.schedule == '5 12 * * 0' && 'inauguracion' || github.event.schedule == '5 15 * * 0' && 'no_te_la_pierdas' || github.event.schedule == '5 18 * * 0' && 'destacada' || '' }}

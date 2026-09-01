@@ -71,10 +71,12 @@ export interface AdminAnalyticsPayload {
   // Instagram engagement (real question, 2026-08-24: is the deliberate
   // Monday "inauguraciones" repeat worth it, or too soon after Sunday's
   // own post?) — row-level, last 120 days, client buckets by
-  // granularity same as everything else here.
+  // granularity same as everything else here. postType's old 3 values
+  // are retired as of the 2026-08-31 redesign (single "agenda" carousel
+  // now) but kept here so historical rows still type correctly.
   instagramPosts: Array<{
     mediaId: string;
-    postType: "inauguracion" | "no_te_la_pierdas" | "destacada";
+    postType: "inauguracion" | "no_te_la_pierdas" | "destacada" | "agenda";
     weekStart: string;
     publishedAt: string;
     reach: number | null;

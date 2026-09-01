@@ -1,12 +1,11 @@
-// Pure selection logic for the 3 automated Instagram carousel types
-// (docs/roadmap.md, Fase 4). Deliberately takes already-loaded plain data
-// (events, region names, the de-dup log) rather than querying Supabase
-// itself — same posture as newsletter/run.ts's buildDigestSections, keeps
-// this testable without a DB and lets the eventual run.ts own the actual
-// fetching.
+// Pure selection logic for the automated Instagram carousel (docs/roadmap.md,
+// Fase 4 — redesigned 2026-08-31 into a single "agenda" carousel, see the
+// plan doc referenced in that commit). Deliberately takes already-loaded
+// plain data (events, region names, the de-dup log) rather than querying
+// Supabase itself — same posture as newsletter/run.ts's
+// buildDigestSections, keeps this testable without a DB and lets the
+// eventual run.ts own the actual fetching.
 import { diversifyByComuna } from "../lib/diversify.js";
-
-export type SocialPostType = "inauguracion" | "no_te_la_pierdas" | "destacada";
 
 export interface SocialEvent {
   id: string;
@@ -21,11 +20,10 @@ export interface SocialEvent {
   openingTimeConfirmed: boolean;
   runStartDate: string | null;
   runEndDate: string | null;
-  // Added 2026-08-29, alongside events.event_type — without this,
-  // selectInauguraciones (below) would start publishing "visita guiada"
-  // posts as if they were real inauguración announcements the moment a
-  // guided-tour date populates openingDatetime, since both categories
-  // reuse that same field. See packages/curation-policy/src/policy.ts's EVENT_TYPE_POLICY.
+  // Added 2026-08-29, alongside events.event_type — selectUpcoming (below)
+  // reads this to admit inauguracion + visita_guiada while still excluding
+  // exposicion, since all 3 categories can populate openingDatetime. See
+  // packages/curation-policy/src/policy.ts's EVENT_TYPE_POLICY.
   eventType: "inauguracion" | "visita_guiada" | "exposicion";
   // Instagram handle of the account this event was sourced from — only
   // ever set for the Instagram pipeline (the account IS usually the
@@ -43,15 +41,6 @@ export interface SocialEvent {
 }
 
 export const CAROUSEL_CAP = 10;
-
-// Real complaint from Daniel 2026-08-23 after reviewing a real "no te la
-// pierdas" post: unbounded, once every other comuna's short supply ran
-// out, the carousel just kept backfilling from Santiago (where most
-// events genuinely are) — technically fair round-robin, but didn't read
-// as diverse. Only applied to no_te_la_pierdas/destacada, not
-// inauguraciones — not what was reported, and inauguraciones' own real
-// posts so far already showed reasonable spread.
-const MAX_PER_COMUNA = 2;
 
 // Never included in any automated post — the site's own blur/family-mode
 // is a per-visitor exposure control, not a publish-time filter, and
@@ -78,72 +67,29 @@ function isEligibleForAutoPost(e: SocialEvent): boolean {
   return e.sensitivityTags.length === 0 && Boolean(e.imageUrl) && !e.imageUrl!.toLowerCase().endsWith(".webp");
 }
 
-function isRunningOn(e: SocialEvent, dateStr: string): boolean {
-  if (e.runStartDate && e.runStartDate > dateStr) return false;
-  if (e.runEndDate && e.runEndDate < dateStr) return false;
-  return true;
-}
-
-// (A) Inauguraciones — ordered by fecha de apertura ascending, nationwide.
-// Deliberately no de-dup against social_post_log: repeating the same
-// inauguración across the week's posts is the intended behavior (it's a
-// recurring reminder to attend, not a one-time announcement) — see
-// docs/roadmap.md.
-export function selectInauguraciones(events: SocialEvent[], week: { start: string; end: string }, cap = CAROUSEL_CAP): SocialEvent[] {
+// The one and only selector now (redesigned 2026-08-31, Camila's "bitácora"
+// request): inauguraciones + visitas guiadas mixed into a single carousel,
+// scoped to a short date window (Mon posts Mon+Tue, Wed posts Wed+Thu, Fri
+// posts Fri-Sun — see run.ts's postingWindowFor) instead of the whole week.
+// Every event that's ever been posted is excluded permanently via
+// alreadyPostedIds — nothing repeats across posts anymore, unlike the old
+// inauguracion type's deliberate weekly repeat.
+export function selectUpcoming(
+  events: SocialEvent[],
+  window: { start: string; end: string },
+  alreadyPostedIds: ReadonlySet<string>,
+  cap = CAROUSEL_CAP,
+): SocialEvent[] {
   const eligible = events
     .filter(isEligibleForAutoPost)
-    .filter((e) => e.eventType === "inauguracion")
-    .filter((e) => e.openingDatetime && e.openingDatetime.slice(0, 10) >= week.start && e.openingDatetime.slice(0, 10) <= week.end)
+    .filter((e) => e.eventType === "inauguracion" || e.eventType === "visita_guiada")
+    .filter((e) => !alreadyPostedIds.has(e.id))
+    .filter((e) => e.openingDatetime && e.openingDatetime.slice(0, 10) >= window.start && e.openingDatetime.slice(0, 10) <= window.end)
     .sort((a, b) => a.openingDatetime!.localeCompare(b.openingDatetime!));
-  return diversifyByComuna(eligible, cap);
-}
-
-// (B) "No te la pierdas" — expos closing within the current Santiago week
-// (same "closing soon" window as apps/web/src/lib/date.ts's own
-// isClosingSoon, so this matches the site's own "últimos días" framing),
-// ordered by fecha de fin ascending. alreadyPostedIds excludes whatever
-// this same post type already featured this week — see social_post_log's
-// own migration comment for why 'inauguracion' never populates that set.
-export function selectNoTeLaPierdas(
-  events: SocialEvent[],
-  todayStr: string,
-  week: { start: string; end: string },
-  alreadyPostedIds: ReadonlySet<string>,
-  cap = CAROUSEL_CAP,
-): SocialEvent[] {
-  const eligible = events
-    .filter(isEligibleForAutoPost)
-    .filter((e) => !alreadyPostedIds.has(e.id))
-    .filter((e) => e.runEndDate && e.runEndDate >= todayStr && e.runEndDate <= week.end)
-    .sort((a, b) => a.runEndDate!.localeCompare(b.runEndDate!));
-  return diversifyByComuna(eligible, cap, MAX_PER_COMUNA);
-}
-
-// (C) Selección/destacada — currently-running, non-sensitive expos with
-// enough real content to feature (a real photo, a real description — no
-// placeholder/thin listing), excluding whatever this same post type
-// already featured this week, ordered by how long since each one last
-// appeared as a destacada (lastFeaturedAt: null = never featured, sorts
-// first) so the rotation actually rotates instead of resurfacing the same
-// handful every week.
-const MIN_DESCRIPTION_LENGTH = 40;
-
-export function selectDestacada(
-  events: SocialEvent[],
-  todayStr: string,
-  alreadyPostedIds: ReadonlySet<string>,
-  lastFeaturedAt: ReadonlyMap<string, string>,
-  cap = CAROUSEL_CAP,
-): SocialEvent[] {
-  const eligible = events
-    .filter(isEligibleForAutoPost)
-    .filter((e) => !alreadyPostedIds.has(e.id))
-    .filter((e) => isRunningOn(e, todayStr))
-    .filter((e) => e.description && e.description.length >= MIN_DESCRIPTION_LENGTH)
-    .sort((a, b) => {
-      const aLast = lastFeaturedAt.get(a.id) ?? "";
-      const bLast = lastFeaturedAt.get(b.id) ?? "";
-      return aLast.localeCompare(bLast);
-    });
-  return diversifyByComuna(eligible, cap, MAX_PER_COMUNA);
+  // diversifyByComuna round-robins ("round 1: each comuna's soonest event,
+  // round 2: each comuna's second-soonest, ...") once truncating to cap —
+  // that can interleave dates out of order across comunas, so the final
+  // carousel is re-sorted chronologically after diversifying rather than
+  // trusting diversifyByComuna's own output order.
+  return diversifyByComuna(eligible, cap).sort((a, b) => a.openingDatetime!.localeCompare(b.openingDatetime!));
 }
