@@ -434,7 +434,16 @@ function parseCandidates(text: string): EventCandidate[] {
 // repeated under the same URL is the SAME event, not an aggregator
 // collision; downstream dedup (run.ts) collapses the repeats into one
 // insert once the URL survives.
-export function nullifyAggregatorSourceUrls(candidates: EventCandidate[]): EventCandidate[] {
+// trustedSharedUrlIndices (2026-09-02): curateBrightSourceItems's own
+// additionalEvents deliberately produces 2+ approved candidates with
+// different titles sharing the SAME sourceUrl, on purpose — a single real
+// post genuinely announcing more than one exhibition (see
+// BrightSourceCurationRow's own doc comment). That's the exact shape this
+// function otherwise treats as an untrustworthy aggregator-page collision.
+// Indices in this set are positions in `candidates` known (by the caller,
+// not inferred here) to share their sourceUrl with a sibling for that
+// legitimate reason, so they're exempt from being nulled out.
+export function nullifyAggregatorSourceUrls(candidates: EventCandidate[], trustedSharedUrlIndices?: ReadonlySet<number>): EventCandidate[] {
   const titlesByUrl = new Map<string, Set<string>>();
   for (const c of candidates) {
     if (c.status !== "approved" || !c.sourceUrl) continue;
@@ -442,8 +451,8 @@ export function nullifyAggregatorSourceUrls(candidates: EventCandidate[]): Event
     titles.add(normalizeTitle(c.title));
     titlesByUrl.set(c.sourceUrl, titles);
   }
-  return candidates.map((c) =>
-    c.sourceUrl && (titlesByUrl.get(c.sourceUrl)?.size ?? 0) >= 2 ? { ...c, sourceUrl: null } : c,
+  return candidates.map((c, i) =>
+    c.sourceUrl && !trustedSharedUrlIndices?.has(i) && (titlesByUrl.get(c.sourceUrl)?.size ?? 0) >= 2 ? { ...c, sourceUrl: null } : c,
   );
 }
 
@@ -980,6 +989,7 @@ export function buildBrightSourceSystemPrompt(monthLabel: string, opts: { needsL
 
 Para cada ítem numerado, decide si es un evento real de arte visual dentro de alcance y reporta:
 - \`index\`: el mismo número entre corchetes que tiene el ítem — DEBES devolver exactamente una fila por cada ítem recibido, en cualquier orden, incluyendo los rechazados (con su \`curationReasoning\` explicando por qué).
+- \`additionalEvents\`: normalmente omítelo (o déjalo como array vacío). Úsalo SOLO cuando el mismo ítem anuncie más de un evento genuinamente DISTINTO — ej. dos exposiciones individuales de artistas distintos, cada una con su propio título, que inauguran el mismo día en el mismo lugar (un post real de este calendario: "Y sin embargo... vuelan" de una artista y "Sellos de ocio" de otra, ambas inaugurando juntas). Cada elemento de \`additionalEvents\` tiene exactamente la misma forma que una fila normal (sin \`index\` ni \`additionalEvents\` propios): \`status\`, \`title\`, \`eventType\`, \`artist\`, etc. — repórtalos con el mismo criterio que el evento principal. NO uses esto para: una muestra colectiva con varios artistas participantes (eso sigue siendo UN evento con varios \`artist\`), ni para variar el mismo evento (una inauguración y luego su cierre son el mismo evento, no dos), ni para actividades secundarias de una sola muestra (una charla o visita guiada DENTRO de la misma exposición no es un evento aparte). Repórtalo solo cuando el texto mismo nombra explícitamente exposiciones/muestras separadas, cada una con su propio título reconocible.
 - \`status\`: "approved" o "rejected".
 - \`title\`: el título REAL de la exposición/intervención, leyendo la \`Descripción\` completa del ítem — no el texto entre comillas que aparece junto al número del ítem (ese es solo una aproximación automática del código, a menudo el primer renglón del post o una cita mal elegida, no un título confiable). Busca el nombre propio de la muestra: suele aparecer cerca de palabras como "exposición", "muestra", "inauguración", a veces destacado en mayúsculas o entre comillas, pero no siempre — usa tu criterio de lector, no una regla mecánica. Nunca copies una pregunta retórica, una cita larga, un renglón decorativo (solo emojis/símbolos) ni una oración de invitación genérica ("Los invitamos a...") como si fuera el título. Sé breve: el título real casi siempre son pocas palabras, no un párrafo. Si el texto genuinamente no tiene un título propio distinguible (raro, pero pasa con posts de aviso/agenda sin nombre de muestra), devuelve null y el código usará su propia aproximación como respaldo.
 - \`artist\`: si el texto nombra un artista, o null.
@@ -1008,11 +1018,14 @@ Importante sobre fechas — regla dura, no una sugerencia: estamos armando el ca
 Etiqueta también: \`mediumType\` ("tradicional" o "intervencion_no_tradicional") y \`sensitivityTags\` (array de ["desnudo_erotismo", "guerra_violencia", "memoria_dictadura"], vacío si no aplica). Escribe un \`curationReasoning\` breve explicando tu decisión.
 
 Responde SOLO con un bloque de código \`\`\`json que contenga un array de objetos con esta forma exacta, uno por cada ítem recibido, nada más antes o después:
-[{ "index": number, "status": "approved" | "rejected", "title": string | null, "eventType": "inauguracion" | "visita_guiada" | "exposicion", "artist": string | null, "artistInstagramHandle": string | null, "runStartDate": string | null, "runEndDate": string | null, "openingDatetime": string | null, "openingTimeConfirmed": boolean, "location": string | null, "placeName": string | null, "mediumType": "tradicional" | "intervencion_no_tradicional", "sensitivityTags": string[], "curationReasoning": string }]`;
+[{ "index": number, "status": "approved" | "rejected", "title": string | null, "eventType": "inauguracion" | "visita_guiada" | "exposicion", "artist": string | null, "artistInstagramHandle": string | null, "runStartDate": string | null, "runEndDate": string | null, "openingDatetime": string | null, "openingTimeConfirmed": boolean, "location": string | null, "placeName": string | null, "mediumType": "tradicional" | "intervencion_no_tradicional", "sensitivityTags": string[], "curationReasoning": string, "additionalEvents": [{ "status": "approved" | "rejected", "title": string | null, "eventType": "inauguracion" | "visita_guiada" | "exposicion", "artist": string | null, "artistInstagramHandle": string | null, "runStartDate": string | null, "runEndDate": string | null, "openingDatetime": string | null, "openingTimeConfirmed": boolean, "location": string | null, "placeName": string | null, "mediumType": "tradicional" | "intervencion_no_tradicional", "sensitivityTags": string[], "curationReasoning": string }] }]`;
 }
 
-interface BrightSourceCurationRow {
-  index: number;
+// Split out from BrightSourceCurationRow (2026-09-02) so the same shape
+// covers both a post's primary event and any additionalEvents entries —
+// see BrightSourceCurationRow's own doc comment for why a post can carry
+// more than one.
+interface BrightSourceCurationEventFields {
   status: "approved" | "rejected";
   title: string | null;
   eventType: "inauguracion" | "visita_guiada" | "exposicion" | null;
@@ -1027,6 +1040,23 @@ interface BrightSourceCurationRow {
   sensitivityTags: string[];
   curationReasoning: string;
   artistInstagramHandle: string | null;
+}
+
+// additionalEvents (2026-09-02): a real gap found manually — a single
+// Instagram post can genuinely announce more than one distinct exhibition
+// (e.g. casaculturalyanulaque's post for two unrelated solo shows by
+// different artists, opening the same day at the same venue). Haiku's own
+// curationReasoning had already correctly identified both, but the old
+// schema had exactly one EventCandidate slot per post (index was a strict
+// 1:1 bijection with `items`), so only one ever made it into the events
+// table. additionalEvents lets a row report 0+ EXTRA events sharing the
+// same post's deterministic fields (image/sourceUrl/account) but their
+// own title/artist/dates — index itself stays a strict bijection with
+// `items` (the safety property parseBrightSourceCurationRows enforces),
+// only the number of EVENTS per index is no longer fixed at exactly one.
+interface BrightSourceCurationRow extends BrightSourceCurationEventFields {
+  index: number;
+  additionalEvents: BrightSourceCurationEventFields[];
 }
 
 // "@nombre" or bare "nombre" (Haiku sometimes includes the "@", sometimes
@@ -1055,6 +1085,25 @@ function extractFencedJsonBlock(text: string): string {
 // fields (wrong title/sourceUrl/image), worse than dropping the whole
 // source for one run. Caught by the caller, same degrade-to-empty posture
 // curate() already uses for a truncated response.
+function parseBrightSourceCurationEventFields(r: Partial<BrightSourceCurationEventFields>): BrightSourceCurationEventFields {
+  return {
+    status: r.status === "approved" ? "approved" : "rejected",
+    title: typeof r.title === "string" && r.title.trim() ? r.title.trim() : null,
+    eventType: isValidEventType(r.eventType) ? r.eventType : null,
+    artist: typeof r.artist === "string" ? r.artist : null,
+    runStartDate: typeof r.runStartDate === "string" ? r.runStartDate : null,
+    runEndDate: typeof r.runEndDate === "string" ? r.runEndDate : null,
+    openingDatetime: typeof r.openingDatetime === "string" ? r.openingDatetime : null,
+    openingTimeConfirmed: typeof r.openingTimeConfirmed === "boolean" ? r.openingTimeConfirmed : true,
+    location: typeof r.location === "string" ? r.location : null,
+    placeName: typeof r.placeName === "string" ? r.placeName : null,
+    mediumType: r.mediumType === "intervencion_no_tradicional" ? "intervencion_no_tradicional" : "tradicional",
+    sensitivityTags: Array.isArray(r.sensitivityTags) ? r.sensitivityTags.filter((t): t is string => typeof t === "string") : [],
+    curationReasoning: typeof r.curationReasoning === "string" ? r.curationReasoning : "",
+    artistInstagramHandle: normalizeInstagramHandle(r.artistInstagramHandle),
+  };
+}
+
 function parseBrightSourceCurationRows(text: string, expectedCount: number): BrightSourceCurationRow[] {
   const raw = JSON.parse(extractFencedJsonBlock(text)) as Partial<BrightSourceCurationRow>[];
   if (!Array.isArray(raw) || raw.length !== expectedCount) {
@@ -1069,20 +1118,13 @@ function parseBrightSourceCurationRows(text: string, expectedCount: number): Bri
     seen.add(index);
     return {
       index,
-      status: r.status === "approved" ? "approved" : "rejected",
-      title: typeof r.title === "string" && r.title.trim() ? r.title.trim() : null,
-      eventType: isValidEventType(r.eventType) ? r.eventType : null,
-      artist: typeof r.artist === "string" ? r.artist : null,
-      runStartDate: typeof r.runStartDate === "string" ? r.runStartDate : null,
-      runEndDate: typeof r.runEndDate === "string" ? r.runEndDate : null,
-      openingDatetime: typeof r.openingDatetime === "string" ? r.openingDatetime : null,
-      openingTimeConfirmed: typeof r.openingTimeConfirmed === "boolean" ? r.openingTimeConfirmed : true,
-      location: typeof r.location === "string" ? r.location : null,
-      placeName: typeof r.placeName === "string" ? r.placeName : null,
-      mediumType: r.mediumType === "intervencion_no_tradicional" ? "intervencion_no_tradicional" : "tradicional",
-      sensitivityTags: Array.isArray(r.sensitivityTags) ? r.sensitivityTags.filter((t): t is string => typeof t === "string") : [],
-      curationReasoning: typeof r.curationReasoning === "string" ? r.curationReasoning : "",
-      artistInstagramHandle: normalizeInstagramHandle(r.artistInstagramHandle),
+      ...parseBrightSourceCurationEventFields(r),
+      // Defensive, same posture as every other field here — a malformed
+      // or missing additionalEvents never fails the whole row, just
+      // yields zero extra events (same as before this existed at all).
+      additionalEvents: Array.isArray(r.additionalEvents)
+        ? r.additionalEvents.map((e) => parseBrightSourceCurationEventFields(e as Partial<BrightSourceCurationEventFields>))
+        : [],
     };
   });
 }
@@ -1103,7 +1145,7 @@ function parseBrightSourceCurationRows(text: string, expectedCount: number): Bri
 // as the last-resort fallback for the rare case Haiku returns null.
 function mergeBrightSourceCandidate(
   item: BrightSourceItem,
-  row: BrightSourceCurationRow,
+  row: BrightSourceCurationEventFields,
   fixedLocation: { location: string; placeName: string } | undefined,
 ): EventCandidate {
   const openingDatetime = row.openingDatetime ? parseLocalDatetimeToUtcIso(row.openingDatetime) : null;
@@ -1289,7 +1331,10 @@ export async function curateBrightSourceItems(
   // Sparse by chunk offset, not push order — same reasoning as the old
   // single-call version, just applied per chunk: a chunk's own rows are
   // guaranteed to cover every local index within it, but not in order.
-  const merged: EventCandidate[] = new Array(items.length);
+  // Each slot holds an ARRAY (2026-09-02, additionalEvents) — usually one
+  // candidate, occasionally more when a single post genuinely announces
+  // more than one distinct event.
+  const mergedByIndex: (EventCandidate[] | undefined)[] = new Array(items.length);
 
   for (let chunkStart = 0; chunkStart < items.length; chunkStart += CURATE_CHUNK_SIZE) {
     const chunk = items.slice(chunkStart, chunkStart + CURATE_CHUNK_SIZE);
@@ -1327,7 +1372,12 @@ export async function curateBrightSourceItems(
     }
 
     for (const row of rows) {
-      merged[chunkStart + row.index] = mergeBrightSourceCandidate(items[chunkStart + row.index], row, opts.fixedLocation);
+      const item = items[chunkStart + row.index];
+      const group = [mergeBrightSourceCandidate(item, row, opts.fixedLocation)];
+      for (const extra of row.additionalEvents) {
+        group.push(mergeBrightSourceCandidate(item, extra, opts.fixedLocation));
+      }
+      mergedByIndex[chunkStart + row.index] = group;
     }
   }
 
@@ -1335,12 +1385,26 @@ export async function curateBrightSourceItems(
   // positionally aligned for the index-based post-processing below
   // (rejectBrightSourceConvocatorias, fillRunStartFromPublishedDate) —
   // both only care about matching positions, not original absolute index.
+  // An item with 2+ events appears more than once here (once per
+  // candidate) — safe because those two functions only read post-level
+  // fields off `items[i]` (title/description/rawDateText/publishedDate/
+  // structuredStartDate), which are identical for every event drawn from
+  // the same post.
   const presentItems: BrightSourceItem[] = [];
   const presentCandidates: EventCandidate[] = [];
-  for (let i = 0; i < merged.length; i++) {
-    if (merged[i] === undefined) continue;
-    presentItems.push(items[i]);
-    presentCandidates.push(merged[i]);
+  // Positions (into presentCandidates) whose sourceUrl is intentionally
+  // shared with a sibling from the SAME post (additionalEvents) — passed
+  // to nullifyAggregatorSourceUrls below so it doesn't null out a URL
+  // that's correct for both, same reasoning as its own doc comment.
+  const multiEventIndices = new Set<number>();
+  for (let i = 0; i < mergedByIndex.length; i++) {
+    const group = mergedByIndex[i];
+    if (group === undefined) continue;
+    for (const candidate of group) {
+      if (group.length > 1) multiEventIndices.add(presentCandidates.length);
+      presentItems.push(items[i]);
+      presentCandidates.push(candidate);
+    }
   }
 
   const convocatoriaFiltered = rejectBrightSourceConvocatorias(presentCandidates, presentItems);
@@ -1355,7 +1419,7 @@ export async function curateBrightSourceItems(
   const filteredCandidates = logBareDomainSourceUrls(
     enforceSourceUrlInvariant(
       applyKnownExclusionsFilter(
-        nullifyAggregatorSourceUrls(enforceDateCompleteness(nullifyOpeningDatetimeForKnownSources(locationFiltered))),
+        nullifyAggregatorSourceUrls(enforceDateCompleteness(nullifyOpeningDatetimeForKnownSources(locationFiltered)), multiEventIndices),
       ),
     ),
   );

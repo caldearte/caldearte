@@ -1115,6 +1115,99 @@ test("curateBrightSourceItems discards a malformed artistInstagramHandle (whites
   assert.equal(candidates[0].artistInstagramHandle, null);
 });
 
+// Real gap found 2026-09-02 (casaculturalyanulaque, Arica): one Instagram
+// post announced two distinct solo exhibitions opening the same day at the
+// same venue ("Y sin embargo... vuelan" + "Sellos de ocio", different
+// artists). Haiku's own curationReasoning had already identified both, but
+// the old schema had exactly one EventCandidate slot per post — only the
+// first survived into the events table. additionalEvents fixes that.
+test("curateBrightSourceItems turns a row's additionalEvents into extra candidates sharing the post's own sourceUrl/imageUrl, each with its own title/artist", async () => {
+  const items: BrightSourceItem[] = [baseBrightItem];
+  const client = stubBrightClient([
+    {
+      index: 0,
+      status: "approved",
+      title: "Y sin embargo... vuelan",
+      artist: "Rosa Figueroa Fuentes",
+      artistInstagramHandle: null,
+      runStartDate: null,
+      runEndDate: "2026-10-16",
+      openingDatetime: "2026-09-02T18:00",
+      openingTimeConfirmed: true,
+      location: null,
+      placeName: null,
+      mediumType: "tradicional",
+      sensitivityTags: [],
+      curationReasoning: "ok",
+      additionalEvents: [
+        {
+          status: "approved",
+          title: "Sellos de ocio",
+          artist: "Bruna Truffa",
+          artistInstagramHandle: "brunatruffa",
+          runStartDate: null,
+          runEndDate: "2026-10-16",
+          openingDatetime: "2026-09-02T18:00",
+          openingTimeConfirmed: true,
+          location: null,
+          placeName: null,
+          mediumType: "tradicional",
+          sensitivityTags: [],
+          curationReasoning: "segundo evento del mismo post",
+        },
+      ],
+    },
+  ]);
+
+  const { candidates } = await curateBrightSourceItems(client, items, "septiembre 2026", {
+    fixedLocation: { location: "Arica", placeName: "Casa Cultural Yanulaque" },
+  });
+
+  assert.equal(candidates.length, 2);
+  assert.equal(candidates[0].title, "Y sin embargo... vuelan");
+  assert.equal(candidates[0].artist, "Rosa Figueroa Fuentes");
+  assert.equal(candidates[1].title, "Sellos de ocio");
+  assert.equal(candidates[1].artist, "Bruna Truffa");
+  assert.equal(candidates[1].artistInstagramHandle, "brunatruffa");
+  // Both share the SAME post's deterministic fields — there's only one
+  // real source item, so both candidates must point at it.
+  assert.equal(candidates[0].sourceUrl, baseBrightItem.sourceUrl);
+  assert.equal(candidates[1].sourceUrl, baseBrightItem.sourceUrl);
+  assert.equal(candidates[0].imageUrl, baseBrightItem.imageUrl);
+  assert.equal(candidates[1].imageUrl, baseBrightItem.imageUrl);
+  assert.equal(candidates[0].location, "Arica");
+  assert.equal(candidates[1].location, "Arica");
+});
+
+test("curateBrightSourceItems defaults additionalEvents to empty when a row omits it — existing single-event rows keep working unchanged", async () => {
+  const items: BrightSourceItem[] = [baseBrightItem];
+  const client = stubBrightClient([
+    {
+      index: 0,
+      status: "approved",
+      title: "Muestra normal",
+      artist: null,
+      artistInstagramHandle: null,
+      runStartDate: "2026-07-05",
+      runEndDate: "2026-07-31",
+      openingDatetime: null,
+      openingTimeConfirmed: false,
+      location: null,
+      placeName: null,
+      mediumType: "tradicional",
+      sensitivityTags: [],
+      curationReasoning: "ok",
+      // no additionalEvents field at all
+    },
+  ]);
+
+  const { candidates } = await curateBrightSourceItems(client, items, "julio 2026", {
+    fixedLocation: { location: "Santiago", placeName: "Fuente" },
+  });
+  assert.equal(candidates.length, 1);
+  assert.equal(candidates[0].title, "Muestra normal");
+});
+
 test("curateBrightSourceItems merges Haiku's curatorial verdict by index onto the item's own deterministic sourceUrl/imageUrl — never onto whatever Haiku echoed for those", async () => {
   const items: BrightSourceItem[] = [baseBrightItem];
   const client = stubBrightClient([
