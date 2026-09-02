@@ -206,15 +206,30 @@ export async function run(deps: RunDeps = {}): Promise<void> {
     console.log(`[social-publish] DRY RUN — Instagram credentials verified: @${account.username} (${account.mediaCount} posts).`);
   }
 
-  const [eventsRes, regionsRes, logRes] = await Promise.all([
-    supabase.from("events").select("*").eq("curation_status", "approved").is("removed_at", null),
-    supabase.from("regions").select("id, name, admin_region_name"),
-    // Every row ever logged, regardless of which post_type wrote it
-    // (including the old 'no_te_la_pierdas'/'destacada' rows from before
-    // this redesign) — an event already shown once should never repeat,
-    // full stop, so there's no "this week only" scoping anymore.
-    supabase.from("social_post_log").select("event_id"),
-  ]);
+  // Retried a few times with backoff (2026-09-02: a scheduled run failed
+  // outright on a transient "JWT issued at future" error from Supabase's
+  // auth validation — same service role key worked fine hours earlier and
+  // hours later, so it wasn't a real credential problem). Safe to retry
+  // here specifically because nothing has been written or posted to
+  // Instagram yet at this point in the run.
+  const loadEvents = () =>
+    Promise.all([
+      supabase.from("events").select("*").eq("curation_status", "approved").is("removed_at", null),
+      supabase.from("regions").select("id, name, admin_region_name"),
+      // Every row ever logged, regardless of which post_type wrote it
+      // (including the old 'no_te_la_pierdas'/'destacada' rows from before
+      // this redesign) — an event already shown once should never repeat,
+      // full stop, so there's no "this week only" scoping anymore.
+      supabase.from("social_post_log").select("event_id"),
+    ]);
+
+  let [eventsRes, regionsRes, logRes] = await loadEvents();
+  for (let attempt = 1; attempt <= 3 && (eventsRes.error || regionsRes.error || logRes.error); attempt++) {
+    const err = eventsRes.error ?? regionsRes.error ?? logRes.error;
+    console.warn(`[social-publish] Supabase read failed (attempt ${attempt}/3): ${err?.message}. Retrying...`);
+    await new Promise((resolve) => setTimeout(resolve, attempt * 1500));
+    [eventsRes, regionsRes, logRes] = await loadEvents();
+  }
   if (eventsRes.error) throw new Error(`Failed to load events: ${eventsRes.error.message}`);
   if (regionsRes.error) throw new Error(`Failed to load regions: ${regionsRes.error.message}`);
   if (logRes.error) throw new Error(`Failed to load social_post_log: ${logRes.error.message}`);

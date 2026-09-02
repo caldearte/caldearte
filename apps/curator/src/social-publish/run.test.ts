@@ -39,6 +39,77 @@ function fakeSupabase(tables: Record<string, unknown[]>) {
   } as any;
 }
 
+// A table's first select() fails `failCount` times (e.g. simulating the
+// real "JWT issued at future" transient Supabase error seen 2026-09-02)
+// before succeeding, to exercise run()'s retry loop.
+function flakySupabase(tables: Record<string, unknown[]>, failingTable: string, failCount: number) {
+  let calls = 0;
+  return {
+    from(table: string) {
+      const data = tables[table] ?? [];
+      const builder = {
+        select: () => builder,
+        eq: () => builder,
+        is: () => builder,
+        insert: async () => ({ error: new Error("dry run should never insert") }),
+        then: (resolve: (v: { data: unknown[] | null; error: Error | null }) => void) => {
+          if (table === failingTable && calls < failCount) {
+            calls++;
+            resolve({ data: null, error: new Error("JWT issued at future") });
+            return;
+          }
+          resolve({ data, error: null });
+        },
+      };
+      return builder;
+    },
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- test double, not the real typed client
+  } as any;
+}
+
+test("run(): retries a transient Supabase read failure and still publishes", async () => {
+  let publishCalled = false;
+  const supabase = flakySupabase(
+    {
+      events: [
+        {
+          id: "e1",
+          title: "Evento de prueba",
+          artist: null,
+          place_name: null,
+          region_id: null,
+          image_url: "https://example.com/a.jpg",
+          description: null,
+          sensitivity_tags: [],
+          opening_datetime: "2026-08-04T20:00:00.000Z",
+          opening_time_confirmed: true,
+          run_start_date: null,
+          run_end_date: null,
+          freeform_location: "Santiago",
+          source_type: "web",
+          curation_status: "approved",
+          removed_at: null,
+        },
+      ],
+      regions: [],
+      social_post_log: [],
+    },
+    "events",
+    2,
+  );
+  await run({
+    now: new Date("2026-08-04T12:00:00.000Z"),
+    supabase,
+    forceWindow: { start: "2026-08-04", end: "2026-08-04" },
+    instagramConfig: { igBusinessAccountId: "unused", accessToken: "unused" },
+    publishInstagramCarouselFn: async () => {
+      publishCalled = true;
+      return "unused";
+    },
+  });
+  assert.equal(publishCalled, true);
+});
+
 test("run(): dry run + forceWindow exercises the real pipeline (selection, flyer URLs, credential check) without publishing or logging", async () => {
   let publishCalled = false;
   let verifyCalled = false;
