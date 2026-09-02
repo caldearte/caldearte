@@ -2284,6 +2284,28 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
     addedAt: "2026-09-01",
     fixedLocation: { location: "Recoleta", placeName: "Anandamapu" },
   },
+  {
+    username: "teatromunicipalchillanoficial",
+    note:
+      "Evaluada 2026-09-02 en Chrome (logueado), no vía Apify. Teatro " +
+      "Municipal de Chillán, cuenta oficial de la Corporación Cultural " +
+      "Municipal de Chillán — 5892 publicaciones, 64.9 mil seguidores, " +
+      "activa a diario. Encontrada vía una exposición real (\"Muestra " +
+      "Internacional de Grabado Contemporáneo\", 2da versión del \"Mes " +
+      "del Grabado Ñuble\", país invitado Argentina, curador José " +
+      "Agustín Córdova, 34 obras de 22 artistas). Rendimiento esperado " +
+      "muy bajo proporcionalmente: la cuenta cubre casi exclusivamente " +
+      "teatro/ópera/danza/conciertos/cine/programas sociales — de ~30 " +
+      "posts recientes muestreados, solo 1 era una exposición de arte " +
+      "visual. Pero tiene una \"Escuela de Grabado\" y un highlight " +
+      "\"Exposiciones\" propios, con programación real y recurrente en " +
+      "sus Galerías Violeta Parra y Nicanor Parra — confirmado " +
+      "independientemente por una segunda exposición ya vista este " +
+      "mismo mes (\"Ñuble Insitu\", colectivo, 14 jul-28 ago 2026). " +
+      "fixedLocation — un solo local físico.",
+    addedAt: "2026-09-02",
+    fixedLocation: { location: "Chillán", placeName: "Teatro Municipal de Chillán" },
+  },
   // El resto de la lista la aporta Daniel — una decisión editorial, igual
   // que cada fuente brillante nueva se evaluó una por una. Confirmar
   // pública y activa antes de agregar cada cuenta.
