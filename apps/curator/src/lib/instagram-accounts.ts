@@ -516,19 +516,15 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
   // de piano) — mismo motivo de rechazo por disciplina que
   // museovioletaparra.cl. No agregada.
   //
-  {
-    username: "casaportugal_",
-    note:
-      "Evaluada 2026-08-15. Casa Portugal — espacio cultural " +
-      "arrendable para eventos/talleres, no una galería propia. Señal " +
-      "real: aloja la inauguración de la exposición de miniaturas de " +
-      "@lasdiminutas, curada por @galeriamalva (con fecha, sábado " +
-      "próximo), documentada en 2 posts (feature + inauguración). El " +
-      "resto: talleres y promoción del espacio para arriendo — fuera " +
-      "de alcance. Agregada igual (borderline, confirmada por Daniel). " +
-      "Sin fixedLocation: comuna no confirmada en el texto muestreado.",
-    addedAt: "2026-08-15",
-  },
+  // casaportugal_: agregada 2026-08-15 (borderline, ver historial git),
+  // quitada 2026-09-04 — su web (casaportugal.cl) resultó tener el mismo
+  // contenido en HTML de texto plano determinístico (sección "Próximos
+  // eventos" + página de detalle con fecha/hora de inauguración
+  // explícitas), agregada como fuente bright en su lugar
+  // (lib/known-sources.ts). La cuenta de IG seguía sin poder capturar
+  // los eventos de su "cartelera" mensual tipo afiche (texto superpuesto
+  // sobre imágenes de carrusel, invisible para el pipeline de IG, que no
+  // lee imágenes) — la web resuelve eso sin necesitar OCR/visión.
   // galeriapacareu: evaluada 2026-08-15 — galería comercial de
   // compraventa de arte (fichas de obras individuales en venta, sin
   // exposiciones con fecha). No agregada.

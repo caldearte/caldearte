@@ -799,6 +799,28 @@ export const KNOWN_SOURCES: KnownSource[] = [
       pattern: /<div class="text-long">([\s\S]*?)<\/div>/,
     },
   },
+  {
+    url: "https://casaportugal.cl",
+    note:
+      'Casa Portugal — casa taller, galería (Galería Malva) y centro de eventos culturales, Barrio Matta sur, Santiago Centro (comuna confirmada en texto: "Portugal 1431, Santiago de Chile — Metro Ñuble"). Agregada 2026-09-04 tras un comentario de Camila señalando que su cuenta de Instagram (@casaportugal_, ya en instagram-accounts.ts desde 2026-08-15) publica una "cartelera" mensual tipo afiche — varios eventos distintos como texto superpuesto sobre imágenes de un carrusel — que el pipeline de IG nunca puede leer (no hay OCR/visión en ningún punto de ese pipeline, y Apify solo trae la portada, nunca las demás fotos del carrusel). En vez de resolver eso, se encontró que casaportugal.cl expone el mismo contenido en HTML de texto plano, wp-block WordPress genérico (tema "enroute"): mucho más simple y determinístico que construir un pipeline de visión.\n\nSu home tiene una sección "Próximos eventos" con tarjetas repetidas: una etiqueta de categoría en mayúsculas (EXPOSICIÓN/TALLERES/etc.), título en `<h3 class="wp-block-heading has-small-font-size">`, rango de fechas en texto plano `DD.MM.YYYY – DD.MM.YYYY` (entidad `&#8211;` para el guion), descripción, y un link "SABER MÁS" a la página de detalle — confirmado 10/10 contra el HTML real de la home (2 tarjetas visibles al momento de evaluar: 1 EXPOSICIÓN, 1 TALLERES).\n\n**Filtro de disciplina sin código extra**: a diferencia de museoschile.gob.cl/mhnv.gob.cl (que sí necesitan un filtro determinístico por tematica), acá basta con anclar `blockRegex` al literal "EXPOSICIÓN</p>" — las tarjetas de TALLERES nunca calzan con ese ancla, así que ni siquiera llegan a Haiku (que de todos modos las rechazaría por ART_SCOPE_POLICY, pero esto ahorra el llamado).\n\n**titleLinkRegex con lookahead, caso nuevo no visto en otras fuentes**: acá el título (`<h3>`) y el link ("SABER MÁS", en OTRO `<h3><a>` más abajo en la tarjeta) NO comparten el mismo tag, a diferencia de todas las demás fuentes articleList (donde el link envuelve el título). Como el destructuring `[, href, rawTitle] = titleMatch` exige que el grupo 1 sea el href y el grupo 2 el título, pero el href aparece DESPUÉS del título en el HTML real, se usa un lookahead no-consumidor al inicio del regex para capturar el href por adelantado sin mover el puntero de coincidencia, dejando que el título se capture normalmente después — confirmado con Node contra el bloque real antes de escribir esto en el config.\n\n**Fecha de inauguración real, no solo el rango**: la página de detalle de cada evento tiene una sección "eventos de la muestra" con `<p class="is-event-date">Sábado 22 de agosto 18:00</p>` seguido de `<h3 class="is-event-venue">inauguración</h3>` — de las marcas más limpias vistas hasta ahora (clases CSS literalmente llamadas "is-event-date"/"is-event-venue"). `openingTimeExtractor` ancla el patrón exigiendo que "inauguración" aparezca inmediatamente después de la hora, para no confundirse con otras tarjetas de la misma sección (ej. "CONVERSATORIO CON JAVIERA TAPIA", un evento satélite con su propia fecha) — mismo tipo de riesgo ya documentado en aldeaencuentro.cl. El mes viene como palabra completa ("agosto"), no la abreviatura de 3 letras que `resolveMonth` espera — el regex solo captura las primeras 3 letras del grupo `month` y deja el resto sin capturar. Sin año en el texto: cae en `inferYear`, cuyo margen de 60 días (PAST_TOLERANCE_DAYS) ya cubre el caso real encontrado (evaluado 2026-09-04, con la inauguración ya pasada el 22-08 — sigue resolviendo al año correcto, no rueda a 2027 como el bug real encontrado en aninatgaleria.org).\n\nSolo 1 exposición confirmada en producción hasta ahora vía IG (2026-08-17, "Exposición de miniaturas" — la misma "Todas las horas del día" de Evelyn Erlij que esta fuente web también captura, coincide). Volumen bajo (espacio abrió 2025, ~5 exposiciones/año declaradas en su propia web) pero real — mismo criterio ya usado para espacioo.com.',
+    lastReviewedAt: "2026-09-04",
+    extractor: {
+      kind: "articleList",
+      blockRegex: /EXPOSICIÓN<\/p>([\s\S]*?SABER MÁS<\/a><\/h3>)/g,
+      titleLinkRegex:
+        /(?=[\s\S]*?<a href="([^"]+)"[^>]*>SABER MÁS)<h3 class="wp-block-heading has-small-font-size">([^<]*)<\/h3>/,
+      daysRegex: /<p class="wp-block-paragraph">([\d.]+\s*&#8211;\s*[\d.]+)<\/p>/,
+      descriptionRegex: /<p class="wp-block-paragraph" style="font-style:normal;font-weight:200">([^<]*)<\/p>/,
+      dateRangeExtractor: {
+        pattern:
+          /(?<startDay>\d{1,2})\.(?<startMonth>\d{1,2})\.(?<startYear>\d{4})\s*&#8211;\s*(?<endDay>\d{1,2})\.(?<endMonth>\d{1,2})\.(?<endYear>\d{4})/,
+      },
+    },
+    fixedLocation: { location: "Santiago", placeName: "Casa Portugal" },
+    openingTimeExtractor: {
+      pattern: /(?<day>\d{1,2}) de (?<month>[a-záéíóúñ]{3})[a-záéíóúñ]*\s+(?<hour>\d{1,2}):(?<minute>\d{2})\s*inauguraci[oó]n/i,
+    },
+  },
 ];
 
 export function knownSourceDomain(url: string): string {
