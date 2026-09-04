@@ -528,6 +528,23 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
   // galeriapacareu: evaluada 2026-08-15 — galería comercial de
   // compraventa de arte (fichas de obras individuales en venta, sin
   // exposiciones con fecha). No agregada.
+  // extension_utalca: evaluada 2026-09-04 (Dirección de Extensión
+  // Cultural y Artística de la Universidad de Talca, 13,6 mil
+  // seguidores, cuenta real y activa — encontrada porque Camila señaló
+  // que faltaba la exposición "La vida secreta del espacio interior" de
+  // Claudia Trewik en su Sala de exposiciones de Providencia, Santiago).
+  // No agregada: feed muy mixto entre TALLERES/EXPOS/CAFÉ LITERARIO/
+  // CINE/TEATRO/RECITALES/LIBROS/DANZA, cruza Talca ciudad + Santiago +
+  // Curicó, y el post fijado es un afiche mensual tipo "Programa
+  // Cultural" con varios eventos por imagen — mismo problema de
+  // cartelera-carrusel que casaportugal.cl, sin una versión web
+  // equivalente encontrada (santiago.utalca.cl es institucional, sin
+  // listado de exposiciones). Densidad real de arte visual específico de
+  // Santiago, baja en la muestra revisada. La exposición de Trewik se
+  // agregó a mano en events (curation_reasoning explica el detalle) en
+  // vez de construir esta fuente. Revisar de nuevo si en el futuro
+  // aparece un listado web dedicado o el patrón de posts individuales
+  // (no cartelera) se vuelve más frecuente.
   {
     username: "museotaller",
     note:
