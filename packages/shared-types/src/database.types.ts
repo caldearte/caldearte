@@ -776,6 +776,48 @@ export type Database = {
           },
         ]
       }
+      shadow_curation_comparisons: {
+        Row: {
+          agree: boolean
+          created_at: string
+          error: string | null
+          id: string
+          label: string
+          model: string
+          pipeline: string
+          real_status: string
+          real_tags: string[]
+          shadow_status: string
+          shadow_tags: string[]
+        }
+        Insert: {
+          agree: boolean
+          created_at?: string
+          error?: string | null
+          id?: string
+          label: string
+          model: string
+          pipeline: string
+          real_status: string
+          real_tags?: string[]
+          shadow_status: string
+          shadow_tags?: string[]
+        }
+        Update: {
+          agree?: boolean
+          created_at?: string
+          error?: string | null
+          id?: string
+          label?: string
+          model?: string
+          pipeline?: string
+          real_status?: string
+          real_tags?: string[]
+          shadow_status?: string
+          shadow_tags?: string[]
+        }
+        Relationships: []
+      }
       social_post_log: {
         Row: {
           event_id: string
