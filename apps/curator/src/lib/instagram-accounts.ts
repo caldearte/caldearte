@@ -2306,6 +2306,23 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
     addedAt: "2026-09-02",
     fixedLocation: { location: "Chillán", placeName: "Teatro Municipal de Chillán" },
   },
+  {
+    username: "culturarecoleta",
+    note:
+      "Evaluada 2026-09-03 en Chrome (logueado), no vía Apify. " +
+      "Corporación de Cultura y Deporte de Recoleta, cuenta oficial " +
+      "municipal — 30.5 mil seguidores, Inocencia 2711, Recoleta. " +
+      "Encontrada vía una exposición real (\"Acción Xilográfica\", " +
+      "Colectivo de Acción Xilográfica José Domingo Gómez Rojas — " +
+      "autores de la gráfica oficial de Mil Guitarras y Mil Voces para " +
+      "Víctor Jara 2026 — inauguración 10 de septiembre, Espacio Quinta " +
+      "Bella). Contenido mixto (biblioteca, deporte, teatro, cine, " +
+      "música), pero tiene un highlight \"Artes Visuales\" propio que " +
+      "confirma programación curatorial recurrente. fixedLocation — un " +
+      "solo local físico.",
+    addedAt: "2026-09-03",
+    fixedLocation: { location: "Recoleta", placeName: "Centro Cultural de Recoleta" },
+  },
   // El resto de la lista la aporta Daniel — una decisión editorial, igual
   // que cada fuente brillante nueva se evaluó una por una. Confirmar
   // pública y activa antes de agregar cada cuenta.
