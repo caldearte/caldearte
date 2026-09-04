@@ -84,6 +84,23 @@ export interface KnownSource {
   // enforceDateCompleteness reject an otherwise-real exhibition before
   // curation ever gets to see the detail page's real dates.
   detailDateRangeExtractor?: DateRangeConfig;
+  // Overrides isAggregatorSource's default inference (no fixedLocation =>
+  // aggregator) for the one real case that field's own doc comment
+  // anticipated but never had an example of until mac.uchile.cl
+  // (2026-09-04): a genuine multi-venue source that's still each event's
+  // OWN, primary, authoritative page — not a re-listing of someone else's
+  // content. mac.uchile.cl itself spans two real comunas (MAC Parque
+  // Forestal in Santiago, MAC Quinta Normal in its own comuna), so it
+  // can't take fixedLocation, but it's the museum's own site, not an
+  // aggregator — without this override, run.ts's shouldReplaceExisting
+  // would wrongly treat a tie between mac.uchile.cl and some OTHER
+  // aggregator re-listing the same MAC exhibition as "both aggregators,
+  // keep whatever's stored," silently losing MAC's own (more likely
+  // correct) version in that tie. Only relevant when neither side has a
+  // confirmed opening time (isAggregatorSource is tier 2, checked only
+  // after both sides tie on tier 1) — narrow, but a real gap once a
+  // second multi-venue-but-primary source exists at all.
+  isPrimarySource?: boolean;
 }
 
 export const KNOWN_SOURCES: KnownSource[] = [
@@ -821,6 +838,30 @@ export const KNOWN_SOURCES: KnownSource[] = [
       pattern: /(?<day>\d{1,2}) de (?<month>[a-záéíóúñ]{3})[a-záéíóúñ]*\s+(?<hour>\d{1,2}):(?<minute>\d{2})\s*inauguraci[oó]n/i,
     },
   },
+  {
+    url: "https://mac.uchile.cl/periodo/actuales/",
+    note:
+      'MAC — Museo de Arte Contemporáneo de la Universidad de Chile, dos sedes reales: MAC Parque Forestal (Ismael Valdés Vergara 506, comuna Santiago) y MAC Quinta Normal (Av. Matucana 464, comuna Quinta Normal — una comuna real y distinta, aunque el propio sitio a veces dice "Santiago" en prosa suelta). Agregada 2026-09-04 tras un segundo comentario de Camila (@museo_mac en Instagram, 168 mil seguidores, no cubierta hasta ahora ni por IG ni por web) — misma sesión que casaportugal.cl.\n\nEsta página (`/periodo/actuales/`, la sección "Exposiciones" real del sitio, no la home) es un custom post type WordPress dedicado ("type-exposiciones") con densidad excelente: 14/14 exposiciones muestreadas parsearon limpio (título, artista, sede+sala, rango de fechas) — confirmado contra el HTML real, no una muestra parcial. Cada tarjeta trae `<p class="fecha mb-0">26 Septiembre, 2026 - 24 Enero, 2027</p>` (día + mes completo en español + año, ambos lados) y `<p class="sede-sala">MAC Quinta Normal - 4</p>` (sede + sala/n° de sala).\n\n**Sin fixedLocation, a propósito** (caso ya anticipado en el comentario de este mismo archivo sobre `fixedLocation`, que usa literalmente "MAC Quinta Normal" como ejemplo de venue que necesita conocimiento real, no solo regex): las dos sedes son comunas distintas, así que se deja el texto de `sede-sala` como `placeRegex` para que Haiku (que sabe que Quinta Normal es una comuna real de la Región Metropolitana) resuelva cada evento por separado, mismo patrón que artes.uchile.cl/uchile.cl root.\n\n**Bug real encontrado y corregido de forma genérica, no específico de esta fuente**: `isAggregatorSource` (más abajo en este archivo) infería siempre "sin fixedLocation = agregador", correcto para arteinformado.com/uchile.cl root/etc. (agregadores reales de contenido ajeno) pero incorrecto para mac.uchile.cl — es multi-sede pero es la página PROPIA y autoritativa del museo, no un re-listado. El propio comentario de esa función ya decía "revisit this function if one ever gets added" para exactamente este caso, que nunca había ocurrido hasta ahora. Se agregó `isPrimarySource` (KnownSource) para que `shouldReplaceExisting` (run.ts) no trate un empate entre mac.uchile.cl y un agregador real que re-lista la misma exposición como "ambos agregadores, dejar lo que hay" — mac.uchile.cl gana esa desambiguación, como corresponde a la fuente propia del museo.\n\n**Fecha de inauguración real, no solo el rango**: la página de detalle de cada exposición trae `<p class="info-adicional mb-5"><strong>Inauguración: viernes 25 de septiembre</strong></p>` — confirmado contra "Sistema Público de Fluidos". Sin año ni hora en esta frase (a diferencia de casaportugal.cl, que sí trae hora) — `openingTimeExtractor` solo confirma día+mes, `timeConfirmed` queda false, el año se infiere vía `inferYear` (mismo margen de 60 días ya usado en otras fuentes, sin riesgo aquí porque el crawl corre cerca de la fecha real).\n\nDescripción real y sustancial en `<div class="entry-content mt-0">` de la página de detalle — confirmado sin divs anidados antes del cierre (mismo chequeo ya aplicado a mssa.cl/aldeaencuentro.cl). Imagen: `<img>` directo con `src` real, sin lazy-load ni workaround.\n\nAl menos 1 exposición de la muestra (post-13905, "Bestiarios Rudimentarios", cerró 09-08-2026) ya está fuera de vigencia pese a estar en `/periodo/actuales/` — el propio sitio no se actualiza al instante; queda correctamente descartada por la regla general de "run ya terminó antes del mes actual" (docs/overview.md), no necesita filtro extra acá.',
+    lastReviewedAt: "2026-09-04",
+    extractor: {
+      kind: "articleList",
+      blockRegex: /<article class="col-6 col-lg-4 mb-5" id="post-\d+"[^>]*>([\s\S]*?)<\/article>/g,
+      titleLinkRegex: /<h3 class="entry-title title-exposicion mb-0"><a href="([^"]+)"[^>]*>([^<]*)<\/a><\/h3>/,
+      placeRegex: /<p class="sede-sala">([^<]*)<\/p>/,
+      daysRegex: /<p class="fecha mb-0">([^<]*)<\/p>/,
+      dateRangeExtractor: {
+        pattern:
+          /(?<startDay>\d{1,2})\s+(?<startMonth>[A-Za-zÁÉÍÓÚáéíóú]{3})[A-Za-zÁÉÍÓÚáéíóú]*,\s*(?<startYear>\d{4})\s*-\s*(?<endDay>\d{1,2})\s+(?<endMonth>[A-Za-zÁÉÍÓÚáéíóú]{3})[A-Za-zÁÉÍÓÚáéíóú]*,\s*(?<endYear>\d{4})/,
+      },
+    },
+    isPrimarySource: true,
+    descriptionExtractor: {
+      pattern: /<div class="entry-content mt-0">([\s\S]*?)<\/div>/,
+    },
+    openingTimeExtractor: {
+      pattern: /[Ii]nauguraci[oó]n:\s*(?:\w+\s+)?(?<day>\d{1,2}) de (?<month>[a-záéíóúñ]{3})[a-záéíóúñ]*/,
+    },
+  },
 ];
 
 export function knownSourceDomain(url: string): string {
@@ -890,10 +931,12 @@ export function findDetailDateRangeConfig(sourceUrl: string): DateRangeConfig | 
 // (artes.uchile.cl, uchile.cl root, arteinformado.com, mallecoescultura.cl,
 // chilecultura.gob.cl) is already documented as a genuine multi-venue
 // aggregator, and every one WITH `fixedLocation` is a single venue's own
-// site — a real multi-venue "original" source (e.g. a gallery network
-// posting its own events across several sedes, no fixedLocation but still
-// the primary source) doesn't exist in KNOWN_SOURCES yet; revisit this
-// function if one ever gets added. A sourceUrl that doesn't match any
+// site. The one case this signal alone can't tell apart — a real
+// multi-venue "original" source (e.g. a gallery network posting its own
+// events across several sedes, no fixedLocation but still the primary
+// source) — showed up for the first time 2026-09-04 (mac.uchile.cl, two
+// real comunas, own authoritative page): `isPrimarySource` overrides the
+// inference for exactly that case. A sourceUrl that doesn't match any
 // known source at all (e.g. a Tavily-discovered social media post) is
 // treated as NOT an aggregator — it's a primary post, not a re-listing.
 export function isAggregatorSource(sourceUrl: string): boolean {
@@ -904,5 +947,5 @@ export function isAggregatorSource(sourceUrl: string): boolean {
     return false;
   }
   const match = KNOWN_SOURCES.find((s) => knownSourceDomain(s.url) === domain);
-  return match !== undefined && !match.fixedLocation;
+  return match !== undefined && !match.fixedLocation && !match.isPrimarySource;
 }
