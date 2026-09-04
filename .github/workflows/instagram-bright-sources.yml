@@ -73,3 +73,6 @@ jobs:
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
           APIFY_TOKEN: ${{ secrets.APIFY_TOKEN }}
+          # Shadow-mode model comparison pilot (2026-09-04) — optional: if
+          # unset, apps/curator/src/lib/model-comparison.ts no-ops entirely.
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}

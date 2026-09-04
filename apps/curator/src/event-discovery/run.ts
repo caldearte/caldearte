@@ -40,6 +40,7 @@ import { enrichCandidates, enrichBrightSourceItemDetails, isSocialMediaUrl, type
 import { rehostImage, type RehostImageFn } from "../lib/image-rehost.js";
 import { sendRunSummaryEmail, sendEscalationEmail, type RunSummary, type CandidateSummary } from "../lib/notify.js";
 import { recordRunSummary } from "../lib/run-summary-store.js";
+import { createShadowClient, runShadowCuration } from "../lib/model-comparison.js";
 import {
   buildBlock,
   buildSystemPrompt,
@@ -1215,6 +1216,7 @@ export async function run(deps: RunDeps = {}): Promise<void> {
   const pageFetchFn = deps.pageFetchFn ?? fetch;
   const rehostImageFn = deps.rehostImageFn ?? rehostImage;
   const client = getSupabaseClient();
+  const shadowClient = createShadowClient();
 
   await pruneOldRawSearchResults(now);
   await pruneExpiredEvents(now);
@@ -1406,9 +1408,19 @@ export async function run(deps: RunDeps = {}): Promise<void> {
           ({ candidates, usage } = await curateBrightSourceItems(messagesClient, newItems, monthLabel, {
             fixedLocation: result.source.fixedLocation,
           }));
+          if (shadowClient) {
+            await runShadowCuration("bright_source", sourceUrl, shadowClient, candidates, (client) =>
+              curateBrightSourceItems(client, newItems, monthLabel, { fixedLocation: result.source.fixedLocation }),
+            );
+          }
         } else {
           const block = buildBlock("Fuentes brillantes (no específicas a ninguna comuna)", [result.result]);
           ({ candidates, usage } = await curate(messagesClient, systemPrompt, block, { isBrightSource: true }));
+          if (shadowClient) {
+            await runShadowCuration("bright_source", sourceUrl, shadowClient, candidates, (client) =>
+              curate(client, systemPrompt, block, { isBrightSource: true }),
+            );
+          }
         }
         await recordUsage({ purpose: "event_discovery", model: EVENT_DISCOVERY_MODEL, pipeline: "bright_source", usage });
         summary.cost.anthropicUsd += estimateCostUsd(EVENT_DISCOVERY_MODEL, usage);
