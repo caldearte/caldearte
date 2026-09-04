@@ -40,6 +40,7 @@ import { recordRunSummary } from "../lib/run-summary-store.js";
 import { curateBrightSourceItems, currentMonthLabel, EVENT_DISCOVERY_MODEL, type MessagesClient } from "../event-discovery/discover.js";
 import type { BrightSourceItem } from "../event-discovery/extractors.js";
 import { insertCandidates, loadAllRegions, loadExistingKeys, loadRecentlyRejectedSourceUrls, toCandidateSummary } from "../event-discovery/run.js";
+import { createShadowClient, runShadowCuration } from "../lib/model-comparison.js";
 
 export interface InstagramRunDeps {
   messagesClient?: MessagesClient;
@@ -52,6 +53,7 @@ export interface InstagramRunDeps {
 export async function run(deps: InstagramRunDeps = {}): Promise<void> {
   const now = deps.now ?? new Date();
   const messagesClient: MessagesClient = deps.messagesClient ?? new Anthropic();
+  const shadowClient = createShadowClient();
   const fetchInstagramPostsFn = deps.fetchInstagramPostsFn ?? fetchInstagramPosts;
   const pageFetchFn = deps.pageFetchFn ?? fetch;
 
@@ -158,6 +160,11 @@ export async function run(deps: InstagramRunDeps = {}): Promise<void> {
     // venue), same per-item precedence curateBrightSourceItems already
     // gives a source-level `location` value.
     const { candidates, usage } = await curateBrightSourceItems(messagesClient, curatableItems, currentMonthLabel(now));
+    if (shadowClient) {
+      await runShadowCuration("instagram", "instagram_batch", shadowClient, candidates, (client) =>
+        curateBrightSourceItems(client, curatableItems, currentMonthLabel(now)),
+      );
+    }
 
     await recordUsage({ purpose: "event_discovery", model: EVENT_DISCOVERY_MODEL, pipeline: "instagram", usage });
     summary.cost.anthropicUsd = estimateCostUsd(EVENT_DISCOVERY_MODEL, usage);

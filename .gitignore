@@ -13,3 +13,4 @@ supabase/.temp/
 apps/curator/poc-*.json
 apps/curator/poc-eventos.md
 apps/curator/detected-sources.json
+apps/curator/compare-haiku-qwen-report.md
