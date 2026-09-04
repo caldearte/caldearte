@@ -45,6 +45,9 @@ export default function AdminMenu() {
           <Link href="/admin/costos" className="font-fragment-mono uppercase text-[16px]" onClick={() => setOpen(false)}>
             {esCL.adminMenu.costos}
           </Link>
+          <Link href="/admin/modelo-sombra" className="font-fragment-mono uppercase text-[16px]" onClick={() => setOpen(false)}>
+            {esCL.adminMenu.modeloSombra}
+          </Link>
           <button type="button" onClick={() => signOut()} className="self-start font-fragment-mono uppercase text-[16px] cursor-pointer">
             {esCL.loginPage.signOut}
           </button>

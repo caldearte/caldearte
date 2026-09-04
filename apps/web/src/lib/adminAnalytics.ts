@@ -89,6 +89,22 @@ export interface AdminAnalyticsPayload {
     followersCount: number;
     mediaCount: number;
   }>;
+  // Shadow-mode model comparison pilot (Daniel, 2026-09-04): a free
+  // OpenRouter model runs alongside the real Haiku curation call on the
+  // same input, purely to measure agreement — see
+  // apps/curator/src/lib/model-comparison.ts. Last 90 days, row-level.
+  shadowCurationComparisons: Array<{
+    createdAt: string;
+    pipeline: "bright_source" | "instagram";
+    label: string;
+    model: string;
+    realStatus: "approved" | "rejected" | "empty";
+    shadowStatus: "approved" | "rejected" | "empty" | "error";
+    agree: boolean;
+    realTags: string[];
+    shadowTags: string[];
+    error: string | null;
+  }>;
 }
 
 // Shared by every /admin/* page — same auth gate + fetch, extracted

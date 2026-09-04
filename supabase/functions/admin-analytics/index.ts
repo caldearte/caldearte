@@ -51,7 +51,7 @@ Deno.serve(async (req) => {
   }
 
   // ---- events (all-time, approved, not soft-removed) -----------------
-  const [eventsRes, signalsRes, rejectedRes, usageRes, fetchStateRes, costSnapshotsRes, pendingEscalationsRes, runSummariesRes, instagramPostsRes, instagramSnapshotsRes] = await Promise.all([
+  const [eventsRes, signalsRes, rejectedRes, usageRes, fetchStateRes, costSnapshotsRes, pendingEscalationsRes, runSummariesRes, instagramPostsRes, instagramSnapshotsRes, shadowComparisonsRes] = await Promise.all([
     client
       .from("events")
       .select("opening_datetime, run_start_date, run_end_date, region_id, pipeline, event_type")
@@ -102,6 +102,15 @@ Deno.serve(async (req) => {
       .select("snapshot_date, followers_count, media_count")
       .gte("snapshot_date", new Date(Date.now() - 120 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10))
       .order("snapshot_date", { ascending: false }),
+    // Shadow-mode model comparison pilot (Daniel, 2026-09-04) — row-level,
+    // last 90 days, same "ship it whole, bucket client-side" posture as
+    // everything else here (real volume is a handful of comparisons per
+    // cron run, nowhere near enough to need pre-aggregation).
+    client
+      .from("shadow_curation_comparisons")
+      .select("created_at, pipeline, label, model, real_status, shadow_status, agree, real_tags, shadow_tags, error")
+      .gte("created_at", new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString())
+      .order("created_at", { ascending: false }),
   ]);
   for (const [label, res] of [
     ["events", eventsRes],
@@ -114,6 +123,7 @@ Deno.serve(async (req) => {
     ["discovery_run_summaries", runSummariesRes],
     ["instagram_posts", instagramPostsRes],
     ["instagram_account_snapshots", instagramSnapshotsRes],
+    ["shadow_curation_comparisons", shadowComparisonsRes],
   ] as const) {
     if (res.error) {
       console.error(`admin-analytics: ${label} query failed`, res.error);
@@ -375,6 +385,19 @@ Deno.serve(async (req) => {
     mediaCount: row.media_count,
   }));
 
+  const shadowCurationComparisons = (shadowComparisonsRes.data ?? []).map((row) => ({
+    createdAt: row.created_at,
+    pipeline: row.pipeline,
+    label: row.label,
+    model: row.model,
+    realStatus: row.real_status,
+    shadowStatus: row.shadow_status,
+    agree: row.agree,
+    realTags: row.real_tags,
+    shadowTags: row.shadow_tags,
+    error: row.error,
+  }));
+
   return jsonResponse({
     generatedAt: new Date().toISOString(),
     events,
@@ -388,5 +411,6 @@ Deno.serve(async (req) => {
     discoveryRunSummaries,
     instagramPosts,
     instagramAccountSnapshots,
+    shadowCurationComparisons,
   });
 });
