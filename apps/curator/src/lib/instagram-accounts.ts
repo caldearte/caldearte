@@ -545,6 +545,24 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
   // vez de construir esta fuente. Revisar de nuevo si en el futuro
   // aparece un listado web dedicado o el patrón de posts individuales
   // (no cartelera) se vuelve más frecuente.
+  // extension_fmeduchile: evaluada 2026-09-04 (Dirección de Extensión,
+  // Facultad de Medicina de la Universidad de Chile, 2628 seguidores —
+  // Camila señaló "Enfermedades preciosas", de Cecilia Avendaño, en la
+  // recién inaugurada Galería de Arte de la Facultad). No agregada: 233
+  // posts, densidad de arte real muy baja — el grid está dominado por
+  // contenido administrativo/académico (Jornadas de Extensión,
+  // conversatorios con decanos, flujogramas de gestión, día de la
+  // matrona, historia de la medicina), sin highlight ni categoría
+  // dedicada a arte. El post real de "Enfermedades preciosas" (inaugurada
+  // 27 de agosto, 19 h) confirma que la Galería de Arte es NUEVA — esta
+  // fue su muestra inaugural, "da inicio a la programación" — sin fecha
+  // de cierre confirmada en ningún lado (ni el post, ni búsqueda web; el
+  // resto de resultados son sobre la muestra homónima de 2019 en Sala de
+  // Arte CCU/Isabel Croxatto, exposición distinta y ya cerrada). Sin
+  // run_end_date ni ventana de inauguración vigente, agregar este evento
+  // a mano no lo haría visible de forma útil en el sitio — no se agregó.
+  // Revisar de nuevo en unos meses cuando esta Galería de Arte tenga más
+  // programación y quede claro si publican fecha de cierre por muestra.
   {
     username: "museotaller",
     note:
