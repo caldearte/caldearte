@@ -11,6 +11,7 @@ function event(overrides: Partial<EventRecord> = {}): EventRecord {
     description: null,
     freeformLocation: "Galería X, Santiago",
     placeName: null,
+    address: null,
     regionName: null,
     imageUrl: null,
     openingDatetime: null,

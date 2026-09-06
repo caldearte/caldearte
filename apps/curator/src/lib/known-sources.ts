@@ -48,7 +48,17 @@ export interface KnownSource {
   // artes.uchile.cl) whose events span many different comunas/venues —
   // resolving "MAC Quinta Normal" -> "Santiago" needs real-world venue
   // knowledge a regex can't have, so those sources keep asking Haiku.
-  fixedLocation?: { location: string; placeName: string };
+  //
+  // `address` (2026-09-05): optional real street address, used ONLY to
+  // build a more accurate Google Maps directions link (see
+  // useEventCardActions.ts's mapsQuery) — never shown on the site, which
+  // deliberately displays just "Venue, Comuna" (docs/region-discovery.md,
+  // 2026-07-24 decision). Added after two real users were sent to the
+  // wrong physical location by a Maps text-search on `placeName` alone
+  // (casaportugal.cl's own sub-brand "Galería Malva" and linia_gallery's
+  // "LINIA Galería" both had their real address sitting unused in this
+  // file's own `note` prose — now captured structurally instead).
+  fixedLocation?: { location: string; placeName: string; address?: string };
   // Sibling to openingTimeExtractor, same reasoning: a real description
   // only exists on the event's own detail page for these sources (their
   // LISTING page never carries prose, confirmed 2026-07-24 by fetching
@@ -833,7 +843,7 @@ export const KNOWN_SOURCES: KnownSource[] = [
           /(?<startDay>\d{1,2})\.(?<startMonth>\d{1,2})\.(?<startYear>\d{4})\s*&#8211;\s*(?<endDay>\d{1,2})\.(?<endMonth>\d{1,2})\.(?<endYear>\d{4})/,
       },
     },
-    fixedLocation: { location: "Santiago", placeName: "Casa Portugal" },
+    fixedLocation: { location: "Santiago", placeName: "Casa Portugal", address: "Portugal 1431, Santiago" },
     openingTimeExtractor: {
       pattern: /(?<day>\d{1,2}) de (?<month>[a-záéíóúñ]{3})[a-záéíóúñ]*\s+(?<hour>\d{1,2}):(?<minute>\d{2})\s*inauguraci[oó]n/i,
     },

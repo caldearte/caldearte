@@ -46,6 +46,16 @@ export interface EventCandidate {
   status: "approved" | "rejected";
   location: string;
   placeName: string | null; // recognizable venue/institution/landmark name, when the source states one
+  // Real street address, when known — used only to build a more accurate
+  // Google Maps "Cómo llegar" link (never displayed on the site, which
+  // deliberately shows just "Venue, Comuna" per docs/region-discovery.md's
+  // 2026-07-24 decision). Populated from a fixedLocation.address (constant
+  // per source) or, for aggregators with a locationExtractor, from the
+  // detail page's own raw address text before it gets reduced to a bare
+  // comuna name (see lib/page-fetch.ts's enrichCandidates). Added
+  // 2026-09-05 after two real users were sent to the wrong physical
+  // location by a Maps text-search on placeName alone.
+  address: string | null;
   sourceUrl: string | null;
   // The specific account/handle a candidate came from, when the pipeline
   // has that concept — so far only Instagram (account.username, see
@@ -1146,7 +1156,7 @@ function parseBrightSourceCurationRows(text: string, expectedCount: number): Bri
 function mergeBrightSourceCandidate(
   item: BrightSourceItem,
   row: BrightSourceCurationEventFields,
-  fixedLocation: { location: string; placeName: string } | undefined,
+  fixedLocation: { location: string; placeName: string; address?: string } | undefined,
 ): EventCandidate {
   const openingDatetime = row.openingDatetime ? parseLocalDatetimeToUtcIso(row.openingDatetime) : null;
   const title = row.title ?? item.title;
@@ -1185,6 +1195,7 @@ function mergeBrightSourceCandidate(
       status: row.status,
       location: fixedLocation.location,
       placeName: fixedLocation.placeName,
+      address: fixedLocation.address ?? null,
       sourceUrl: item.sourceUrl,
       sourceAccount: item.sourceAccount ?? null,
       artistInstagramHandle: row.artistInstagramHandle,
@@ -1219,6 +1230,7 @@ function mergeBrightSourceCandidate(
     status: row.status,
     location: defaultConflictsWithExtraction ? row.location! : (item.defaultLocation?.location ?? item.location ?? row.location ?? ""),
     placeName: defaultConflictsWithExtraction ? row.placeName : (item.defaultLocation?.placeName ?? item.placeName ?? row.placeName ?? null),
+    address: defaultConflictsWithExtraction ? null : (item.defaultLocation?.address ?? null),
     sourceUrl: item.sourceUrl,
     sourceAccount: item.sourceAccount ?? null,
     artistInstagramHandle: row.artistInstagramHandle,
@@ -1282,7 +1294,7 @@ export function fillRunStartFromPublishedDate(candidates: EventCandidate[], item
 }
 
 export interface BrightSourceCurateOpts {
-  fixedLocation?: { location: string; placeName: string };
+  fixedLocation?: { location: string; placeName: string; address?: string };
 }
 
 // Cap on items sent to Haiku in a single curation call. Real incident

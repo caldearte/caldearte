@@ -322,6 +322,7 @@ export type Database = {
       }
       events: {
         Row: {
+          address: string | null
           admin_sensitive_marked_at: string | null
           artist: string | null
           artist_instagram_handle: string | null
@@ -355,6 +356,7 @@ export type Database = {
           title: string
         }
         Insert: {
+          address?: string | null
           admin_sensitive_marked_at?: string | null
           artist?: string | null
           artist_instagram_handle?: string | null
@@ -388,6 +390,7 @@ export type Database = {
           title: string
         }
         Update: {
+          address?: string | null
           admin_sensitive_marked_at?: string | null
           artist?: string | null
           artist_instagram_handle?: string | null
@@ -879,6 +882,7 @@ export type Database = {
     Views: {
       events_public: {
         Row: {
+          address: string | null
           artist: string | null
           description: string | null
           event_type: string | null
@@ -896,6 +900,7 @@ export type Database = {
           title: string | null
         }
         Insert: {
+          address?: string | null
           artist?: string | null
           description?: string | null
           event_type?: string | null
@@ -913,6 +918,7 @@ export type Database = {
           title?: string | null
         }
         Update: {
+          address?: string | null
           artist?: string | null
           description?: string | null
           event_type?: string | null

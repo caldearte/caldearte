@@ -10,6 +10,14 @@ export interface EventRecord extends EventDates {
   description: string | null;
   freeformLocation: string;
   placeName: string | null;
+  // Real street address, when known — NEVER displayed (the site's short
+  // "Venue, Comuna" convention is unchanged, see freeformLocation/placeName
+  // above); used only to build a more accurate "Cómo llegar" Google Maps
+  // link (useEventCardActions.ts's mapsQuery). Added 2026-09-05 after two
+  // real users were sent to the wrong physical location by a Maps
+  // text-search on placeName + comuna alone (Galería Malva/Casa Portugal,
+  // LINIA Galería — see supabase/migrations/20260905120000_add_event_address.sql).
+  address: string | null;
   regionName: string | null;
   imageUrl: string | null;
   sensitivityTags: string[];
@@ -63,6 +71,7 @@ function toEventRecord(row: EventRow, regionNameById: Map<string, string>): Even
     description: row.description,
     freeformLocation: row.freeform_location,
     placeName: row.place_name,
+    address: row.address,
     regionName: row.region_id ? (regionNameById.get(row.region_id) ?? null) : null,
     imageUrl: row.image_url,
     openingDatetime: row.opening_datetime,
