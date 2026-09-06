@@ -2,6 +2,11 @@ import { ImageResponse } from "next/og";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { FLYER_HEIGHT, FLYER_WIDTH, FlyerImage, type FlyerEventInput, type FlyerType } from "@/lib/social/flyer";
+// Preview-only v2 template (see flyer-v2.tsx's own doc comment) — opt-in via
+// `?v=2`, never the default, so every existing caller (the cron + the
+// manual "Compartir" feature) keeps rendering the current production
+// template unchanged.
+import { FlyerImageV2 } from "@/lib/social/flyer-v2";
 
 // Called by the automated Instagram-publishing cron over HTTP
 // (apps/curator/src/social-publish/run.ts) and by the manual "Compartir"
@@ -36,16 +41,21 @@ export async function GET(request: Request) {
     openingTimeConfirmed: searchParams.get("openingTimeConfirmed") !== "false",
   };
 
-  const [latoBold, latoBlack, geistSemiBold, logoSvg] = await Promise.all([
+  const [latoBold, latoBlack, geistSemiBold, logoSvg, avatarPng] = await Promise.all([
     readFile(join(process.cwd(), "assets/lato-bold.ttf")),
     readFile(join(process.cwd(), "assets/lato-black.ttf")),
     readFile(join(process.cwd(), "assets/geist-semibold.ttf")),
     readFile(join(process.cwd(), "assets/logo-caldearte.svg")),
+    // v2 template only — the real round Instagram-profile-style avatar
+    // Daniel provided 2026-09-05, replacing flyer-v2.tsx's earlier JSX
+    // approximation (a plain circle with hand-drawn "CALDE"/"ARTE." text).
+    readFile(join(process.cwd(), "assets/avatar-caldearte.png")),
   ]);
   // Data URI, not a remote src — the vector logo is a fixed local asset
   // (unlike the event photo), so there's no reason to add a network round
   // trip or a dependency on Figma's own (temporary) asset host.
   const logoDataUri = `data:image/svg+xml;base64,${logoSvg.toString("base64")}`;
+  const avatarDataUri = `data:image/png;base64,${avatarPng.toString("base64")}`;
 
   try {
     // Fetched here, with an explicit Accept header, rather than handed to
@@ -66,15 +76,23 @@ export async function GET(request: Request) {
     const photoBuffer = Buffer.from(await photoRes.arrayBuffer());
     const photoDataUri = `data:${photoContentType};base64,${photoBuffer.toString("base64")}`;
 
-    return new ImageResponse(<FlyerImage input={input} logoDataUri={logoDataUri} photoDataUri={photoDataUri} />, {
-      width: FLYER_WIDTH,
-      height: FLYER_HEIGHT,
-      fonts: [
-        { name: "Lato", data: latoBold, weight: 700, style: "normal" },
-        { name: "Lato", data: latoBlack, weight: 900, style: "normal" },
-        { name: "Geist", data: geistSemiBold, weight: 600, style: "normal" },
-      ],
-    });
+    const useV2 = searchParams.get("v") === "2";
+    return new ImageResponse(
+      useV2 ? (
+        <FlyerImageV2 input={input} photoDataUri={photoDataUri} avatarDataUri={avatarDataUri} />
+      ) : (
+        <FlyerImage input={input} logoDataUri={logoDataUri} photoDataUri={photoDataUri} />
+      ),
+      {
+        width: FLYER_WIDTH,
+        height: FLYER_HEIGHT,
+        fonts: [
+          { name: "Lato", data: latoBold, weight: 700, style: "normal" },
+          { name: "Lato", data: latoBlack, weight: 900, style: "normal" },
+          { name: "Geist", data: geistSemiBold, weight: 600, style: "normal" },
+        ],
+      },
+    );
   } catch (e) {
     return new Response(`Failed to generate flyer: ${e instanceof Error ? e.message : String(e)}`, { status: 500 });
   }
