@@ -14,3 +14,6 @@ apps/curator/poc-*.json
 apps/curator/poc-eventos.md
 apps/curator/detected-sources.json
 apps/curator/compare-haiku-qwen-report.md
+
+# Local-only editorial notebook (docs/editorial-log.local.md) — names real people, public repo.
+*.local.md
