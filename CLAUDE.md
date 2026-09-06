@@ -7,6 +7,8 @@ Before making any change, read:
 - [docs/region-discovery.md](docs/region-discovery.md) — required before touching Venue Discovery/Event Crawler: discovery, ranking, crawling, cost governance
 - `docs/` also has `architecture.md`, `data-model.md`, and `risks.md` — read the relevant one for the area you're touching
 
+`docs/` describes the machine. The editorial and human side — team, content formats, field notes from openings and artist interviews — lives in `docs/editorial-log.local.md`, which is **local-only and never committed** (this repo is public and it names real people). Read it before any work on content, social, venue outreach, or newsletter tone, and append to it when a session produces new editorial context. It's legitimately absent in a fresh clone; don't recreate it from scratch there.
+
 We're in Phase 1a: the core loop (scraper, curation, Supabase, calendar) — inbound-mail flows aren't built yet.
 
 ## Working mode — what to do solo vs. what to pause for
