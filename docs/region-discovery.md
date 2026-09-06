@@ -3984,6 +3984,31 @@ own dictatorship history and political sensitivities are a separate
 editorial-policy question, not something this cost/model experiment
 should bundle in.
 
+## Stale pre-fix titles found and manually corrected (2026-09-06)
+
+While testing the flyer redesign (see roadmap.md's own entry) against
+real event titles, found 6 approved events whose `title` was a raw
+caption fragment (e.g. "📸 Compartimos algunas imágenes de la inauguración
+de Apaga la luz, exposición de los artistas egresados de la Escuela de")
+instead of the real exhibition name — the exact failure mode 2026-08-29's
+Haiku-title-wins fix (`mergeBrightSourceCandidate`, `discover.ts`) already
+addresses. All 6 were created **before** that fix (2026-08-15 to
+2026-08-26); a search for the same pattern after 2026-08-29 found none,
+confirming the fix holds going forward and these were stale, never-
+reprocessed records, not an ongoing gap. Corrected by hand, using the real
+name each event's own `curation_reasoning` had already identified
+correctly (Haiku's internal reasoning named the show right even when the
+`title` field itself didn't).
+
+A 7th case was structurally different, not a title-wording problem:
+"🎨 Dos nuevas exposiciones llegan al ciclo Cabo de Hornos" was one row
+representing **two distinct real exhibitions** ("Huellas de un atajo" by
+Christian Yovane and "Adobe y sillerías" by Rodrigo Galecio, same venue,
+same opening) merged together — the kind of case `additionalEvents`
+(PR #485) exists to split going forward, but this record pre-dated that
+feature too. Split by hand into two separate `events` rows (same source
+photo/date/venue, each with its own title and artist).
+
 ## Cost governance
 
 A self-tracked ledger keeps both processes bounded, without depending on

@@ -622,6 +622,60 @@ building infra" discipline the rest of this project has followed.
     `/eventos/[id]`'s "list mode" forcing every event page to render
     dynamically — list mode was removed entirely in favor of a small
     deterministic teaser, detailed in architecture.md.
+  - **Flyer template redesigned, shipped as the default 2026-09-06**
+    (`apps/web/src/lib/social/flyer-v2.tsx`, replacing the 2026-08-23
+    layout above as what `/api/social/flyer` renders by default — the
+    old template stays reachable via `?v=1`, an explicit escape hatch,
+    not the other way around). Prompted by Daniel/Camila noticing the
+    original layout's opaque top/bottom bands covered too much of the
+    event photo. Iterated against ~25 real production photos (bare
+    photos of the artwork and, just as often, a source's own designed
+    poster with its own text/logos already on it) before landing on:
+    - **Photo fills the entire canvas** — no opaque bands at all.
+    - **Avatar (the real Instagram-profile circle) + comuna + date,
+      always together, always large, top-left**, vertically centered
+      against the avatar's own height. Two earlier alternatives were
+      tried and rejected: a small avatar hunting for whichever corner
+      looked emptiest on a given photo (rejected — reads as trying to
+      blend in like a co-organizer logo, the opposite of what's
+      wanted), and showing the full text card only when the photo
+      itself had no text of its own (rejected — Daniel's call: a fixed
+      UI "chrome" that never adapts to the underlying photo is what
+      actually reads as an added layer, the same way a retweet/quote
+      card or a nutrition-label overlay does; conditionally hiding
+      pieces undermines that). **No image-classification model was
+      built for this** — explicitly decided against, to avoid adding a
+      vision-model call and a new failure mode for a marginal gain.
+    - **Title, artist, and venue as independently-sized tags** (not one
+      shared card) — each hugs its own text width via Satori/Yoga
+      flexbox (`alignItems: "flex-start"` on the stacking parent, since
+      the default `"stretch"` was forcing a short comuna pill to match
+      the wider date pill). A long title/artist name now **wraps to
+      more lines instead of truncating**, with a character-count-based
+      balancing pass (`estimateBalancedWidth` in flyer-v2.tsx) so a
+      2+-line wrap splits into roughly even lines rather than a long
+      first line and a short leftover — there's no real text-
+      measurement API in Satori's render environment, so this is a
+      calibrated approximation, not exact, but Satori still does the
+      actual line-breaking for real at whatever width it's given, so
+      an imperfect estimate only affects balance, never causes overflow.
+    - **Artist name shows conditionally**: one name for a solo show,
+      literal `"MUESTRA COLECTIVA"` when `artist` lists 2+ comma-
+      separated names (a real, confirmed group show), nothing at all
+      when `artist` is null (a data gap, not evidence either way of
+      solo vs. collective) — same rule for both inauguración and
+      visita guiada flyers.
+    - Type label ("INAUGURACIÓN"/"VISITA GUIADA") moved from its own
+      dedicated band into a prefix on the title tag itself.
+  - **Two real, unrelated bugs found and fixed while testing this**
+    (both pre-dated 2026-08-29's Haiku-title fallback fix, from stale
+    records never reprocessed): 6 approved events had a caption
+    fragment as `title` instead of the real exhibition name (corrected
+    by hand from each event's own `curation_reasoning`, which had
+    already identified the real name correctly), and one event
+    ("🎨 Dos nuevas exposiciones llegan al ciclo Cabo de Hornos")
+    actually announced two distinct exhibitions merged into a single
+    row — split into two separate `events` rows.
 
 ## Phase 5 — Parked / optional, doesn't block anything above
 
