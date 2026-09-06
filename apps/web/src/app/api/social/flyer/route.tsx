@@ -2,10 +2,13 @@ import { ImageResponse } from "next/og";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { FLYER_HEIGHT, FLYER_WIDTH, FlyerImage, type FlyerEventInput, type FlyerType } from "@/lib/social/flyer";
-// Preview-only v2 template (see flyer-v2.tsx's own doc comment) — opt-in via
-// `?v=2`, never the default, so every existing caller (the cron + the
-// manual "Compartir" feature) keeps rendering the current production
-// template unchanged.
+// v2 template (see flyer-v2.tsx's own doc comment) — the DEFAULT as of
+// 2026-09-06 (Daniel: "deja v2 listo para que el próximo post real ya
+// tenga el template nuevo"), after v2 was already merged and tested
+// against ~25 real events. Neither real caller (the publishing cron nor
+// the manual "Compartir" feature) passes `v` at all, so this flip is what
+// actually switches their real output — `?v=1` is kept as an explicit
+// escape hatch back to the old template, not the other way around.
 import { FlyerImageV2 } from "@/lib/social/flyer-v2";
 
 // Called by the automated Instagram-publishing cron over HTTP
@@ -76,7 +79,7 @@ export async function GET(request: Request) {
     const photoBuffer = Buffer.from(await photoRes.arrayBuffer());
     const photoDataUri = `data:${photoContentType};base64,${photoBuffer.toString("base64")}`;
 
-    const useV2 = searchParams.get("v") === "2";
+    const useV2 = searchParams.get("v") !== "1";
     return new ImageResponse(
       useV2 ? (
         <FlyerImageV2 input={input} photoDataUri={photoDataUri} avatarDataUri={avatarDataUri} />
