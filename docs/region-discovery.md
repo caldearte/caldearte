@@ -3897,6 +3897,93 @@ existed): the "Existen otros mundos" row's `curation_status` was manually
 flipped to `rejected` directly via SQL — not deleted, reasoning field
 kept with an appended correction note.
 
+## Shadow-mode model comparison pilot (2026-09-04)
+
+Daniel wanted to explore whether a free OpenRouter model could replace or
+supplement Haiku for curation, mainly for cost (once a country beyond
+Chile is added, real volume could scale meaningfully). Before touching
+any real decision path, validated the idea offline first
+(`apps/curator/scripts/compare-haiku-qwen.ts`, throwaway, not wired into
+any pipeline): re-scraped ~20 already-approved events' `source_url` to
+reconstruct an input block, ran the exact same system prompt through both
+Haiku and a candidate model via OpenRouter, and diffed the verdicts.
+
+Real findings from that offline comparison, across `qwen/qwen3.8-flash`,
+`inclusionai/ling-3.0-flash-fin:free` (a finance-tuned model, poor fit,
+quickly dropped), and `minimax/minimax-m3:free`:
+
+- **Qwen3.8-flash** emits a genuine hidden "thinking" content block
+  (confirmed via the raw OpenRouter response — a separate `type:
+  "thinking"` block, billed via `usage.output_tokens_details.thinking_tokens`),
+  10-20x more output tokens than Haiku for the same task. Neither
+  OpenRouter's `reasoning: {enabled: false}` param nor an explicit
+  system-prompt instruction ("no razones paso a paso") suppressed it —
+  the model's own thinking block once literally acknowledged the
+  instruction while ignoring it. Still net cheaper than Haiku in real
+  dollars (lower per-token price outweighs the extra volume), but
+  unpredictable output length and a real reliability problem: Qwen's
+  OpenRouter routing (without a BYOK Alibaba key) uses a free shared
+  upstream pool that returned sustained `429 rate_limit_exceeded` for
+  many minutes during testing — a real availability risk a production
+  cron can't tolerate.
+- **`minimax/minimax-m3:free`** had no hidden-reasoning problem (output
+  tokens comparable to Haiku's) and ran 20/20 with zero errors across two
+  full batches. ~65-70% exact agreement with Haiku on real re-curated
+  events; manually fact-checked all 6 disagreements in one batch against
+  the actual source pages — Haiku was right in 2 (both a self-inflicted
+  `locationQuote` citation miss on minimax's side, source location was
+  genuinely clear), minimax was right in 4 (one Haiku `sourceUrl`
+  extraction miss, three were real Haiku date-vigency errors — approving
+  an already-expired exhibition, in one case with an internally
+  contradictory date claim). Encouraging, but n≈20-40 total is still far
+  too small to trust on the axis that matters most: sensitivity judgment
+  (dictadura/autoritarismo) — in one direct comparison, minimax agreed
+  with Haiku's framing of a critical-not-celebratory curatorial piece
+  about the Pinochet era; Qwen, on the same case, disagreed and rejected
+  it for insufficiently explicit critical framing. That axis is an
+  editorial call (`docs/curation-policy.md`), never something to resolve
+  by benchmark score.
+
+**Decision**: don't swap curation models yet. Instead, a phased,
+low-risk pilot — Haiku stays the only model whose result is ever
+inserted into `events`; a free model runs in **shadow mode**, same
+input, purely logged for comparison, no effect on production output.
+
+**What shipped** (PRs #488, #489): `apps/curator/src/lib/model-comparison.ts` —
+`createShadowClient()` reads `OPENROUTER_API_KEY`/`SHADOW_MODEL_ID` (default
+`minimax/minimax-m3:free`) and no-ops entirely if the key isn't set (ships
+dark until the secret is added). `runShadowCuration()` re-runs the same
+`curate()`/`curateBrightSourceItems()` call with the shadow client
+alongside the real one, comparing `status` and `sensitivityTags`, and
+persists every comparison to a new table (`shadow_curation_comparisons`
+— pipeline, label, model, real/shadow status, agree, tags, error; RLS
+with no policies + `service_role` grant, same posture as
+`discovery_run_summaries`) plus a `[event-discovery][shadow-mode]`
+console line for immediate GitHub Actions log visibility.
+
+Wired into the two paths that actually run automatically today (see
+"Dual cadence" above — the per-comuna Tavily loop is dormant on the real
+cron, only fires via manual `workflow_dispatch`, so it was deliberately
+left out of the pilot): the bright-source fallback loop in
+`event-discovery/run.ts` (both the `curateBrightSourceItems` extractor
+path and the raw `curate()` fallback) and `instagram-discovery/run.ts`'s
+`curateBrightSourceItems` call. `/admin/modelo-sombra` (new Edge Function
+query in `admin-analytics`, new page) shows agreement rate, error rate,
+a per-pipeline breakdown, and the disagreement list for manual review —
+last 90 days, row-level, no pre-aggregation (real volume is a handful of
+comparisons per cron run).
+
+Next gate, explicitly Daniel's call: once enough real shadow-mode data
+accumulates (weeks of real Sun/Wed cron runs, not a one-off batch), he
+reviews the disagreement log — especially any sensitivity-axis case —
+and decides whether to promote the shadow model to primary curator with
+Haiku as a real fallback (and keep measuring how often it actually falls
+through to Haiku), keep it shadow-only indefinitely, or drop it. A second
+country (e.g. Argentina) was explicitly scoped OUT of this pilot — its
+own dictatorship history and political sensitivities are a separate
+editorial-policy question, not something this cost/model experiment
+should bundle in.
+
 ## Cost governance
 
 A self-tracked ledger keeps both processes bounded, without depending on
