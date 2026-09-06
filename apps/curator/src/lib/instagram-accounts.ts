@@ -19,8 +19,10 @@ export interface InstagramAccountConfig {
   addedAt: string;
   // Same meaning as KnownSource.fixedLocation (known-sources.ts) — set
   // only when the account is a confirmed single fixed venue/organization,
-  // so Haiku doesn't need to infer a comuna from the caption.
-  fixedLocation?: { location: string; placeName: string };
+  // so Haiku doesn't need to infer a comuna from the caption. `address` is
+  // optional and used only for the site's "Cómo llegar" Maps link, never
+  // displayed — see known-sources.ts's fixedLocation doc comment.
+  fixedLocation?: { location: string; placeName: string; address?: string };
 }
 
 export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
@@ -1254,7 +1256,7 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
       "café/boutique, pero programa expositivo confirmado. " +
       "fixedLocation.",
     addedAt: "2026-08-26",
-    fixedLocation: { location: "Santiago", placeName: "LINIA Galería" },
+    fixedLocation: { location: "Santiago", placeName: "LINIA Galería", address: "Huérfanos 3044, Santiago" },
   },
   {
     username: "mavichile",

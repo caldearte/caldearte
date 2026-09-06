@@ -53,7 +53,7 @@ export interface BrightSource {
   // lib/known-sources.ts's KnownSource.fixedLocation doc comment. Kept in
   // sync with that field so run.ts's curateBrightSourceItems call can read
   // it directly off whatever merged source produced a given fetch result.
-  fixedLocation?: { location: string; placeName: string };
+  fixedLocation?: { location: string; placeName: string; address?: string };
 }
 
 // A source with a real extractor config yields structured BrightSourceItems

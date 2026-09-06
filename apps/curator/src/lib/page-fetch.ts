@@ -295,6 +295,12 @@ async function processCandidate<T extends EnrichCandidateLike>(
         if (comuna) {
           console.log(`[page-fetch] recovered comuna "${comuna}" from ${c.sourceUrl}`);
           c.location = comuna;
+          // Keep the raw address text too (2026-09-05) — used only for a
+          // more accurate Maps "Cómo llegar" link, never displayed (see
+          // EventCandidate.address's doc comment). Only trusted once
+          // extractComunaName has confirmed addressText is a real address
+          // (resolved to a real comuna), not some unrelated matched text.
+          if (addressText) c.address = addressText.trim();
         }
       }
     }

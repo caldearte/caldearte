@@ -76,7 +76,7 @@ export interface BrightSourceItem {
   // override when it clearly names a different real Chilean place — see
   // locationsOverlap (lib/locations.ts). null for every source that
   // doesn't have this assumption at all.
-  defaultLocation?: { location: string; placeName: string } | null;
+  defaultLocation?: { location: string; placeName: string; address?: string } | null;
   // Real, already-known date — the SOURCE POST'S OWN publish date, not an
   // event date at all. Optional (undefined for every existing source
   // shape, no other constructor site needs updating): only populated by

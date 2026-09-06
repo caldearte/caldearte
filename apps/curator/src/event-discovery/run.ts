@@ -652,6 +652,7 @@ export async function insertCandidates(
         const candidatePayload = {
           freeform_location: c.location,
           place_name: c.placeName,
+          address: c.address,
           region_id: regionId,
           title: c.title,
           description: c.description,
@@ -898,6 +899,7 @@ export async function insertCandidates(
         .update({
           freeform_location: c.location,
           place_name: c.placeName,
+          address: c.address,
           region_id: regionId,
           title: c.title,
           description: c.description,
@@ -962,6 +964,7 @@ export async function insertCandidates(
       .insert({
         freeform_location: c.location,
         place_name: c.placeName,
+        address: c.address,
         region_id: regionId,
         title: c.title,
         description: c.description,

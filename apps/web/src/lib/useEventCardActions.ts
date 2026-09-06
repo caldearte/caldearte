@@ -67,8 +67,13 @@ export function useEventCardActions(event: EventRecord, variant: "inauguracion" 
   const venueLine = comunaAlreadyShown ? displayedVenue : `${displayedVenue} — ${comuna}`;
 
   // "Cómo llegar" — Google Maps DIRECTIONS (not a plain search pin). No
-  // lat/lng needed — Maps resolves a text address itself.
-  const mapsQuery = venueLine.trim() ? `${venueLine}, Chile` : null;
+  // lat/lng needed — Maps resolves a text address itself. Prefers the real
+  // street address when we have one (event.address, added 2026-09-05) —
+  // venueLine alone (just "Venue — Comuna") sent two real users to the
+  // wrong place when Maps didn't have the exact venue name indexed
+  // (Galería Malva/Casa Portugal, LINIA Galería). Falls back to venueLine
+  // for every event without a known address, same as before.
+  const mapsQuery = event.address ? `${event.address}, Chile` : venueLine.trim() ? `${venueLine}, Chile` : null;
   const mapsHref = mapsQuery ? `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(mapsQuery)}` : null;
 
   // "Agregar a mi calendario" — inauguraciones only (expos have no single
