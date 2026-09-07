@@ -2356,6 +2356,31 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
     addedAt: "2026-09-03",
     fixedLocation: { location: "Recoleta", placeName: "Centro Cultural de Recoleta" },
   },
+  {
+    username: "asociacionapech",
+    note:
+      "Evaluada 2026-09-07 en Chrome (logueado), no vía Apify (Apify " +
+      "sigue bloqueado por el límite mensual hasta ~13-09). APECH — " +
+      "Asociación de Pintores y Escultores de Chile, gremio nacional " +
+      "real y activo (\"se ha caracterizado por defender los derechos " +
+      "de los artistas visuales\") — 6872 seguidores, 1954 seguidos, " +
+      "1923 publicaciones. Encontrada vía una exposición real " +
+      "(\"Víctor Jara: Memoria, Trazos y Voces\", inauguración 10 de " +
+      "septiembre, Casa de la Cultura Anselmo Cádiz, El Bosque — " +
+      "agregada a mano el mismo día, ver su propio evento). Muestreo " +
+      "de ~10 posts reales del feed: programación curatorial densa y " +
+      "genuina (\"¡Guillermo, qué quiere que le diga!\" homenaje a " +
+      "Guillermo Núñez en Sala Santiago Nattino, \"Mujeres en el " +
+      "Parque\" 2da versión en Casa de la Cultura Anáhuac), mezclada " +
+      "con talleres (\"Taller de Dibujo\") y una convocatoria " +
+      "(Simposio de Escultura de Valdivia) — ambos excluidos por " +
+      "formato, ruido esperado normal. SIN fixedLocation — es un " +
+      "gremio nacional itinerante, cada exposición rota de local " +
+      "físico (Providencia, Parque Metropolitano, El Bosque vistos " +
+      "solo en esta muestra), Haiku debe inferir la comuna de cada " +
+      "publicación individualmente.",
+    addedAt: "2026-09-07",
+  },
   // El resto de la lista la aporta Daniel — una decisión editorial, igual
   // que cada fuente brillante nueva se evaluó una por una. Confirmar
   // pública y activa antes de agregar cada cuenta.
