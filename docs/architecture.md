@@ -176,7 +176,11 @@ the Edge Function never needs a separate query per time window.
   `CostHistoryChart`/`CostTable`, same hover-sync `ReferenceLine` pattern
   as `/admin/eventos` (hover-only here, no current-period default — see
   Cost governance above for the Apify free-tier split this table/chart
-  both apply).
+  both apply). The page's Apify hard-limit status line windows on Apify's
+  **billing anniversary (the 13th)**, not the calendar month — summing
+  from the 1st was a real bug that printed a false "$4.99 disponibles"
+  for a week while Apify was blocking every run (fixed 2026-09-06, see
+  region-discovery.md's "Apify's billing cycle is an anniversary").
 
 **Pipeline grouping, not raw pipeline values** (`pipelineGrouping.ts`,
 2026-08-17): `bright_source` and `headless` (MAVI — a single website

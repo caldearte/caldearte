@@ -37,9 +37,14 @@ export interface DailyDigestCost {
   apifyTodayFreeUsd: number;
   apifyTodayRealUsd: number;
   anthropicMonthUsd: number;
-  apifyMonthGrossUsd: number;
-  apifyMonthFreeUsd: number;
-  apifyMonthRealUsd: number;
+  // Apify's figures are per BILLING CYCLE (anniversary-based), not per
+  // calendar month like Anthropic's — see apify-cost-split.ts's own
+  // comment on APIFY_CYCLE_ANCHOR_DAY. Named apart from anthropicMonthUsd
+  // on purpose so the two windows can't be silently conflated again.
+  apifyCycleGrossUsd: number;
+  apifyCycleFreeUsd: number;
+  apifyCycleRealUsd: number;
+  apifyCycleStartDate: string; // YYYY-MM-DD, first day of the current cycle
   monthlyBudgetUsd: number;
 }
 
@@ -59,30 +64,43 @@ export function buildDailyDigestSubject(summary: DailyDigestSummary): string {
 }
 
 // Apify's free tier is a HARD limit (not billed overage) — once
-// apifyMonthGrossUsd reaches APIFY_FREE_TIER_USD, Apify itself refuses to
+// apifyCycleGrossUsd reaches APIFY_FREE_TIER_USD, Apify itself refuses to
 // start new Actor runs until the next billing cycle (real incident,
-// 2026-08-30: hit mid-month, see instagram-bright-sources.yml's own
-// comment). apifyMonthRealUsd staying $0 the whole time (nothing ever
+// 2026-08-30: hit mid-cycle, see instagram-bright-sources.yml's own
+// comment). apifyCycleRealUsd staying $0 the whole time (nothing ever
 // gets billed past the free tier on this plan) is exactly why a plain
 // "$X real of $Y budget" framing hides the thing that actually matters
 // here — this line makes the hard-limit status explicit instead.
+//
+// Says the reset DATE rather than "el próximo ciclo": the cycle is
+// anniversary-based, so "next month" is actively misleading — on
+// 2026-09-06 the reset was still a week away, on the 13th.
 function apifyLimitStatusLine(cost: DailyDigestCost): string {
-  const remaining = APIFY_FREE_TIER_USD - cost.apifyMonthGrossUsd;
+  const remaining = APIFY_FREE_TIER_USD - cost.apifyCycleGrossUsd;
+  const resetsOn = dateStrDDMMYYYY(nextApifyCycleStart(cost.apifyCycleStartDate));
   if (remaining <= 0) {
-    return `⚠️ Apify: LÍMITE MENSUAL ALCANZADO ($${cost.apifyMonthGrossUsd.toFixed(2)} de $${APIFY_FREE_TIER_USD}) — sin nuevas corridas hasta el próximo ciclo`;
+    return `⚠️ Apify: LÍMITE DEL CICLO ALCANZADO ($${cost.apifyCycleGrossUsd.toFixed(2)} de $${APIFY_FREE_TIER_USD}) — sin nuevas corridas hasta el ${resetsOn}`;
   }
-  return `Apify: $${remaining.toFixed(2)} disponibles de $${APIFY_FREE_TIER_USD}/mes antes del límite`;
+  return `Apify: $${remaining.toFixed(2)} disponibles de $${APIFY_FREE_TIER_USD} en el ciclo actual (se renueva el ${resetsOn})`;
+}
+
+// One month on from the current cycle's start, clamped the same way
+// apifyCycleStart clamps — display only.
+function nextApifyCycleStart(cycleStartDate: string): string {
+  const [y, m, d] = cycleStartDate.split("-").map(Number);
+  const lastDayOfNextMonth = new Date(Date.UTC(y, m + 1, 0)).getUTCDate();
+  return new Date(Date.UTC(y, m, Math.min(d, lastDayOfNextMonth))).toISOString().slice(0, 10);
 }
 
 function buildCostLines(cost: DailyDigestCost): string[] {
   const todayRealTotal = cost.anthropicTodayUsd + cost.apifyTodayRealUsd;
-  const monthRealTotal = cost.anthropicMonthUsd + cost.apifyMonthRealUsd;
+  const monthRealTotal = cost.anthropicMonthUsd + cost.apifyCycleRealUsd;
   return [
     "COSTO",
     `Hoy: ${fmtUsd(todayRealTotal)} real (Anthropic ${fmtUsd(cost.anthropicTodayUsd)} + Apify ${fmtUsd(cost.apifyTodayRealUsd)} real de ${fmtUsd(cost.apifyTodayGrossUsd)} bruto, ${fmtUsd(cost.apifyTodayFreeUsd)} cubierto por capa gratuita)`,
     `Mes a la fecha: $${monthRealTotal.toFixed(2)} de $${cost.monthlyBudgetUsd.toFixed(2)} (techo mensual)`,
-    `  Anthropic: $${cost.anthropicMonthUsd.toFixed(2)}`,
-    `  Apify: $${cost.apifyMonthRealUsd.toFixed(2)} real de $${cost.apifyMonthGrossUsd.toFixed(2)} bruto ($${cost.apifyMonthFreeUsd.toFixed(2)} en capa gratuita de $${APIFY_FREE_TIER_USD}/mes, no cobrado)`,
+    `  Anthropic: $${cost.anthropicMonthUsd.toFixed(2)} (mes calendario)`,
+    `  Apify: $${cost.apifyCycleRealUsd.toFixed(2)} real de $${cost.apifyCycleGrossUsd.toFixed(2)} bruto ($${cost.apifyCycleFreeUsd.toFixed(2)} en capa gratuita de $${APIFY_FREE_TIER_USD}, no cobrado) — ciclo desde el ${dateStrDDMMYYYY(cost.apifyCycleStartDate)}`,
     `  ${apifyLimitStatusLine(cost)}`,
   ];
 }
@@ -135,7 +153,7 @@ export function buildDailyDigestHtmlBody(summary: DailyDigestSummary): string {
 
   const cost = summary.cost;
   const todayRealTotal = cost.anthropicTodayUsd + cost.apifyTodayRealUsd;
-  const monthRealTotal = cost.anthropicMonthUsd + cost.apifyMonthRealUsd;
+  const monthRealTotal = cost.anthropicMonthUsd + cost.apifyCycleRealUsd;
 
   const detailHtml = summary.runs
     .map((run) => {
@@ -170,9 +188,9 @@ export function buildDailyDigestHtmlBody(summary: DailyDigestSummary): string {
       &nbsp;&nbsp;Apify: ${fmtUsd(cost.apifyTodayRealUsd)} real de ${fmtUsd(cost.apifyTodayGrossUsd)} bruto (${fmtUsd(cost.apifyTodayFreeUsd)} en capa gratuita)<br>
       <br>
       <b>Mes a la fecha:</b> $${monthRealTotal.toFixed(2)} de $${cost.monthlyBudgetUsd.toFixed(2)} (techo mensual)<br>
-      &nbsp;&nbsp;Anthropic: $${cost.anthropicMonthUsd.toFixed(2)}<br>
-      &nbsp;&nbsp;Apify: $${cost.apifyMonthRealUsd.toFixed(2)} real de $${cost.apifyMonthGrossUsd.toFixed(2)} bruto ($${cost.apifyMonthFreeUsd.toFixed(2)} en capa gratuita de $${APIFY_FREE_TIER_USD}/mes, no cobrado)<br>
-      &nbsp;&nbsp;<span style="${cost.apifyMonthGrossUsd >= APIFY_FREE_TIER_USD ? "color:#b3261e;font-weight:600;" : "color:#666;"}">${escapeHtml(apifyLimitStatusLine(cost))}</span>
+      &nbsp;&nbsp;Anthropic: $${cost.anthropicMonthUsd.toFixed(2)} (mes calendario)<br>
+      &nbsp;&nbsp;Apify: $${cost.apifyCycleRealUsd.toFixed(2)} real de $${cost.apifyCycleGrossUsd.toFixed(2)} bruto ($${cost.apifyCycleFreeUsd.toFixed(2)} en capa gratuita de $${APIFY_FREE_TIER_USD}, no cobrado) — ciclo desde el ${escapeHtml(dateStrDDMMYYYY(cost.apifyCycleStartDate))}<br>
+      &nbsp;&nbsp;<span style="${cost.apifyCycleGrossUsd >= APIFY_FREE_TIER_USD ? "color:#b3261e;font-weight:600;" : "color:#666;"}">${escapeHtml(apifyLimitStatusLine(cost))}</span>
     </p>
 
     <h2 style="font-size:14px;text-transform:uppercase;letter-spacing:0.04em;color:#888;margin:24px 0 10px;border-bottom:1px solid #e2e0da;padding-bottom:6px;">Detalle por evento</h2>
