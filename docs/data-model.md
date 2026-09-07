@@ -198,6 +198,30 @@ rejected_candidates (added 20260728010000_add_rejected_candidates.sql —
     action. See curation-policy.md's "Cross-source axis safety net")
   -- Rolling ~90-day window, pruned on Event Discovery's own cadence.
 
+curation_escalations (added 20260730150000_add_curation_escalations.sql;
+    RETIRED 2026-09-07 — the cross-source escalation flow it served was
+    replaced by the deterministic axis safety net, see
+    curation-policy.md's "Cross-source axis safety net". The table is
+    deliberately KEPT rather than dropped: no code reads or writes it any
+    more, but its 15 rows are the historical record of what that flow
+    actually produced, and they're the evidence behind the decision to
+    remove it. Orphaned and inert — RLS is service-role-only. Dropping it
+    should be its own migration if it ever happens.)
+  id, created_at, resolved_at (nullable — null on all 15 rows; not one
+    escalation was ever resolved), resolution (accepted | rejected,
+    nullable until resolved),
+  existing_kind (approved_event | rejected_candidate),
+  existing_event_id, existing_rejected_id (fk, nullable — exactly one set,
+    matching existing_kind),
+  existing_title, existing_source_url, existing_reasoning (snapshotted as
+    plain text — the email/decision shouldn't depend on the referenced
+    row surviving unchanged),
+  new_title, new_source_url, new_status (approved | rejected),
+  new_reasoning, new_candidate_payload (jsonb),
+  accept_token, reject_token (unique, opaque random — the one-time links
+    in the escalation email; the Edge Function that consumed them,
+    curation-escalation-decide, is deleted)
+
 newsletter_subscribers (added 20260730180000_add_newsletter_subscribers.sql
     — weekly digest, double opt-in, see docs/roadmap.md's Phase 1a
     newsletter item)
@@ -314,7 +338,7 @@ Fixed in the cost-governance migration for all tables that existed then.
 | `SUPABASE_ACCESS_TOKEN` | GitHub Actions secret | already in use — authenticates the Supabase CLI in `deploy-migrations.yml` |
 | `SUPABASE_DB_PASSWORD` | GitHub Actions secret | already in use — lets `deploy-migrations.yml` run `supabase db push` against production |
 | `RESEND_API_KEY` | Vercel project env var (server-only, never `NEXT_PUBLIC_*`) AND GitHub Actions secret | in use since 2026-07-17 for `apps/web/src/app/api/contact/route.ts`'s outbound-only contact-form relay; also in use since 2026-07-30 for `apps/curator`'s run-summary emails (`lib/notify.ts`; the cross-source-conflict-escalation emails that shared it were removed 2026-09-07), sending from `contacto@caldearte.com` in both cases; also used by the newsletter's confirmation email (`apps/web/src/app/api/newsletter/subscribe/route.ts`) and weekly digest (`apps/curator/src/lib/notify.ts`'s `sendDigestEmail`). |
-| ~~`APPROVAL_TOKEN_SECRET`~~ | not needed | originally planned to sign the one-time links behind email approval buttons — the cross-source conflict escalation feature that shipped 2026-07-30 used opaque random tokens stored in `curation_escalations`, looked up by exact value — no signing needed. That feature and its table were removed 2026-09-07 (see curation-policy.md's "Cross-source axis safety net"), so this env var is doubly moot now. |
+| ~~`APPROVAL_TOKEN_SECRET`~~ | not needed | originally planned to sign the one-time links behind email approval buttons — the cross-source conflict escalation feature that shipped 2026-07-30 used opaque random tokens stored in `curation_escalations`, looked up by exact value — no signing needed. That feature was removed 2026-09-07 (see curation-policy.md's "Cross-source axis safety net") — the table is kept, orphaned, but nothing issues tokens any more, so this env var is doubly moot. |
 | `RESEND_WEBHOOK_SECRET` | Supabase Edge Function secret | verifies inbound-email webhooks (date inquiry, public mailbox) really come from Resend — still Phase 1b, not built |
 | `AUTH_SECRET` | Vercel project env var (server-only) AND `apps/web/.env.local` | Auth.js v5's session-encryption secret, generated once via `openssl rand -base64 32`; see architecture.md's "Admin mode" section |
 | `AUTH_GOOGLE_ID` / `AUTH_GOOGLE_SECRET` | Vercel project env var (server-only) AND `apps/web/.env.local` | Google OAuth 2.0 client credentials (Google Cloud Console, Testing-mode consent screen, single test user) — the only sign-in provider `/login` offers |

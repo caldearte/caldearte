@@ -2,6 +2,10 @@
 -- 20260730150000) with a deterministic axis safety net in code. See
 -- docs/curation-policy.md's "Cross-source axis safety net" section.
 --
+-- Schema-wise this migration is ADDITIVE ONLY: it adds one nullable
+-- column and drops nothing. The `curation_escalations` table stays,
+-- orphaned on purpose — see the note at the bottom.
+--
 -- Why: in the 5 weeks it was live (2026-08-01 to 2026-09-06) the flow
 -- fired 15 times and not one escalation was ever resolved — the de-facto
 -- behaviour was always "keep the existing decision". Reviewing all 15
@@ -34,13 +38,19 @@ alter table rejected_candidates
     check (rejection_axis is null or rejection_axis in
       ('religion', 'guerra_violencia', 'ultraderecha', 'pseudociencia', 'agresion_explicita'));
 
--- The escalation table itself. All 15 rows are unresolved (resolved_at is
--- null on every one), so nothing is being discarded except the record
--- that the conflicts occurred — which is summarized, with the full
--- breakdown and the reasoning for this change, in
--- docs/curation-policy.md.
+-- The `curation_escalations` table itself is deliberately LEFT IN PLACE,
+-- orphaned: no code reads or writes it any more (the Edge Function,
+-- the email builders and the insert are all removed in this same change),
+-- but its 15 rows stay as the historical record of what the escalation
+-- flow actually produced. Daniel's call, 2026-09-07 — the rows are the
+-- evidence behind the decision to remove the flow, and keeping them costs
+-- nothing at this scale.
 --
--- Dropped rather than left orphaned, matching how the retired `venues`
--- table was handled (see docs/roadmap.md): removed from code and schema,
--- not merely deprecated.
-drop table if exists curation_escalations;
+-- Note this differs from how the retired `venues` table was handled (see
+-- docs/roadmap.md), which was dropped from code AND schema. The
+-- difference is that `venues` was empty of anything worth keeping,
+-- whereas these rows are a record of real curation conflicts.
+--
+-- RLS on the table is service-role-only and unchanged, so an orphaned
+-- table is inert rather than a surface. If it's ever dropped, that should
+-- be its own migration, reviewed on its own terms.

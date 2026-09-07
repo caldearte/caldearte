@@ -220,9 +220,11 @@ outside ephemeral GitHub Actions logs.
 
 **Cross-source axis safety net** (2026-09-07) — replaced the
 "pending curation-conflict count" that used to be described here, along
-with the whole escalation flow behind it (`curation_escalations`, the
-`curation-escalation-decide` Edge Function, `sendEscalationEmail`, and
-the accept/reject tokens). The conflict DETECTION machinery survives
+with the whole escalation flow behind it: the
+`curation-escalation-decide` Edge Function, `sendEscalationEmail` and the
+accept/reject tokens are all deleted, and the `curation_escalations`
+table is left orphaned in the schema (kept for its 15 rows of history,
+read and written by nothing). The conflict DETECTION machinery survives
 unchanged — `findConflictingApprovedEvent`/
 `findConflictingRejectedCandidate` in `apps/curator/src/event-discovery/
 run.ts` — but what happens on a hit is now deterministic instead of

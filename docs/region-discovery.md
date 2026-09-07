@@ -3877,12 +3877,15 @@ emailing the site owner an Accept/Reject pair of one-time-token links:
   button writes, so it stays visible and reversible in admin).
 
 **Schema** (migration
-`20260907030000_replace_escalation_with_axis_safety_net.sql`): adds
-`rejected_candidates.rejection_axis` (nullable, CHECK-constrained to the
-five axis values) and drops the `curation_escalations` table. The
-`supabase/functions/curation-escalation-decide` Edge Function and
-`lib/notify.ts`'s `sendEscalationEmail`/`buildEscalation*` builders are
-deleted with it.
+`20260907030000_replace_escalation_with_axis_safety_net.sql`) —
+**additive only**: it adds `rejected_candidates.rejection_axis`
+(nullable, CHECK-constrained to the five axis values) and drops nothing.
+The `curation_escalations` table stays in the schema, orphaned on
+purpose: no code reads or writes it any more, but its 15 rows are the
+historical record of what the escalation flow produced. The code half IS
+deleted — the `supabase/functions/curation-escalation-decide` Edge
+Function and `lib/notify.ts`'s
+`sendEscalationEmail`/`buildEscalation*` builders.
 
 **Where the axis comes from**: Haiku reports it in a `rejectionAxis`
 field on its own curation output, added to both prompt schemas via

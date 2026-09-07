@@ -211,7 +211,9 @@ action at all, i.e. exactly the plain "keep the existing decision"
 default that was in effect for those 5 weeks anyway. Older rows age out
 via the existing 90-day prune.
 
-See
+The `curation_escalations` table is **kept**, orphaned — nothing reads or
+writes it any more, but its 15 rows are the record of what the flow
+produced and the evidence behind removing it. See
 [region-discovery.md](region-discovery.md#cross-source-axis-safety-net-2026-09-07)
 for the technical detail.
 
