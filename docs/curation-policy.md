@@ -176,8 +176,19 @@ every conflict it ever produced:
   whitelist) forced one side to `rejected` while Haiku judged both in
   scope. The clearest is "Albergue Transitorio" (Espacio O, 2026-09-06),
   where both sides' reasoning explicitly clears all five axes — there was
-  nothing for a human to decide, and holding it kept a real exhibition
-  off the calendar.
+  nothing for a human to decide.
+
+  *(Corrected 2026-09-07: this bullet originally added "and holding it
+  kept a real exhibition off the calendar." That was wrong. Checked
+  against espacioo.com the next day, "Albergue Transitorio" ran 3 Dec 2025
+  – 31 Mar 2026 and is listed under Past — it had closed five months
+  earlier, so keeping it out was the right outcome, for a reason the
+  escalation itself never surfaced. The point this bullet makes is
+  unaffected: the conflict was still a metadata artifact and not an
+  editorial disagreement, and the 14-of-15 count still holds. Worth
+  leaving visible rather than quietly rewriting, because it is the same
+  mistake the escalation flow made — reading two reasoning texts against
+  each other without checking either against the source.)*
 - **1 of the 15 was genuine**: "Existen otros mundos, pero están en este"
   (2026-08-17) — a more detailed source revealed religious imagery the
   vaguer one never surfaced. The default was right there, but **only by
