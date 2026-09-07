@@ -61,6 +61,13 @@ function statusOf(candidates: EventCandidate[]): "approved" | "rejected" | "empt
   return candidates.some((c) => c.status === "approved") ? "approved" : "rejected";
 }
 
+// One line per candidate ("title: reasoning") so a batch of several items
+// under one source URL stays legible instead of collapsing into a single
+// run-on paragraph.
+function reasoningOf(candidates: EventCandidate[]): string {
+  return candidates.map((c) => `${c.title}: ${c.curationReasoning}`).join("\n");
+}
+
 // Best-effort insert — a logging failure must never take down the real
 // curation pipeline that already succeeded. Errors are swallowed after a
 // console.error, same defensive posture as recordUsage's own callers.
@@ -73,6 +80,8 @@ async function persistComparison(row: {
   agree: boolean;
   realTags: string[];
   shadowTags: string[];
+  realReasoning: string;
+  shadowReasoning: string;
   error: string | null;
 }): Promise<void> {
   try {
@@ -85,6 +94,8 @@ async function persistComparison(row: {
       agree: row.agree,
       real_tags: row.realTags,
       shadow_tags: row.shadowTags,
+      real_reasoning: row.realReasoning,
+      shadow_reasoning: row.shadowReasoning,
       error: row.error,
     });
     if (error) console.error(`[event-discovery][shadow-mode] failed to persist comparison: ${error.message}`);
@@ -110,16 +121,30 @@ export async function runShadowCuration(
 ): Promise<void> {
   const realStatus = statusOf(realCandidates);
   const realTags = realCandidates.flatMap((c) => c.sensitivityTags);
+  const realReasoning = reasoningOf(realCandidates);
   try {
     const { candidates: shadowCandidates } = await shadowFn(shadow.client);
     const shadowStatus = statusOf(shadowCandidates);
     const shadowTags = shadowCandidates.flatMap((c) => c.sensitivityTags);
+    const shadowReasoning = reasoningOf(shadowCandidates);
     const agree = realStatus === shadowStatus;
     console.log(
       `[event-discovery][shadow-mode] pipeline=${pipeline} label=${JSON.stringify(label)} model=${shadow.model} ` +
         `real=${realStatus} shadow=${shadowStatus} agree=${agree} realTags=${JSON.stringify(realTags)} shadowTags=${JSON.stringify(shadowTags)}`,
     );
-    await persistComparison({ pipeline, label, model: shadow.model, realStatus, shadowStatus, agree, realTags, shadowTags, error: null });
+    await persistComparison({
+      pipeline,
+      label,
+      model: shadow.model,
+      realStatus,
+      shadowStatus,
+      agree,
+      realTags,
+      shadowTags,
+      realReasoning,
+      shadowReasoning,
+      error: null,
+    });
   } catch (err) {
     const message = (err as Error).message;
     console.log(
@@ -135,6 +160,8 @@ export async function runShadowCuration(
       agree: false,
       realTags,
       shadowTags: [],
+      realReasoning,
+      shadowReasoning: "",
       error: message,
     });
   }

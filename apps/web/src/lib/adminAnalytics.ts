@@ -99,6 +99,8 @@ export interface AdminAnalyticsPayload {
     agree: boolean;
     realTags: string[];
     shadowTags: string[];
+    realReasoning: string;
+    shadowReasoning: string;
     error: string | null;
   }>;
 }

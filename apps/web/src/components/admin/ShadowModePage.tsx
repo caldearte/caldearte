@@ -12,6 +12,8 @@ export interface ShadowComparisonRow {
   agree: boolean;
   realTags: string[];
   shadowTags: string[];
+  realReasoning: string;
+  shadowReasoning: string;
   error: string | null;
 }
 
@@ -131,6 +133,8 @@ export default function ShadowModePage({ comparisons }: { comparisons: ShadowCom
                   <th className="py-2 pr-4">Sombra</th>
                   <th className="py-2 pr-4">Tags Haiku</th>
                   <th className="py-2 pr-4">Tags sombra</th>
+                  <th className="py-2 pr-4">Razonamiento Haiku</th>
+                  <th className="py-2 pr-4">Razonamiento sombra</th>
                 </tr>
               </thead>
               <tbody>
@@ -145,6 +149,8 @@ export default function ShadowModePage({ comparisons }: { comparisons: ShadowCom
                     <td className="py-2 pr-4">{row.shadowStatus}</td>
                     <td className="py-2 pr-4">{row.realTags.join(", ") || "—"}</td>
                     <td className="py-2 pr-4">{row.shadowTags.join(", ") || "—"}</td>
+                    <td className="py-2 pr-4 max-w-[320px] whitespace-pre-line">{row.realReasoning || "—"}</td>
+                    <td className="py-2 pr-4 max-w-[320px] whitespace-pre-line">{row.shadowReasoning || "—"}</td>
                   </tr>
                 ))}
               </tbody>

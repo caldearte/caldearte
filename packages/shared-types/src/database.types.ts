@@ -791,8 +791,10 @@ export type Database = {
           label: string
           model: string
           pipeline: string
+          real_reasoning: string
           real_status: string
           real_tags: string[]
+          shadow_reasoning: string
           shadow_status: string
           shadow_tags: string[]
         }
@@ -804,8 +806,10 @@ export type Database = {
           label: string
           model: string
           pipeline: string
+          real_reasoning?: string
           real_status: string
           real_tags?: string[]
+          shadow_reasoning?: string
           shadow_status: string
           shadow_tags?: string[]
         }
@@ -817,8 +821,10 @@ export type Database = {
           label?: string
           model?: string
           pipeline?: string
+          real_reasoning?: string
           real_status?: string
           real_tags?: string[]
+          shadow_reasoning?: string
           shadow_status?: string
           shadow_tags?: string[]
         }

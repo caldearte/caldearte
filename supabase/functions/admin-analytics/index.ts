@@ -100,7 +100,9 @@ Deno.serve(async (req) => {
     // cron run, nowhere near enough to need pre-aggregation).
     client
       .from("shadow_curation_comparisons")
-      .select("created_at, pipeline, label, model, real_status, shadow_status, agree, real_tags, shadow_tags, error")
+      .select(
+        "created_at, pipeline, label, model, real_status, shadow_status, agree, real_tags, shadow_tags, real_reasoning, shadow_reasoning, error",
+      )
       .gte("created_at", new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString())
       .order("created_at", { ascending: false }),
   ]);
@@ -386,6 +388,8 @@ Deno.serve(async (req) => {
     agree: row.agree,
     realTags: row.real_tags,
     shadowTags: row.shadow_tags,
+    realReasoning: row.real_reasoning,
+    shadowReasoning: row.shadow_reasoning,
     error: row.error,
   }));
 
