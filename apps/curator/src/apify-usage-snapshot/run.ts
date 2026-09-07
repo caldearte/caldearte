@@ -11,6 +11,7 @@
 // admin cost history, since the endpoint always returns the whole
 // current billing cycle to date.
 import { getSupabaseClient } from "../lib/supabase-client.js";
+import { apifyCycleStart, APIFY_CYCLE_ANCHOR_DAY } from "../lib/apify-cost-split.js";
 
 const APIFY_USAGE_URL = "https://api.apify.com/v2/users/me/usage/monthly";
 
@@ -79,5 +80,26 @@ export async function run(): Promise<void> {
     return;
   }
 
-  console.log(`[apify-usage-snapshot] upserted ${rows.length} day(s), month-to-date total $${response.data.totalUsageCreditsUsdAfterVolumeDiscount.toFixed(2)}`);
+  // The response only ever covers the CURRENT billing cycle, so its
+  // earliest day is Apify's own answer for where that cycle started. We
+  // hardcode the anchor (apify-cost-split.ts's APIFY_CYCLE_ANCHOR_DAY)
+  // rather than storing it, so this is the check that tells us if it ever
+  // moves — a plan change, or the anchor being wrong in the first place,
+  // which is exactly the bug this whole area had until 2026-09-06.
+  //
+  // Not an error: a cycle whose first days had zero usage can legitimately
+  // start later than the anchor, and being wrong here only affects
+  // reporting, never a real run. Worth a loud line in the log, not a
+  // failed workflow.
+  const observedCycleStart = rows.reduce((earliest, r) => (r.usage_date < earliest ? r.usage_date : earliest), rows[0].usage_date);
+  const expectedCycleStart = apifyCycleStart(new Date());
+  if (observedCycleStart < expectedCycleStart) {
+    console.warn(
+      `[apify-usage-snapshot] ⚠️ cycle anchor looks wrong: Apify reports usage from ${observedCycleStart}, but APIFY_CYCLE_ANCHOR_DAY=${APIFY_CYCLE_ANCHOR_DAY} puts the cycle start at ${expectedCycleStart}. Update the anchor in apify-cost-split.ts (both copies).`,
+    );
+  }
+
+  console.log(
+    `[apify-usage-snapshot] upserted ${rows.length} day(s), cycle-to-date total $${response.data.totalUsageCreditsUsdAfterVolumeDiscount.toFixed(2)} (cycle from ${observedCycleStart})`,
+  );
 }

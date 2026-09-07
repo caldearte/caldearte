@@ -1542,15 +1542,37 @@ which:
    headless-and-Instagram/Sun-only-for-Google-Alerts cadence (see "Dual
    cadence" below) means not every pipeline fires every day.
 4. Computes a real cost picture: today's Anthropic spend (`api_usage_log`)
-   and today's Apify spend (`platform_cost_snapshots`), plus the SAME two
-   figures month-to-date, each split into free-tier-covered vs. real
-   (billed) via `lib/apify-cost-split.ts`'s `splitApifyFreeTier` — a
-   deliberate small duplicate of `apps/web/src/lib/apifyCostSplit.ts`'s own
-   logic (curator and web are separate deployable packages, not sharing
-   code), reusing the same `$5/month` `APIFY_FREE_TIER_USD` constant. Shown
-   against `system_config.monthly_budget_usd` (Anthropic-only budget, same
-   as every other email already using this key — Apify's free tier is
-   reported separately, never folded into the same ceiling number).
+   and today's Apify spend (`platform_cost_snapshots`), plus the same two
+   figures to date — **Anthropic month-to-date, Apify cycle-to-date; these
+   are different windows and are labelled apart on purpose** (see "Apify's
+   billing cycle is an anniversary" below) — each split into
+   free-tier-covered vs. real (billed) via `lib/apify-cost-split.ts`'s
+   `splitApifyFreeTier`, a deliberate small duplicate of
+   `apps/web/src/lib/apifyCostSplit.ts`'s own logic (curator and web are
+   separate deployable packages, not sharing code), reusing the same `$5`
+   `APIFY_FREE_TIER_USD` constant. Shown against
+   `system_config.monthly_budget_usd` (Anthropic-only budget, same as every
+   other email already using this key — Apify's free tier is reported
+   separately, never folded into the same ceiling number).
+
+**Apify's billing cycle is an anniversary, not the calendar month
+(2026-09-06).** Apify resets the $5 free tier on the account's billing
+anniversary — the **13th** — not the 1st. Both this digest and
+`/admin/costos` originally summed from the 1st of the calendar month, an
+approximation that became a real production bug: from 2026-09-01 they
+reported ~$0.007 of usage and printed *"$4.99 disponibles"* every single
+day, while Apify had in fact been refusing every Actor run since
+2026-08-30 and Instagram discovery had been dark for a week. Fixed by
+`apify-cost-split.ts`'s `APIFY_CYCLE_ANCHOR_DAY` (13) and its
+`apifyCycleStart(now)` helper, which both the digest query and the admin
+page now window on; `splitApifyFreeTier` likewise resets its running
+total per cycle rather than per calendar month. The anchor is hardcoded
+rather than stored — it's a fixed property of the account that only moves
+if the plan changes — and `apify-usage-snapshot/run.ts` checks it against
+Apify's own response on every run (the API returns only the current
+cycle's days, so its earliest day IS the cycle start) and logs a loud
+warning if they ever disagree. Both status lines now name the actual
+reset date instead of a vague "el próximo ciclo".
 5. Sends one email (`lib/daily-digest.ts`'s `sendDailyDigestEmail`) with:
    a per-pipeline results table, the cost section above, and a full
    per-event detail section at the end (reuses `notify.ts`'s own
@@ -3485,8 +3507,8 @@ mechanism as before, just a simpler path to get there.
 itself moved from twice-weekly (Sun/Wed) → every-2-days on 2026-08-26 (2
 genuine same-day inauguraciones were lost in the Sun→Wed gap, already
 expired by the time the next run saw them) → back to twice-weekly
-(Sun/Wed) on 2026-08-30, after Apify's real $5/month free-tier usage
-limit was hit mid-August (confirmed against `platform_cost_snapshots`:
+(Sun/Wed) on 2026-08-30, after Apify's real $5/cycle free-tier usage
+limit was hit mid-cycle (confirmed against `platform_cost_snapshots`:
 ~$0.75/run against the full ~145-account registry with no per-account
 gating, projecting to ~$11/month at every-2-days — next Apify reset
 2026-09-13). Daniel's explicit call: no real usage signal yet (Instagram

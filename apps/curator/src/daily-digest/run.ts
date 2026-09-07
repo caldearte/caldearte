@@ -6,7 +6,7 @@
 // cadence, 2026-08-26, means not every pipeline fires every day).
 import { getSupabaseClient } from "../lib/supabase-client.js";
 import { getCurrentMonthSpend, getConfigNumber } from "../lib/usage-tracking.js";
-import { splitApifyFreeTier } from "../lib/apify-cost-split.js";
+import { splitApifyFreeTier, apifyCycleStart } from "../lib/apify-cost-split.js";
 import { sendDailyDigestEmail, type DailyDigestPipelineRun, type DailyDigestSummary, type DiscoveryEntrypoint } from "../lib/daily-digest.js";
 import type { EventGroup } from "../lib/notify.js";
 
@@ -74,9 +74,10 @@ export async function run(deps: RunDeps = {}): Promise<void> {
   let apifyTodayGrossUsd = 0;
   let apifyTodayFreeUsd = 0;
   let apifyTodayRealUsd = 0;
-  let apifyMonthGrossUsd = 0;
-  let apifyMonthFreeUsd = 0;
-  let apifyMonthRealUsd = 0;
+  let apifyCycleGrossUsd = 0;
+  let apifyCycleFreeUsd = 0;
+  let apifyCycleRealUsd = 0;
+  const apifyCycleStartDate = apifyCycleStart(now);
   let monthlyBudgetUsd = 0;
 
   try {
@@ -88,7 +89,11 @@ export async function run(deps: RunDeps = {}): Promise<void> {
         .from("platform_cost_snapshots")
         .select("usage_date, amount_usd")
         .eq("platform", "apify")
-        .gte("usage_date", `${dateStr.slice(0, 7)}-01`)
+        // Apify's cycle, NOT the calendar month — see apify-cost-split.ts's
+        // own comment on APIFY_CYCLE_ANCHOR_DAY. Summing from the 1st was a
+        // real bug: it under-reported the cycle every month and printed a
+        // false "$4.99 disponibles" while Apify was already refusing runs.
+        .gte("usage_date", apifyCycleStartDate)
         .lt("usage_date", endUtc.toISOString().slice(0, 10)),
     ]);
 
@@ -101,9 +106,9 @@ export async function run(deps: RunDeps = {}): Promise<void> {
 
     const apifySplit = splitApifyFreeTier((apifyRows ?? []).map((r) => ({ date: r.usage_date, amountUsd: Number(r.amount_usd) })));
     for (const day of apifySplit) {
-      apifyMonthGrossUsd += day.freeUsd + day.realUsd;
-      apifyMonthFreeUsd += day.freeUsd;
-      apifyMonthRealUsd += day.realUsd;
+      apifyCycleGrossUsd += day.freeUsd + day.realUsd;
+      apifyCycleFreeUsd += day.freeUsd;
+      apifyCycleRealUsd += day.realUsd;
       if (day.date === dateStr) {
         apifyTodayGrossUsd = day.freeUsd + day.realUsd;
         apifyTodayFreeUsd = day.freeUsd;
@@ -126,9 +131,10 @@ export async function run(deps: RunDeps = {}): Promise<void> {
       apifyTodayFreeUsd,
       apifyTodayRealUsd,
       anthropicMonthUsd,
-      apifyMonthGrossUsd,
-      apifyMonthFreeUsd,
-      apifyMonthRealUsd,
+      apifyCycleGrossUsd,
+      apifyCycleStartDate,
+      apifyCycleFreeUsd,
+      apifyCycleRealUsd,
       monthlyBudgetUsd,
     },
   };
