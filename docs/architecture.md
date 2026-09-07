@@ -524,3 +524,30 @@ listing runs, so every check 404'd immediately. Fixed by adding `-X GET`
 explicitly to all three `gh api` calls. Caught only because Daniel noticed
 the watchdog's own failure emails — a good argument for the watchdog
 itself someday having a second-order check, but none exists yet.
+
+**Second real bug, found 2026-09-06 (PR #502) — the watchdog had never
+once worked.** Same failure mode as the `-X GET` one above, one layer
+further in: the dispatch itself, `gh workflow run "<workflow>"`, ran
+without `-R "$REPO"`. Unlike `gh api` (whose repo is in the URL path),
+`gh workflow run` infers the repo from the local git remote — and this
+job deliberately has no `actions/checkout` step, since it only needs the
+API. So every dispatch it ever attempted died on `failed to run git:
+fatal: not a git repository`, meaning that from 2026-08-28 to 2026-09-06
+the watchdog could detect an overdue workflow but never actually recover
+one. Fixed by passing `-R "$REPO"` on both `gh workflow run` calls.
+
+It hid for nine days because of a **second, independent bug in the same
+entry**: `publish-social.yml`'s `max_gap_hours` was still `30`, left over
+from its pre-2026-08-31 cadence (the entry's comment still described
+"Mon-Sat + 3x Sunday", worst gap ~18h). Under the real Mon/Wed/Fri cron
+the Friday→Monday gap is 72h, so that entry declared publish-social
+overdue **every weekend** — and it was the only entry that ever reached
+the dispatch line at all. Every other entry exits earlier at "on
+schedule, nothing to do" and never exercised the broken path. Raised to
+`96`; the other nine entries' thresholds were re-checked against their
+real crons and are correct.
+
+Worth naming the general shape, since this is now twice: a watchdog whose
+happy path is "do nothing" gets no coverage from running green. Both bugs
+lived in the branch that only executes when something is actually wrong,
+and both surfaced only because a *false* alarm exercised it.

@@ -17,6 +17,18 @@ name: Cron Watchdog
 # token can dispatch other workflows in the SAME repo as long as this
 # job is granted `actions: write`).
 #
+# Every `gh` call here passes `-R "$REPO"` explicitly. This job has no
+# `actions/checkout` step (it needs no source, only the API), so there is
+# no git remote for `gh` to infer the repo from — and `gh workflow run`,
+# unlike `gh api`, infers rather than taking the repo in its path. Real
+# bug, found 2026-09-06: every dispatch this watchdog ever attempted died
+# on `failed to run git: fatal: not a git repository`, so it had never
+# once succeeded in re-triggering anything since being added 2026-08-28.
+# It went unnoticed because the only entry that ever reached the dispatch
+# line was publish-social.yml's, and it reached it on a false alarm (see
+# its max_gap_hours below) — every other entry exits earlier at "on
+# schedule, nothing to do" and never exercises this path.
+#
 # Deliberately compares against the last COMPLETED run regardless of
 # how it got triggered (schedule OR a previous watchdog-issued dispatch)
 # — an earlier attempt that filtered to `event=schedule` would keep
@@ -38,11 +50,15 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # Daily-ish (Mon-Sat + 3x Sunday) — worst real gap between
-          # completed schedule runs is Sunday's last slot (~18:05 UTC) to
-          # Monday's single slot (~12:05 UTC next day), ~18h. 30h buffer.
+          # Mon/Wed/Fri (publish-social.yml's own `5 12 * * 1,3,5`) — worst
+          # real gap is Friday ~12:05 UTC to Monday ~12:05 UTC, 72h. 96h
+          # buffer. Was 30h, left over from the pre-2026-08-31 cadence the
+          # comment here still described ("Mon-Sat + 3x Sunday", worst gap
+          # ~18h) — under the real cadence that threshold is exceeded EVERY
+          # weekend, so this entry declared publish-social overdue every
+          # Saturday and Sunday when nothing was actually wrong.
           - workflow: publish-social.yml
-            max_gap_hours: 30
+            max_gap_hours: 96
             # Re-triggering with no inputs would default dry_run=true —
             # a catch-up run must actually publish, same as any other
             # real scheduled firing would have.
@@ -105,7 +121,7 @@ jobs:
 
           if [ -z "$LAST" ]; then
             echo "${{ matrix.workflow }}: no completed run found at all — triggering now."
-            gh workflow run "${{ matrix.workflow }}" ${{ matrix.extra_dispatch_flag }}
+            gh workflow run "${{ matrix.workflow }}" -R "$REPO" ${{ matrix.extra_dispatch_flag }}
             exit 0
           fi
 
@@ -116,7 +132,7 @@ jobs:
 
           if [ "$GAP_HOURS" -gt "${{ matrix.max_gap_hours }}" ]; then
             echo "${{ matrix.workflow }}: overdue — triggering now."
-            gh workflow run "${{ matrix.workflow }}" ${{ matrix.extra_dispatch_flag }}
+            gh workflow run "${{ matrix.workflow }}" -R "$REPO" ${{ matrix.extra_dispatch_flag }}
           else
             echo "${{ matrix.workflow }}: on schedule, nothing to do."
           fi
