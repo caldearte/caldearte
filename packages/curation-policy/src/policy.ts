@@ -47,6 +47,39 @@ export const ART_SCOPE_POLICY = `Before applying the exclusion axes below, first
 // (see VISION_AXIS5_POLICY) because it needs the actual image, not text.
 export const TEXT_CURATION_POLICY = `Apply a default-exclusion policy across four axes: (1) religion — explicit religious imagery or themes, especially Christian or Jewish; Buddhism is evaluated case by case with a more permissive standard, but isn't automatically included; (2) war or extreme violence; (3) far right or authoritarian ideologies; (4) pseudoscience and superstition (tarot, esotericism, energy healing, and similar). For any of these four axes, the default decision is EXCLUDE. The only exception is when the event declares an explicit and unambiguous critical stance against that specific institution, ideology, or conflict — for example, an installation that explicitly denounces the Church's economic power, or an exhibit with an explicit curatorial statement denouncing an occupation or a dictatorship. "Exploring," "reflecting on," "contextualizing," "documenting," or showing ambiguous aesthetic/curatorial distance isn't enough — without an explicit, declared rejection stance, the event is excluded. There's no middle ground: either the event explicitly criticizes the institution/ideology/conflict, or it's excluded, regardless of artistic quality or the venue's prestige.`;
 
+// Structured axis reporting, added 2026-09-07 alongside the removal of
+// the cross-source escalation flow (see docs/curation-policy.md).
+//
+// This changes NOTHING about what gets excluded — the editorial rules in
+// TEXT_CURATION_POLICY above are byte-identical. It only asks Haiku to
+// NAME which axis it applied when it rejects on one, so code downstream
+// has a structured signal instead of having to parse free prose.
+//
+// Why it has to be structured: the cross-source safety net needs to tell
+// "rejected BECAUSE of the religion axis" apart from "mentions religion
+// while clearing it", and the reasoning text does both constantly. Of the
+// rejected_candidates rows mentioning an axis word as of 2026-09-06, a
+// fifth mention it only to rule it out ("Temática ecológica sin contenido
+// religioso, violento o pseudocientífico", "no religious/ideological
+// exclusion issues — purely archaeological"). Any regex over that prose
+// would wrongly exclude real events; a field Haiku fills in itself
+// doesn't have that failure mode.
+export const REJECTION_AXIS_POLICY = `Additionally, whenever you set status to "rejected", report which exclusion axis drove that decision in \`rejectionAxis\`, using EXACTLY one of these values: "religion", "guerra_violencia", "ultraderecha", "pseudociencia", "agresion_explicita", or null. Use null — not a guess — whenever the rejection was for ANY other reason: out of scope (a concert, a talk, a workshop, a convocatoria), missing or unconfirmable dates, an unclear location, a source outside Chile, a duplicate, or anything else that isn't one of the five content axes. This field is a report on the decision you already made, never an input to it: it must never change whether you approve or reject, and it must be null on every approved event. If you rejected for several reasons at once and only one of them is an axis, name that axis.`;
+
+// The five axes as machine values, matching REJECTION_AXIS_POLICY's own
+// enumeration. Ordered as docs/curation-policy.md numbers them.
+export const REJECTION_AXES = ["religion", "guerra_violencia", "ultraderecha", "pseudociencia", "agresion_explicita"] as const;
+
+export type RejectionAxis = (typeof REJECTION_AXES)[number];
+
+// Anything Haiku returns that isn't exactly one of the five is treated as
+// "no axis" rather than trusted — the safety net that consumes this
+// must fail OPEN (behave as if there were no axis) rather than exclude on
+// a value it doesn't recognise.
+export function isRejectionAxis(value: unknown): value is RejectionAxis {
+  return typeof value === "string" && (REJECTION_AXES as readonly string[]).includes(value);
+}
+
 // Added 2026-08-29, editorial decision by Daniel after a real production
 // bug: a "visita guiada junto al artista" post (an already-running
 // exhibition's guided tour) got its own date written into

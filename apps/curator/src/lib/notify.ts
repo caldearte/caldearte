@@ -89,7 +89,7 @@ export async function flagBudgetExceeded({ spend, budget }: FlagBudgetExceededIn
 // was silently recognized as a duplicate of one already there. Optional/
 // null because rejected candidates never reach insertCandidates at all —
 // there's nothing to report beyond `status` for those.
-export type CandidateOutcome = "inserted" | "replaced" | "duplicate_skipped" | "escalated" | "expired" | "insert_failed";
+export type CandidateOutcome = "inserted" | "replaced" | "duplicate_skipped" | "axis_blocked" | "expired" | "insert_failed";
 
 export interface CandidateSummary {
   title: string;
@@ -171,8 +171,8 @@ function outcomeParts(c: CandidateSummary): { emoji: string; text: string } {
       return { emoji: "🔁", text: "Aprobado (actualizó existente)" };
     case "duplicate_skipped":
       return { emoji: "🔁", text: "Aprobado (ya existía)" };
-    case "escalated":
-      return { emoji: "⚠️", text: "Aprobado (conflicto, en revisión)" };
+    case "axis_blocked":
+      return { emoji: "🚫", text: "No publicado (otra fuente lo rechaza por un eje)" };
     case "expired":
       return { emoji: "⏳", text: "Aprobado (fecha ya pasada)" };
     case "insert_failed":
@@ -677,123 +677,6 @@ export async function sendGoogleAlertsRunSummaryEmail(summary: GoogleAlertsRunSu
   }
 }
 
-// Cross-source curation conflict escalation (2026-07-30) — see
-// docs/curation-policy.md's "Cross-source conflict escalation" section.
-// Both `existing`/`newCandidate` are pre-formatted display data (title,
-// source link, full reasoning), not raw DB rows — run.ts assembles these
-// from whichever table each side actually came from before calling this.
-export interface EscalationSide {
-  title: string;
-  sourceUrl: string;
-  reasoning: string;
-}
-
-// `functionBaseUrl` is threaded through as a plain parameter (not read
-// from process.env inside these builders) so they stay pure and testable
-// — sendEscalationEmail below is the only place that actually reads
-// SUPABASE_URL, and it reads it fresh on every call rather than caching
-// it at module-load time.
-function escalationDecisionUrl(functionBaseUrl: string, token: string, action: "accept" | "reject"): string {
-  return `${functionBaseUrl}?token=${encodeURIComponent(token)}&action=${action}`;
-}
-
-export function buildEscalationSubject(existing: EscalationSide, newCandidate: EscalationSide): string {
-  return `⚠️ Conflicto de curatoría: "${existing.title}" vs "${newCandidate.title}"`;
-}
-
-export function buildEscalationBody(
-  existing: EscalationSide,
-  newCandidate: EscalationSide,
-  functionBaseUrl: string,
-  acceptToken: string,
-  rejectToken: string,
-): string {
-  return [
-    "Dos fuentes distintas describen lo que parece ser el mismo evento real, con decisiones de curatoría opuestas.",
-    "",
-    "-- Versión ya existente --",
-    `${existing.title}`,
-    `Fuente: ${existing.sourceUrl}`,
-    `Razonamiento: ${existing.reasoning}`,
-    "",
-    "-- Versión nueva de esta corrida --",
-    `${newCandidate.title}`,
-    `Fuente: ${newCandidate.sourceUrl}`,
-    `Razonamiento: ${newCandidate.reasoning}`,
-    "",
-    "Ninguna se aplicó todavía — la decisión anterior se mantiene tal cual hasta que elijas una opción:",
-    "",
-    `Usar la versión NUEVA: ${escalationDecisionUrl(functionBaseUrl, acceptToken, "accept")}`,
-    `Mantener la versión ANTERIOR: ${escalationDecisionUrl(functionBaseUrl, rejectToken, "reject")}`,
-  ].join("\n");
-}
-
-export function buildEscalationHtmlBody(
-  existing: EscalationSide,
-  newCandidate: EscalationSide,
-  functionBaseUrl: string,
-  acceptToken: string,
-  rejectToken: string,
-): string {
-  const sideHtml = (label: string, side: EscalationSide) => `
-    <h2 style="font-size:14px;text-transform:uppercase;letter-spacing:0.04em;color:#888;margin:24px 0 10px;border-bottom:1px solid #e2e0da;padding-bottom:6px;">${label}</h2>
-    <p style="margin:0 0 4px;font-weight:600;">${escapeHtml(side.title)}</p>
-    <p style="margin:0 0 4px;"><a href="${escapeHtml(side.sourceUrl)}" style="color:inherit;">${escapeHtml(side.sourceUrl)}</a></p>
-    <p style="margin:0;color:#555;font-size:13px;">${escapeHtml(side.reasoning)}</p>`;
-
-  return `<div style="font-family:sans-serif;max-width:640px;">
-    <p>Dos fuentes distintas describen lo que parece ser el mismo evento real, con decisiones de curatoría opuestas. Ninguna se aplicó todavía — la versión anterior se mantiene tal cual hasta que elijas una opción.</p>
-    ${sideHtml("Versión ya existente", existing)}
-    ${sideHtml("Versión nueva de esta corrida", newCandidate)}
-    <p style="margin:28px 0 0;">
-      <a href="${escalationDecisionUrl(functionBaseUrl, acceptToken, "accept")}" style="display:inline-block;background:#1a7f37;color:#fff;padding:10px 18px;border-radius:6px;text-decoration:none;font-weight:600;margin-right:12px;">Usar la versión nueva</a>
-      <a href="${escalationDecisionUrl(functionBaseUrl, rejectToken, "reject")}" style="display:inline-block;background:#555;color:#fff;padding:10px 18px;border-radius:6px;text-decoration:none;font-weight:600;">Mantener la anterior</a>
-    </p>
-  </div>`;
-}
-
-// Ancillary — a failed/skipped send must never break the run. Unlike the
-// run-summary emails, a missing RESEND_API_KEY here means the conflict
-// still gets logged (run.ts's own console.log) but nobody gets notified —
-// worth surfacing loudly since this is the only way a human finds out.
-export async function sendEscalationEmail(
-  existing: EscalationSide,
-  newCandidate: EscalationSide,
-  acceptToken: string,
-  rejectToken: string,
-): Promise<void> {
-  const apiKey = process.env.RESEND_API_KEY;
-  if (!apiKey) {
-    console.warn("sendEscalationEmail: RESEND_API_KEY not set — skipping escalation email (conflict is still logged and recorded in curation_escalations).");
-    return;
-  }
-  const supabaseUrl = process.env.SUPABASE_URL;
-  if (!supabaseUrl) {
-    console.warn("sendEscalationEmail: SUPABASE_URL not set — skipping escalation email (can't build the decision links).");
-    return;
-  }
-  const functionBaseUrl = `${supabaseUrl.replace(".supabase.co", ".functions.supabase.co")}/curation-escalation-decide`;
-
-  const resend = new Resend(apiKey);
-  const { error } = await resend.emails.send({
-    from: "Caldearte <contacto@caldearte.com>",
-    to: RUN_SUMMARY_RECIPIENT,
-    subject: buildEscalationSubject(existing, newCandidate),
-    text: buildEscalationBody(existing, newCandidate, functionBaseUrl, acceptToken, rejectToken),
-    html: buildEscalationHtmlBody(existing, newCandidate, functionBaseUrl, acceptToken, rejectToken),
-  });
-
-  if (error) {
-    console.error("[notify] escalation email send failed", error);
-  }
-}
-
-// Newsletter — weekly digest, one email per confirmed subscriber. Section
-// content (which events go where) is decided by
-// apps/curator/src/newsletter/run.ts's buildDigestSections — this file
-// only formats whatever sections it's handed and never omits a non-empty
-// one, matching the product decision that empty sections are dropped
-// upstream, not hidden here.
 export interface DigestEvent {
   id: string;
   title: string;
@@ -938,6 +821,12 @@ function groupByComuna(events: DigestEvent[]): Array<[string, DigestEvent[]]> {
 // real feedback: Gmail (and most webmail) threads messages that share an
 // identical subject line sent close together, and the event count alone
 // can coincidentally repeat between two consecutive weeks.
+// Newsletter — weekly digest, one email per confirmed subscriber. Section
+// content (which events go where) is decided by
+// apps/curator/src/newsletter/run.ts's buildDigestSections — this file
+// only formats whatever sections it's handed and never omits a non-empty
+// one, matching the product decision that empty sections are dropped
+// upstream, not hidden here.
 export function buildDigestSubject(sections: DigestSection[], week?: { start: string; end: string }): string {
   const totalEvents = sections.reduce((sum, s) => sum + s.events.length, 0);
   const weekLabel = week ? `, ${fmtWeekHeaderEs(week.start, week.end)}` : "";

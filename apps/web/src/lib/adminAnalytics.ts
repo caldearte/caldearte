@@ -46,10 +46,6 @@ export interface AdminAnalyticsPayload {
   }>;
   anthropicCostByDay: Array<{ date: string; amountUsd: number }>;
   apifyCostByDay: Array<{ date: string; amountUsd: number }>;
-  // Real cross-source conflicts sitting unreviewed — the email half of
-  // this flow (accept/reject tokens) was never wired up. A bare count,
-  // no detail view yet (real gap found 2026-08-17, see FuentesPage.tsx).
-  pendingEscalationsCount: number;
   // "Cobertura" — last 90 days, one row per curator run, real outcome
   // funnel per run (see run-summary-store.ts). Real gap found
   // 2026-08-17: this data was already computed every run, it just fed a
@@ -63,7 +59,7 @@ export interface AdminAnalyticsPayload {
     insertedCount: number;
     replacedCount: number;
     duplicateSkippedCount: number;
-    escalatedCount: number;
+    axisBlockedCount: number;
     expiredCount: number;
     insertFailedCount: number;
     costUsd: number;

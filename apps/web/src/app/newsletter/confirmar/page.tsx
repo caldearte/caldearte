@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import type { NewsletterStatus } from "@/components/NewsletterStatusModal";
 
 // The actual confirm happens in the newsletter-confirm Edge Function
-// (service-role, same trust boundary as curation-escalation-decide) —
+// (service-role, same trust boundary as the other token-gated functions) —
 // this page just calls it server-side, then redirects to the home page
 // with the result, where NewsletterStatusModal shows it as a real modal
 // instead of a bare status page. Edge Functions can't serve HTML

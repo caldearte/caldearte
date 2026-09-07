@@ -179,9 +179,10 @@ export function isLikelySameTitleWithoutRatio(a: string, b: string, placeName: s
   return shared.length >= 2;
 }
 
-// Used by run.ts's cross-source conflict escalation (2026-07-30, found via
+// Used by run.ts's cross-source axis safety net (2026-09-07, which
+// replaced the escalation flow originally added 2026-07-30, found via
 // a manual curation audit — see docs/curation-policy.md's "Cross-source
-// conflict escalation" section) to decide whether two anchor dates are
+// axis safety net" section) to decide whether two anchor dates are
 // close enough that the events they belong to might be the same real
 // exhibition described by two different sources. Plain calendar-day
 // difference, not calendar-aware (no month-length edge cases to worry

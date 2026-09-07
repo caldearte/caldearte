@@ -10,6 +10,10 @@ export {
   EVENT_TYPE_POLICY,
   VISION_AXIS5_POLICY,
   INSTITUTIONAL_EXCLUSION_POLICY,
+  REJECTION_AXIS_POLICY,
+  REJECTION_AXES,
+  isRejectionAxis,
+  type RejectionAxis,
 } from "./policy";
 export { isSafeExternalUrl } from "./url-safety";
 export {

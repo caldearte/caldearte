@@ -189,7 +189,13 @@ rejected_candidates (added 20260728010000_add_rejected_candidates.sql —
     rejected candidate can be matched against a later approved event
     describing the same real thing, or vice versa; kept nullable/
     best-effort, same defensive posture as the rest of this table, see
-    its own migration comment on the 2026-07-22 null-location crash)
+    its own migration comment on the 2026-07-22 null-location crash),
+  rejection_axis (nullable — added
+    20260907030000_replace_escalation_with_axis_safety_net.sql; which of
+    the 5 exclusion axes drove this rejection, when one did, reported by
+    Haiku itself rather than parsed from `reason`. Feeds the cross-source
+    axis safety net; null means "no axis", which the net treats as no
+    action. See curation-policy.md's "Cross-source axis safety net")
   -- Rolling ~90-day window, pruned on Event Discovery's own cadence.
 
 newsletter_subscribers (added 20260730180000_add_newsletter_subscribers.sql
@@ -217,27 +223,6 @@ newsletter_subscribers (added 20260730180000_add_newsletter_subscribers.sql
   -- through the Edge Functions (service-role) instead, reached via the
   -- token in the confirmation/every-digest-email link — never through
   -- this table's RLS directly.
-
-curation_escalations (added 20260730150000_add_curation_escalations.sql
-    — see region-discovery.md's "Cross-source curation conflict
-    escalation" section)
-  id, created_at, resolved_at (nullable), resolution (accepted | rejected,
-    nullable until resolved),
-  existing_kind (approved_event | rejected_candidate),
-  existing_event_id, existing_rejected_id (fk, nullable — exactly one set,
-    matching existing_kind),
-  existing_title, existing_source_url, existing_reasoning (snapshotted as
-    plain text — the email/decision shouldn't depend on the referenced
-    row surviving unchanged),
-  new_title, new_source_url, new_status (approved | rejected),
-  new_reasoning, new_candidate_payload (jsonb — the new candidate's full
-    insertable field set, used only if accepted and new_status is
-    approved),
-  accept_token, reject_token (unique, opaque random values — not signed,
-    looked up by exact match; each single-use, see the Edge Function that
-    resolves them)
-  -- One row per detected cross-source conflict, held until a human picks
-  -- a side via the email's Accept/Reject links.
 
 discovery_run_summaries (added 20260817120000_add_discovery_run_summaries.sql
     — see architecture.md's "Admin analytics dashboard" section)
@@ -328,8 +313,8 @@ Fixed in the cost-governance migration for all tables that existed then.
 | `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Vercel project env var | the only keys that go to the frontend; browser-safe by design (anon key, RLS-gated) |
 | `SUPABASE_ACCESS_TOKEN` | GitHub Actions secret | already in use — authenticates the Supabase CLI in `deploy-migrations.yml` |
 | `SUPABASE_DB_PASSWORD` | GitHub Actions secret | already in use — lets `deploy-migrations.yml` run `supabase db push` against production |
-| `RESEND_API_KEY` | Vercel project env var (server-only, never `NEXT_PUBLIC_*`) AND GitHub Actions secret | in use since 2026-07-17 for `apps/web/src/app/api/contact/route.ts`'s outbound-only contact-form relay; also in use since 2026-07-30 for `apps/curator`'s run-summary and cross-source-conflict-escalation emails (`lib/notify.ts`), sending from `contacto@caldearte.com` in both cases; also used by the newsletter's confirmation email (`apps/web/src/app/api/newsletter/subscribe/route.ts`) and weekly digest (`apps/curator/src/lib/notify.ts`'s `sendDigestEmail`). |
-| ~~`APPROVAL_TOKEN_SECRET`~~ | not needed | originally planned to sign the one-time links behind email approval buttons — the cross-source conflict escalation feature that shipped 2026-07-30 (see region-discovery.md) uses opaque random tokens stored in `curation_escalations` and looked up by exact value instead, same trust model as everything else behind `service_role`-only RLS in this schema. No signing needed. |
+| `RESEND_API_KEY` | Vercel project env var (server-only, never `NEXT_PUBLIC_*`) AND GitHub Actions secret | in use since 2026-07-17 for `apps/web/src/app/api/contact/route.ts`'s outbound-only contact-form relay; also in use since 2026-07-30 for `apps/curator`'s run-summary emails (`lib/notify.ts`; the cross-source-conflict-escalation emails that shared it were removed 2026-09-07), sending from `contacto@caldearte.com` in both cases; also used by the newsletter's confirmation email (`apps/web/src/app/api/newsletter/subscribe/route.ts`) and weekly digest (`apps/curator/src/lib/notify.ts`'s `sendDigestEmail`). |
+| ~~`APPROVAL_TOKEN_SECRET`~~ | not needed | originally planned to sign the one-time links behind email approval buttons — the cross-source conflict escalation feature that shipped 2026-07-30 used opaque random tokens stored in `curation_escalations`, looked up by exact value — no signing needed. That feature and its table were removed 2026-09-07 (see curation-policy.md's "Cross-source axis safety net"), so this env var is doubly moot now. |
 | `RESEND_WEBHOOK_SECRET` | Supabase Edge Function secret | verifies inbound-email webhooks (date inquiry, public mailbox) really come from Resend — still Phase 1b, not built |
 | `AUTH_SECRET` | Vercel project env var (server-only) AND `apps/web/.env.local` | Auth.js v5's session-encryption secret, generated once via `openssl rand -base64 32`; see architecture.md's "Admin mode" section |
 | `AUTH_GOOGLE_ID` / `AUTH_GOOGLE_SECRET` | Vercel project env var (server-only) AND `apps/web/.env.local` | Google OAuth 2.0 client credentials (Google Cloud Console, Testing-mode consent screen, single test user) — the only sign-in provider `/login` offers |

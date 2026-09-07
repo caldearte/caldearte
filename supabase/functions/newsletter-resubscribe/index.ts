@@ -25,7 +25,7 @@ function jsonResponse(result: Result, httpStatus = 200): Response {
 }
 
 // Real gap found + fixed 2026-07-31 (same live pentest as
-// curation-escalation-decide's filter-injection fix): the rate limiting
+// the since-removed curation-escalation-decide's filter-injection fix): the rate limiting
 // added to apps/web's /api/newsletter/subscribe route (migration
 // 20260731160000) only lived in that Next.js wrapper. This function has
 // its own public URL — this repo's own source, so not actually secret —

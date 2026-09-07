@@ -9,7 +9,7 @@ interface RunSummaryRow {
   insertedCount: number;
   replacedCount: number;
   duplicateSkippedCount: number;
-  escalatedCount: number;
+  axisBlockedCount: number;
   expiredCount: number;
   insertFailedCount: number;
   costUsd: number;
@@ -57,7 +57,7 @@ export default function CoberturaTable({ runs }: { runs: RunSummaryRow[] }) {
             <th className="py-2 pr-4 text-right">Insertados</th>
             <th className="py-2 pr-4 text-right">Reemplazados</th>
             <th className="py-2 pr-4 text-right">Duplicados</th>
-            <th className="py-2 pr-4 text-right">Escalados</th>
+            <th className="py-2 pr-4 text-right">Bloq. por eje</th>
             <th className="py-2 pr-4 text-right">Expirados</th>
             <th className="py-2 pr-4 text-right">Fallidos</th>
             <th className="py-2 pr-4 text-right">Costo</th>
@@ -74,7 +74,7 @@ export default function CoberturaTable({ runs }: { runs: RunSummaryRow[] }) {
               <td className="py-2 pr-4 text-right">{run.insertedCount}</td>
               <td className="py-2 pr-4 text-right">{run.replacedCount}</td>
               <td className="py-2 pr-4 text-right">{run.duplicateSkippedCount}</td>
-              <td className="py-2 pr-4 text-right">{run.escalatedCount}</td>
+              <td className="py-2 pr-4 text-right">{run.axisBlockedCount}</td>
               <td className="py-2 pr-4 text-right">{run.expiredCount}</td>
               <td className="py-2 pr-4 text-right">{run.insertFailedCount}</td>
               <td className="py-2 pr-4 text-right">{formatUsd(run.costUsd)}</td>
