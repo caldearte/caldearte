@@ -3990,6 +3990,49 @@ own dictatorship history and political sensitivities are a separate
 editorial-policy question, not something this cost/model experiment
 should bundle in.
 
+### First real shadow-mode run (2026-09-06)
+
+`OPENROUTER_API_KEY` was loaded as a GitHub Actions secret before the
+Sunday 2026-09-06 bright-source cron, so this was the first run with
+shadow mode actually live in production (not the offline script above).
+Result: 11 bright sources compared, 9 agreed with Haiku (82%), 2
+disagreed, 0 shadow-call errors — encouraging on reliability, but n=11 is
+one run, nowhere near the "weeks of real cron runs" bar in the gate
+below.
+
+The two disagreements (`shadow_curation_comparisons`, pipeline
+`bright_source`):
+
+- `chilecultura.gob.cl`'s API feed: Haiku returned zero candidates
+  (`empty`) for the run's 8 new items; minimax approved one and tagged it
+  `memoria_dictadura`. This one goes through the raw-block `curate()`
+  fallback path (no per-item extractor), so there's no persisted
+  candidate detail beyond status/tags/reasoning — genuinely can't tell
+  from this row alone whether minimax caught something real Haiku
+  dropped, or fabricated it.
+- `mgmistral.gob.cl`: Haiku re-approved "Yin Yin: La Llama Dulce de mi
+  Vida" (Sala Laura Rodig, already live since 2026-09-02, no sensitivity
+  tags either side); minimax rejected it. Looks like a plain minimax
+  false negative on an otherwise unremarkable exhibition, not a
+  sensitivity-axis miss.
+
+Neither case was reviewable in real depth — the table stored `agree`/
+`status`/`tags` but never *why* either model decided what it did, so
+there was no way to confirm the `chilecultura.gob.cl` guess above.
+Follow-up shipped same day: `real_reasoning`/`shadow_reasoning` columns
+added to `shadow_curation_comparisons` (migration
+`20260906120000_add_shadow_curation_reasoning.sql`), populated from each
+candidate's existing `curationReasoning` field (already computed by both
+models, just never captured before), and surfaced in the
+`/admin/modelo-sombra` disagreement table. Applies going forward only —
+not retroactive to the 2026-09-06 run's 2 disagreements above.
+
+Next data points: the bright-source cron runs Sunday and Wednesday only
+(see "Dual cadence" above) — **2026-09-09** (Wed), **2026-09-13** (Sun),
+**2026-09-16** (Wed), and so on. Each run adds roughly another 10-15
+comparisons; the reasoning columns start applying from 2026-09-09
+onward.
+
 ## Stale pre-fix titles found and manually corrected (2026-09-06)
 
 While testing the flyer redesign (see roadmap.md's own entry) against
