@@ -4021,7 +4021,7 @@ Neither case was reviewable in real depth — the table stored `agree`/
 there was no way to confirm the `chilecultura.gob.cl` guess above.
 Follow-up shipped same day: `real_reasoning`/`shadow_reasoning` columns
 added to `shadow_curation_comparisons` (migration
-`20260906120000_add_shadow_curation_reasoning.sql`), populated from each
+`20260907040000_add_shadow_curation_reasoning.sql`), populated from each
 candidate's existing `curationReasoning` field (already computed by both
 models, just never captured before), and surfaced in the
 `/admin/modelo-sombra` disagreement table. Applies going forward only —
