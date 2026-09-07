@@ -5,7 +5,15 @@
 // (apps/curator/scripts/poc-tavily-discover.ts) after extensive real-data
 // testing; keep the two in sync only in spirit — this file is now the
 // source of truth.
-import { ART_SCOPE_POLICY, TEXT_CURATION_POLICY, INSTITUTIONAL_EXCLUSION_POLICY, EVENT_TYPE_POLICY } from "@caldearte/curation-policy";
+import {
+  ART_SCOPE_POLICY,
+  TEXT_CURATION_POLICY,
+  INSTITUTIONAL_EXCLUSION_POLICY,
+  EVENT_TYPE_POLICY,
+  REJECTION_AXIS_POLICY,
+  isRejectionAxis,
+  type RejectionAxis,
+} from "@caldearte/curation-policy";
 import { tavilySearch, type FetchLike, type TavilyImage } from "../lib/tavily.js";
 import { isChileanLocation, locationsOverlap, stripAccents } from "../lib/locations.js";
 import { matchesKnownExclusion, matchesKnownLowQualityDomain } from "../lib/known-exclusions.js";
@@ -42,6 +50,14 @@ export interface EventCandidate {
   mediumType: "tradicional" | "intervencion_no_tradicional";
   sensitivityTags: string[];
   curationReasoning: string;
+  // Which of the 5 exclusion axes drove a rejection, when one did — a
+  // REPORT on the decision, never an input to it (see
+  // REJECTION_AXIS_POLICY). null on every approved candidate and on every
+  // rejection for a non-axis reason (out of scope, missing dates,
+  // unclear location...). Consumed by the cross-source axis safety net in
+  // run.ts; anything unrecognised is coerced to null there, so a bad
+  // value degrades to "no axis", never to a wrong exclusion.
+  rejectionAxis: RejectionAxis | null;
   imageUrl: string | null;
   status: "approved" | "rejected";
   location: string;
@@ -345,6 +361,8 @@ ${TEXT_CURATION_POLICY}
 
 ${INSTITUTIONAL_EXCLUSION_POLICY}
 
+${REJECTION_AXIS_POLICY}
+
 Importante sobre ubicación: no descartes un candidato solo porque la ubicación real mencionada en el contenido es distinta a la comuna/ciudad que buscamos — reporta la ubicación real tal como aparece en la fuente (ej. "Las Condes, Santiago" aunque la búsqueda haya sido por otra comuna). Descarta cuando la fuente sea de otro país (no de Chile) — esto es una regla dura, no una sugerencia: cualquier evento fuera de Chile debe ir "rejected". **Nunca uses la comuna que estás buscando como valor por defecto de \`location\`** — si el texto solo nombra un lugar/institución sin decir en qué comuna está, y ni el nombre de la cuenta que publica lo deja claro, \`location\` no puede ser esa comuna solo porque es la que buscabas: repórtala igual (no inventes otra), pero \`locationQuote\` debe respaldarla explícitamente, nunca ser una cita que solo prueba el nombre del lugar. **Caso real (2026-07-23):** el mismo evento (una cuenta llamada "Casa Cultural Yanulaque", real de Arica) fue encontrado en las búsquedas de dos comunas distintas en la misma corrida — en una, \`location\` se reportó correctamente como ambigua/rechazada por falta de comuna explícita; en la otra, se reportó como la comuna que se estaba buscando (Antofagasta), sin ninguna cita que lo respaldara. Esto se verifica en código: si la comuna que pones en \`location\` no aparece dentro de tu propia \`locationQuote\`, el candidato se rechaza.
 
 Importante sobre fechas: la búsqueda no filtra perfectamente por fecha aunque se le haya pedido un mes específico. La regla es a nivel de MES, no de día exacto: descarta un candidato solo si su \`runEndDate\` (o, si no hay \`runEndDate\`, su \`runStartDate\`) corresponde a un mes ANTERIOR a ${monthLabel}, sin indicación de que siga vigente. No lo descartes solo porque su fecha específica dentro de ${monthLabel} ya pasó respecto al día de hoy, ni porque su apertura caiga en un mes posterior (un evento futuro encontrado de casualidad sigue siendo válido).
@@ -358,7 +376,7 @@ Etiqueta también: \`mediumType\` ("tradicional" o "intervencion_no_tradicional"
 \`status\` es binario: "approved" o "rejected" — no hay estado intermedio.
 
 Responde SOLO con un bloque de código \`\`\`json que contenga un array de objetos con esta forma exacta, nada más antes o después:
-[{ "title": string, "description": string | null, "artist": string | null, "eventType": "inauguracion" | "visita_guiada" | "exposicion", "runStartDate": string | null, "runEndDate": string | null, "runStartDateQuote": string | null, "runEndDateQuote": string | null, "openingDatetime": string | null, "openingTimeConfirmed": boolean, "dateQuote": string | null, "locationQuote": string | null, "mediumType": "tradicional" | "intervencion_no_tradicional", "sensitivityTags": string[], "curationReasoning": string, "imageUrl": string | null, "status": "approved" | "rejected", "location": string, "placeName": string | null, "sourceUrl": string | null }]
+[{ "title": string, "description": string | null, "artist": string | null, "eventType": "inauguracion" | "visita_guiada" | "exposicion", "runStartDate": string | null, "runEndDate": string | null, "runStartDateQuote": string | null, "runEndDateQuote": string | null, "openingDatetime": string | null, "openingTimeConfirmed": boolean, "dateQuote": string | null, "locationQuote": string | null, "mediumType": "tradicional" | "intervencion_no_tradicional", "sensitivityTags": string[], "curationReasoning": string, "rejectionAxis": string | null, "imageUrl": string | null, "status": "approved" | "rejected", "location": string, "placeName": string | null, "sourceUrl": string | null }]
 
 Si no encuentras nada en scope, responde con un array vacío: \`\`\`json
 []
@@ -383,6 +401,7 @@ function parseCandidates(text: string): EventCandidate[] {
     locationQuote?: unknown;
     runStartDateQuote?: unknown;
     runEndDateQuote?: unknown;
+    rejectionAxis?: unknown;
   })[];
   return parsed.map((c) => ({
     ...c,
@@ -412,6 +431,9 @@ function parseCandidates(text: string): EventCandidate[] {
     locationQuote: typeof c.locationQuote === "string" ? c.locationQuote : null,
     runStartDateQuote: typeof c.runStartDateQuote === "string" ? c.runStartDateQuote : null,
     runEndDateQuote: typeof c.runEndDateQuote === "string" ? c.runEndDateQuote : null,
+    // Same fail-open coercion as the bright-source parser: only the 5
+    // known values, only on a rejection, anything else -> null.
+    rejectionAxis: c.status !== "approved" && isRejectionAxis(c.rejectionAxis) ? c.rejectionAxis : null,
     // This path (plain comuna-search/aggregator curation) has no account
     // concept at all — Haiku's schema for it doesn't report one.
     sourceAccount: null,
@@ -1023,12 +1045,14 @@ ${TEXT_CURATION_POLICY}
 
 ${INSTITUTIONAL_EXCLUSION_POLICY}
 
+${REJECTION_AXIS_POLICY}
+
 Importante sobre fechas — regla dura, no una sugerencia: estamos armando el calendario de ${monthLabel}, pero tu \`status\` NUNCA debe basarse en si la fecha cae antes, dentro, o después de ${monthLabel} — eso lo decide el código automáticamente después, con la fecha exacta que tú reportes en \`runStartDate\`/\`runEndDate\`/\`openingDatetime\`. Tu \`status\` es EXCLUSIVAMENTE sobre si el contenido ES una exposición o intervención de arte visual real en alcance. Un evento real que ya terminó, o que recién empieza en un mes futuro, sigue siendo \`"approved"\` si el contenido en sí es válido — repórtalo con su fecha real, no lo rechaces ni le inventes otra fecha para "hacerlo caber" en ${monthLabel}. Caso real que este calendario perdió por hacer esto mal: una exposición real de octubre 2026, con fecha confirmada en el texto, fue rechazada con el razonamiento "outside the August 2026 calendar scope" — eso es exactamente el error a evitar; el código, no tu \`status\`, es quien decide si octubre queda fuera del calendario de agosto.
 
 Etiqueta también: \`mediumType\` ("tradicional" o "intervencion_no_tradicional") y \`sensitivityTags\` (array de ["desnudo_erotismo", "guerra_violencia", "memoria_dictadura"], vacío si no aplica). Escribe un \`curationReasoning\` breve explicando tu decisión.
 
 Responde SOLO con un bloque de código \`\`\`json que contenga un array de objetos con esta forma exacta, uno por cada ítem recibido, nada más antes o después:
-[{ "index": number, "status": "approved" | "rejected", "title": string | null, "eventType": "inauguracion" | "visita_guiada" | "exposicion", "artist": string | null, "artistInstagramHandle": string | null, "runStartDate": string | null, "runEndDate": string | null, "openingDatetime": string | null, "openingTimeConfirmed": boolean, "location": string | null, "placeName": string | null, "mediumType": "tradicional" | "intervencion_no_tradicional", "sensitivityTags": string[], "curationReasoning": string, "additionalEvents": [{ "status": "approved" | "rejected", "title": string | null, "eventType": "inauguracion" | "visita_guiada" | "exposicion", "artist": string | null, "artistInstagramHandle": string | null, "runStartDate": string | null, "runEndDate": string | null, "openingDatetime": string | null, "openingTimeConfirmed": boolean, "location": string | null, "placeName": string | null, "mediumType": "tradicional" | "intervencion_no_tradicional", "sensitivityTags": string[], "curationReasoning": string }] }]`;
+[{ "index": number, "status": "approved" | "rejected", "title": string | null, "eventType": "inauguracion" | "visita_guiada" | "exposicion", "artist": string | null, "artistInstagramHandle": string | null, "runStartDate": string | null, "runEndDate": string | null, "openingDatetime": string | null, "openingTimeConfirmed": boolean, "location": string | null, "placeName": string | null, "mediumType": "tradicional" | "intervencion_no_tradicional", "sensitivityTags": string[], "curationReasoning": string, "rejectionAxis": string | null, "additionalEvents": [{ "status": "approved" | "rejected", "title": string | null, "eventType": "inauguracion" | "visita_guiada" | "exposicion", "artist": string | null, "artistInstagramHandle": string | null, "runStartDate": string | null, "runEndDate": string | null, "openingDatetime": string | null, "openingTimeConfirmed": boolean, "location": string | null, "placeName": string | null, "mediumType": "tradicional" | "intervencion_no_tradicional", "sensitivityTags": string[], "curationReasoning": string, "rejectionAxis": string | null }] }]`;
 }
 
 // Split out from BrightSourceCurationRow (2026-09-02) so the same shape
@@ -1049,6 +1073,7 @@ interface BrightSourceCurationEventFields {
   mediumType: "tradicional" | "intervencion_no_tradicional";
   sensitivityTags: string[];
   curationReasoning: string;
+  rejectionAxis: RejectionAxis | null;
   artistInstagramHandle: string | null;
 }
 
@@ -1110,6 +1135,11 @@ function parseBrightSourceCurationEventFields(r: Partial<BrightSourceCurationEve
     mediumType: r.mediumType === "intervencion_no_tradicional" ? "intervencion_no_tradicional" : "tradicional",
     sensitivityTags: Array.isArray(r.sensitivityTags) ? r.sensitivityTags.filter((t): t is string => typeof t === "string") : [],
     curationReasoning: typeof r.curationReasoning === "string" ? r.curationReasoning : "",
+    // Only ever meaningful on a rejection, and only for the 5 known
+    // values — anything else (a hallucinated label, an axis named on an
+    // APPROVED row) collapses to null so the safety net downstream stays
+    // fail-open.
+    rejectionAxis: r.status !== "approved" && isRejectionAxis(r.rejectionAxis) ? r.rejectionAxis : null,
     artistInstagramHandle: normalizeInstagramHandle(r.artistInstagramHandle),
   };
 }
@@ -1190,6 +1220,7 @@ function mergeBrightSourceCandidate(
       openingTimeConfirmed: openingDatetime ? row.openingTimeConfirmed : false,
       mediumType: row.mediumType,
       sensitivityTags: row.sensitivityTags,
+      rejectionAxis: row.rejectionAxis,
       curationReasoning: row.curationReasoning,
       imageUrl: item.imageUrl,
       status: row.status,
@@ -1223,6 +1254,7 @@ function mergeBrightSourceCandidate(
     openingTimeConfirmed: openingDatetime ? row.openingTimeConfirmed : false,
     mediumType: row.mediumType,
     sensitivityTags: row.sensitivityTags,
+    rejectionAxis: row.rejectionAxis,
     curationReasoning: defaultConflictsWithExtraction
       ? `${row.curationReasoning} [FILTRO DE CÓDIGO: ubicación extraída del texto ("${row.location}") difiere de la ubicación por defecto de la cuenta ("${item.defaultLocation!.location}"); se usó la extraída]`
       : row.curationReasoning,

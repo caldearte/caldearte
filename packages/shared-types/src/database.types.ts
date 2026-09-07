@@ -734,6 +734,7 @@ export type Database = {
           pipeline: string | null
           reason: string
           region_id: string | null
+          rejection_axis: string | null
           source_account: string | null
           source_url: string
           title: string
@@ -746,6 +747,7 @@ export type Database = {
           pipeline?: string | null
           reason: string
           region_id?: string | null
+          rejection_axis?: string | null
           source_account?: string | null
           source_url: string
           title: string
@@ -758,6 +760,7 @@ export type Database = {
           pipeline?: string | null
           reason?: string
           region_id?: string | null
+          rejection_axis?: string | null
           source_account?: string | null
           source_url?: string
           title?: string

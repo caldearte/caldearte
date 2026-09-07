@@ -37,14 +37,12 @@ export default function FuentesPage({
   pipelineComparison,
   brightSources,
   instagramSources,
-  pendingEscalationsCount,
   discoveryRunSummaries,
 }: {
   events: AdminAnalyticsPayload["events"];
   pipelineComparison: AdminAnalyticsPayload["pipelineComparison"];
   brightSources: AdminAnalyticsPayload["brightSources"];
   instagramSources: AdminAnalyticsPayload["instagramSources"];
-  pendingEscalationsCount: AdminAnalyticsPayload["pendingEscalationsCount"];
   discoveryRunSummaries: AdminAnalyticsPayload["discoveryRunSummaries"];
 }) {
   const [granularity, setGranularity] = useState<Granularity>("month");
@@ -91,17 +89,6 @@ export default function FuentesPage({
   return (
     <div className="flex flex-col gap-12">
       <GranularityToggle value={granularity} onChange={setGranularity} />
-
-      {/* Real gap found 2026-08-17: the accept/reject-token half of this
-          flow was never wired to a real email, so these rows had zero
-          visibility anywhere until now — just a count, no detail view
-          yet (7 real pending conflicts found during that audit). */}
-      {pendingEscalationsCount > 0 && (
-        <p className="font-geist text-[14px] text-text-primary">
-          <span className="font-fragment-mono text-brand-magenta">{pendingEscalationsCount}</span> conflicto
-          {pendingEscalationsCount === 1 ? "" : "s"} de curación pendiente{pendingEscalationsCount === 1 ? "" : "s"} de revisión
-        </p>
-      )}
 
       {/* Chart left, comparison table right (Daniel's request, 2026-08-17)
           — same 2-column convention as every EventosPeriodBlock. Ambos

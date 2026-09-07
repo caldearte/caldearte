@@ -51,7 +51,7 @@ Deno.serve(async (req) => {
   }
 
   // ---- events (all-time, approved, not soft-removed) -----------------
-  const [eventsRes, signalsRes, rejectedRes, usageRes, fetchStateRes, costSnapshotsRes, pendingEscalationsRes, runSummariesRes, instagramPostsRes, instagramSnapshotsRes, shadowComparisonsRes] = await Promise.all([
+  const [eventsRes, signalsRes, rejectedRes, usageRes, fetchStateRes, costSnapshotsRes, runSummariesRes, instagramPostsRes, instagramSnapshotsRes, shadowComparisonsRes] = await Promise.all([
     client
       .from("events")
       .select("opening_datetime, run_start_date, run_end_date, region_id, pipeline, event_type")
@@ -62,17 +62,9 @@ Deno.serve(async (req) => {
     client.from("api_usage_log").select("pipeline, estimated_cost_usd, created_at"),
     client.from("bright_source_fetch_state").select("url, last_fetched_at, interval_days, consecutive_zero_yield_at_cap, is_inactive"),
     client.from("platform_cost_snapshots").select("platform, usage_date, amount_usd"),
-    // The email half of the escalation flow (accept/reject tokens) was
-    // never wired up (docs/region-discovery.md) — these rows have
-    // real cross-source conflicts sitting unreviewed with zero visibility
-    // anywhere until now (real gap found 2026-08-17: 7 pending rows found
-    // only by querying the table directly during an audit). A bare count
-    // is enough for now — no UI to act on them yet, just make it visible
-    // that they exist.
-    client.from("curation_escalations").select("id", { count: "exact", head: true }).is("resolved_at", null),
     // Real "cobertura" gap found 2026-08-17: the only way to see per-run
     // stats (candidates curated, real outcome funnel — inserted/
-    // replaced/duplicate_skipped/escalated/expired/insert_failed, cost)
+    // replaced/duplicate_skipped/axis_blocked/expired/insert_failed, cost)
     // was digging through ephemeral GitHub Actions logs by hand. Every
     // curator entrypoint already computes this every run (notify.ts's
     // RunSummary and friends) — apps/curator/src/lib/run-summary-store.ts
@@ -119,7 +111,6 @@ Deno.serve(async (req) => {
     ["api_usage_log", usageRes],
     ["bright_source_fetch_state", fetchStateRes],
     ["platform_cost_snapshots", costSnapshotsRes],
-    ["curation_escalations", pendingEscalationsRes],
     ["discovery_run_summaries", runSummariesRes],
     ["instagram_posts", instagramPostsRes],
     ["instagram_account_snapshots", instagramSnapshotsRes],
@@ -362,7 +353,7 @@ Deno.serve(async (req) => {
     insertedCount: row.inserted_count,
     replacedCount: row.replaced_count,
     duplicateSkippedCount: row.duplicate_skipped_count,
-    escalatedCount: row.escalated_count,
+    axisBlockedCount: row.escalated_count,
     expiredCount: row.expired_count,
     insertFailedCount: row.insert_failed_count,
     costUsd: Number(row.cost_usd ?? 0),
@@ -407,7 +398,6 @@ Deno.serve(async (req) => {
     instagramSources,
     anthropicCostByDay,
     apifyCostByDay,
-    pendingEscalationsCount: pendingEscalationsRes.count ?? 0,
     discoveryRunSummaries,
     instagramPosts,
     instagramAccountSnapshots,

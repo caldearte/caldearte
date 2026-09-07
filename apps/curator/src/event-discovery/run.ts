@@ -17,7 +17,6 @@
 // forever with no special "reset" needed: a comuna that just ran becomes
 // the newest, falls out of the "due" pool for RUN_INTERVAL_MS, and
 // re-enters it once that elapses, same as always.
-import crypto from "node:crypto";
 import Anthropic from "@anthropic-ai/sdk";
 import type { Tables } from "@caldearte/shared-types";
 import { getSupabaseClient } from "../lib/supabase-client.js";
@@ -38,7 +37,8 @@ import {
 } from "../lib/event-filters.js";
 import { enrichCandidates, enrichBrightSourceItemDetails, isSocialMediaUrl, type FetchLike as PageFetchLike } from "../lib/page-fetch.js";
 import { rehostImage, type RehostImageFn } from "../lib/image-rehost.js";
-import { sendRunSummaryEmail, sendEscalationEmail, type RunSummary, type CandidateSummary } from "../lib/notify.js";
+import { isRejectionAxis, type RejectionAxis } from "@caldearte/curation-policy";
+import { sendRunSummaryEmail, type RunSummary, type CandidateSummary } from "../lib/notify.js";
 import { recordRunSummary } from "../lib/run-summary-store.js";
 import { createShadowClient, runShadowCuration } from "../lib/model-comparison.js";
 import {
@@ -452,16 +452,40 @@ function shouldReplaceExisting(candidate: EventCandidate, existing: ExistingEven
   return false;
 }
 
-// --- Cross-source curation conflict escalation (2026-07-30) -----------
-// Found via a manual curation audit: the same real exhibition can be
-// simultaneously approved (one source's vague description) and correctly
-// rejected under a sensitivity axis (a different source's more detailed
-// one) — Haiku applies the axis correctly whenever it sees the
-// disqualifying text, but nothing compared a new candidate against an
-// EXISTING decision on likely the same real event from a different
-// source_url. See docs/curation-policy.md's "Cross-source conflict
-// escalation" section for the full design and the real case that
-// prompted this.
+// --- Cross-source axis safety net (2026-09-07) ------------------------
+// Replaces the cross-source ESCALATION flow (2026-07-30 to 2026-09-07),
+// which emailed Daniel an Accept/Reject choice on every cross-source
+// disagreement and held the new candidate until he clicked.
+//
+// Why it was removed: in 5 weeks it fired 15 times and NOT ONE was ever
+// resolved — the de-facto behaviour was always "keep the existing
+// decision", and reviewing the 15 showed that was right almost every
+// time, because 14 of them weren't editorial disagreements at all. They
+// were the same event described with different metadata completeness in
+// two sources, where a CODE filter (date completeness, grounding,
+// location whitelist) had forced one side to `rejected` while Haiku
+// itself judged both in scope. The last one ("Albergue Transitorio",
+// 2026-09-06) is the clearest: both sides' reasoning says the content is
+// in scope and clears all five axes.
+//
+// What genuinely needed protecting is the 1 remaining case ("Existen
+// otros mundos, pero están en este", 2026-08-17, the audit that prompted
+// the original feature): a more detailed source revealed religious
+// imagery the vaguer one never surfaced. There the default was right —
+// but only by luck of crawl order. Had the sources arrived the other way
+// round, "keep the existing" would have left an axis-disqualified event
+// on the calendar.
+//
+// So the human step is gone and the ordering luck with it: if EITHER
+// side rejected on one of the five axes, the event stays out, whichever
+// arrived first. That's docs/curation-policy.md's own default-exclude
+// rule applied across sources. Everything else — the other 14 — now just
+// flows through the ordinary dedup path with no email and no holding.
+//
+// Fails OPEN by construction: it acts only on an explicit, recognised
+// `rejectionAxis` (see REJECTION_AXIS_POLICY). A null, unrecognised or
+// missing axis means no action, i.e. exactly the plain "keep the
+// existing decision" default.
 
 // Best-effort single anchor date for a candidate/existing row — same
 // priority order locationDateOnlyKey already uses (a run's own start
@@ -476,6 +500,11 @@ interface ConflictMatch {
   title: string;
   sourceUrl: string;
   reasoning: string;
+  // Only ever set on a `rejected_candidate` match, and only for rows
+  // stored since the 2026-09-07 migration — older rows read as null and
+  // simply don't trigger the net (they age out via the existing 90-day
+  // prune).
+  rejectionAxis: RejectionAxis | null;
 }
 
 // Looks for an already-APPROVED event describing what's likely the same
@@ -512,7 +541,7 @@ async function findConflictingApprovedEvent(
     if (!rowAnchor || !isWithinAnchorWindow(anchorDate, rowAnchor)) continue;
     if (!isLikelySameTitle(row.title, candidate.title)) continue;
     if (!placeNamesLikelySame(row.place_name, candidate.placeName)) continue;
-    return { kind: "approved_event", id: row.id, title: row.title, sourceUrl: row.source_url, reasoning: row.curation_reasoning ?? "" };
+    return { kind: "approved_event", id: row.id, title: row.title, sourceUrl: row.source_url, reasoning: row.curation_reasoning ?? "", rejectionAxis: null };
   }
   return null;
 }
@@ -535,7 +564,7 @@ async function findConflictingRejectedCandidate(
 
   const { data, error } = await client
     .from("rejected_candidates")
-    .select("id, title, source_url, reason, anchor_date")
+    .select("id, title, source_url, reason, anchor_date, rejection_axis")
     .eq("region_id", regionId)
     .not("anchor_date", "is", null);
 
@@ -548,56 +577,47 @@ async function findConflictingRejectedCandidate(
     if (row.source_url === candidate.sourceUrl) continue;
     if (!row.anchor_date || !isWithinAnchorWindow(anchorDate, row.anchor_date)) continue;
     if (!isLikelySameTitle(row.title, candidate.title)) continue;
-    return { kind: "rejected_candidate", id: row.id, title: row.title, sourceUrl: row.source_url, reasoning: row.reason };
+    return {
+      kind: "rejected_candidate",
+      id: row.id,
+      title: row.title,
+      sourceUrl: row.source_url,
+      reasoning: row.reason,
+      rejectionAxis: isRejectionAxis(row.rejection_axis) ? row.rejection_axis : null,
+    };
   }
   return null;
 }
 
-// Records the conflict and notifies the site owner — never throws, same
-// "ancillary, must not break the run" posture as this file's other
-// notification side effects. The conflict itself is ALWAYS logged via
-// console.log regardless of whether the DB insert or the email succeeds,
-// so it's still visible in the run's own logs even in the worst case.
-async function recordEscalation(
+// Soft-removes an already-approved event that a later, more detailed
+// source has now rejected on one of the five axes. Reuses the same
+// removed_at/removed_reason columns the admin "Quitar" button writes, so
+// it's visible and reversible in the admin UI rather than a destructive
+// delete. Never throws — ancillary to the run, same posture as this
+// file's other side effects.
+async function softRemoveOnAxisConflict(
   client: ReturnType<typeof getSupabaseClient>,
   existing: ConflictMatch,
   candidate: EventCandidate,
-  candidatePayload: Record<string, unknown>,
+  axis: RejectionAxis,
+  now: Date,
 ): Promise<void> {
   console.log(
-    `[event-discovery] conflict detected: "${candidate.title}" (${candidate.status}) vs existing "${existing.title}" (${existing.kind}) — escalated, not inserted`,
+    `[event-discovery] axis conflict: "${candidate.title}" rejected on axis "${axis}" by ${candidate.sourceUrl} — soft-removing already-approved "${existing.title}" (${existing.sourceUrl})`,
   );
 
-  const acceptToken = crypto.randomBytes(32).toString("hex");
-  const rejectToken = crypto.randomBytes(32).toString("hex");
-
-  const { error } = await client.from("curation_escalations").insert({
-    existing_kind: existing.kind,
-    existing_event_id: existing.kind === "approved_event" ? existing.id : null,
-    existing_rejected_id: existing.kind === "rejected_candidate" ? existing.id : null,
-    existing_title: existing.title,
-    existing_source_url: existing.sourceUrl,
-    existing_reasoning: existing.reasoning,
-    new_title: candidate.title,
-    new_source_url: candidate.sourceUrl ?? "",
-    new_status: candidate.status,
-    new_reasoning: candidate.curationReasoning,
-    new_candidate_payload: candidatePayload,
-    accept_token: acceptToken,
-    reject_token: rejectToken,
-  });
+  const { error } = await client
+    .from("events")
+    .update({
+      removed_at: now.toISOString(),
+      removed_reason: `Retirado automáticamente: otra fuente (${candidate.sourceUrl}) describe el mismo evento y lo rechaza por el eje "${axis}". Razón de esa fuente: ${candidate.curationReasoning}`,
+    })
+    .eq("id", existing.id)
+    .is("removed_at", null);
 
   if (error) {
-    console.error(`[event-discovery] failed to record escalation for "${candidate.title}": ${error.message}`);
-    return;
+    console.error(`[event-discovery] failed to soft-remove "${existing.title}" on axis conflict: ${error.message}`);
   }
-
-  await sendEscalationEmail(
-    { title: existing.title, sourceUrl: existing.sourceUrl, reasoning: existing.reasoning },
-    { title: candidate.title, sourceUrl: candidate.sourceUrl ?? "", reasoning: candidate.curationReasoning },
-    acceptToken,
-    rejectToken,
-  );
 }
 
 // What actually happened to an individual candidate after curation decided
@@ -609,7 +629,7 @@ async function recordEscalation(
 // re-approvals of events already on the site (see "duplicate_skipped"
 // below), but the badge gave no hint of that. This type lets the email
 // show the real per-row outcome instead of just Haiku's verdict.
-export type InsertOutcome = "inserted" | "replaced" | "duplicate_skipped" | "escalated" | "expired" | "insert_failed";
+export type InsertOutcome = "inserted" | "replaced" | "duplicate_skipped" | "axis_blocked" | "expired" | "insert_failed";
 
 export async function insertCandidates(
   candidates: EventCandidate[],
@@ -627,55 +647,41 @@ export async function insertCandidates(
     const regionId = matchRegionId(c.location, regions);
     const anchorDate = anchorDateOf(c);
 
-    // Cross-source conflict escalation — checked BEFORE either branch
-    // below, for both approved- and rejected-bound candidates, but only
-    // ever against the OPPOSITE existing status (same-status "conflicts"
-    // aren't conflicts at all — today's ordinary dedup logic already
-    // handles those). Only meaningful with a real sourceUrl, needed both
-    // for the cross-source comparison itself and for a useful email — an
-    // approved candidate always has one (see the INVARIANT enforced
-    // elsewhere), a rejected one without one just can't be checked.
+    // Cross-source axis safety net — checked BEFORE either branch below,
+    // for both approved- and rejected-bound candidates, but only ever
+    // against the OPPOSITE existing status (same-status agreements aren't
+    // conflicts at all — the ordinary dedup logic already handles those).
+    // Needs a real sourceUrl, both for the cross-source comparison and
+    // for a useful audit trail; an approved candidate always has one (see
+    // the INVARIANT enforced elsewhere), a rejected one without one just
+    // can't be checked.
+    //
+    // Both directions collapse to the same rule — if either side named an
+    // axis, the event stays out — but they act differently because the
+    // existing row is in a different place each time.
     if (c.sourceUrl) {
-      const conflict =
-        c.status === "approved"
-          ? await findConflictingRejectedCandidate(client, c, regionId, anchorDate)
-          : await findConflictingApprovedEvent(client, c, regionId, anchorDate);
-
-      if (conflict) {
-        // Rehosted NOW, not if/when a human clicks "Aceptar" later — a
-        // signed Instagram/Facebook CDN link can rot within hours, and
-        // this candidate's decision may not be resolved for days.
-        let imageUrl = c.imageUrl;
-        if (c.status === "approved" && imageUrl && isSocialMediaUrl(c.sourceUrl)) {
-          imageUrl = await rehostImageFn(imageUrl, client);
+      if (c.status === "approved") {
+        // This candidate would go on the calendar, but a different source
+        // was already rejected for the same real event. Only an explicit
+        // AXIS rejection blocks it; every other rejection reason (missing
+        // dates, out of scope, unclear location) is exactly the noisy
+        // 14-of-15 case and must NOT stop a real event.
+        const conflict = await findConflictingRejectedCandidate(client, c, regionId, anchorDate);
+        if (conflict?.rejectionAxis) {
+          console.log(
+            `[event-discovery] axis conflict: "${c.title}" approved here, but ${conflict.sourceUrl} rejected the same event on axis "${conflict.rejectionAxis}" — keeping it out`,
+          );
+          outcomes.set(c, "axis_blocked");
+          continue;
         }
-        const candidatePayload = {
-          freeform_location: c.location,
-          place_name: c.placeName,
-          address: c.address,
-          region_id: regionId,
-          title: c.title,
-          description: c.description,
-          artist: c.artist,
-          opening_datetime: c.openingDatetime,
-          opening_time_confirmed: c.openingTimeConfirmed,
-          run_start_date: c.runStartDate,
-          run_end_date: c.runEndDate,
-          medium_type: c.mediumType,
-          event_type: c.eventType,
-          sensitivity_tags: c.sensitivityTags,
-          source: "discovered",
-          pipeline,
-          source_account: c.sourceAccount,
-          artist_instagram_handle: c.artistInstagramHandle,
-          source_url: c.sourceUrl,
-          image_url: imageUrl,
-          curation_status: c.status,
-          curation_reasoning: c.curationReasoning,
-        };
-        await recordEscalation(client, conflict, c, candidatePayload);
-        outcomes.set(c, "escalated");
-        continue;
+      } else if (c.rejectionAxis) {
+        // The mirror case, and the one the old escalation existed for:
+        // THIS source rejected on an axis, and an earlier, vaguer source
+        // already got the same event approved onto the calendar. Pull it.
+        const conflict = await findConflictingApprovedEvent(client, c, regionId, anchorDate);
+        if (conflict) {
+          await softRemoveOnAxisConflict(client, conflict, c, c.rejectionAxis, now);
+        }
       }
     }
 
@@ -713,6 +719,10 @@ export async function insertCandidates(
             anchor_date: anchorDate,
             pipeline,
             source_account: c.sourceAccount,
+            // Stored so a LATER approved candidate for the same real
+            // event can see that this rejection was an axis call, not a
+            // metadata one — the whole basis of the safety net above.
+            rejection_axis: c.rejectionAxis,
           },
           { onConflict: "source_url" },
         );
@@ -780,6 +790,10 @@ export async function insertCandidates(
             anchor_date: anchorDate,
             pipeline,
             source_account: c.sourceAccount,
+            // Stored so a LATER approved candidate for the same real
+            // event can see that this rejection was an axis call, not a
+            // metadata one — the whole basis of the safety net above.
+            rejection_axis: c.rejectionAxis,
           },
           { onConflict: "source_url" },
         );

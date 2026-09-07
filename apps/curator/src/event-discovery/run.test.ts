@@ -789,32 +789,33 @@ test(
         await client.from("events").delete().ilike("title", "__test__%Vestiario%");
       });
 
-      // Cross-source conflict escalation (2026-07-30) — see
-      // docs/curation-policy.md's "Cross-source conflict escalation"
-      // section. Found via a real manual audit: the same exhibition
-      // simultaneously approved (one source's vague description) and
-      // correctly rejected under the Religion axis (a different source's
-      // more detailed one).
-      await t.test("an approved candidate conflicting with an already-rejected candidate (different source, similar title, anchor dates within 30 days) is escalated, not inserted", async () => {
+      // Cross-source axis safety net (2026-09-07) — replaced the
+      // escalation flow that used to live here. See
+      // docs/curation-policy.md's "Cross-source axis safety net". The
+      // rule both directions share: if EITHER side rejected on one of
+      // the five axes, the event stays out, regardless of which source
+      // was crawled first.
+      await t.test("an approved candidate is BLOCKED when another source rejected the same event on an axis", async () => {
         const { insertCandidates, loadExistingKeys, loadAllRegions } = await import("./run.js");
 
         const regions = await loadAllRegions();
         const regionId = regions.find((r) => r.name === "Santiago")?.id ?? null;
         assert.ok(regionId, "Santiago must already be seeded for this test to mean anything");
 
-        const oldSourceUrl = "https://old-source.cl/__test__escalacion-conflicto";
+        const oldSourceUrl = "https://old-source.cl/__test__eje-conflicto";
         await client.from("rejected_candidates").delete().eq("source_url", oldSourceUrl);
         await client.from("rejected_candidates").insert({
           source_url: oldSourceUrl,
-          title: "__test__ Escalación Conflicto",
+          title: "__test__ Eje Conflicto",
           reason: "Contiene temática religiosa explícita — eje de exclusión por religión.",
           location: "Santiago",
           region_id: regionId,
           anchor_date: "2026-07-01",
+          rejection_axis: "religion",
         });
 
         const candidate = {
-          title: "__test__ Escalación Conflicto",
+          title: "__test__ Eje Conflicto",
           description: null,
           artist: null,
           runStartDate: "2026-07-10",
@@ -824,6 +825,7 @@ test(
           mediumType: "tradicional" as const,
           sensitivityTags: [],
           curationReasoning: "Exposición de arte visual legítima, sin elementos problemáticos evidentes en esta fuente.",
+          rejectionAxis: null,
           imageUrl: null,
           status: "approved" as const,
           location: "Santiago",
@@ -832,134 +834,46 @@ test(
           locationQuote: null,
           runStartDateQuote: null,
           runEndDateQuote: null,
-          sourceUrl: "https://new-source.cl/__test__escalacion-conflicto",
+          sourceUrl: "https://new-source.cl/__test__eje-conflicto",
         };
 
         try {
           const seen = await loadExistingKeys();
           const { insertedCount: inserted, outcomes } = await insertCandidates([candidate], regions, seen, new Date(2026, 6, 10), "bright_source");
-          assert.equal(inserted, 0, "escalated, not inserted");
-          assert.equal(outcomes.get(candidate), "escalated");
+          assert.equal(inserted, 0, "blocked by the axis net, not inserted");
+          assert.equal(outcomes.get(candidate), "axis_blocked");
 
-          const { data: eventRows } = await client.from("events").select("id").ilike("title", "__test__ Escalación Conflicto");
-          assert.equal(eventRows?.length ?? 0, 0, "never written to events — held for human review instead");
-
-          const { data: escalation } = await client
-            .from("curation_escalations")
-            .select("*")
-            .eq("new_source_url", candidate.sourceUrl)
-            .maybeSingle();
-          assert.ok(escalation, "an escalation row was recorded");
-          assert.equal(escalation!.existing_kind, "rejected_candidate");
-          assert.equal(escalation!.existing_source_url, oldSourceUrl);
-          assert.equal(escalation!.new_status, "approved");
-          assert.equal(escalation!.resolved_at, null, "unresolved until a human clicks a link");
-          assert.ok(escalation!.accept_token && escalation!.reject_token, "both one-time tokens were generated");
-          assert.notEqual(escalation!.accept_token, escalation!.reject_token);
+          const { data: eventRows } = await client.from("events").select("id").ilike("title", "__test__ Eje Conflicto");
+          assert.equal(eventRows?.length ?? 0, 0, "never written to events — the other source's axis rejection wins");
         } finally {
           await client.from("rejected_candidates").delete().eq("source_url", oldSourceUrl);
-          await client.from("curation_escalations").delete().eq("new_source_url", candidate.sourceUrl);
+          await client.from("events").delete().ilike("title", "__test__ Eje Conflicto");
         }
       });
 
-      await t.test("a rejected candidate conflicting with an already-approved event (different source, similar title, anchor dates within 30 days) is escalated — the existing approved row is left untouched", async () => {
+      // The 14-of-15 case that used to generate a pointless escalation
+      // email: the earlier rejection was a METADATA one (no confirmed
+      // dates), not an axis call. A real event must not be held back by
+      // that.
+      await t.test("an approved candidate is NOT blocked when the other source's rejection had no axis", async () => {
         const { insertCandidates, loadExistingKeys, loadAllRegions } = await import("./run.js");
 
-        const santiagoRegionId = (await client.from("regions").select("id").eq("name", "Santiago").single()).data?.id;
-        assert.ok(santiagoRegionId, "Santiago must already be seeded for this test to mean anything");
-
-        const oldSourceUrl = "https://old-approved.cl/__test__escalacion-reversa";
-        await client.from("events").delete().eq("source_url", oldSourceUrl);
-        const { data: seeded } = await client
-          .from("events")
-          .insert({
-            title: "__test__ Escalación Reversa",
-            freeform_location: "Santiago",
-            place_name: null,
-            region_id: santiagoRegionId,
-            run_start_date: "2026-07-01",
-            run_end_date: "2026-07-30",
-            medium_type: "tradicional",
-            sensitivity_tags: [],
-            source: "discovered",
-            source_url: oldSourceUrl,
-            curation_status: "approved",
-            curation_reasoning: "Exposición de arte visual en espacio legítimo.",
-          })
-          .select("id")
-          .single();
-
-        const newSourceUrl = "https://new-rejected.cl/__test__escalacion-reversa";
-        const candidate = {
-          title: "__test__ Escalación Reversa",
-          description: null,
-          artist: null,
-          runStartDate: "2026-07-05",
-          runEndDate: "2026-07-25",
-          openingDatetime: null,
-          openingTimeConfirmed: false,
-          mediumType: "tradicional" as const,
-          sensitivityTags: [],
-          curationReasoning: "Contiene figuras de temática religiosa explícita — cae bajo eje de exclusión por religión.",
-          imageUrl: null,
-          status: "rejected" as const,
-          location: "Santiago",
-          placeName: null,
-          dateQuote: null,
-          locationQuote: null,
-          runStartDateQuote: null,
-          runEndDateQuote: null,
-          sourceUrl: newSourceUrl,
-        };
-
-        try {
-          const regions = await loadAllRegions();
-          const seen = await loadExistingKeys();
-          const { insertedCount: inserted } = await insertCandidates([candidate], regions, seen, new Date(2026, 6, 10), "bright_source");
-          assert.equal(inserted, 0);
-
-          const { data: stillApproved } = await client
-            .from("events")
-            .select("curation_status, curation_reasoning")
-            .eq("id", seeded!.id)
-            .single();
-          assert.equal(stillApproved?.curation_status, "approved", "the existing decision stays untouched until a human resolves the escalation");
-          assert.equal(stillApproved?.curation_reasoning, "Exposición de arte visual en espacio legítimo.");
-
-          const { data: rejectedRows } = await client.from("rejected_candidates").select("id").eq("source_url", newSourceUrl);
-          assert.equal(rejectedRows?.length ?? 0, 0, "NOT recorded via the ordinary reject-upsert path — held as an escalation instead");
-
-          const { data: escalation } = await client
-            .from("curation_escalations")
-            .select("*")
-            .eq("new_source_url", newSourceUrl)
-            .maybeSingle();
-          assert.ok(escalation, "an escalation row was recorded");
-          assert.equal(escalation!.existing_kind, "approved_event");
-          assert.equal(escalation!.existing_event_id, seeded!.id);
-          assert.equal(escalation!.new_status, "rejected");
-        } finally {
-          await client.from("events").delete().eq("source_url", oldSourceUrl);
-          await client.from("curation_escalations").delete().eq("new_source_url", newSourceUrl);
-        }
-      });
-
-      await t.test("candidates with genuinely different titles in the same region/date window are NOT escalated — ordinary dedup/insert proceeds as usual", async () => {
-        const { insertCandidates, loadExistingKeys, loadAllRegions } = await import("./run.js");
-
-        const oldSourceUrl = "https://unrelated-source.cl/__test__no-conflicto";
+        const regions = await loadAllRegions();
+        const regionId = regions.find((r) => r.name === "Santiago")?.id ?? null;
+        const oldSourceUrl = "https://old-source.cl/__test__sin-eje";
         await client.from("rejected_candidates").delete().eq("source_url", oldSourceUrl);
         await client.from("rejected_candidates").insert({
           source_url: oldSourceUrl,
-          title: "__test__ Taller de Cerámica Comunitario",
-          reason: "Es un taller, no una exposición.",
+          title: "__test__ Sin Eje",
+          reason: "Sin fecha de inauguración confirmada en la fuente.",
           location: "Santiago",
-          region_id: (await client.from("regions").select("id").eq("name", "Santiago").single()).data?.id,
+          region_id: regionId,
           anchor_date: "2026-07-01",
+          rejection_axis: null,
         });
 
         const candidate = {
-          title: "__test__ Muestra Fotográfica Independiente",
+          title: "__test__ Sin Eje",
           description: null,
           artist: null,
           runStartDate: "2026-07-10",
@@ -968,7 +882,8 @@ test(
           openingTimeConfirmed: false,
           mediumType: "tradicional" as const,
           sensitivityTags: [],
-          curationReasoning: "Exposición fotográfica legítima.",
+          curationReasoning: "Exposición de arte visual con fechas confirmadas en esta fuente.",
+          rejectionAxis: null,
           imageUrl: null,
           status: "approved" as const,
           location: "Santiago",
@@ -977,20 +892,83 @@ test(
           locationQuote: null,
           runStartDateQuote: null,
           runEndDateQuote: null,
-          sourceUrl: "https://new-source.cl/__test__no-conflicto",
+          sourceUrl: "https://new-source.cl/__test__sin-eje",
         };
 
         try {
-          const regions = await loadAllRegions();
           const seen = await loadExistingKeys();
-          const { insertedCount: inserted } = await insertCandidates([candidate], regions, seen, new Date(2026, 6, 10), "bright_source");
-          assert.equal(inserted, 1, "no title match against the unrelated rejected candidate — inserted normally");
-
-          const { data: escalation } = await client.from("curation_escalations").select("id").eq("new_source_url", candidate.sourceUrl).maybeSingle();
-          assert.equal(escalation, null, "no escalation for genuinely different events");
+          const { insertedCount: inserted, outcomes } = await insertCandidates([candidate], regions, seen, new Date(2026, 6, 10), "bright_source");
+          assert.equal(inserted, 1, "inserted normally — a metadata rejection elsewhere must not block a real event");
+          assert.equal(outcomes.get(candidate), "inserted");
         } finally {
           await client.from("rejected_candidates").delete().eq("source_url", oldSourceUrl);
-          await client.from("events").delete().ilike("title", "__test__ Muestra Fotográfica Independiente");
+          await client.from("events").delete().ilike("title", "__test__ Sin Eje");
+        }
+      });
+
+      // The mirror direction, and the case the old escalation existed
+      // for: a vaguer source already got the event onto the calendar,
+      // then a more detailed one rejects it on an axis. Under the old
+      // flow this waited for a human click that never came; now the
+      // already-published event is soft-removed.
+      await t.test("an already-approved event is soft-removed when a later source rejects the same event on an axis", async () => {
+        const { insertCandidates, loadExistingKeys, loadAllRegions } = await import("./run.js");
+
+        const regions = await loadAllRegions();
+        const regionId = regions.find((r) => r.name === "Santiago")?.id ?? null;
+        const existingSourceUrl = "https://vague-source.cl/__test__eje-inverso";
+        await client.from("events").delete().ilike("title", "__test__ Eje Inverso");
+        const { data: seededRows } = await client
+          .from("events")
+          .insert({
+            title: "__test__ Eje Inverso",
+            freeform_location: "Santiago",
+            region_id: regionId,
+            run_start_date: "2026-07-10",
+            run_end_date: "2026-07-20",
+            source: "discovered",
+            pipeline: "bright_source",
+            source_url: existingSourceUrl,
+            curation_status: "approved",
+            curation_reasoning: "Exposición de arte visual, la fuente no describe el contenido en detalle.",
+          })
+          .select("id");
+        const seededId = seededRows?.[0]?.id;
+        assert.ok(seededId, "seeded an approved event to conflict against");
+
+        const candidate = {
+          title: "__test__ Eje Inverso",
+          description: null,
+          artist: null,
+          runStartDate: "2026-07-10",
+          runEndDate: "2026-07-20",
+          openingDatetime: null,
+          openingTimeConfirmed: false,
+          mediumType: "tradicional" as const,
+          sensitivityTags: [],
+          curationReasoning: "Imaginería religiosa explícita sin postura crítica declarada.",
+          rejectionAxis: "religion" as const,
+          imageUrl: null,
+          status: "rejected" as const,
+          location: "Santiago",
+          placeName: null,
+          dateQuote: null,
+          locationQuote: null,
+          runStartDateQuote: null,
+          runEndDateQuote: null,
+          sourceUrl: "https://detailed-source.cl/__test__eje-inverso",
+        };
+
+        try {
+          const seen = await loadExistingKeys();
+          await insertCandidates([candidate], regions, seen, new Date(2026, 6, 10), "bright_source");
+
+          const { data: row } = await client.from("events").select("removed_at, removed_reason").eq("id", seededId).maybeSingle();
+          assert.ok(row?.removed_at, "the already-published event was soft-removed, not left on the calendar");
+          assert.match(row!.removed_reason ?? "", /religion/, "the removal reason names the axis that drove it");
+        } finally {
+          await client.from("events").delete().ilike("title", "__test__ Eje Inverso");
+          await client.from("rejected_candidates").delete().eq("source_url", candidate.sourceUrl);
         }
       });
 

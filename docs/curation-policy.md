@@ -66,9 +66,10 @@ Applies only when the source text states this plainly (the venue's own
 name, or an explicit statement) — not inferred from indirect signals. When
 it's merely ambiguous, this filter doesn't force a rejection; ordinary
 curation on the event's own content still applies. There's no
-human-escalation path for this filter specifically — Event Discovery's
-`status` is binary (approved/rejected), unlike the Event Crawler's old
-three-state flow.
+human-escalation path for this filter — Event Discovery's `status` is
+binary (approved/rejected), unlike the Event Crawler's old three-state
+flow, and as of 2026-09-07 there is no human escalation path anywhere in
+curation (see "Cross-source axis safety net" below).
 
 This is unrelated to the Chile-location whitelist in region-discovery.md,
 which is a *geographic* check (is this really in Chile?), not an
@@ -140,35 +141,81 @@ documentation consistency; the actual Event Discovery prompt
 Claude handles Spanish-language event descriptions equally well either
 way.*
 
-## Cross-source conflict escalation — implemented 2026-07-30, narrower than general ambiguity below
+## Cross-source axis safety net — replaced the escalation flow, 2026-09-07
 
-Found via a user-requested manual audit testing the five sensitivity axes
-against real production data: the same real exhibition ("Existen otros
-mundos, pero están en este") was simultaneously **approved** (one
-source's vague description) and correctly **rejected** under the
-Religion axis (a different source's more detailed one, which mentioned
-explicit religious/mythological imagery the first source's copy never
-surfaced). Not a classifier error — Haiku applied the axis correctly
-whenever it actually saw the disqualifying text — a structural gap:
-nothing compared a new candidate against an EXISTING decision on likely
-the same real event from a different source.
+**The rule:** when two different sources describe what is likely the same
+real event (similar title + same región + anchor dates within ±30 days,
+different source URL) and disagree, **if either side rejected on one of
+the five axes, the event stays out** — whichever source was crawled
+first. Everything else flows through the ordinary dedup path.
 
-When Event Discovery is about to record a decision that conflicts with
-an existing one on a likely-same real event (similar title + same comuna
-+ anchor dates within ±30 days, different source URL), it no longer
-applies either decision silently. Both versions (title, source link, full
-reasoning) get emailed to the site owner with Accept ("use the new
-version")/Reject ("keep the existing one") links — the existing decision
-stays untouched until one is clicked. See
-[region-discovery.md](region-discovery.md#cross-source-curation-conflict-escalation-2026-07-30)
-for the full technical design (schema, detection, the resolution Edge
-Function).
+Concretely, in both directions:
 
-This is deliberately narrow — it only fires on a genuine conflict between
-two source's differing decisions on the same real event, not on
-Haiku's own uncertainty about a single candidate. It doesn't replace or
-resolve the general ambiguous-classification question below, which
-remains undecided.
+- A candidate about to be **approved**, when another source's rejection
+  of the same event named an axis → not published (`axis_blocked`).
+- A candidate being **rejected on an axis**, when a vaguer source already
+  got the same event **approved onto the calendar** → that published
+  event is **soft-removed** (the same `removed_at`/`removed_reason`
+  columns the admin "Quitar" button writes, so it stays visible and
+  reversible in admin, not deleted).
+
+This is the same default-exclude principle as the Core rule above, just
+applied across sources instead of within one.
+
+**What it replaced.** From 2026-07-30 to 2026-09-07 this was a *human*
+escalation: both versions were emailed to the site owner with
+Accept/Reject links, and the existing decision stayed untouched until one
+was clicked. Daniel's call to remove it, 2026-09-07, after reviewing
+every conflict it ever produced:
+
+- It fired **15 times in 5 weeks and not one was ever resolved.** The
+  de-facto behaviour was always "keep the existing decision."
+- **14 of the 15 were not editorial disagreements at all.** They were the
+  same event described with different metadata completeness in two
+  sources, where a *code* filter (date completeness, grounding, location
+  whitelist) forced one side to `rejected` while Haiku judged both in
+  scope. The clearest is "Albergue Transitorio" (Espacio O, 2026-09-06),
+  where both sides' reasoning explicitly clears all five axes — there was
+  nothing for a human to decide, and holding it kept a real exhibition
+  off the calendar.
+- **1 of the 15 was genuine**: "Existen otros mundos, pero están en este"
+  (2026-08-17) — a more detailed source revealed religious imagery the
+  vaguer one never surfaced. The default was right there, but **only by
+  luck of crawl order.** Reversed, "keep the existing" would have left an
+  axis-disqualified event published.
+
+So the human step is gone and the ordering luck with it. The one case
+that genuinely needed protecting is now enforced deterministically, and
+the other fourteen no longer generate an email or hold up a real event.
+
+**How the axis is known.** Haiku reports it directly, in a
+`rejectionAxis` field on its own output (`packages/curation-policy`'s
+`REJECTION_AXIS_POLICY`), stored on `rejected_candidates.rejection_axis`.
+**This changed nothing about what gets excluded** — the editorial rules
+above are byte-identical; Haiku is only asked to *name* the axis it
+already applied, and the field is explicitly a report on the decision,
+never an input to it.
+
+It has to be structured rather than parsed out of the reasoning prose,
+because that prose mentions the axes in both directions constantly: as of
+2026-09-06, about a fifth of the rejection reasons containing an axis
+word used it only to **rule the axis out** ("Temática ecológica sin
+contenido religioso, violento o pseudocientífico"; "no
+religious/ideological exclusion issues — purely archaeological"). Any
+regex over that text would have wrongly excluded real events.
+
+The net **fails open** by construction: it acts only on an explicit,
+recognised axis value. A null, unrecognised or missing axis — including
+every `rejected_candidates` row written before 2026-09-07 — means no
+action at all, i.e. exactly the plain "keep the existing decision"
+default that was in effect for those 5 weeks anyway. Older rows age out
+via the existing 90-day prune.
+
+The `curation_escalations` table is **kept**, orphaned — nothing reads or
+writes it any more, but its 15 rows are the record of what the flow
+produced and the evidence behind removing it. See
+[region-discovery.md](region-discovery.md#cross-source-axis-safety-net-2026-09-07)
+for the technical detail.
 
 ## Human escalation for general ambiguity: not currently implemented
 
@@ -177,8 +224,11 @@ Event Discovery (the only pipeline in production) uses a binary
 Ambiguous cases currently fall through to ordinary curation rather than
 escalating to a human. Whether to add a broader escalation tier for
 Haiku's own uncertainty (distinct from the cross-source conflict case
-above, which is now handled) is an open question, not decided either way
-yet. Candidate signals for it, if it's ever built:
+above, which is now handled deterministically, with no human in the
+loop) is an open question, not decided either way yet. The 2026-09-07
+removal of the cross-source escalation is a data point for it: the one
+human-review flow this project actually shipped went 15-for-15
+unanswered, which is worth weighing before building another. Candidate signals for it, if it's ever built:
 
 - The event appears to meet the exception (explicit critical stance) but the
   text isn't clear enough to confirm the rejection is unambiguous and not

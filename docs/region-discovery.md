@@ -3834,90 +3834,74 @@ artisanry and fine-art exhibitions — checked both `curation-policy.md`
 and `overview.md`, neither takes a position either way. Not added,
 pending an explicit editorial call from Daniel.
 
-## Cross-source curation conflict escalation (2026-07-30)
+## Cross-source axis safety net (2026-09-07)
 
-A **different** kind of gap than the dedup fixes above — found by a
-user-requested manual audit specifically testing the five sensitivity
-axes (`docs/curation-policy.md`) against real production data, not the
-scope/format axis the earlier audits covered. The same real exhibition
-("Existen otros mundos, pero están en este", MAC Quinta Normal) was
-simultaneously **approved** (via arteinformado.com's vague description)
-and correctly **rejected** under the Religion axis (via uchile.cl's more
-detailed one, which mentioned explicit religious/mythological imagery
-arteinformado.com's copy never surfaced). Not a classifier bug — Haiku
-applied the axis correctly whenever it actually saw the disqualifying
-text — but a structural gap: nothing ever compared a new candidate
-against an EXISTING decision on likely the same real event from a
-different `source_url`.
+Replaces the **cross-source curation conflict escalation** that lived
+here from 2026-07-30 to 2026-09-07. The editorial rationale for the
+change — including the full breakdown of all 15 conflicts the old flow
+produced — is in
+[curation-policy.md](curation-policy.md#cross-source-axis-safety-net--replaced-the-escalation-flow-2026-09-07);
+this section covers the mechanics.
 
-**Design, decided with the user**: when `insertCandidates` is about to
-record a decision that conflicts with an existing one on a likely-same
-real event (similar title + same `region_id` + anchor dates within
-**±30 days**, different `source_url`), hold both and email the site owner
-instead of silently applying either. The existing/older decision stays
-untouched until resolved.
+**The gap this has always addressed** (unchanged): the same real
+exhibition ("Existen otros mundos, pero están en este", MAC Quinta
+Normal) was simultaneously **approved** via arteinformado.com's vague
+description and correctly **rejected** under the Religion axis via
+uchile.cl's more detailed one. Haiku applies the axis correctly whenever
+it actually sees the disqualifying text — the gap was that nothing
+compared a new candidate against an EXISTING decision on likely the same
+real event from a different source URL.
 
-**Schema** (migration `20260730150000_add_curation_escalations.sql`):
-- `rejected_candidates` gained `location`/`region_id`/`anchor_date`
-  (nullable, best-effort — same defensive posture as the rest of that
-  table, see its own migration comment on the 2026-07-22 null-location
-  crash) — it never carried a location/date signal before this, needed
-  here specifically so a rejected candidate can be matched against a
-  later approved event, or vice versa.
-- New table `curation_escalations` — one row per detected conflict,
-  denormalized (both sides' title/source/reasoning snapshotted as plain
-  text, plus the new candidate's full insertable payload as JSONB) so the
-  email and eventual decision don't depend on either referenced row
-  surviving unchanged. Two opaque random tokens per row (`accept_token`/
-  `reject_token`), each single-use.
+**Detection** (unchanged from the 2026-07-30 design):
+`findConflictingApprovedEvent` / `findConflictingRejectedCandidate` in
+`apps/curator/src/event-discovery/run.ts`, run from `insertCandidates`
+before either insert branch, only ever against the OPPOSITE existing
+status. A match needs all of: similar title (`isLikelySameTitle`), same
+`region_id`, anchor dates within ±30 days (`isWithinAnchorWindow`), and a
+DIFFERENT `source_url`. The approved-side check additionally compares
+`place_name`; the rejected side can't, since `rejected_candidates` never
+stored one.
 
-**Detection** (`event-discovery/run.ts`, new `findConflictingApprovedEvent`/
-`findConflictingRejectedCandidate`, `isWithinAnchorWindow` in
-`lib/event-filters.ts`): runs at the top of `insertCandidates`'s loop, for
-every candidate with a real `sourceUrl`, checking only the OPPOSITE
-existing status (an approved candidate is checked against rejected
-candidates, and vice versa — same-status "conflicts" aren't conflicts,
-today's ordinary dedup already handles those). A candidate about to be
-approved that would need image rehosting gets it done immediately when
-escalated too, not deferred until a human clicks Accept — a signed
-Instagram/Facebook CDN link can rot within hours, and resolution may take
-days.
+**Action** (this is what changed). Instead of recording a row and
+emailing the site owner an Accept/Reject pair of one-time-token links:
 
-**Notification** (`lib/notify.ts`'s `sendEscalationEmail`, same
-ancillary/never-throws posture as the run-summary emails) — both
-versions' title, source link, and full reasoning, plus Accept ("usar la
-versión nueva") and Reject ("mantener la anterior") links.
+- New candidate **approved**, existing rejection **named an axis** → not
+  published, outcome `axis_blocked`.
+- New candidate **approved**, existing rejection named **no** axis →
+  proceeds normally through the ordinary dedup path. This is the common
+  case (14 of the 15 historical conflicts) — a metadata-completeness
+  difference, not an editorial one.
+- New candidate **rejected on an axis**, conflicting event **already
+  approved and published** → that event is soft-removed
+  (`removed_at`/`removed_reason`, the same columns the admin "Quitar"
+  button writes, so it stays visible and reversible in admin).
 
-**Confirmed 2026-08-17, real gap found during an audit**: the DETECTION
-and resolution machinery below is fully built and working, but
-`sendEscalationEmail` shares the same `RESEND_API_KEY`-not-set no-op
-every other curator email hits (real production run logs consistently
-show it as unset) — conflicts were accumulating with genuinely zero
-visibility anywhere (7 real, unresolved rows found by querying the table
-directly). `/admin/fuentes` now shows a bare pending count (see
-[architecture.md](architecture.md#admin-analytics-dashboard)) — no
-detail/action view yet, just visibility that these exist.
+**Schema** (migration
+`20260907030000_replace_escalation_with_axis_safety_net.sql`) —
+**additive only**: it adds `rejected_candidates.rejection_axis`
+(nullable, CHECK-constrained to the five axis values) and drops nothing.
+The `curation_escalations` table stays in the schema, orphaned on
+purpose: no code reads or writes it any more, but its 15 rows are the
+historical record of what the escalation flow produced. The code half IS
+deleted — the `supabase/functions/curation-escalation-decide` Edge
+Function and `lib/notify.ts`'s
+`sendEscalationEmail`/`buildEscalation*` builders.
 
-**Resolution**: `supabase/functions/curation-escalation-decide` — the
-project's first Edge Function, reached directly from the email (no
-inbound email parsing, no webhook — just two GET links, same "link to our
-own endpoint" pattern already used elsewhere, much simpler than Phase
-1b's original inbound-mail design). Runs with the service_role key
-(Supabase's own platform-provided env for every Edge Function — never
-touches Vercel/apps/web, which explicitly never holds this key, see
-`apps/web/src/lib/supabase-client.ts`'s `assertAnonRole` guard). The
-action is determined by WHICH token matched (`accept_token` vs.
-`reject_token`), never by a client-supplied query param, so a tampered
-URL can't flip the decision. Accept applies the new candidate's decision
-(inserts into `events` if approved; flips the existing `events` row to
-`rejected` if not). Reject keeps the old decision and just records the
-new candidate into `rejected_candidates` so it stops re-triggering the
-same escalation on a future run.
+**Where the axis comes from**: Haiku reports it in a `rejectionAxis`
+field on its own curation output, added to both prompt schemas via
+`packages/curation-policy`'s `REJECTION_AXIS_POLICY`. It is a *report* on
+the decision, never an input to it, and the exclusion rules themselves
+are unchanged. It has to be structured rather than regex'd out of the
+reasoning prose because that prose mentions the axes in both directions
+— as of 2026-09-06 roughly a fifth of axis-mentioning rejection reasons
+used the word only to rule the axis OUT.
 
-**Production fix applied by hand** (2026-07-30, before this pipeline fix
-existed): the "Existen otros mundos" row's `curation_status` was manually
-flipped to `rejected` directly via SQL — not deleted, reasoning field
-kept with an appended correction note.
+**Fails open**: `isRejectionAxis` coerces anything that isn't exactly one
+of the five values to null, and a null axis means no action — i.e.
+exactly the plain "keep the existing decision" default. That covers every
+`rejected_candidates` row written before this migration (no backfill;
+they age out via the existing 90-day prune).
+
 
 ## Shadow-mode model comparison pilot (2026-09-04)
 

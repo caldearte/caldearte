@@ -15,7 +15,7 @@ interface RunSummaryCostLike {
 
 // Real gap found 2026-08-17, auditing a week of rejections: the only way
 // to see per-run "cobertura" — how many candidates got each real outcome
-// (inserted/replaced/duplicate_skipped/escalated/expired/insert_failed,
+// (inserted/replaced/duplicate_skipped/axis_blocked/expired/insert_failed,
 // not just Haiku's approved/rejected verdict) — was digging through
 // ephemeral GitHub Actions logs by hand. Every entrypoint already builds
 // this exact data every run (notify.ts's RunSummary and friends), it
@@ -41,7 +41,7 @@ export async function recordRunSummary(
     inserted: 0,
     replaced: 0,
     duplicate_skipped: 0,
-    escalated: 0,
+    axis_blocked: 0,
     expired: 0,
     insert_failed: 0,
   };
@@ -61,7 +61,11 @@ export async function recordRunSummary(
     inserted_count: outcomeCounts.inserted,
     replaced_count: outcomeCounts.replaced,
     duplicate_skipped_count: outcomeCounts.duplicate_skipped,
-    escalated_count: outcomeCounts.escalated,
+    // Column kept under its old name (28 rows of history predate the
+    // 2026-09-07 escalation removal); it now counts axis_blocked, the
+    // outcome that replaced "escalated". Renaming it would mean migrating
+    // that history for no functional gain.
+    escalated_count: outcomeCounts.axis_blocked,
     expired_count: outcomeCounts.expired,
     insert_failed_count: outcomeCounts.insert_failed,
     cost_usd: cost.totalUsd,

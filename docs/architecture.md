@@ -170,8 +170,9 @@ the Edge Function never needs a separate query per time window.
 - **`/admin/fuentes`** — per-fuente detail: `FuentesPorPipelineChart` +
   `SourceComparisonTable` (chart left, table right), `BrightSourcesTable`/
   `InstagramSourcesTable` (per-source yield + a `possiblyDead` heuristic),
-  a pending-curation-conflicts count (see `curation_escalations` below),
-  and `CoberturaTable` (see "Cobertura por corrida" below).
+  and `CoberturaTable` (see "Cobertura por corrida" below). The
+  pending-curation-conflicts count that used to sit here was removed
+  2026-09-07 along with the escalation flow itself.
 - **`/admin/costos`** — Anthropic + Apify cost history, `TotalCostChart`/
   `CostHistoryChart`/`CostTable`, same hover-sync `ReferenceLine` pattern
   as `/admin/eventos` (hover-only here, no current-period default — see
@@ -203,7 +204,7 @@ entrypoint (`event_discovery`/`headless`/`instagram`/`google_alerts`)
 already computed a rich per-run summary object every run
 (`apps/curator/src/lib/notify.ts`'s `RunSummary` and its 3 siblings,
 including the real per-candidate `outcome` —
-`inserted`/`replaced`/`duplicate_skipped`/`escalated`/`expired`/
+`inserted`/`replaced`/`duplicate_skipped`/`axis_blocked`/`expired`/
 `insert_failed`, distinct from Haiku's own approved/rejected verdict) —
 it just fed a summary email whose Resend half was never actually
 configured in production (`RESEND_API_KEY` reads as unset in every real
@@ -217,19 +218,29 @@ uses. Surfaced in `/admin/fuentes` as `CoberturaTable`, last 90 days,
 most recent first — the first place this data has ever been visible
 outside ephemeral GitHub Actions logs.
 
-**Pending curation-conflict count** — `curation_escalations`
-(see "Cross-source curation conflict escalation" in
-[region-discovery.md](region-discovery.md)) rows with `resolved_at is
-null` are counted (`pendingEscalationsCount` in the Edge Function
-payload) and shown as a plain line in `/admin/fuentes` when non-zero — no
-detail view yet, just visibility. Confirmed 2026-08-17: the escalation
-DETECTION and resolution machinery (`findConflictingApprovedEvent`/
-`findConflictingRejectedCandidate`, the `curation-escalation-decide` Edge
-Function) is fully built and working, but `sendEscalationEmail` shares
-the same `RESEND_API_KEY`-not-set no-op as every other curator email —
-conflicts were accumulating (7 real, unresolved rows found during a
-2026-08-17 audit) with genuinely zero visibility anywhere until this
-count.
+**Cross-source axis safety net** (2026-09-07) — replaced the
+"pending curation-conflict count" that used to be described here, along
+with the whole escalation flow behind it: the
+`curation-escalation-decide` Edge Function, `sendEscalationEmail` and the
+accept/reject tokens are all deleted, and the `curation_escalations`
+table is left orphaned in the schema (kept for its 15 rows of history,
+read and written by nothing). The conflict DETECTION machinery survives
+unchanged — `findConflictingApprovedEvent`/
+`findConflictingRejectedCandidate` in `apps/curator/src/event-discovery/
+run.ts` — but what happens on a hit is now deterministic instead of
+emailing a human: if either side rejected on one of the five axes, the
+event stays out (an approved candidate is blocked; an already-published
+event is soft-removed via the same `removed_at`/`removed_reason` columns
+the admin "Quitar" button writes). Everything else flows through the
+ordinary dedup path.
+
+The rationale, with the full breakdown of the 15 conflicts the old flow
+produced, is in
+[curation-policy.md](curation-policy.md#cross-source-axis-safety-net--replaced-the-escalation-flow-2026-09-07)
+— that's the editorial half of the decision, so it lives with the policy.
+Short version: 15 fired in 5 weeks, 0 were ever resolved, and 14 of them
+weren't editorial disagreements at all but metadata-completeness
+artifacts where a code filter had forced one side to `rejected`.
 
 ## User location detection: región, not comuna
 
