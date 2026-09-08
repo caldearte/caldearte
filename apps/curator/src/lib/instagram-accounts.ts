@@ -2381,6 +2381,26 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
       "publicación individualmente.",
     addedAt: "2026-09-07",
   },
+  {
+    username: "biblioptovaras",
+    note:
+      "Evaluada 2026-09-08 en Chrome (logueado), no vía Apify (Apify " +
+      "sigue bloqueado por el límite mensual hasta ~13-09). Red " +
+      "Bibliotecas Puerto Varas — cuenta verificada, 9140 seguidores, " +
+      "muy activa (1339 publicaciones). Encontrada vía un repost de " +
+      "mapaculturalcl (agregador cultural, no registrado como fuente); " +
+      "confirmada en la cuenta primaria con 2 exposiciones reales " +
+      "concurrentes el mismo día (\"La insistencia de la palabra\", " +
+      "Soledad Johansen, y \"Altar de la nostalgia\", Elena Montiel — " +
+      "ambas agregadas a mano, ver sus propios eventos). Densidad " +
+      "mixta esperada: mayoría programación bibliotecaria normal " +
+      "(cuentacuentos, capacitaciones, charlas de mediación lectora), " +
+      "exposiciones de arte visual real pero no constantes. Sin " +
+      "fixedLocation deliberadamente: la bio lista 2 direcciones reales " +
+      "distintas (Biblioteca Infantil, Klenner 348; Biblioteca Central, " +
+      "Del Salvador 320 3er piso) — Haiku infiere el local por post.",
+    addedAt: "2026-09-08",
+  },
   // El resto de la lista la aporta Daniel — una decisión editorial, igual
   // que cada fuente brillante nueva se evaluó una por una. Confirmar
   // pública y activa antes de agregar cada cuenta.
