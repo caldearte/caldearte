@@ -2401,6 +2401,24 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
       "Del Salvador 320 3er piso) — Haiku infiere el local por post.",
     addedAt: "2026-09-08",
   },
+  {
+    username: "casastudioart.n32",
+    note:
+      "Evaluada 2026-09-08 en Chrome (logueado), no vía Apify (Apify " +
+      "sigue bloqueado por el límite mensual hasta ~13-09). " +
+      "Casastudioart.N32, espacio artista-run de experimentación visual " +
+      "en Villa Yugoslavia, Ñuñoa — pequeña (35 publicaciones, 727 " +
+      "seguidores) pero real: muestra colectiva \"11 días para una " +
+      "trama compartida\" con curatoría de Ricardo Villarroel Corvalán " +
+      "y artistas reconocibles (Máximo Corvalán-Pincheira) — agregada " +
+      "a mano, ver su propio evento. También repostea contenido de " +
+      "colecciones reales (MAC, \"Modulaciones de la imagen " +
+      "fotográfica\"). Ruido esperado: organiza además un \"Jam de " +
+      "Dibujo\" pagado y recurrente (figura humana en vivo, lunes de " +
+      "cada mes) — taller, excluido por formato. fixedLocation.",
+    addedAt: "2026-09-08",
+    fixedLocation: { location: "Ñuñoa", placeName: "Casastudioart.N32" },
+  },
   // El resto de la lista la aporta Daniel — una decisión editorial, igual
   // que cada fuente brillante nueva se evaluó una por una. Confirmar
   // pública y activa antes de agregar cada cuenta.
