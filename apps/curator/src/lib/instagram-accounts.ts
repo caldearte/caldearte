@@ -2419,6 +2419,22 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
     addedAt: "2026-09-08",
     fixedLocation: { location: "Ñuñoa", placeName: "Casastudioart.N32" },
   },
+  {
+    username: "uprintchile",
+    note:
+      "Evaluada 2026-09-08 en Chrome (logueado), no vía Apify (Apify " +
+      "sigue bloqueado por el límite mensual hasta ~13-09). Uprint Fine " +
+      "Art, taller de impresión fineart y galería en Casa Condell, " +
+      "Barrio Italia — verificada, 13,3 mil seguidores, highlight " +
+      "\"Exposiciones\" dedicado. Encontrada vía el anuncio de una " +
+      "artista participante en \"Artemar\" (agregada a mano, ver su " +
+      "propio evento). Densidad real alta: además de Artemar, " +
+      "\"Laboratorio Mirona 02\" (cómic e ilustración) y una muestra " +
+      "inmersiva/interactiva vistas en el mismo muestreo del grid. " +
+      "fixedLocation.",
+    addedAt: "2026-09-08",
+    fixedLocation: { location: "Providencia", placeName: "Casa Condell (Uprint Fine Art)" },
+  },
   // El resto de la lista la aporta Daniel — una decisión editorial, igual
   // que cada fuente brillante nueva se evaluó una por una. Confirmar
   // pública y activa antes de agregar cada cuenta.
