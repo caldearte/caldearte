@@ -2435,6 +2435,21 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
     addedAt: "2026-09-08",
     fixedLocation: { location: "Providencia", placeName: "Casa Condell (Uprint Fine Art)" },
   },
+  {
+    username: "cclasombrereria",
+    note:
+      "Evaluada 2026-09-09 en Chrome (logueado), no vía Apify (Apify " +
+      "sigue bloqueado por el límite mensual hasta ~13-09). Centro " +
+      "Cultural La Sombrerería, Fundación José Sordo Galguera, Santiago " +
+      "Centro — 3446 seguidores, activa. Exposición fotográfica real " +
+      "confirmada (\"A la chilena\", Francisco Bermejo — agregada a " +
+      "mano, ver su propio evento). Ruido esperado: también organiza " +
+      "visitas guiadas de exposiciones ya abiertas y talleres " +
+      "(\"Taller de Cueca Brava\") — excluidos por formato/tipo. " +
+      "fixedLocation.",
+    addedAt: "2026-09-09",
+    fixedLocation: { location: "Santiago", placeName: "Centro Cultural La Sombrerería" },
+  },
   // El resto de la lista la aporta Daniel — una decisión editorial, igual
   // que cada fuente brillante nueva se evaluó una por una. Confirmar
   // pública y activa antes de agregar cada cuenta.
