@@ -76,9 +76,9 @@ test("cityById prefers real observed cityNames, falls back to a seed name, then 
 
 test("citiesWithEvents drops a city with zero inauguraciones and zero exposActuales — 'muestra lo que hay'", () => {
   const counts: Record<string, CityCounts> = {
-    santiago: { inauguraciones: 1, exposActuales: 0 },
-    valparaiso: { inauguraciones: 0, exposActuales: 0 },
-    concepcion: { inauguraciones: 0, exposActuales: 3 },
+    santiago: { inauguraciones: 1, visitasGuiadas: 0, exposActuales: 0 },
+    valparaiso: { inauguraciones: 0, visitasGuiadas: 0, exposActuales: 0 },
+    concepcion: { inauguraciones: 0, visitasGuiadas: 0, exposActuales: 3 },
   };
   const result = citiesWithEvents(counts, {}).map((c) => c.id);
   assert.ok(result.includes("santiago"));
@@ -87,7 +87,7 @@ test("citiesWithEvents drops a city with zero inauguraciones and zero exposActua
 });
 
 test("citiesWithEvents is built entirely from cityCounts' own keys — any comuna with real events is offered, not just a fixed list", () => {
-  const counts: Record<string, CityCounts> = { "las-condes": { inauguraciones: 0, exposActuales: 2 } };
+  const counts: Record<string, CityCounts> = { "las-condes": { inauguraciones: 0, visitasGuiadas: 0, exposActuales: 2 } };
   const result = citiesWithEvents(counts, { "las-condes": "Las Condes" });
   assert.equal(result.length, 1);
   assert.deepEqual(result[0], { id: "las-condes", name: "Las Condes" });
@@ -99,14 +99,14 @@ test("citiesWithEvents: an empty counts map offers nothing", () => {
 });
 
 test("citiesWithEvents: excludeCityId always drops that city, even if it has events (the carousel's 'don't show the city you're already viewing' case)", () => {
-  const counts: Record<string, CityCounts> = { santiago: { inauguraciones: 2, exposActuales: 0 } };
+  const counts: Record<string, CityCounts> = { santiago: { inauguraciones: 2, visitasGuiadas: 0, exposActuales: 0 } };
   const result = citiesWithEvents(counts, {}, { excludeCityId: "santiago" });
   assert.ok(!result.some((c) => c.id === "santiago"));
 });
 
 test("resolveDefaultCityId: own comuna wins when it's real and has events today", () => {
   const metaByCityId = buildRegionMetaByCityId([regionMeta({ name: "Las Condes" })]);
-  const cityCounts: Record<string, CityCounts> = { "las-condes": { inauguraciones: 1, exposActuales: 0 } };
+  const cityCounts: Record<string, CityCounts> = { "las-condes": { inauguraciones: 1, visitasGuiadas: 0, exposActuales: 0 } };
   assert.equal(resolveDefaultCityId("Las Condes", "CL", metaByCityId, cityCounts), "las-condes");
 });
 
@@ -115,7 +115,7 @@ test("resolveDefaultCityId: own comuna has no events today -> falls back to a co
     regionMeta({ name: "Las Condes", adminRegionName: "Región Metropolitana de Santiago" }),
     regionMeta({ name: "Santiago", adminRegionName: "Región Metropolitana de Santiago" }),
   ]);
-  const cityCounts: Record<string, CityCounts> = { santiago: { inauguraciones: 0, exposActuales: 2 } };
+  const cityCounts: Record<string, CityCounts> = { santiago: { inauguraciones: 0, visitasGuiadas: 0, exposActuales: 2 } };
   assert.equal(resolveDefaultCityId("Las Condes", "CL", metaByCityId, cityCounts), "santiago");
 });
 
@@ -125,7 +125,7 @@ test("resolveDefaultCityId: unrecognized geo city string falls back to Santiago"
 
 test("resolveDefaultCityId: country outside Chile falls back to Santiago immediately, without inspecting the city at all", () => {
   const metaByCityId = buildRegionMetaByCityId([regionMeta({ name: "Santiago" })]);
-  const cityCounts: Record<string, CityCounts> = { santiago: { inauguraciones: 1, exposActuales: 0 } };
+  const cityCounts: Record<string, CityCounts> = { santiago: { inauguraciones: 1, visitasGuiadas: 0, exposActuales: 0 } };
   // Even though "Santiago" would otherwise match with events, a non-CL
   // country short-circuits before any city matching happens.
   assert.equal(resolveDefaultCityId("Santiago", "AR", metaByCityId, cityCounts), DEFAULT_CITY_ID);
@@ -246,7 +246,7 @@ function city(name: string): { id: string; name: string } {
 }
 
 function countsFor(cities: { id: string; name: string }[], eventsEach = 1): Record<string, CityCounts> {
-  return Object.fromEntries(cities.map((c) => [c.id, { inauguraciones: eventsEach, exposActuales: 0 }]));
+  return Object.fromEntries(cities.map((c) => [c.id, { inauguraciones: eventsEach, visitasGuiadas: 0, exposActuales: 0 }]));
 }
 
 test("narrowCitiesByRegion keeps only the current comuna's own admin región when that alone already reaches the minimum", () => {
@@ -297,7 +297,7 @@ test("narrowCitiesByRegion trims down to the busiest comunas (by total events) w
   // "Vitacura" (0, the clear loser) — Vitacura is the one that must be
   // dropped to go from 11 down to the max of 10.
   const counts: Record<string, CityCounts> = Object.fromEntries(
-    cities.map((c) => [c.id, { inauguraciones: c.name === "Recoleta" ? 99 : c.name === "Vitacura" ? 0 : 1, exposActuales: 0 }]),
+    cities.map((c) => [c.id, { inauguraciones: c.name === "Recoleta" ? 99 : c.name === "Vitacura" ? 0 : 1, visitasGuiadas: 0, exposActuales: 0 }]),
   );
   const result = narrowCitiesByRegion(cities, meta, "santiago", counts, { min: 6, max: 10 });
   const expectedNames = names.filter((n) => n !== "Vitacura").sort((a, b) => a.localeCompare(b, "es"));

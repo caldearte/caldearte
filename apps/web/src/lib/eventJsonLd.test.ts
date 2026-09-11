@@ -20,6 +20,7 @@ function event(overrides: Partial<EventRecord> = {}): EventRecord {
     sensitivityTags: [],
     sourceUrl: null,
     openingTimeConfirmed: true,
+    eventType: "exposicion",
     ...overrides,
   };
 }
