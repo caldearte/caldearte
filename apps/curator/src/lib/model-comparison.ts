@@ -1,5 +1,5 @@
 // Shadow-mode model comparison (2026-09-04, Daniel's request): runs a
-// second, free OpenRouter model alongside the real Anthropic curation call
+// second OpenRouter model alongside the real Anthropic curation call
 // on the exact same input, purely to measure how often it would agree with
 // Haiku — the real call's result is the only one ever inserted into
 // `events`. Silently disabled (no-op) unless OPENROUTER_API_KEY is set, so
@@ -11,10 +11,19 @@
 // Actions run log. Pilot-phase table — if the experiment concludes the
 // shadow model isn't worth adopting, both this file and the table can
 // simply be dropped.
+//
+// Model note (2026-09-10): started on the free `minimax/minimax-m3:free`
+// slug; OpenRouter retired that free tier on ~2026-09-09 ("This model is
+// unavailable for free... use minimax/minimax-m3 instead"), which silently
+// turned every subsequent shadow call into a logged "disagree" (the
+// error path hardcodes agree:false) — not a real drop in model
+// agreement. Daniel approved moving to the paid slug (~$0.30/$1.20 per
+// MTok in/out, cheaper than Haiku's own $1/$5) given the pilot's very low
+// call volume (once per bright_source run, not per event).
 import type { CurateResult, EventCandidate, MessagesClient } from "../event-discovery/discover.js";
 import { getSupabaseClient } from "./supabase-client.js";
 
-const DEFAULT_SHADOW_MODEL = "minimax/minimax-m3:free";
+const DEFAULT_SHADOW_MODEL = "minimax/minimax-m3";
 
 export type ShadowPipeline = "bright_source" | "instagram";
 
