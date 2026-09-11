@@ -2450,6 +2450,38 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
     addedAt: "2026-09-09",
     fixedLocation: { location: "Santiago", placeName: "Centro Cultural La Sombrerería" },
   },
+  {
+    username: "galeriabarriosbajos",
+    note:
+      "Evaluada 2026-09-11 en Chrome (logueado), no vía Apify (Apify " +
+      "sigue bloqueado por el límite mensual hasta ~13-09). Galería " +
+      "Barrios Bajos, Valdivia — \"plataforma independiente de arte " +
+      "contemporáneo y articulación indisciplinar\", Pérez Rosales 986 " +
+      "— 9539 seguidores, activa (690 publicaciones). Ya mencionada de " +
+      "pasada en la nota de museosaustral (mismo ecosistema regional, " +
+      "\"Los Ríos Territorio Visual\") pero nunca agregada por sí sola. " +
+      "Encontrada vía el anuncio real del 1er Festival de Arte " +
+      "Contemporáneo Los Ríos Territorio Visual — agregado a mano, ver " +
+      "su propio evento. fixedLocation.",
+    addedAt: "2026-09-11",
+    fixedLocation: { location: "Valdivia", placeName: "Galería Barrios Bajos" },
+  },
+  {
+    username: "replica.galeria",
+    note:
+      "Evaluada 2026-09-11 en Chrome (logueado), no vía Apify (Apify " +
+      "sigue bloqueado por el límite mensual hasta ~13-09). Galería " +
+      "Réplica, Instituto de Artes Visuales de la Universidad Austral " +
+      "de Chile, Valdivia — 6511 seguidores, muy activa (1322 " +
+      "publicaciones), highlights dedicados (\"Exposiciones\", " +
+      "\"Actividades\"). Comparte ecosistema regional con museosaustral " +
+      "y galeriabarriosbajos (\"Los Ríos Territorio Visual\") pero es " +
+      "una galería con sede propia distinta. Encontrada vía \"Frágil " +
+      "como un volantín\" (co-organizada con museosaustral — agregada a " +
+      "mano, ver su propio evento). fixedLocation.",
+    addedAt: "2026-09-11",
+    fixedLocation: { location: "Valdivia", placeName: "Galería Réplica UACh" },
+  },
   // El resto de la lista la aporta Daniel — una decisión editorial, igual
   // que cada fuente brillante nueva se evaluó una por una. Confirmar
   // pública y activa antes de agregar cada cuenta.
