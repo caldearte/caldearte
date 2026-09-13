@@ -13,7 +13,15 @@ comuna-search paused since 2026-08-23, see
 [region-discovery.md](region-discovery.md)) is implemented and in production
 (`apps/curator/src/event-discovery/`) — it's the only event-sourcing
 pipeline. It writes every event's location as freeform text; there is no
-venue entity. The earlier venue-based design (a separate "Event Crawler"
+venue entity. Haiku is the only curation model whose verdict is ever
+inserted; a cheaper model (MiniMax M3 via OpenRouter) runs in shadow mode
+on the same input for comparison only — see region-discovery.md's
+shadow-pilot entries. As of 2026-09-13 its judgment looks at least as
+strict as Haiku's on the sensitivity axes (it caught a Falun Gong
+exhibition Haiku approved twice) but its reliability had to be fixed
+first (reasoning budget, smaller chunks); next checkpoint is the Wed
+2026-09-16 Instagram run, and the promote-or-drop decision stays
+Daniel's, revisited ~mid-October 2026. The earlier venue-based design (a separate "Event Crawler"
 that revisited known venues, plus the `venues` table itself) has been
 retired — it was left disconnected after the pivot (nothing fed it new
 venues) and has been fully removed from the code and schema, not just

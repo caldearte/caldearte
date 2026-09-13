@@ -3550,9 +3550,15 @@ per run) — the value is precision, not cost.
 **Evaluation playbook for adding a new account** (used ~40 times
 2026-08-14, see the entry below): fetch 5-6 real recent posts (no date
 filter) via a throwaway script, check (a) how many are genuinely the
-account's own (`ownerUsername` match — tagged/reposted content from OTHER
-accounts is expected noise, already filtered by `instagram-discovery/
-run.ts`), (b) content-type mix (clean exhibition-opening announcements
+account's own — since 2026-09-13 a post is attributed to the *requested*
+profile (the actor's `inputUrl`) first and to `ownerUsername` only as a
+fallback, so a collab post co-authored with another account counts as
+the registered account's own (it chose to publish it on its feed; the
+old owner-only match was silently dropping 30% of a real run, see the
+shadow-pilot entry for 2026-09-13). The one thing this can no longer
+catch on its own is a mistyped/dead handle whose Apify fallback content
+now gets attributed to the requested profile instead of skipped — so
+this evaluation step is where a wrong handle must be caught, (b) content-type mix (clean exhibition-opening announcements
 vs. workshops/talks/convocatorias/institutional-news/recaps — all
 correctly rejected by Haiku's existing scope judgment already, proven
 repeatedly), (c) date completeness, (d) single-fixed-venue vs. touring/
@@ -3819,7 +3825,16 @@ unrelated content (once, traceable to hashtag-adjacent fallback content)
 rather than erroring cleanly, for what's most likely a wrong/mistyped
 handle or a private/deleted account. Worth a real fix if this recurs:
 today it was caught only by manually noticing the returned `ownerUsername`
-never matched the requested account.
+never matched the requested account. **Sharper since 2026-09-13:** with
+attribution by `inputUrl` (collab-post fix, PR #518), that fallback
+content would now be attributed to the requested account and reach Haiku
+under its `defaultLocation` rather than being skipped as "unexpected
+owner" — Haiku rejects unrelated content anyway, but a real event from
+elsewhere could land with the wrong comuna. If it recurs, the fix is to
+require the requested username to appear in the item's
+`coauthorProducers` (a documented actor field) before trusting
+`inputUrl` over the owner; not done yet because no captured sample
+confirms that field is populated at the `basicData` detail level.
 
 **Verified same-day in production** (`workflow_dispatch` run of
 `instagram-bright-sources.yml`, real cost $0.022): 3 of the 10 new
