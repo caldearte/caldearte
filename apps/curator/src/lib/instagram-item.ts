@@ -151,3 +151,46 @@ export function toBrightSourceItem(post: ApifyInstagramPost, account: InstagramA
     sourceAccount: account.username,
   };
 }
+
+// Which registered account a fetched post belongs to. The requested
+// profile (post.inputUsername, from the actor's own inputUrl) wins over
+// the post's author: a collaborative post lives on every co-author's
+// profile, and what matters for curation is that a REGISTERED account
+// chose to publish it on its own feed — not who Instagram lists as the
+// primary author (see ApifyInstagramPost.inputUsername for the real
+// 30%-of-a-run loss this caused). ownerUsername stays as the fallback so
+// an item without a parseable inputUrl still resolves exactly as before.
+// Returns null when neither matches a registered account, which the
+// caller logs and skips as it always did.
+export function resolveAccountForPost(
+  post: Pick<ApifyInstagramPost, "ownerUsername" | "inputUsername">,
+  accountByUsername: ReadonlyMap<string, InstagramAccountConfig>,
+): InstagramAccountConfig | null {
+  if (post.inputUsername) {
+    const byInput = accountByUsername.get(post.inputUsername);
+    if (byInput) return byInput;
+  }
+  return accountByUsername.get(post.ownerUsername) ?? accountByUsername.get(post.ownerUsername.toLowerCase()) ?? null;
+}
+
+// A collab post between TWO registered accounts is fetched once per
+// account, so the same post URL reaches curation twice. Haiku then gives
+// the two copies slightly different titles, and downstream
+// nullifyAggregatorSourceUrls (discover.ts) reads "2+ approved candidates,
+// same URL, different titles" as an aggregator-page collision and nulls
+// the URL — after which enforceSourceUrlInvariant rejects every copy, and
+// because rejected_candidates is keyed by source_url the loss is never
+// recorded either, so the exact same post is re-fetched and re-lost on
+// every following run. Real case, 2026-09-13: the Los Ríos Territorio
+// Visual festival, co-posted by galeriabarriosbajos and replica.galeria
+// (both registered), rejected 3 times with "sin sourceUrl viola el
+// invariante". First occurrence wins (registry order) — the account only
+// matters for defaultLocation, and co-authors of one post share a venue.
+export function dedupeItemsBySourceUrl<T extends { sourceUrl: string }>(items: T[]): T[] {
+  const seen = new Set<string>();
+  return items.filter((item) => {
+    if (seen.has(item.sourceUrl)) return false;
+    seen.add(item.sourceUrl);
+    return true;
+  });
+}

@@ -32,6 +32,34 @@ export interface ApifyInstagramPost {
   timestamp: string;
   displayUrl: string | null;
   ownerUsername: string;
+  // The username whose profile the actor was asked to scrape, parsed from
+  // the item's `inputUrl` (a real output field, confirmed against the
+  // actor's own documented output 2026-09-13). Distinct from
+  // ownerUsername on purpose: a collaborative post ("colab", 2+ accounts
+  // as co-authors) shows up on every co-author's profile, but the actor
+  // reports only the primary author as ownerUsername — so a cultural
+  // center's own event, co-posted with its municipality, came back as
+  // owned by the municipality. Real production loss, 2026-09-13: 196 of
+  // 645 fetched posts (30%) were dropped as "unexpected owner" for
+  // exactly this reason — paid Apify results thrown away, and the
+  // registered account's own announcements never curated. null when the
+  // item carries no parseable inputUrl (older fixtures, malformed rows).
+  inputUsername: string | null;
+}
+
+// "https://www.instagram.com/casaculturalyanulaque/" → "casaculturalyanulaque".
+// Lowercased so it matches the registry the same way run.ts already
+// matches ownerUsername (case-insensitive second attempt); anything that
+// isn't a plain profile URL (a /p/ post URL, an empty string) yields null
+// rather than a bogus username.
+export function usernameFromProfileUrl(inputUrl: unknown): string | null {
+  if (typeof inputUrl !== "string") return null;
+  const match = /^https?:\/\/(?:www\.)?instagram\.com\/([A-Za-z0-9._]+)\/?(?:[?#].*)?$/.exec(inputUrl.trim());
+  if (!match) return null;
+  const username = match[1].toLowerCase();
+  // Reserved path segments that are never a profile.
+  if (["p", "reel", "reels", "explore", "stories", "accounts"].includes(username)) return null;
+  return username;
 }
 
 const RESULTS_LIMIT_PER_ACCOUNT = 5;
@@ -48,6 +76,7 @@ export function parseApifyInstagramPosts(items: unknown[]): ApifyInstagramPost[]
       timestamp: typeof item.timestamp === "string" ? item.timestamp : "",
       displayUrl: typeof item.displayUrl === "string" ? item.displayUrl : null,
       ownerUsername: typeof item.ownerUsername === "string" ? item.ownerUsername : "",
+      inputUsername: usernameFromProfileUrl(item.inputUrl),
     }))
     .filter((post) => post.url !== "");
 }

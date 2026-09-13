@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { parseApifyInstagramPosts } from "./apify-instagram.js";
+import { parseApifyInstagramPosts, usernameFromProfileUrl } from "./apify-instagram.js";
 
 // Best-guess shape for apify/instagram-post-scraper's basicData output —
 // see apify-instagram.ts's own doc comment: not confirmed field-by-field
@@ -42,4 +42,27 @@ test("parseApifyInstagramPosts drops a non-object entry instead of throwing", ()
 
 test("parseApifyInstagramPosts handles an empty dataset", () => {
   assert.deepEqual(parseApifyInstagramPosts([]), []);
+});
+
+// inputUrl is a real documented output field of apify/instagram-post-scraper
+// (the profile the actor was asked to scrape) — checked 2026-09-13 after
+// 196/645 posts in one run were dropped as "unexpected owner" because
+// collab posts report the co-author as ownerUsername.
+test("parseApifyInstagramPosts parses inputUsername from the item's inputUrl", () => {
+  const [post] = parseApifyInstagramPosts([{ ...SAMPLE_ITEM, inputUrl: "https://www.instagram.com/CasaCulturalYanulaque/" }]);
+  assert.equal(post.inputUsername, "casaculturalyanulaque");
+});
+
+test("parseApifyInstagramPosts leaves inputUsername null without a usable inputUrl", () => {
+  assert.equal(parseApifyInstagramPosts([SAMPLE_ITEM])[0].inputUsername, null);
+  assert.equal(parseApifyInstagramPosts([{ ...SAMPLE_ITEM, inputUrl: "https://www.instagram.com/p/ABC123/" }])[0].inputUsername, null);
+  assert.equal(parseApifyInstagramPosts([{ ...SAMPLE_ITEM, inputUrl: 42 }])[0].inputUsername, null);
+});
+
+test("usernameFromProfileUrl handles the shapes the actor actually emits", () => {
+  assert.equal(usernameFromProfileUrl("https://www.instagram.com/galeriabarriosbajos/"), "galeriabarriosbajos");
+  assert.equal(usernameFromProfileUrl("https://instagram.com/replica.galeria"), "replica.galeria");
+  assert.equal(usernameFromProfileUrl("https://www.instagram.com/mac_uchile/?hl=es"), "mac_uchile");
+  assert.equal(usernameFromProfileUrl("https://www.instagram.com/reel/XYZ/"), null);
+  assert.equal(usernameFromProfileUrl(""), null);
 });
