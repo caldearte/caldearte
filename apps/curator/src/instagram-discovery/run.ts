@@ -25,7 +25,7 @@ import { recordUsage, getConfigNumber, getCurrentMonthSpend } from "../lib/usage
 import { estimateCostUsd } from "../lib/pricing.js";
 import { enrichCandidates, type FetchLike as PageFetchLike } from "../lib/page-fetch.js";
 import { fetchInstagramPosts } from "../lib/apify-instagram.js";
-import { toBrightSourceItem, isCaptionWorthCurating } from "../lib/instagram-item.js";
+import { toBrightSourceItem, isCaptionWorthCurating, resolveAccountForPost, dedupeItemsBySourceUrl } from "../lib/instagram-item.js";
 import { INSTAGRAM_ACCOUNTS, type InstagramAccountConfig } from "../lib/instagram-accounts.js";
 import {
   loadInstagramFetchState,
@@ -108,17 +108,31 @@ export async function run(deps: InstagramRunDeps = {}): Promise<void> {
   // returns nothing for its username rather than throwing — nothing
   // special to handle here beyond just not finding a matching account for
   // an unexpected ownerUsername.
-  const items: BrightSourceItem[] = [];
+  // Attribution by the requested profile first, author second — see
+  // resolveAccountForPost. Collab posts (author ≠ requested account) are
+  // counted, not logged one by one: 196 of them in a single run once.
+  const rawItems: BrightSourceItem[] = [];
   const accountForItem = new Map<BrightSourceItem, InstagramAccountConfig>();
+  let collabPosts = 0;
   for (const post of posts) {
-    const account = accountByUsername.get(post.ownerUsername) ?? accountByUsername.get(post.ownerUsername.toLowerCase());
+    const account = resolveAccountForPost(post, accountByUsername);
     if (!account) {
-      console.warn(`[instagram-discovery] post from unexpected owner "${post.ownerUsername}" — skipping`);
+      console.warn(`[instagram-discovery] post from unexpected owner "${post.ownerUsername}" (requested: ${post.inputUsername ?? "?"}) — skipping`);
       continue;
     }
+    if (post.ownerUsername.toLowerCase() !== account.username.toLowerCase()) collabPosts += 1;
     const item = toBrightSourceItem(post, account);
-    items.push(item);
+    rawItems.push(item);
     accountForItem.set(item, account);
+  }
+  if (collabPosts > 0) {
+    console.log(`[instagram-discovery] ${collabPosts}/${rawItems.length} post(s) attributed to the requested account despite a different author (collab/co-authored posts)`);
+  }
+  // Same post URL twice = a collab between two registered accounts, see
+  // dedupeItemsBySourceUrl. Must happen before curation, not after.
+  const items = dedupeItemsBySourceUrl(rawItems);
+  if (items.length < rawItems.length) {
+    console.log(`[instagram-discovery] ${rawItems.length - items.length} duplicate post URL(s) collapsed before curation (collab posts between registered accounts)`);
   }
 
   // Pre-curation dedup, same mechanism as event-discovery/run.ts's

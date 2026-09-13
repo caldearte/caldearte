@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { toBrightSourceItem, isCaptionWorthCurating } from "./instagram-item.js";
+import { toBrightSourceItem, isCaptionWorthCurating, resolveAccountForPost, dedupeItemsBySourceUrl } from "./instagram-item.js";
 import type { ApifyInstagramPost } from "./apify-instagram.js";
 import type { InstagramAccountConfig } from "./instagram-accounts.js";
 
@@ -16,6 +16,7 @@ const POST: ApifyInstagramPost = {
   timestamp: "2026-08-07T15:00:00.000Z",
   displayUrl: "https://scontent.cdninstagram.com/v/abc.jpg",
   ownerUsername: "casaculturalyanulaque",
+  inputUsername: null,
 };
 
 test("toBrightSourceItem derives the title from the caption's first line when there's no quoted title", () => {
@@ -175,4 +176,34 @@ test("isCaptionWorthCurating does not false-positive on 'taller' inside an other
     isCaptionWorthCurating("Inauguración en Galería Taller Wall este sábado, exposición colectiva de artes visuales, entrada liberada"),
     true,
   );
+});
+
+// Real production loss, 2026-09-13: 196/645 fetched posts dropped as
+// "unexpected owner" — all collab posts where the registered cultural
+// center co-posted with its municipality and Apify reported the
+// municipality as the author.
+test("resolveAccountForPost attributes a collab post to the requested (registered) profile, not the co-author listed as owner", () => {
+  const registry = new Map([[ACCOUNT.username, ACCOUNT]]);
+  const collab = { ownerUsername: "municipalidadchiguayante", inputUsername: "casaculturalyanulaque" };
+  assert.equal(resolveAccountForPost(collab, registry), ACCOUNT);
+});
+
+test("resolveAccountForPost still falls back to ownerUsername (case-insensitively) when there's no inputUrl", () => {
+  const registry = new Map([[ACCOUNT.username, ACCOUNT]]);
+  assert.equal(resolveAccountForPost({ ownerUsername: "CasaCulturalYanulaque", inputUsername: null }, registry), ACCOUNT);
+  assert.equal(resolveAccountForPost({ ownerUsername: "someone_else", inputUsername: null }, registry), null);
+  // An inputUrl that isn't a registered account doesn't block the owner fallback either.
+  assert.equal(resolveAccountForPost({ ownerUsername: "casaculturalyanulaque", inputUsername: "unregistered" }, registry), ACCOUNT);
+});
+
+// Real case, 2026-09-13: Los Ríos Territorio Visual, co-posted by two
+// registered accounts, fetched once per account → same URL twice →
+// nullifyAggregatorSourceUrls nulled the URL → rejected 3 times as
+// "sin sourceUrl viola el invariante", never recorded, re-fetched every run.
+test("dedupeItemsBySourceUrl keeps the first copy of a post fetched under two registered accounts", () => {
+  const a = toBrightSourceItem(POST, ACCOUNT);
+  const b = toBrightSourceItem({ ...POST, ownerUsername: "replica.galeria" }, { ...ACCOUNT, username: "replica.galeria" });
+  const other = toBrightSourceItem({ ...POST, url: "https://www.instagram.com/p/OTHER/" }, ACCOUNT);
+  const deduped = dedupeItemsBySourceUrl([a, b, other]);
+  assert.deepEqual(deduped, [a, other]);
 });
