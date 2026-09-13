@@ -4033,6 +4033,77 @@ Next data points: the bright-source cron runs Sunday and Wednesday only
 comparisons; the reasoning columns start applying from 2026-09-09
 onward.
 
+### First Instagram-batch comparison, and the shadow model's real failure mode (2026-09-13)
+
+The Sunday 2026-09-13 Instagram cron was the first run after Apify's
+monthly block lifted (a 2-week catch-up: 645 posts across 173 accounts,
+439 curatable, 22 chunks), and the first time the shadow model saw the
+Instagram pipeline at all — the 86% agreement quoted above was 100%
+bright_source, which this batch replaces as the real test.
+
+**Reliability, not judgment, is what disqualifies MiniMax as primary
+today.** 8 of 22 shadow chunks came back unparseable — 5 with no text at
+all, 3 with the JSON cut off mid-string — so only 280 of 439 posts got a
+shadow verdict. OpenRouter's real bill for the batch was **$0.45** (Daniel
+checked; Haiku's logged cost for the same batch was $0.83), which at
+$1.20/MTok output works out to ~14k output tokens per chunk, thinking
+included — i.e. the reasoning model was exhausting the real call's
+`max_tokens: 16000` on its own thinking. Haiku's JSON for a 20-post
+chunk is ~5k tokens; MiniMax's, with its ~1.7x longer reasoning field,
+~8k. Per useful item MiniMax was therefore only ~1.2x cheaper as-is,
+not the 2x the per-call price suggests. It also took 37 minutes for its
+pass, run serially after Haiku's 17.
+
+**Judgment, on the 247 items both models saw: ~93% agreement, and every
+real disagreement had MiniMax as the stricter side** — never more
+permissive on a sensitivity axis, which was the open question from the
+09-10 decision. Four of those it got right by the policy and Haiku
+didn't: "El arte de Zhen Shan Ren" (a Falun Gong exhibition, religion
+axis — Haiku had approved it twice, and it was live on the site since
+2026-08-29), "Día del Circo Chileno" (a conventional circus show,
+approved by Haiku as "el circo como arte visual/performance genuino" —
+the 5th instance of the theater-scope-creep reframing pattern), a past
+intervention reported as a recap ("No olvidar"), and a past guided visit.
+Daniel removed the three that were live (admin-style `removed_at`).
+Arguable: SAFA's festival countdown (Haiku approved the festival as a
+whole; MiniMax wanted a specific exhibition) — left in place. MiniMax's
+date extraction was weaker in 2 cases (took "sábado 12 y domingo 13,
+16-20h" as not-a-range and lost the event to `enforceDateCompleteness`).
+It also produced zero `additionalEvents` where Haiku produced 13.
+
+**What shipped for the shadow** (`model-comparison.ts`): the shadow
+request now carries an explicit thinking budget
+(`SHADOW_REASONING_BUDGET_TOKENS`, default 4000; 0 disables reasoning),
+sent as Anthropic-shaped `thinking` on OpenRouter's `/messages` endpoint
+which maps it onto its unified `reasoning` parameter, and `max_tokens`
+raised by that same budget so the JSON keeps the full ceiling the real
+call was designed around. The shadow call also now starts *before* the
+real call is awaited and runs alongside it (`startShadowCuration`) — the
+pilot no longer adds its own wall-clock time on top of Haiku's.
+
+**What shipped for both models** (`discover.ts`): `CURATE_CHUNK_SIZE`
+20 → 10 and chunks run in waves of `CURATE_CONCURRENCY = 4`. Output
+tokens scale with the chunk (the input side is a cached system prompt,
+~$0.01 per run to repeat it twice as often), so halving the chunk halves
+both the truncation risk and the blast radius of one failed chunk; same
+size for both models keeps the comparison honest. Whether a smaller
+chunk changes *judgment* is deliberately not assumed — the failures
+above were policy decisions on individual posts, not attention dilution
+— and is something `shadow_curation_comparisons` can now measure across
+the next few runs.
+
+**Same run, real pipeline bugs found alongside** (fixed in their own
+PRs #518 and #519): 196/645 fetched posts (30%) dropped as
+"unexpected owner" — all collab posts where the registered account
+co-posted with its municipality and Apify reported the co-author as
+`ownerUsername` (now attributed by the actor's `inputUrl`); a collab
+between two registered accounts fetched once per account → same URL
+twice → `nullifyAggregatorSourceUrls` nulled it → rejected every run and
+never persisted (now deduped by URL before curation); and one Haiku
+chunk lost to "expected 20 row(s), got 21" (parser now drops an
+out-of-range extra row; every parse failure logs `stop_reason`, block
+types and `output_tokens`).
+
 ## Stale pre-fix titles found and manually corrected (2026-09-06)
 
 While testing the flyer redesign (see roadmap.md's own entry) against

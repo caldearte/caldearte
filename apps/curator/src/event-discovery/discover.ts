@@ -1385,7 +1385,24 @@ export interface BrightSourceCurateOpts {
 // future run too. Chunking bounds each individual Haiku call to a size
 // that reliably finishes inside max_tokens, so a batch this large now
 // costs several calls instead of failing outright.
-const CURATE_CHUNK_SIZE = 20;
+//
+// 20 → 10 (2026-09-13): output tokens scale with the chunk, not the
+// input — a 20-post chunk is ~5k tokens of JSON from Haiku and ~8k from
+// the more verbose shadow model, which on the 2026-09-13 Instagram run
+// (22 chunks) hit the 16k ceiling on 8 shadow chunks and lost 1 Haiku
+// chunk to a miscounted row. Halving the chunk halves the output per
+// call and the blast radius of any one failure, and the input side is
+// nearly free: the ~4.8k-token system prompt repeats once more per 10
+// posts, but it's a cached read for Haiku ($0.10/MTok, ~$0.01 per run).
+// Same size for the real and the shadow call, so the comparison stays
+// apples to apples.
+const CURATE_CHUNK_SIZE = 10;
+// Chunks are independent (each one covers its own index range), so they
+// run in waves of this many concurrent calls — same slice-and-Promise.all
+// idiom as page-fetch.ts's ENRICHMENT_CONCURRENCY. Sequential took ~17
+// min for 22 Haiku chunks on the 2026-09-13 run (and the shadow model,
+// also sequential, another 37 on top).
+const CURATE_CONCURRENCY = 4;
 
 export async function curateBrightSourceItems(
   client: MessagesClient,
@@ -1423,7 +1440,7 @@ export async function curateBrightSourceItems(
   // more than one distinct event.
   const mergedByIndex: (EventCandidate[] | undefined)[] = new Array(items.length);
 
-  for (let chunkStart = 0; chunkStart < items.length; chunkStart += CURATE_CHUNK_SIZE) {
+  const curateChunk = async (chunkStart: number): Promise<void> => {
     const chunk = items.slice(chunkStart, chunkStart + CURATE_CHUNK_SIZE);
     const block = buildBrightSourceBlock(chunk);
 
@@ -1454,7 +1471,7 @@ export async function curateBrightSourceItems(
       // thrown away over one bad chunk (the exact loss that motivated
       // chunking in the first place).
       console.error(`[event-discovery] curateBrightSourceItems: chunk ${chunkStart}-${chunkStart + chunk.length - 1}: ${message}`);
-      continue;
+      return;
     }
 
     for (const row of rows) {
@@ -1465,6 +1482,12 @@ export async function curateBrightSourceItems(
       }
       mergedByIndex[chunkStart + row.index] = group;
     }
+  };
+
+  const chunkStarts: number[] = [];
+  for (let chunkStart = 0; chunkStart < items.length; chunkStart += CURATE_CHUNK_SIZE) chunkStarts.push(chunkStart);
+  for (let i = 0; i < chunkStarts.length; i += CURATE_CONCURRENCY) {
+    await Promise.all(chunkStarts.slice(i, i + CURATE_CONCURRENCY).map(curateChunk));
   }
 
   // Drop any holes left by a failed chunk, keeping candidates/items
