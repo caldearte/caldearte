@@ -39,6 +39,22 @@ name: Run Instagram Bright Sources
 # week (the same-day comparison this run logs — "N post(s) already seen,
 # skipped before curation" — showed real re-fetched/re-billed waste from
 # that wider-than-needed window).
+#
+# Daily Mon-Sat, 2026-09-13 — the third cadence change, this time with
+# measurements instead of a hunch. Post creation times decoded from every
+# approved event's Instagram shortcode (85 inauguraciones) showed: venues
+# post Mon-Fri (Friday alone 28%), openings cluster Thu-Sat (78%), and the
+# Sun/Wed cadence saw only 74% of inauguraciones BEFORE they happened —
+# mostly Friday posts about Saturday openings, first seen on Sunday. Daily
+# Mon-Sat lifts that to ~93% (Sunday posts are 2%, not worth a 7th run).
+# Cost: Apify bills per post fetched, never per call, and each account's
+# cutoff is its own last fetch, so more runs re-fetch nothing — the real
+# free-tier pressure is the size of the account registry, not the
+# cadence (see instagram-fetch-state.ts's groupAccountsByCutoff for the
+# one genuine re-billing leak, fixed the same day). Paired with
+# ZERO_YIELD_CHECKS_BEFORE_INACTIVE 52 → 156 so the dormancy backstop
+# still means ~6 months at 6 checks/week, and cron-watchdog.yml's
+# max_gap_hours for this workflow 120 → 54 (worst gap Sat → Mon, 48h).
 on:
   workflow_dispatch: {}
   schedule:
@@ -48,7 +64,7 @@ on:
     # headless-bright-sources.yml (07:12), 1h before google-alerts-
     # bright-source.yml (09:22, whose own comment still says "1h after
     # Instagram" — this keeps that true).
-    - cron: "17 8 * * 0,3" # Every Sunday and Wednesday, ~08:17 UTC
+    - cron: "17 8 * * 1-6" # Every Monday through Saturday, ~08:17 UTC
 
 jobs:
   discover-instagram:
