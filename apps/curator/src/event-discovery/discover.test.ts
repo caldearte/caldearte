@@ -8,6 +8,7 @@ import {
   buildQueries,
   currentMonthLabel,
   curateBrightSourceItems,
+  describeUnparseableResponse,
   enforceDateCompleteness,
   fillRunStartFromPublishedDate,
   enforceGroundedQuotes,
@@ -1742,4 +1743,34 @@ test("curateBrightSourceItems keeps a good chunk's real candidates even when ano
 
   assert.equal(candidates.length, 20, "the first chunk's 20 real candidates must survive the second chunk's failure");
   assert.equal(usage.inputTokens, 20, "usage is still recorded for the failed chunk's API call, not just the successful one");
+});
+
+// Real production loss, 2026-09-13 Instagram run: one chunk came back as
+// "expected 20 row(s), got 21" and the parser's strict count check threw
+// the whole chunk away — 20 posts never curated, never persisted, never
+// retried. An extra row with an OUT-OF-RANGE index is noise the parser can
+// drop; a duplicate in-range index or a missing row still fails closed.
+function approvedRow(index: number, title: string) {
+  return { index, status: "approved", title, curationReasoning: "ok", location: "Santiago", runStartDate: "2026-09-01", runEndDate: "2026-09-30" };
+}
+
+test("curateBrightSourceItems drops an extra row with an out-of-range index instead of losing the whole chunk", async () => {
+  const items = [baseBrightItem, { ...baseBrightItem, title: "Otra", sourceUrl: "https://fuente.cl/expo-2" }];
+  const client = stubBrightClient([approvedRow(0, "Uno"), approvedRow(1, "Dos"), approvedRow(2, "Inventado")]);
+  const { candidates } = await curateBrightSourceItems(client, items, "septiembre 2026");
+  assert.deepEqual(candidates.map((c) => c.title), ["Uno", "Dos"]);
+});
+
+test("curateBrightSourceItems still fails the chunk closed on a duplicate in-range index or a missing row", async () => {
+  const items = [baseBrightItem, { ...baseBrightItem, title: "Otra", sourceUrl: "https://fuente.cl/expo-2" }];
+  const dup = await curateBrightSourceItems(stubBrightClient([approvedRow(0, "Uno"), approvedRow(1, "Dos"), approvedRow(1, "Dos bis")]), items, "septiembre 2026");
+  assert.equal(dup.candidates.length, 0);
+  const missing = await curateBrightSourceItems(stubBrightClient([approvedRow(0, "Uno")]), items, "septiembre 2026");
+  assert.equal(missing.candidates.length, 0);
+});
+
+test("describeUnparseableResponse summarises stop_reason, block types and output tokens — the forensics a failed chunk used to lack", () => {
+  const line = describeUnparseableResponse({ content: [{ type: "thinking" }], stop_reason: "max_tokens", usage: { output_tokens: 16000 } });
+  assert.equal(line, "stop_reason=max_tokens blocks=[thinking] output_tokens=16000");
+  assert.equal(describeUnparseableResponse({ content: [], usage: { output_tokens: 0 } }), "stop_reason=? blocks=[none] output_tokens=0");
 });

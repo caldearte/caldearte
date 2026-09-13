@@ -152,6 +152,10 @@ export interface MessagesClient {
   messages: {
     create(params: Record<string, unknown>): Promise<{
       content: Array<{ type: string; text?: string }>;
+      // Optional on purpose — only read for diagnostics when a response
+      // can't be parsed (see describeUnparseableResponse); test doubles
+      // and older stubs don't need to provide it.
+      stop_reason?: string | null;
       usage: {
         input_tokens: number;
         output_tokens: number;
@@ -869,7 +873,7 @@ export async function curate(
   try {
     parsed = parseCandidates(text);
   } catch (err) {
-    console.error(`[event-discovery] curate: ${(err as Error).message}`);
+    console.error(`[event-discovery] curate: ${(err as Error).message} (${describeUnparseableResponse(response)})`);
     return { candidates: [], usage };
   }
 
@@ -1105,6 +1109,23 @@ function normalizeInstagramHandle(value: unknown): string | null {
   return /^[A-Za-z0-9._]{1,30}$/.test(bare) ? bare : null;
 }
 
+// One-line forensic summary attached to every "couldn't parse the
+// model's response" log. Motivated by the 2026-09-13 Instagram run: 8 of
+// 22 shadow-model chunks and 1 Haiku chunk failed to parse, and the only
+// evidence was the last 200 chars of text — for 5 of them literally
+// empty. Whether that's max_tokens exhausted by a reasoning model's
+// thinking (stop_reason max_tokens, content = thinking blocks only), a
+// refusal, or a JSON fence the model forgot, is exactly what stop_reason +
+// block types + output_tokens tell apart, and none of it was logged.
+export function describeUnparseableResponse(response: {
+  content: Array<{ type: string }>;
+  stop_reason?: string | null;
+  usage: { output_tokens: number };
+}): string {
+  const blocks = response.content.map((b) => b.type).join(",") || "none";
+  return `stop_reason=${response.stop_reason ?? "?"} blocks=[${blocks}] output_tokens=${response.usage.output_tokens}`;
+}
+
 function extractFencedJsonBlock(text: string): string {
   const match = text.match(/```json\s*([\s\S]*?)```/);
   if (!match) {
@@ -1145,9 +1166,31 @@ function parseBrightSourceCurationEventFields(r: Partial<BrightSourceCurationEve
 }
 
 function parseBrightSourceCurationRows(text: string, expectedCount: number): BrightSourceCurationRow[] {
-  const raw = JSON.parse(extractFencedJsonBlock(text)) as Partial<BrightSourceCurationRow>[];
-  if (!Array.isArray(raw) || raw.length !== expectedCount) {
-    throw new Error(`expected ${expectedCount} row(s), got ${Array.isArray(raw) ? raw.length : typeof raw}`);
+  const parsed = JSON.parse(extractFencedJsonBlock(text)) as unknown;
+  if (!Array.isArray(parsed)) {
+    throw new Error(`expected ${expectedCount} row(s), got ${typeof parsed}`);
+  }
+  // An EXTRA row whose index points outside the chunk is harmless noise
+  // (the model invented a 21st item, or numbered from 1) and is dropped
+  // with a log line instead of failing the whole chunk — real production
+  // loss, 2026-09-13: "expected 20 row(s), got 21" silently discarded 20
+  // Instagram posts, and since nothing about them was persisted they
+  // weren't even retried. Everything else still fails closed exactly as
+  // before: too FEW rows (an item with no verdict), or two rows claiming
+  // the same in-range index (two verdicts, no way to know which one is
+  // the model's real answer — misaligning them would attach one event's
+  // verdict to another's deterministic fields, see the doc comment on
+  // parseBrightSourceCurationEventFields).
+  const raw = (parsed as Partial<BrightSourceCurationRow>[]).filter((r) => {
+    const inRange = typeof r?.index === "number" && r.index >= 0 && r.index < expectedCount;
+    if (!inRange && parsed.length > expectedCount) {
+      console.warn(`[event-discovery] curation response: dropping extra row with out-of-range index ${JSON.stringify(r?.index)} (expected ${expectedCount})`);
+      return false;
+    }
+    return true;
+  });
+  if (raw.length !== expectedCount) {
+    throw new Error(`expected ${expectedCount} row(s), got ${raw.length}`);
   }
   const seen = new Set<number>();
   return raw.map((r) => {
@@ -1405,13 +1448,12 @@ export async function curateBrightSourceItems(
     try {
       rows = parseBrightSourceCurationRows(text, chunk.length);
     } catch (err) {
+      const message = `${(err as Error).message} (${describeUnparseableResponse(response)})`;
       // Fails closed for just this chunk, not the whole batch — the other
       // chunks' real candidates still make it through instead of being
       // thrown away over one bad chunk (the exact loss that motivated
       // chunking in the first place).
-      console.error(
-        `[event-discovery] curateBrightSourceItems: chunk ${chunkStart}-${chunkStart + chunk.length - 1}: ${(err as Error).message}`,
-      );
+      console.error(`[event-discovery] curateBrightSourceItems: chunk ${chunkStart}-${chunkStart + chunk.length - 1}: ${message}`);
       continue;
     }
 
