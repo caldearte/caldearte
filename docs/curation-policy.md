@@ -47,6 +47,7 @@ it's not automatically included.
 | "Stations of the Cross: A Retrospective of [Religious Painter]" | A retrospective of an established artist, including religious Christian-themed work from one period of their career. | Religion | **EXCLUDE** | Explicit religious imagery, even in a recognized retrospective — excluded regardless. |
 | "Vigil and Blessing of Images Ahead of the Pilgrimage" | A parish hosts a display of religious imagery as part of a devotional ritual. | Religion | **EXCLUDE** | An act of worship. |
 | "Tarot, Cards, and Energy Healing: Exhibitor Fair" | A fair of tarot, energy reading, and esoteric-practice exhibitors. | Pseudoscience/superstition | **EXCLUDE** | Esoteric/pseudoscientific content with no critical framing. |
+| "The Art of Zhen Shan Ren" (real case, 2026-09-13) | An international touring painting exhibition organized around a new religious movement's own tenets (Falun Gong / Falun Dafa — "Zhen-Shan-Ren" is its creed), presented as art with a spiritual message and no critical stance toward the movement. | Religion | **EXCLUDE** | Religious/spiritual content that promotes the movement — the axis covers new religious movements the same as established churches. Haiku approved it twice as "exposición internacional de pintura" because the caption never says "religion"; the shadow model caught the name. Live on the site 2026-08-29 → 2026-09-13, removed by hand. |
 
 ## Institutional exclusion (independent of content)
 

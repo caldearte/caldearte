@@ -52,7 +52,11 @@ rather than an "opening night" in the exhibition sense).
 
 **Explicitly excluded, regardless of venue prestige or setting**:
 conventional theater plays (in their usual theater format), concerts, gigs
-("tocatas"), dance performances in their traditional format/venue, and
+("tocatas"), circus shows and circus-arts showcases (added 2026-09-13
+after a "muestra de procesos de creación de artes circenses" — a scheduled
+show in a theater's main hall — was approved as "el circo como arte
+visual/performance genuino", the 5th instance of the reframing pattern
+below), dance performances in their traditional format/venue, and
 poetry recitals or spoken-word readings ("recital poético") — even at a
 legitimate cultural center that also hosts real exhibitions, and even when
 described with language like "expresión artística." **Real bug (found
