@@ -1653,16 +1653,27 @@ test("curateBrightSourceItems returns zero candidates and zero usage without cal
 // Real incident 2026-08-25: a single unchunked Haiku call over a 107-item
 // batch got truncated mid-JSON and lost the entire batch's candidates
 // while still spending real API cost. curateBrightSourceItems now splits
-// into fixed-size chunks (CURATE_CHUNK_SIZE = 20) so one call's failure
-// only costs that chunk's candidates, not the whole run's.
+// into fixed-size chunks (CURATE_CHUNK_SIZE, 20 at the time, 10 since
+// 2026-09-13) so one call's failure only costs that chunk's candidates,
+// not the whole run's. Chunks run in concurrent waves (CURATE_CONCURRENCY)
+// since 2026-09-13 — the stub below records how many calls overlap.
 test("curateBrightSourceItems splits a batch larger than the chunk size into multiple Haiku calls and merges every chunk's candidates", async () => {
   const items: BrightSourceItem[] = Array.from({ length: 25 }, (_, i) => ({ ...baseBrightItem, title: `Muestra ${i}` }));
   let callCount = 0;
+  let inFlight = 0;
+  let maxInFlight = 0;
   const chunkSizes: number[] = [];
   const client: MessagesClient = {
     messages: {
       create: async (params: { messages: Array<{ content: string }> }) => {
         callCount += 1;
+        inFlight += 1;
+        maxInFlight = Math.max(maxInFlight, inFlight);
+        // Yield so the other calls in the same wave get to start before
+        // this one resolves — otherwise every call would "finish"
+        // synchronously and overlap could never be observed.
+        await new Promise((resolve) => setTimeout(resolve, 5));
+        inFlight -= 1;
         const localCount = (params.messages[0].content.match(/^\[\d+\]/gm) ?? []).length;
         chunkSizes.push(localCount);
         const rows = Array.from({ length: localCount }, (_, i) => ({
@@ -1691,10 +1702,11 @@ test("curateBrightSourceItems splits a batch larger than the chunk size into mul
     fixedLocation: { location: "Santiago", placeName: "Fuente" },
   });
 
-  assert.equal(callCount, 2, "25 items over a chunk size of 20 must be split into 2 calls");
-  assert.deepEqual(chunkSizes, [20, 5]);
+  assert.equal(callCount, 3, "25 items over a chunk size of 10 must be split into 3 calls");
+  assert.deepEqual(chunkSizes.sort((a, b) => b - a), [10, 10, 5]);
+  assert.equal(maxInFlight, 3, "the 3 chunks fit in one concurrent wave, so all 3 calls must overlap");
   assert.equal(candidates.length, 25);
-  assert.equal(usage.inputTokens, 20, "usage must be summed across both chunk calls (10 + 10)");
+  assert.equal(usage.inputTokens, 30, "usage must be summed across all chunk calls (10 + 10 + 10)");
 });
 
 test("curateBrightSourceItems keeps a good chunk's real candidates even when another chunk in the same batch fails closed", async () => {
@@ -1705,8 +1717,8 @@ test("curateBrightSourceItems keeps a good chunk's real candidates even when ano
       create: async (params: { messages: Array<{ content: string }> }) => {
         callCount += 1;
         const localCount = (params.messages[0].content.match(/^\[\d+\]/gm) ?? []).length;
-        if (callCount === 1) {
-          // First chunk (20 items): a healthy, complete response.
+        if (callCount <= 2) {
+          // First two chunks (10 items each): healthy, complete responses.
           const rows = Array.from({ length: localCount }, (_, i) => ({
             index: i,
             status: "approved",
@@ -1726,7 +1738,7 @@ test("curateBrightSourceItems keeps a good chunk's real candidates even when ano
             usage: { input_tokens: 10, output_tokens: 5 },
           };
         }
-        // Second chunk (5 items): simulates the real 2026-08-25 truncation
+        // Third chunk (5 items): simulates the real 2026-08-25 truncation
         // — a response with fewer rows than expected.
         const rows = [{ index: 0, status: "approved", artist: null, runStartDate: null, runEndDate: null, openingDatetime: null, openingTimeConfirmed: false, location: null, placeName: null, mediumType: "tradicional", sensitivityTags: [], curationReasoning: "ok" }];
         return {
@@ -1741,8 +1753,8 @@ test("curateBrightSourceItems keeps a good chunk's real candidates even when ano
     fixedLocation: { location: "Santiago", placeName: "Fuente" },
   });
 
-  assert.equal(candidates.length, 20, "the first chunk's 20 real candidates must survive the second chunk's failure");
-  assert.equal(usage.inputTokens, 20, "usage is still recorded for the failed chunk's API call, not just the successful one");
+  assert.equal(candidates.length, 20, "the first two chunks' 20 real candidates must survive the third chunk's failure");
+  assert.equal(usage.inputTokens, 30, "usage is still recorded for the failed chunk's API call, not just the successful ones");
 });
 
 // Real production loss, 2026-09-13 Instagram run: one chunk came back as

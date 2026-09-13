@@ -40,7 +40,7 @@ import { rehostImage, type RehostImageFn } from "../lib/image-rehost.js";
 import { isRejectionAxis, type RejectionAxis } from "@caldearte/curation-policy";
 import { sendRunSummaryEmail, type RunSummary, type CandidateSummary } from "../lib/notify.js";
 import { recordRunSummary } from "../lib/run-summary-store.js";
-import { createShadowClient, runShadowCuration } from "../lib/model-comparison.js";
+import { createShadowClient, runShadowCuration, startShadowCuration } from "../lib/model-comparison.js";
 import {
   buildBlock,
   buildSystemPrompt,
@@ -1422,21 +1422,27 @@ export async function run(deps: RunDeps = {}): Promise<void> {
           // was previously only fetched for already-approved candidates.
           // See enrichBrightSourceItemDetails' own doc comment.
           await enrichBrightSourceItemDetails(newItems, pageFetchFn);
+          // Shadow call starts first and runs alongside the real one —
+          // see startShadowCuration.
+          const shadowRun = shadowClient
+            ? startShadowCuration(shadowClient, (client) =>
+                curateBrightSourceItems(client, newItems, monthLabel, { fixedLocation: result.source.fixedLocation }),
+              )
+            : null;
           ({ candidates, usage } = await curateBrightSourceItems(messagesClient, newItems, monthLabel, {
             fixedLocation: result.source.fixedLocation,
           }));
-          if (shadowClient) {
-            await runShadowCuration("bright_source", sourceUrl, shadowClient, candidates, (client) =>
-              curateBrightSourceItems(client, newItems, monthLabel, { fixedLocation: result.source.fixedLocation }),
-            );
+          if (shadowClient && shadowRun) {
+            await runShadowCuration("bright_source", sourceUrl, shadowClient, candidates, shadowRun);
           }
         } else {
           const block = buildBlock("Fuentes brillantes (no específicas a ninguna comuna)", [result.result]);
+          const shadowRun = shadowClient
+            ? startShadowCuration(shadowClient, (client) => curate(client, systemPrompt, block, { isBrightSource: true }))
+            : null;
           ({ candidates, usage } = await curate(messagesClient, systemPrompt, block, { isBrightSource: true }));
-          if (shadowClient) {
-            await runShadowCuration("bright_source", sourceUrl, shadowClient, candidates, (client) =>
-              curate(client, systemPrompt, block, { isBrightSource: true }),
-            );
+          if (shadowClient && shadowRun) {
+            await runShadowCuration("bright_source", sourceUrl, shadowClient, candidates, shadowRun);
           }
         }
         await recordUsage({ purpose: "event_discovery", model: EVENT_DISCOVERY_MODEL, pipeline: "bright_source", usage });

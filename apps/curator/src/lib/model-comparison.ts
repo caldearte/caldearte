@@ -25,6 +25,43 @@ import { getSupabaseClient } from "./supabase-client.js";
 
 const DEFAULT_SHADOW_MODEL = "minimax/minimax-m3";
 
+// Reasoning budget for the shadow model, in tokens (SHADOW_REASONING_BUDGET_TOKENS
+// overrides; 0 disables reasoning outright). MiniMax M3 is a reasoning
+// model, and on the 2026-09-13 Instagram run (22 chunks of 20 posts) it
+// exhausted the real call's `max_tokens: 16000` on 8 of them — 5 came
+// back with no text at all, 3 with the JSON cut off mid-string — and
+// OpenRouter's bill ($0.45 at $1.20/MTok output) works out to ~14k
+// output tokens per chunk, thinking included. Haiku's own JSON for a
+// 20-post chunk is ~5-6k tokens, so a few thousand tokens of thinking is
+// plenty; uncapped it ate the whole ceiling. Sent as Anthropic-shaped
+// `thinking` (this is the /messages endpoint), which OpenRouter maps onto
+// its unified `reasoning` parameter for non-Anthropic models. Anthropic's
+// own floor for an enabled budget is 1024, kept here so the same request
+// stays valid if SHADOW_MODEL_ID is ever pointed at a Claude model.
+const DEFAULT_SHADOW_REASONING_BUDGET_TOKENS = 4000;
+
+export function shadowReasoningBudgetTokens(env: NodeJS.ProcessEnv = process.env): number {
+  const raw = env.SHADOW_REASONING_BUDGET_TOKENS;
+  const parsed = raw === undefined ? NaN : Number(raw);
+  if (!Number.isFinite(parsed) || parsed < 0) return DEFAULT_SHADOW_REASONING_BUDGET_TOKENS;
+  return parsed === 0 ? 0 : Math.max(1024, Math.floor(parsed));
+}
+
+// The shadow request is the real request plus the model swap and the
+// reasoning cap. `max_tokens` is raised by the budget so the JSON itself
+// keeps the full ceiling the real call was designed around — otherwise
+// even a capped thinking phase would still be carved out of the text's
+// own budget.
+export function shadowRequestParams(params: Record<string, unknown>, model: string, reasoningBudgetTokens: number): Record<string, unknown> {
+  const baseMaxTokens = typeof params.max_tokens === "number" ? params.max_tokens : 0;
+  return {
+    ...params,
+    model,
+    max_tokens: baseMaxTokens + reasoningBudgetTokens,
+    thinking: reasoningBudgetTokens === 0 ? { type: "disabled" } : { type: "enabled", budget_tokens: reasoningBudgetTokens },
+  };
+}
+
 export type ShadowPipeline = "bright_source" | "instagram";
 
 export interface ShadowClient {
@@ -37,7 +74,7 @@ export interface ShadowClient {
 // envelope curate()/curateBrightSourceItems() already expect — same glue
 // as scripts/compare-haiku-qwen.ts, factored out here so production and
 // that comparison script share one implementation instead of drifting.
-function openRouterMessagesClient(apiKey: string, model: string): MessagesClient {
+function openRouterMessagesClient(apiKey: string, model: string, reasoningBudgetTokens: number): MessagesClient {
   return {
     messages: {
       create: async (params) => {
@@ -47,7 +84,7 @@ function openRouterMessagesClient(apiKey: string, model: string): MessagesClient
             "Content-Type": "application/json",
             Authorization: `Bearer ${apiKey}`,
           },
-          body: JSON.stringify({ ...params, model }),
+          body: JSON.stringify(shadowRequestParams(params, model, reasoningBudgetTokens)),
         });
         if (!res.ok) {
           throw new Error(`OpenRouter request failed: ${res.status} ${await res.text()}`);
@@ -62,7 +99,7 @@ export function createShadowClient(): ShadowClient | null {
   const apiKey = process.env.OPENROUTER_API_KEY;
   if (!apiKey) return null;
   const model = process.env.SHADOW_MODEL_ID ?? DEFAULT_SHADOW_MODEL;
-  return { client: openRouterMessagesClient(apiKey, model), model };
+  return { client: openRouterMessagesClient(apiKey, model, shadowReasoningBudgetTokens()), model };
 }
 
 function statusOf(candidates: EventCandidate[]): "approved" | "rejected" | "empty" {
@@ -111,6 +148,26 @@ async function persistComparison(row: {
   } catch (err) {
     console.error(`[event-discovery][shadow-mode] failed to persist comparison: ${(err as Error).message}`);
   }
+}
+
+// Kicks the shadow call off NOW, before the real call is awaited, so the
+// two run concurrently instead of back to back — on the 2026-09-13
+// Instagram run the shadow pass alone added 37 minutes after Haiku's 17,
+// for a result that never affects production output. Returns a thunk
+// with runShadowCuration's `shadowFn` shape, so the call site stays the
+// same: start it, await the real call, then hand the thunk over. The
+// no-op catch matters: without it a shadow failure that lands while the
+// real call is still in flight is an unhandled rejection, which Node
+// turns into a process crash — the real pipeline would die because of
+// the experiment. The original promise still rejects for whoever awaits
+// it (runShadowCuration), which records the failure as its own outcome.
+export function startShadowCuration(
+  shadow: ShadowClient,
+  shadowFn: (client: MessagesClient) => Promise<CurateResult>,
+): () => Promise<CurateResult> {
+  const pending = shadowFn(shadow.client);
+  pending.catch(() => {});
+  return () => pending;
 }
 
 // Runs `shadowFn` (a curate()/curateBrightSourceItems() call against the
