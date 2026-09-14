@@ -41,6 +41,16 @@ printmaking, installations (sound, tactile, or otherwise), and similar
 visual-art media, shown as an exhibition. Captured as **openings**
 (`opening_datetime` = the exhibition's inauguration).
 
+**A physical place, in Chile.** The calendar is placed by comuna and
+exists to send people somewhere. An online-only "exhibition" — a PDF
+artist book, a YouTube stream, a platform's "virtual gallery", a radio
+launch — has no comuna and is out of scope, however genuine the work.
+Set as a precedent 2026-09-14 when five such items (Galería/Radio Suyai
+TV via chilecultura.gob.cl, Liquenlab "Virtual") were removed by hand and
+the chilecultura source got a venue-based prefilter (see
+region-discovery.md's 2026-09-14 source review). Not yet named in the
+curation prompt itself — see the same entry.
+
 **Included — genuine artistic interventions:** a performance or happening
 staged specifically as an artistic gesture, not as a conventional show —
 e.g. a street performance blending dance and theater as a single artistic
