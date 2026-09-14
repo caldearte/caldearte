@@ -375,7 +375,9 @@ Cuidado especial con publicaciones de redes sociales (Instagram, Facebook, TikTo
 
 Regla dura sobre el año: si la fuente menciona un año explícitamente (ej. "13 de junio 2025"), usa ESE año tal cual — nunca lo reemplaces por el año de ${monthLabel} solo porque el día/mes coincide con lo buscado. Muchos sitios de agenda cultural conservan páginas de eventos ya realizados, a veces marcadas explícitamente con avisos como "Este evento ha pasado" o "Evento finalizado" — si ves ese tipo de aviso, o si el año explícito de la fuente hace que el evento ya haya terminado, rechaza el candidato sin importar que el día/mes parezca vigente.
 
-Etiqueta también: \`mediumType\` ("tradicional" o "intervencion_no_tradicional") y \`sensitivityTags\` (array de ["desnudo_erotismo", "guerra_violencia", "memoria_dictadura"], vacío si no aplica). Escribe un \`curationReasoning\` breve explicando tu decisión.
+\`mediumType\`: "tradicional" o "intervencion_no_tradicional".
+\`sensitivityTags\`: evalúa los tres para CADA ítem, aprobado o rechazado. No rechazan nada: activan el modo familiar del sitio, que oculta el evento a familias con niños; ante la duda, etiqueta. "memoria_dictadura": dictadura chilena 1973-1990, detenidos desaparecidos, derechos humanos, 11 de septiembre, memoria y verdad, duelo colectivo. "guerra_violencia": guerra, conflicto armado, violencia política o social, represión, tortura, muerte violenta. "desnudo_erotismo": desnudo, cuerpo desnudo, erotismo, sexualidad explícita o sugerida. Array vacío = revisaste los tres y ninguno aplica.
+\`curationReasoning\`: máximo 25 palabras, en español — la categoría que aplica y el dato decisivo. No resumas el post.
 
 \`status\` es binario: "approved" o "rejected" — no hay estado intermedio.
 
@@ -1013,6 +1015,17 @@ export function buildBrightSourceBlock(items: BrightSourceItem[]): string {
     .join("\n\n");
 }
 
+// Tag + reasoning instructions rewritten 2026-09-14 after a measured local
+// replay (16 real posts with known ground truth × 3 reps, see
+// docs/region-discovery.md's "Prompt optimization" entry): the old
+// one-liner ("array de [...], vacío si no aplica. Escribe un
+// curationReasoning breve") left sensitivity tags under-emitted by the
+// shadow model and reasoning at ~34 words median. Defining each tag,
+// saying what tags are FOR (family mode) and capping the reasoning at
+// 25 words gave Haiku the same tag recall (12/12), zero false tags, 2
+// more correct verdicts out of 45, 24% fewer output tokens and half the
+// latency. Shared by both prompt builders, so the Tavily-block path gets
+// the same wording.
 export function buildBrightSourceSystemPrompt(monthLabel: string, opts: { needsLocation: boolean }): string {
   const locationInstructions = opts.needsLocation
     ? `- \`location\`: la comuna/ciudad donde ocurre el evento — para esta fuente, infiérela del lugar/institución mencionado (ej. "MAC - Espacio Quinta Normal" -> "Santiago") usando tu conocimiento general de dónde queda cada lugar; no hay una cita textual que la respalde literalmente, así que no hace falta citar nada, solo tu mejor inferencia. Si no puedes determinar ninguna comuna real de Chile, el evento debe ser "rejected". Algunos ítems incluyen una línea "Ubicación por defecto de esta cuenta: ...": úsala como tu mejor suposición inicial, PERO si el texto del ítem menciona explícitamente una comuna/ciudad distinta (ej. una muestra itinerante o co-organizada que ocurre en otro lugar), repórtala en su lugar — no ignores una ubicación distinta solo porque contradice el valor por defecto.
@@ -1053,7 +1066,9 @@ ${REJECTION_AXIS_POLICY}
 
 Importante sobre fechas — regla dura, no una sugerencia: estamos armando el calendario de ${monthLabel}, pero tu \`status\` NUNCA debe basarse en si la fecha cae antes, dentro, o después de ${monthLabel} — eso lo decide el código automáticamente después, con la fecha exacta que tú reportes en \`runStartDate\`/\`runEndDate\`/\`openingDatetime\`. Tu \`status\` es EXCLUSIVAMENTE sobre si el contenido ES una exposición o intervención de arte visual real en alcance. Un evento real que ya terminó, o que recién empieza en un mes futuro, sigue siendo \`"approved"\` si el contenido en sí es válido — repórtalo con su fecha real, no lo rechaces ni le inventes otra fecha para "hacerlo caber" en ${monthLabel}. Caso real que este calendario perdió por hacer esto mal: una exposición real de octubre 2026, con fecha confirmada en el texto, fue rechazada con el razonamiento "outside the August 2026 calendar scope" — eso es exactamente el error a evitar; el código, no tu \`status\`, es quien decide si octubre queda fuera del calendario de agosto.
 
-Etiqueta también: \`mediumType\` ("tradicional" o "intervencion_no_tradicional") y \`sensitivityTags\` (array de ["desnudo_erotismo", "guerra_violencia", "memoria_dictadura"], vacío si no aplica). Escribe un \`curationReasoning\` breve explicando tu decisión.
+\`mediumType\`: "tradicional" o "intervencion_no_tradicional".
+\`sensitivityTags\`: evalúa los tres para CADA ítem, aprobado o rechazado. No rechazan nada: activan el modo familiar del sitio, que oculta el evento a familias con niños; ante la duda, etiqueta. "memoria_dictadura": dictadura chilena 1973-1990, detenidos desaparecidos, derechos humanos, 11 de septiembre, memoria y verdad, duelo colectivo. "guerra_violencia": guerra, conflicto armado, violencia política o social, represión, tortura, muerte violenta. "desnudo_erotismo": desnudo, cuerpo desnudo, erotismo, sexualidad explícita o sugerida. Array vacío = revisaste los tres y ninguno aplica.
+\`curationReasoning\`: máximo 25 palabras, en español — la categoría que aplica y el dato decisivo. No resumas el post.
 
 Responde SOLO con un bloque de código \`\`\`json que contenga un array de objetos con esta forma exacta, uno por cada ítem recibido, nada más antes o después:
 [{ "index": number, "status": "approved" | "rejected", "title": string | null, "eventType": "inauguracion" | "visita_guiada" | "exposicion", "artist": string | null, "artistInstagramHandle": string | null, "runStartDate": string | null, "runEndDate": string | null, "openingDatetime": string | null, "openingTimeConfirmed": boolean, "location": string | null, "placeName": string | null, "mediumType": "tradicional" | "intervencion_no_tradicional", "sensitivityTags": string[], "curationReasoning": string, "rejectionAxis": string | null, "additionalEvents": [{ "status": "approved" | "rejected", "title": string | null, "eventType": "inauguracion" | "visita_guiada" | "exposicion", "artist": string | null, "artistInstagramHandle": string | null, "runStartDate": string | null, "runEndDate": string | null, "openingDatetime": string | null, "openingTimeConfirmed": boolean, "location": string | null, "placeName": string | null, "mediumType": "tradicional" | "intervencion_no_tradicional", "sensitivityTags": string[], "curationReasoning": string, "rejectionAxis": string | null }] }]`;
