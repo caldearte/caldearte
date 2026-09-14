@@ -2499,6 +2499,21 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
       "no es la única BAJ (Antofagasta ya tiene su cuenta propia).",
     addedAt: "2026-09-14",
   },
+  {
+    username: "galeriacima",
+    note:
+      "Descartada a pedido de Daniel el 2026-08-14; el 2026-09-14 levantó " +
+      "el descarte y pidió agregarla. Galería CIMA, Merced 22 piso 11, " +
+      "Santiago Centro — galería de arte contemporáneo real, 96.8 mil " +
+      "seguidores, 502 publicaciones, activa. Exposiciones individuales " +
+      "con curaduría (\"¿Qué sueña la Muerte?\" de Paula Valenzuela " +
+      "Antúnez, inaugurada 19-08 — agregada a mano). Ojo con el ruido: " +
+      "la cuenta también anuncia fiestas (CIMA OPEN DECKS, DJs) y " +
+      "lecturas de poesía — formatos excluidos que Haiku debe rechazar. " +
+      "fixedLocation.",
+    addedAt: "2026-09-14",
+    fixedLocation: { location: "Santiago", placeName: "Galería CIMA" },
+  },
   // El resto de la lista la aporta Daniel — una decisión editorial, igual
   // que cada fuente brillante nueva se evaluó una por una. Confirmar
   // pública y activa antes de agregar cada cuenta.
