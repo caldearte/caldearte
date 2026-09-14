@@ -51,7 +51,7 @@ Deno.serve(async (req) => {
   }
 
   // ---- events (all-time, approved, not soft-removed) -----------------
-  const [eventsRes, signalsRes, rejectedRes, usageRes, fetchStateRes, costSnapshotsRes, runSummariesRes, instagramPostsRes, instagramSnapshotsRes, shadowComparisonsRes] = await Promise.all([
+  const [eventsRes, signalsRes, rejectedRes, usageRes, fetchStateRes, costSnapshotsRes, runSummariesRes, instagramPostsRes, instagramSnapshotsRes, shadowComparisonsRes, subscribersRes, submittedRes] = await Promise.all([
     client
       .from("events")
       .select("opening_datetime, run_start_date, run_end_date, region_id, pipeline, event_type")
@@ -105,6 +105,23 @@ Deno.serve(async (req) => {
       )
       .gte("created_at", new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString())
       .order("created_at", { ascending: false }),
+    // Señales de uso (Daniel, 2026-09-14): the three numbers that say
+    // whether anyone actually uses Caldearte — the gate for leaving the
+    // free tiers, for the community phase, and for any talk of revenue.
+    // Everything else on /admin measures the machine; these measure the
+    // audience. Row-level and all-time on purpose (a handful of rows):
+    // the client derives "active now" and the cumulative series itself.
+    // Subscribers: confirmation state matters (double opt-in) — an
+    // unconfirmed signup is not a real reader. Submissions: every event a
+    // venue sent through /agrega-tu-expo, INCLUDING ones later removed —
+    // the signal is that a venue reached out at all, not whether the
+    // event survived curation.
+    client.from("newsletter_subscribers").select("created_at, confirmed_at, unsubscribed_at"),
+    client
+      .from("events")
+      .select("created_at, title, place_name, region_id, removed_at")
+      .eq("source", "submitted")
+      .order("created_at", { ascending: false }),
   ]);
   for (const [label, res] of [
     ["events", eventsRes],
@@ -117,6 +134,8 @@ Deno.serve(async (req) => {
     ["instagram_posts", instagramPostsRes],
     ["instagram_account_snapshots", instagramSnapshotsRes],
     ["shadow_curation_comparisons", shadowComparisonsRes],
+    ["newsletter_subscribers", subscribersRes],
+    ["events(submitted)", submittedRes],
   ] as const) {
     if (res.error) {
       console.error(`admin-analytics: ${label} query failed`, res.error);
@@ -393,6 +412,20 @@ Deno.serve(async (req) => {
     error: row.error,
   }));
 
+  const newsletterSubscribers = (subscribersRes.data ?? []).map((row) => ({
+    createdAt: row.created_at,
+    confirmedAt: row.confirmed_at,
+    unsubscribedAt: row.unsubscribed_at,
+  }));
+
+  const submittedEvents = (submittedRes.data ?? []).map((row) => ({
+    createdAt: row.created_at,
+    title: row.title,
+    placeName: row.place_name,
+    adminRegionName: row.region_id ? adminRegionNameById.get(row.region_id) ?? null : null,
+    removedAt: row.removed_at,
+  }));
+
   return jsonResponse({
     generatedAt: new Date().toISOString(),
     events,
@@ -406,5 +439,7 @@ Deno.serve(async (req) => {
     instagramPosts,
     instagramAccountSnapshots,
     shadowCurationComparisons,
+    newsletterSubscribers,
+    submittedEvents,
   });
 });
