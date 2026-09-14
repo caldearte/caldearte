@@ -65,7 +65,14 @@ events
     run_start_date/run_end_date existed; Event Discovery doesn't set it,
   medium_type (tradicional | intervencion_no_tradicional),
   sensitivity_tags (array: desnudo_erotismo | guerra_violencia |
-    memoria_dictadura),
+    memoria_dictadura — these gate family mode on the site, never
+    approval; defined one by one in the curation prompt since
+    2026-09-14: memoria_dictadura = Chilean dictatura 1973-1990,
+    detenidos desaparecidos, derechos humanos, 11 de septiembre, memoria
+    y verdad, duelo colectivo; guerra_violencia = war, armed conflict,
+    political/social violence, repression, torture, violent death;
+    desnudo_erotismo = nudity, eroticism, explicit or suggested
+    sexuality; "ante la duda, etiqueta"),
   source (scraped | submitted | discovered — "discovered" is Event
     Discovery's search-based pass; "scraped"/"submitted" are for pipelines
     that don't exist yet in production),
