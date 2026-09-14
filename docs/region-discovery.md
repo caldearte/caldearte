@@ -4247,3 +4247,59 @@ Anthropic spend per run, plus Tavily credits comfortably inside its free
 including the image-token-cost tradeoff and why prompt caching doesn't
 apply yet.
 
+
+### Real cost, measured — Instagram pipeline, and the projection after the 2026-09-13 changes
+
+Everything below comes from the same day's measurements, not estimates:
+`platform_cost_snapshots` for Apify, `api_usage_log` for Haiku, OpenRouter's
+own bill (read by Daniel) for the shadow model, and post timestamps decoded
+from Instagram shortcodes for the cadence simulation. Numbers are per Apify
+billing cycle (the 13th → the 13th).
+
+| Component | Unit cost (measured) | Before (Sun/Wed) | After (daily Mon-Sat, PRs #518-#523) |
+|---|---|---|---|
+| Apify `instagram-post-scraper` | $0.0017 per post fetched, no per-run/per-profile charge | ~$5-5.5, with the `resultsLimit: 5` cap silently dropping posts and 18-64% re-fetch waste on runs after adding accounts | **~$5-5.6** — ~95-110 posts/day uncapped, zero re-fetch |
+| Haiku, Instagram curation | $0.0019 per post curated | ~$4-4.5 (only 70% of fetched posts reached it) | **~$5.5** (collab posts now attributed → ~97% reach it) |
+| Haiku, bright sources | ~$0.08-0.14 per run | ~$1 | ~$1 |
+| MiniMax shadow (pilot) | ~$0.001 per item | ~$3, of which ~$0.16/run wasted on empty chunks | **~$3**, no empty chunks expected — confirm on the 09-16 bill |
+| GitHub Actions / Resend / Vercel | — | $0 | $0 |
+| **Total variable** | | **~$13-14** | **~$14.5-15** |
+
+So roughly **+$1-1.5 per cycle**, and none of it comes from the cadence:
+Apify is billed per post fetched with a per-account cutoff, so six runs a
+week fetch the same posts two would. The increase is the collab-post fix
+(content that was already paid for at Apify and thrown away before
+curation). What the cadence buys is coverage: inauguraciones seen *before*
+they happen go from 74% to ~93%.
+
+**The binding constraint is Apify's $5 credit, not the cadence.** With
+~175 accounts the credit runs out around day 22-25 of the cycle whatever
+the cadence; this cycle started with $1.10 spent on day one (the 2-week
+catch-up), so the credit is expected to run out around **October 7**,
+~6 days before it renews. Daniel's explicit call (2026-09-13): accept a
+short end-of-cycle blackout rather than pay. Posts published during a
+blackout are still fetched afterwards — the per-account cutoff is the
+last successful fetch, now capped at 7 days (`MAX_LOOKBACK_DAYS`) — but
+the inauguraciones announced in that window are lost as calendar moments
+(the 09-13 catch-up recovered 10 expos and exactly 1 future inauguración
+from 253 older posts, while 9 inauguraciones had already expired). The way
+back under $5 without paying is pruning the ~26 municipal accounts with
+zero yield, deferred to a fair re-measurement around 2026-09-27/30 (they
+were added days before the blackout and were the accounts most affected by
+the collab bug).
+
+**Efficiency, before → after, same measurements:** inauguraciones seen
+before opening 74% → ~93%; fetched posts reaching curation 70% → ~97%;
+accounts losing posts to the 5-per-run cap 7 per 4-day run → ~0 (the cap is
+now 5 per day); Haiku chunks lost 1/22 → ~0; shadow chunks lost 8/22 → ~0;
+Apify re-fetch waste 18-64% (after adding accounts) → 0; Instagram job
+wall-clock 57 min (2-week batch) → ~5-10 min expected for a daily batch
+(chunks of 10 in waves of 4, shadow in parallel).
+
+**Still unknown, and when it gets known:** the uncapped daily post volume
+(95-110/day comes from a single clean run, 2026-08-29) — one week of
+daily `platform_cost_snapshots` fixes it; whether 4,000 thinking tokens is
+enough for MiniMax on a 10-post chunk — the 2026-09-16 run; how much
+in-batch dedup ("duplicado del ítem [N]") is lost with 10-post chunks,
+showing up as more `duplicate_skipped` downstream — the week's run
+summaries.
