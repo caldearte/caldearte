@@ -141,9 +141,8 @@ export function accountCutoffDate(state: InstagramAccountState | undefined, now:
 // account (or one lagging after a gap) pulled every other account's
 // window back to its date, and Apify billed every re-fetched post before
 // the pre-curation dedup threw it away (2026-08-26: 93 of 145 fetched
-// posts already seen; 2026-08-29: 53 of 297). Grouping by cutoff DATE
-// (Apify's onlyPostsNewerThan is day-granular) and making one call per
-// group means each account fetches exactly what it's missing and nothing
+// posts already seen; 2026-08-29: 53 of 297). Grouping by cutoff timestamp
+// (full ISO — the actor accepts it) and making one call per group means each account fetches exactly what it's missing and nothing
 // more — in a normal run every account was fetched the same day, so this
 // is still a single call; it only splits when there are new or lagging
 // accounts. Apify bills per post, never per call, so N calls cost the
@@ -158,9 +157,16 @@ export function groupAccountsByCutoff(
   fetchState: ReadonlyMap<string, InstagramAccountState>,
   now: Date,
 ): AccountCutoffGroup[] {
+  // Full ISO timestamp, not just the date (2026-09-14): the actor accepts
+  // "YYYY-MM-DD or full ISO absolute format", and a date-only cutoff
+  // re-fetched (and re-billed) every post published on the previous run's
+  // own day before that run fired — ~5% of posts at the 09:00 CL slot,
+  // more once GitHub's cron drifts into the afternoon (the first daily
+  // run fired at 15:03 UTC). Accounts fetched in the same run share the
+  // same `now`, so a normal run is still exactly one group.
   const byDate = new Map<string, InstagramAccountConfig[]>();
   for (const account of accounts) {
-    const date = accountCutoffDate(fetchState.get(instagramAccountProfileUrl(account)), now).toISOString().slice(0, 10);
+    const date = accountCutoffDate(fetchState.get(instagramAccountProfileUrl(account)), now).toISOString();
     const group = byDate.get(date);
     if (group) group.push(account);
     else byDate.set(date, [account]);

@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { parseApifyInstagramPosts, usernameFromProfileUrl } from "./apify-instagram.js";
+import { parseApifyInstagramPosts, parseApifyInstagramPostsWithStats, usernameFromProfileUrl, isInstagramPostUrl } from "./apify-instagram.js";
 
 // Best-guess shape for apify/instagram-post-scraper's basicData output —
 // see apify-instagram.ts's own doc comment: not confirmed field-by-field
@@ -65,4 +65,30 @@ test("usernameFromProfileUrl handles the shapes the actor actually emits", () =>
   assert.equal(usernameFromProfileUrl("https://www.instagram.com/mac_uchile/?hl=es"), "mac_uchile");
   assert.equal(usernameFromProfileUrl("https://www.instagram.com/reel/XYZ/"), null);
   assert.equal(usernameFromProfileUrl(""), null);
+});
+
+// Real production finding, first daily run 2026-09-14: the actor pushes
+// one non-post item per requested profile with nothing new in the window
+// (no owner, no caption, inputUrl set). Attributed by inputUrl they looked
+// like 111 "collab" posts and 113 "thin captions" in one run, and reset
+// every account's dormancy streak. A post is a post only if its URL is one.
+test("parseApifyInstagramPostsWithStats drops items whose url is not a post URL and counts them as placeholders", () => {
+  const { posts, placeholders } = parseApifyInstagramPostsWithStats([
+    SAMPLE_ITEM,
+    { inputUrl: "https://www.instagram.com/quiet_account/", url: "https://www.instagram.com/quiet_account/", ownerUsername: "", caption: null },
+    { inputUrl: "https://www.instagram.com/gone_account/", url: "", error: "not_found" },
+    { url: "https://www.instagram.com/reel/XYZ123/", ownerUsername: "someacct", caption: "un reel" },
+  ]);
+  assert.equal(posts.length, 2);
+  assert.equal(placeholders, 2);
+  assert.deepEqual(posts.map((p) => p.url), [SAMPLE_ITEM.url, "https://www.instagram.com/reel/XYZ123/"]);
+});
+
+test("isInstagramPostUrl: post/reel/tv shortcode URLs yes, profile/explore/empty no", () => {
+  assert.equal(isInstagramPostUrl("https://www.instagram.com/p/DdJ0l85jtf4/"), true);
+  assert.equal(isInstagramPostUrl("https://instagram.com/reel/Abc-_12/?utm=x"), true);
+  assert.equal(isInstagramPostUrl("https://www.instagram.com/tv/Abc12/"), true);
+  assert.equal(isInstagramPostUrl("https://www.instagram.com/casaculturalyanulaque/"), false);
+  assert.equal(isInstagramPostUrl("https://www.instagram.com/explore/tags/arte/"), false);
+  assert.equal(isInstagramPostUrl(""), false);
 });
