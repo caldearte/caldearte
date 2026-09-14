@@ -190,7 +190,13 @@ the Edge Function never needs a separate query per time window.
   without manual scrolling.
 - **`/admin/fuentes`** — per-fuente detail: `FuentesPorPipelineChart` +
   `SourceComparisonTable` (chart left, table right), `BrightSourcesTable`/
-  `InstagramSourcesTable` (per-source yield + a `possiblyDead` heuristic),
+  `InstagramSourcesTable` (per-source yield + a `possiblyDead` heuristic;
+  since 2026-09-14 the "Calidad" % excludes rejections that were
+  duplicate re-listings — a rolling agenda like artes.uchile.cl lists the
+  same exhibition once per day and Haiku rejects the repeats, which read
+  as 42% for a source whose real content approval was ~67%; detected by
+  a regex over the rejection text in the Edge Function, labeled as a
+  heuristic in the column's tooltip and shown apart as "N dup."),
   and `CoberturaTable` (see "Cobertura por corrida" below). The
   pending-curation-conflicts count that used to sit here was removed
   2026-09-07 along with the escalation flow itself.
