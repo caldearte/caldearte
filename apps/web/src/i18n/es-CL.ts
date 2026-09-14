@@ -567,6 +567,21 @@ export const esCL = {
   // "Agrega tu expo" — formulario público para que una galería/espacio
   // suba su propia inauguración, curada por Haiku al momento de enviar
   // (mismos ejes editoriales que el resto del calendario).
+  // Home section aimed at venues, 2026-09-14 (Daniel): "Expos enviadas
+  // por espacios" is now one of the three señales de uso on /admin, and
+  // until now the only way to /agrega-tu-expo from the home was a footer
+  // link — two venues that asked whether they could submit an opening
+  // never used the form. Same visual grammar as the newsletter section
+  // right below it (big Lato Black headline, magenta highlight, one
+  // bordered button), on the sage surface so the two read as distinct.
+  espaciosSection: {
+    headlinePlainStart: "¿TIENES UN ",
+    headlineHighlight: "ESPACIO",
+    headlinePlainEnd: "?",
+    body: "Publica tu próxima inauguración en Caldearte. Es gratis, toma dos minutos y, si califica para el calendario, queda publicada al instante.",
+    cta: "Agrega tu inauguración",
+  },
+
   agregaExpo: {
     title: "Agrega tu expo",
     intro:

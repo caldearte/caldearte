@@ -409,6 +409,19 @@ default later: ask which direction is safe to flash, and if hiding
 something is the safe direction, don't rely on the personalization fetch
 alone to reveal it — a zero-cookie visitor may never trigger that fetch.
 
+**Venue-facing section, 2026-09-14** (`EspaciosSection`, between the AI
+disclaimer and `NewsletterSection`): "¿Tienes un espacio?" with one
+button to `/agrega-tu-expo`. Until then the only path from the home to
+the submission form was a footer link, and two venues that had asked
+whether they could submit an opening never used it. Exists because
+"expos enviadas por espacios" is now one of the three señales de uso on
+`/admin` (see the admin section above) — a metric with no path to it
+isn't measuring anything. Same visual grammar as the newsletter section
+(Lato Black headline, magenta highlight, one bordered button), on the
+sage surface so the visitor-facing ask (subscribe) and the venue-facing
+ask (submit) read as two distinct blocks back to back. Static server
+component, no state, so the home's caching posture above is untouched.
+
 ## SEO: structured data
 
 **Added 2026-08-08** (a Search Console coverage audit found zero
