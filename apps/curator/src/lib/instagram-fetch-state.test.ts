@@ -98,7 +98,7 @@ test("accountCutoffDate: a last fetch within the cap is used as-is (the cap neve
 // Real re-billing this replaces: one shared Apify call with the OLDEST
 // cutoff among all accounts — 2026-08-26: 93 of 145 fetched posts were
 // already seen (a new account's wider window applied to everyone).
-test("groupAccountsByCutoff: accounts fetched the same day share one call; a new account and a lagging one get their own", () => {
+test("groupAccountsByCutoff: accounts fetched in the same run share one call (exact timestamp); a new account and a lagging one get their own", () => {
   const fetchedYesterday = { ...ACCOUNT, username: "a_yesterday" };
   const fetchedYesterdayToo = { ...ACCOUNT, username: "b_yesterday" };
   const fetchedTwoDaysAgo = { ...ACCOUNT, username: "c_two_days" };
@@ -107,7 +107,7 @@ test("groupAccountsByCutoff: accounts fetched the same day share one call; a new
   const state = (lastFetchedAt: string) => ({ lastFetchedAt, consecutiveZeroYieldChecks: 0, isInactive: false });
   const fetchState = new Map([
     [instagramAccountProfileUrl(fetchedYesterday), state("2026-08-12T09:00:00.000Z")],
-    [instagramAccountProfileUrl(fetchedYesterdayToo), state("2026-08-12T09:05:00.000Z")],
+    [instagramAccountProfileUrl(fetchedYesterdayToo), state("2026-08-12T09:00:00.000Z")],
     [instagramAccountProfileUrl(fetchedTwoDaysAgo), state("2026-08-11T09:00:00.000Z")],
     [instagramAccountProfileUrl(laggingAfterOutage), state("2026-07-20T09:00:00.000Z")],
   ]);
@@ -115,10 +115,10 @@ test("groupAccountsByCutoff: accounts fetched the same day share one call; a new
   assert.deepEqual(
     groups.map((g) => ({ cutoff: g.onlyPostsNewerThan, accounts: g.accounts.map((a) => a.username) })),
     [
-      { cutoff: "2026-08-06", accounts: ["e_lagging"] }, // capped at 7 days, not 2026-07-20
-      { cutoff: "2026-08-09", accounts: ["d_new"] }, // DEFAULT_INTERVAL_DAYS
-      { cutoff: "2026-08-11", accounts: ["c_two_days"] },
-      { cutoff: "2026-08-12", accounts: ["a_yesterday", "b_yesterday"] },
+      { cutoff: "2026-08-06T00:00:00.000Z", accounts: ["e_lagging"] }, // capped at 7 days, not 2026-07-20
+      { cutoff: "2026-08-09T00:00:00.000Z", accounts: ["d_new"] }, // DEFAULT_INTERVAL_DAYS
+      { cutoff: "2026-08-11T09:00:00.000Z", accounts: ["c_two_days"] },
+      { cutoff: "2026-08-12T09:00:00.000Z", accounts: ["a_yesterday", "b_yesterday"] },
     ],
   );
 });

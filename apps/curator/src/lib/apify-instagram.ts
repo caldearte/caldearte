@@ -64,11 +64,31 @@ export function usernameFromProfileUrl(inputUrl: unknown): string | null {
 
 const RESULTS_LIMIT_PER_ACCOUNT = 5;
 
+// A real Instagram post always has a shortcode URL. The actor ALSO pushes
+// one item per requested profile that had nothing in the window (or was
+// private/not found) — no owner, no caption, no post URL — and until
+// 2026-09-14 those were silently dropped as "unexpected owner" (the
+// 2026-09-13 run had 17 with ownerUsername ""). Once attribution moved
+// to inputUrl (#518) they resolved to the requested account instead:
+// the first daily run showed 111/180 "collab" posts and 113/177 "thin
+// caption" items — one per quiet account — each of which also counted
+// as a "genuinely new post" for the dormancy backstop, so no account
+// could ever go inactive again. Requiring a post-shaped URL is the one
+// check that holds regardless of the placeholder's exact field set.
+const POST_URL = /^https?:\/\/(?:www\.)?instagram\.com\/(?:p|reel|reels|tv)\/[A-Za-z0-9_-]+\/?(?:[?#].*)?$/;
+
+export function isInstagramPostUrl(url: string): boolean {
+  return POST_URL.test(url);
+}
+
 // Pure and separately exported so the real output shape can be verified
 // against a captured sample without hitting the real API — same pattern
-// as lib/mavi-headless.ts's parseMaviActivities.
-export function parseApifyInstagramPosts(items: unknown[]): ApifyInstagramPost[] {
-  return items
+// as lib/mavi-headless.ts's parseMaviActivities. Returns the placeholder
+// count too, so the caller can log it as what it is instead of letting
+// it masquerade as collab posts / thin captions downstream.
+export function parseApifyInstagramPostsWithStats(items: unknown[]): { posts: ApifyInstagramPost[]; placeholders: number } {
+  let placeholders = 0;
+  const posts = items
     .filter((item): item is Record<string, unknown> => typeof item === "object" && item !== null)
     .map((item) => ({
       url: typeof item.url === "string" ? item.url : "",
@@ -78,7 +98,16 @@ export function parseApifyInstagramPosts(items: unknown[]): ApifyInstagramPost[]
       ownerUsername: typeof item.ownerUsername === "string" ? item.ownerUsername : "",
       inputUsername: usernameFromProfileUrl(item.inputUrl),
     }))
-    .filter((post) => post.url !== "");
+    .filter((post) => {
+      if (isInstagramPostUrl(post.url)) return true;
+      placeholders += 1;
+      return false;
+    });
+  return { posts, placeholders };
+}
+
+export function parseApifyInstagramPosts(items: unknown[]): ApifyInstagramPost[] {
+  return parseApifyInstagramPostsWithStats(items).posts;
 }
 
 // Never throws — a broken actor/account or an Apify outage must not take
@@ -109,7 +138,16 @@ export async function fetchInstagramPosts(usernames: string[], onlyPostsNewerTha
       onlyPostsNewerThan,
     });
     const { items } = await client.dataset(run.defaultDatasetId).listItems();
-    return { posts: parseApifyInstagramPosts(items), errorMessage: null };
+    const { posts, placeholders } = parseApifyInstagramPostsWithStats(items);
+    if (placeholders > 0) {
+      // Shape of the first non-post item, keys only — the actor's
+      // placeholder format isn't documented, this is how it gets
+      // confirmed from a real run without dumping data into the log.
+      const sample = items.find((item) => typeof item === "object" && item !== null && !isInstagramPostUrl(String((item as Record<string, unknown>).url ?? "")));
+      const keys = sample ? Object.keys(sample as object).slice(0, 12).join(",") : "?";
+      console.log(`[instagram-discovery] ${placeholders}/${items.length} dataset item(s) are not posts (quiet/private/missing profile placeholders), dropped — sample keys: ${keys}`);
+    }
+    return { posts, errorMessage: null };
   } catch (err) {
     const message = (err as Error).message;
     console.error(`[instagram-discovery] failed to fetch Instagram posts via Apify: ${message}`);
