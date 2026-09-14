@@ -16,12 +16,16 @@ pipeline. It writes every event's location as freeform text; there is no
 venue entity. Haiku is the only curation model whose verdict is ever
 inserted; a cheaper model (MiniMax M3 via OpenRouter) runs in shadow mode
 on the same input for comparison only — see region-discovery.md's
-shadow-pilot entries. As of 2026-09-13 its judgment looks at least as
-strict as Haiku's on the sensitivity axes (it caught a Falun Gong
-exhibition Haiku approved twice) but its reliability had to be fixed
-first (reasoning budget, smaller chunks); next checkpoint is the Wed
-2026-09-16 Instagram run, and the promote-or-drop decision stays
-Daniel's, revisited ~mid-October 2026. The earlier venue-based design (a separate "Event Crawler"
+shadow-pilot entries. Outcome as of 2026-09-14: **MiniMax won't become
+the primary curator.** Its scope judgment was stricter and, in the cases
+Daniel reviewed, right (Falun Gong, circus, a heritage display) — but
+those catches are now rules in the prompt itself; its sensitivity
+tagging is prompt-fixable yet its verbosity puts its cost at parity with
+Haiku at ~13× the latency (measured replay, region-discovery.md "Prompt
+optimization"). The same measurement produced the optimized prompt Haiku
+now runs (−24% output tokens, better verdicts). Whether the shadow keeps
+running as a disagreement-mining feed (~$3/month) or is switched off is
+Daniel's call. The earlier venue-based design (a separate "Event Crawler"
 that revisited known venues, plus the `venues` table itself) has been
 retired — it was left disconnected after the pivot (nothing fed it new
 venues) and has been fully removed from the code and schema, not just
