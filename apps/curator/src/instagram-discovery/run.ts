@@ -24,13 +24,13 @@ import Anthropic from "@anthropic-ai/sdk";
 import { recordUsage, getConfigNumber, getCurrentMonthSpend } from "../lib/usage-tracking.js";
 import { estimateCostUsd } from "../lib/pricing.js";
 import { enrichCandidates, type FetchLike as PageFetchLike } from "../lib/page-fetch.js";
-import { fetchInstagramPosts } from "../lib/apify-instagram.js";
+import { fetchInstagramPosts, type ApifyInstagramPost } from "../lib/apify-instagram.js";
 import { toBrightSourceItem, isCaptionWorthCurating, resolveAccountForPost, dedupeItemsBySourceUrl } from "../lib/instagram-item.js";
 import { INSTAGRAM_ACCOUNTS, type InstagramAccountConfig } from "../lib/instagram-accounts.js";
 import {
   loadInstagramFetchState,
   isInstagramAccountDue,
-  accountCutoffDate,
+  groupAccountsByCutoff,
   nextFetchState,
   recordInstagramFetchState,
   instagramAccountProfileUrl,
@@ -87,22 +87,33 @@ export async function run(deps: InstagramRunDeps = {}): Promise<void> {
     return;
   }
 
-  // One Apify call for every due account (see apify-instagram.ts's own
-  // doc comment on why): oldest per-account cutoff wins as the single
-  // shared onlyPostsNewerThan — a fresher-cadence account's cutoff being
-  // slightly earlier than strictly necessary just means a bit more
-  // pre-curation dedup work, never a missed or duplicated event.
-  const cutoffs = dueAccounts.map((account) => accountCutoffDate(fetchState.get(instagramAccountProfileUrl(account)), now));
-  const oldestCutoff = new Date(Math.min(...cutoffs.map((d) => d.getTime())));
-  const onlyPostsNewerThan = oldestCutoff.toISOString().slice(0, 10);
-
+  // One Apify call PER CUTOFF DATE, not one for everyone with the oldest
+  // cutoff — see groupAccountsByCutoff for the real re-billing this used
+  // to cause. A normal run is still a single call (every account was
+  // fetched the same day); new or lagging accounts get their own call
+  // with their own window. A group whose call fails is treated exactly
+  // like the old whole-run failure, but only for ITS accounts: their
+  // fetch state isn't touched (see the loop at the end), the others
+  // proceed normally.
   const accountByUsername = new Map(dueAccounts.map((a) => [a.username, a]));
-  const { posts, errorMessage: apifyError } = await fetchInstagramPostsFn(
-    dueAccounts.map((a) => a.username),
-    onlyPostsNewerThan,
-  );
+  const posts: ApifyInstagramPost[] = [];
+  const fetchedAccounts = new Set<string>();
+  const apifyErrors: string[] = [];
+  for (const group of groupAccountsByCutoff(dueAccounts, fetchState, now)) {
+    const { posts: groupPosts, errorMessage } = await fetchInstagramPostsFn(
+      group.accounts.map((a) => a.username),
+      group.onlyPostsNewerThan,
+    );
+    console.log(`[instagram-discovery] fetched ${groupPosts.length} post(s) across ${group.accounts.length} account(s) (cutoff ${group.onlyPostsNewerThan})`);
+    if (errorMessage) {
+      apifyErrors.push(errorMessage);
+      continue;
+    }
+    posts.push(...groupPosts);
+    for (const a of group.accounts) fetchedAccounts.add(a.username);
+  }
+  const apifyError = apifyErrors.length > 0 ? apifyErrors.join(" | ") : null;
   summary.apifyError = apifyError;
-  console.log(`[instagram-discovery] fetched ${posts.length} post(s) across ${dueAccounts.length} account(s) (cutoff ${onlyPostsNewerThan})`);
 
   // A private/deleted account, or one with zero posts in the window,
   // returns nothing for its username rather than throwing — nothing
@@ -214,7 +225,7 @@ export async function run(deps: InstagramRunDeps = {}): Promise<void> {
   // zero-yield check for every one of them would silently erode the
   // dormancy backstop's real ~6-month silence window on an infrastructure
   // outage, not a real quiet account.
-  for (const account of apifyError ? [] : dueAccounts) {
+  for (const account of dueAccounts.filter((a) => fetchedAccounts.has(a.username))) {
     const state = fetchState.get(instagramAccountProfileUrl(account));
     const next = nextFetchState(state, usernamesWithNewItems.has(account.username));
     await recordInstagramFetchState(account, now, next);

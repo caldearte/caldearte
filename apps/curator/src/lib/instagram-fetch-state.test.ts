@@ -1,6 +1,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
+  MAX_LOOKBACK_DAYS,
+  groupAccountsByCutoff,
   isInstagramAccountDue,
   accountCutoffDate,
   nextFetchState,
@@ -45,7 +47,7 @@ test("isInstagramAccountDue: an inactive account is never due, regardless of how
 });
 
 test("accountCutoffDate uses the account's own last fetch date, not a fixed rolling window", () => {
-  const lastFetchedAt = "2026-07-20T00:00:00.000Z";
+  const lastFetchedAt = "2026-08-10T00:00:00.000Z";
   const cutoff = accountCutoffDate({ lastFetchedAt, consecutiveZeroYieldChecks: 0, isInactive: false }, NOW);
   assert.equal(cutoff.toISOString(), lastFetchedAt);
 });
@@ -71,10 +73,60 @@ test("nextFetchState: the Nth consecutive empty check marks the account inactive
   assert.deepEqual(result, { consecutiveZeroYieldChecks: ZERO_YIELD_CHECKS_BEFORE_INACTIVE, isInactive: true });
 });
 
-test("DEFAULT_INTERVAL_DAYS is 4 — the never-fetched fallback for accountCutoffDate, matching the real worst-case Sun/Wed gap (Wed→Sun) so a newly-added account doesn't drag the shared Apify call's cutoff wider than the cadence actually needs", () => {
+test("DEFAULT_INTERVAL_DAYS is 4 — the first window for an account never fetched before (no longer shared with anyone else's call since groupAccountsByCutoff)", () => {
   assert.equal(DEFAULT_INTERVAL_DAYS, 4);
 });
 
-test("ZERO_YIELD_CHECKS_BEFORE_INACTIVE is 52 — how many checks to wait before giving up on an account, independent of how often the cron fires (reverted 2026-08-30 alongside the cadence reverting to 2x/week, ~6 months of real silence)", () => {
-  assert.equal(ZERO_YIELD_CHECKS_BEFORE_INACTIVE, 52);
+test("ZERO_YIELD_CHECKS_BEFORE_INACTIVE is 156 — ~6 months of real silence at the daily Mon-Sat cadence (6 checks/week × 26 weeks), recalculated 2026-09-13 with the cadence change", () => {
+  assert.equal(ZERO_YIELD_CHECKS_BEFORE_INACTIVE, 156);
+});
+
+// Daniel's rule, 2026-09-13, after a 2-week Apify outage: never look back
+// more than 7 days, whatever last_fetched_at says. Posts older than that
+// only yield expos (which the calendar doesn't prioritise) and
+// inauguraciones that already happened and expire anyway.
+test("accountCutoffDate caps the lookback at MAX_LOOKBACK_DAYS even when the last fetch is much older", () => {
+  const cutoff = accountCutoffDate({ lastFetchedAt: "2026-07-30T00:00:00.000Z", consecutiveZeroYieldChecks: 0, isInactive: false }, NOW);
+  assert.equal(cutoff.getTime(), NOW.getTime() - MAX_LOOKBACK_DAYS * 24 * 60 * 60 * 1000);
+});
+
+test("accountCutoffDate: a last fetch within the cap is used as-is (the cap never widens a window)", () => {
+  const lastFetchedAt = "2026-08-12T00:00:00.000Z";
+  assert.equal(accountCutoffDate({ lastFetchedAt, consecutiveZeroYieldChecks: 0, isInactive: false }, NOW).toISOString(), lastFetchedAt);
+});
+
+// Real re-billing this replaces: one shared Apify call with the OLDEST
+// cutoff among all accounts — 2026-08-26: 93 of 145 fetched posts were
+// already seen (a new account's wider window applied to everyone).
+test("groupAccountsByCutoff: accounts fetched the same day share one call; a new account and a lagging one get their own", () => {
+  const fetchedYesterday = { ...ACCOUNT, username: "a_yesterday" };
+  const fetchedYesterdayToo = { ...ACCOUNT, username: "b_yesterday" };
+  const fetchedTwoDaysAgo = { ...ACCOUNT, username: "c_two_days" };
+  const brandNew = { ...ACCOUNT, username: "d_new" };
+  const laggingAfterOutage = { ...ACCOUNT, username: "e_lagging" };
+  const state = (lastFetchedAt: string) => ({ lastFetchedAt, consecutiveZeroYieldChecks: 0, isInactive: false });
+  const fetchState = new Map([
+    [instagramAccountProfileUrl(fetchedYesterday), state("2026-08-12T09:00:00.000Z")],
+    [instagramAccountProfileUrl(fetchedYesterdayToo), state("2026-08-12T09:05:00.000Z")],
+    [instagramAccountProfileUrl(fetchedTwoDaysAgo), state("2026-08-11T09:00:00.000Z")],
+    [instagramAccountProfileUrl(laggingAfterOutage), state("2026-07-20T09:00:00.000Z")],
+  ]);
+  const groups = groupAccountsByCutoff([fetchedYesterday, fetchedYesterdayToo, fetchedTwoDaysAgo, brandNew, laggingAfterOutage], fetchState, NOW);
+  assert.deepEqual(
+    groups.map((g) => ({ cutoff: g.onlyPostsNewerThan, accounts: g.accounts.map((a) => a.username) })),
+    [
+      { cutoff: "2026-08-06", accounts: ["e_lagging"] }, // capped at 7 days, not 2026-07-20
+      { cutoff: "2026-08-09", accounts: ["d_new"] }, // DEFAULT_INTERVAL_DAYS
+      { cutoff: "2026-08-11", accounts: ["c_two_days"] },
+      { cutoff: "2026-08-12", accounts: ["a_yesterday", "b_yesterday"] },
+    ],
+  );
+});
+
+test("groupAccountsByCutoff: a normal run (everyone fetched the same day) is still a single call", () => {
+  const accounts = ["x", "y", "z"].map((u) => ({ ...ACCOUNT, username: u }));
+  const fetchState = new Map(accounts.map((a) => [instagramAccountProfileUrl(a), { lastFetchedAt: "2026-08-12T08:17:00.000Z", consecutiveZeroYieldChecks: 0, isInactive: false }]));
+  const groups = groupAccountsByCutoff(accounts, fetchState, NOW);
+  assert.equal(groups.length, 1);
+  assert.equal(groups[0].accounts.length, 3);
 });

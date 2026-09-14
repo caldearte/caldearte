@@ -3532,6 +3532,46 @@ the real worst-case Sun/Wed gap (Wed→Sun) exactly — no coverage lost for
 a newly-added account, just no more unnecessarily-wide fallback dragging
 everyone else's shared call.
 
+**Cadence, third change — daily Mon-Sat, measured this time (2026-09-13):**
+after the 2-week Apify blackout (Aug 30 → Sep 13, the $5 credit exhausted
+on day 17 of the cycle) Daniel noticed the coming week looked empty of
+inauguraciones. Post creation times decoded from each approved event's
+Instagram shortcode (the media id embeds a timestamp; validated against
+known post dates) gave the first real picture of how venues announce:
+median lead 6 days, but 27% of posts land 1-4 days before or on the day;
+posting peaks Friday (28%) and is near zero on weekends; openings cluster
+Thu-Sat (78%). Simulating cron cadences against those timestamps: Sun/Wed
+saw only **74%** of inauguraciones before they happened (mostly Friday
+posts about Saturday openings, first seen on Sunday); daily Mon-Sat sees
+**~93%**; Sunday posts are 2%, not worth a 7th run. On cost: Apify's
+`instagram-post-scraper` is pay-per-event, $0.0017 per post written to
+the dataset, no per-run or per-profile charge (confirmed from Apify's
+public store API), and each account's cutoff is its own last fetch — so
+extra runs re-fetch nothing; the free-tier pressure is the registry size
+(~175 accounts ≈ $5/cycle either way), not the cadence. Daniel's call:
+accept a short blackout at the end of a cycle rather than pay; municipal
+accounts (the bulk of the volume) are NOT pruned yet — 13 valid events
+came from 10 of them, and the 26 with zero yield were added right before
+the blackout and hit hardest by the collab-post bug (#518), so they get a
+fair re-measurement around 2026-09-27/30 first. Watchdog `max_gap_hours`
+120 → 54; `ZERO_YIELD_CHECKS_BEFORE_INACTIVE` 52 → 156 (same ~6 months at
+6 checks/week).
+
+**The shared-call re-billing leak, actually fixed (2026-09-13):** the
+7→4 change above only shrank the leak. `instagram-discovery/run.ts` now
+groups due accounts by cutoff *date* (`groupAccountsByCutoff`) and makes
+one Apify call per group, each with only its own accounts — a normal run
+is still one call, but a newly-added or lagging account no longer drags
+everyone else's window back (2026-08-26: 93 of 145 fetched posts were
+already seen and had been billed for nothing). A group whose call fails
+leaves only its own accounts' fetch state untouched. Same day, Daniel's
+rule for gaps: an account's lookback is capped at `MAX_LOOKBACK_DAYS = 7`
+whatever its `last_fetched_at` says — measured on the catch-up run, posts
+older than 7 days yielded 8 expos and one future inauguración while the 9
+inauguraciones they announced had already expired regardless; since the
+calendar is about inauguraciones, that tail isn't worth fetching. 7 also
+matches `OPENING_ONLY_GRACE_DAYS`.
+
 **Pre-Haiku deterministic filter** (`instagram-item.ts`'s
 `isCaptionWorthCurating`, added 2026-08-24) — catches two patterns found
 by reviewing real `rejected_candidates` reasons for this pipeline before
