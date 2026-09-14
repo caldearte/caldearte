@@ -15,6 +15,7 @@ import VisitasGuiadasSection from "./VisitasGuiadasSection";
 import ExposicionesSection from "./ExposicionesSection";
 import CuratoriaBanner from "./CuratoriaBanner";
 import NewsletterSection from "./NewsletterSection";
+import EspaciosSection from "./EspaciosSection";
 import Footer from "./Footer";
 import CityPickerPanel from "./CityPickerPanel";
 import MenuDrawer from "./MenuDrawer";
@@ -262,6 +263,8 @@ export default function CalendarView({
           (echoing Exposiciones' own bottom spacing), tight against the
           form below. */}
       <p className="mt-[60px] md:mt-[120px] mb-4 text-center text-[1rem] font-fragment-mono text-text-primary">{esCL.aiDisclaimer}</p>
+
+      <EspaciosSection />
 
       <NewsletterSection />
 
