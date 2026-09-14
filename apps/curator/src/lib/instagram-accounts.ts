@@ -2514,6 +2514,37 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
     addedAt: "2026-09-14",
     fixedLocation: { location: "Santiago", placeName: "Galería CIMA" },
   },
+  {
+    username: "baj_biobio",
+    note:
+      "Evaluada 2026-09-14 en Chrome (logueado), buscando cuentas nuevas " +
+      "en Concepción. Balmaceda Arte Joven Biobío, Colo-Colo 1855, " +
+      "Concepción — 19.9 mil seguidores, 2852 publicaciones, muy activa, " +
+      "highlight propio \"#GaleríaActiva\". Exposiciones reales en su " +
+      "Galería Activa (\"Viento Sur\", instalación sonora de Camila " +
+      "Lucero y Remo Schnyder, 09-09 al 08-10 — agregada a mano; no " +
+      "estaba en la base pese a que BAJ Biobío ya aparece vía " +
+      "chilecultura). Misma lógica que balmaceda_artejoven y " +
+      "baj_antofagasta: contenido mixto (talleres) que Haiku filtra. " +
+      "fixedLocation.",
+    addedAt: "2026-09-14",
+    fixedLocation: { location: "Concepción", placeName: "Balmaceda Arte Joven Biobío" },
+  },
+  {
+    username: "galeriabahiautopica",
+    note:
+      "Evaluada 2026-09-14 en Chrome (logueado), buscando cuentas nuevas " +
+      "en Valparaíso. Bahía Utópica Galería de Arte, Almirante Montt " +
+      "372, Cerro Concepción, Valparaíso — galería comercial de obra " +
+      "figurativa contemporánea desde 2007, 11.6 mil seguidores, 728 " +
+      "publicaciones, activa. Inauguraciones reales (\"Las formas del " +
+      "agua\", fotografía de Marc Cito, 21-08 — no agregada: ya pasó y " +
+      "no hay fecha de cierre publicada). Ruido: programa de " +
+      "conversatorios \"Diálogos\" (charlas, formato excluido) que Haiku " +
+      "debe rechazar. fixedLocation.",
+    addedAt: "2026-09-14",
+    fixedLocation: { location: "Valparaíso", placeName: "Galería Bahía Utópica" },
+  },
   // El resto de la lista la aporta Daniel — una decisión editorial, igual
   // que cada fuente brillante nueva se evaluó una por una. Confirmar
   // pública y activa antes de agregar cada cuenta.
