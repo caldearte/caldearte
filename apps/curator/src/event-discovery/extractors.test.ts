@@ -990,6 +990,49 @@ test("extractWordpressItems: with no includeFilter configured, every item passes
   assert.equal(result.length, 1);
 });
 
+// --- excludeFilters: negative prefilter (chilecultura.gob.cl, 2026-09-14) ---
+// Real shapes from the live feed that day: online "venues" and the
+// source's own formal naming of talleres/conferencias.
+
+test("extractWordpressItems: excludeFilters drops an item when ANY rule matches, keeps the rest (real chilecultura.gob.cl shapes)", () => {
+  const config = {
+    ...CHILECULTURA_CONFIG,
+    excludeFilters: [
+      { pattern: /youtube|virtual|online|\bradio\b|\btv\b|streaming|zoom/i, fields: ["venue_name"] },
+      { pattern: /^\W*(taller|laboratorio|club de|programa de formaci[oó]n|curso|seminario|conferencia|charla|ciclo de cine|lunes cinematogr|d'cine|puntos de cultura)/i, fields: ["name"] },
+    ],
+  };
+  const items = [
+    { name: "Exposición ''Kalienare''", venue_name: "Centro Cultural Hojalata" },
+    { name: "Leo Beltrán: La otra animación | Fundación CHILEMONOS", venue_name: "Canal de Youtube" },
+    { name: "NUTRIR: cuando el arte convierte la escuela chilena", venue_name: "Galería Suyai TV" },
+    { name: "Liquenlab invita a conocer experiencias de artistas", venue_name: "Virtual" },
+    { name: "Taller de Dibujo Autobiográfico", venue_name: "Centro Cultural Hojalata" },
+    { name: "Programa de Formación en Artes Visuales 2026", venue_name: "Centro Cultural Hojalata" },
+    { name: "Lunes Cinematográfico: Ciclo Hermanos Coen", venue_name: "Sala" },
+  ];
+  const result = extractWordpressItems(items, config, "https://chilecultura.gob.cl/api");
+  assert.deepEqual(result.map((r) => r.title), ["Exposición ''Kalienare''"]);
+});
+
+test("extractWordpressItems: the title rule is anchored at the start — 'taller' inside a real exhibition name or venue never trips it", () => {
+  const config = {
+    ...CHILECULTURA_CONFIG,
+    excludeFilters: [{ pattern: /^\W*(taller|conferencia)/i, fields: ["name"] }],
+  };
+  const items = [
+    { name: "Exposición de resultados del taller de grabado", venue_name: "Wall Galería Taller" },
+    { name: "TALLER ABIERTO: muestra de fin de año", venue_name: "Sala" },
+  ];
+  const result = extractWordpressItems(items, config, "https://chilecultura.gob.cl/api");
+  assert.deepEqual(result.map((r) => r.title), ["Exposición de resultados del taller de grabado"]);
+});
+
+test("extractWordpressItems: with no excludeFilters configured, nothing changes (every other JSON source)", () => {
+  const items = [{ name: "Charla: Cualquier cosa", venue_name: "Canal de Youtube", url: "https://x.cl/1" }];
+  assert.equal(extractWordpressItems(items, CHILECULTURA_CONFIG, "https://chilecultura.gob.cl/api").length, 1);
+});
+
 // --- publishedDateField: the source post's own publish date (noticias.udec.cl, 2026-08-13) ---
 
 test("extractWordpressItems reads publishedDate from the configured field when set", () => {

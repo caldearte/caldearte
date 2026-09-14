@@ -475,6 +475,34 @@ export const KNOWN_SOURCES: KnownSource[] = [
       endDateField: "end_date",
       locationField: "commune",
       placeNameField: "venue_name",
+      // 2026-09-14, after Daniel asked why an official feed only reached
+      // 51% approval (39/76): `disciplines=4` is a discipline tag, not an
+      // event type, and every rejection was correct — talleres,
+      // conferencias (all of Chilemonos, on YouTube), conciertos tagged
+      // multidisciplinary, cine, convocatorias, kids' activities, and
+      // "exhibitions" hosted by online platforms. Two deterministic rules,
+      // measured against the source's full approved history before
+      // adding (see WordpressRestConfig.excludeFilters):
+      // - venue: Canal de Youtube / Virtual / Galería·Radio Suyai TV
+      //   (an online platform publishing PDF artist books and digital
+      //   graphics as "exhibitions", commune "Santiago") — blocks 14/37
+      //   live items, zero physically-held approved events ever; the
+      //   5 approved virtual ones it would have stopped are the point.
+      // - title: the source's own formal naming ("Taller de…",
+      //   "Programa de Formación…", "Conferencia…", "Ciclo de cine…") —
+      //   10/37 recent rejections; the one approved match (Taller de
+      //   Arpillera) was removed by hand as scope creep. Anchored at
+      //   the start of the title on purpose: "taller" mid-sentence is a
+      //   real venue name often enough elsewhere (@wall.galeriataller)
+      //   that a bare keyword would be the same mistake ruled out for
+      //   Instagram captions.
+      excludeFilters: [
+        { pattern: /youtube|virtual|online|\bradio\b|\btv\b|streaming|zoom/i, fields: ["venue_name"] },
+        {
+          pattern: /^\W*(taller|laboratorio|club de|programa de formaci[oó]n|curso|seminario|conferencia|charla|ciclo de cine|lunes cinematogr|d'cine|puntos de cultura)/i,
+          fields: ["name"],
+        },
+      ],
     },
     // No fixedLocation — genuine national aggregator, real per-item
     // commune/venue_name from the API itself (locationField/placeNameField
