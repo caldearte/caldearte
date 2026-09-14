@@ -144,7 +144,28 @@ the Edge Function never needs a separate query per time window.
 - **`/admin`** — a quick CURRENT-period-only summary, not a historical
   view (`GranularityToggle`'s `hideTotal` prop hides "Total" here
   specifically — "período actual" has no meaningful all-time reading).
-  In order: **Costos** (one executive line — effective cost this period,
+  **Above everything else, and visually set apart (magenta frame):
+  "Señales de uso"** (`AudienceSignals`, 2026-09-14, Daniel's request) —
+  the three numbers that say whether anyone actually *uses* Caldearte, as
+  opposed to whether the machine works: Instagram followers (latest
+  `instagram_account_snapshots`), confirmed-and-active newsletter
+  subscribers (`newsletter_subscribers`, double opt-in — an unconfirmed
+  signup isn't a reader), and exhibitions venues submitted themselves
+  (`events` with `source='submitted'`, removed ones included — the signal
+  is that a venue reached out). Each tile: value now, net change over a
+  fixed 30-day window (deliberately NOT tied to the period toggle below,
+  so the number means the same thing every visit; a series younger than
+  30 days shows "+N desde el <fecha>" instead), and a 90-day cumulative
+  sparkline (inline SVG, no recharts) so a flat line is visibly flat.
+  Pure logic in `lib/audienceSignals.ts` (tested); the Edge Function
+  ships the two new row-level arrays as optional fields so a web deploy
+  landing before the function redeploy renders empty rather than
+  crashing. These are the gate for every "next phase" decision (leaving
+  the free tiers, the community layer, a second country, any talk of
+  revenue) — as of 2026-09-14: 85 / 2 / 0. The contact form is NOT a
+  fourth signal because `api/contact` deliberately stores nothing (a
+  Resend relay only); counting it would need its own table.
+  Then, in order: **Costos** (one executive line — effective cost this period,
   Apify's free tier called out separately, see Cost governance above),
   **Chile — eventos** (stacked bar: inauguraciones vs. exposiciones
   activas, plus the period's real DISTINCT event total —

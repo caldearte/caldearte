@@ -103,6 +103,23 @@ export interface AdminAnalyticsPayload {
     shadowReasoning: string;
     error: string | null;
   }>;
+  // Señales de uso (Daniel, 2026-09-14) — see the Edge Function's own
+  // comment. Optional on the type so a web deploy that lands before the
+  // function redeploy renders the section as empty rather than crashing
+  // (the two ship independently — a real incident shape, see
+  // architecture.md's admin section).
+  newsletterSubscribers?: Array<{
+    createdAt: string;
+    confirmedAt: string | null;
+    unsubscribedAt: string | null;
+  }>;
+  submittedEvents?: Array<{
+    createdAt: string;
+    title: string;
+    placeName: string | null;
+    adminRegionName: string | null;
+    removedAt: string | null;
+  }>;
 }
 
 // Shared by every /admin/* page — same auth gate + fetch, extracted

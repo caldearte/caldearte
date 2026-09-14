@@ -14,6 +14,8 @@ import CostSummaryLine from "./CostSummaryLine";
 import FuentesMetricsTable from "./FuentesMetricsTable";
 import InstagramSummaryBar from "./InstagramSummaryBar";
 import OutOfScopeTrends from "./OutOfScopeTrends";
+import AudienceSignals from "./AudienceSignals";
+import { computeAudienceSignals } from "@/lib/audienceSignals";
 
 // recharts' ResponsiveContainer needs real DOM measurement (getBoundingClientRect
 // et al.) that doesn't exist during Next's server render — attempting it threw
@@ -153,8 +155,14 @@ export default function AdminDashboard({ data }: { data: AdminAnalyticsPayload }
     };
   }, [data.instagramAccountSnapshots, data.instagramPosts, currentPeriod, granularity]);
 
+  // Señales de uso — above the period toggle on purpose: they use their
+  // own fixed 30-day window, not the toggle (see AudienceSignals).
+  const audienceSignals = useMemo(() => computeAudienceSignals(data, new Date()), [data]);
+
   return (
     <div className="flex flex-col gap-12">
+      <AudienceSignals signals={audienceSignals} />
+
       <GranularityToggle value={granularity} onChange={setGranularity} hideTotal />
 
       <section>
