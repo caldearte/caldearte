@@ -4159,6 +4159,76 @@ chunk lost to "expected 20 row(s), got 21" (parser now drops an
 out-of-range extra row; every parse failure logs `stop_reason`, block
 types and `output_tokens`).
 
+## Source review, 2026-09-14: chilecultura's 51%, uchile's three rows, and online-only "exhibitions"
+
+Daniel read `/admin/fuentes` and asked two things: why the official
+ministry feed (`chilecultura.gob.cl`, `disciplines=4`) only reached 51%
+approval (39/76), and why four near-identical uchile.cl rows showed two
+very different numbers.
+
+**chilecultura.gob.cl — the feed is broad, the rejections were right.**
+`disciplines=4` is a *discipline* tag ("Artes visuales"), not an event
+type, and the API has no type field at all. Reviewed all 37 retained
+rejections: every one correct — talleres, conferencias (all of Chilemonos,
+venue "Canal de Youtube"), conciertos tagged multidisciplinary, cine,
+convocatorias, kids' activities, one religion-axis case, and
+"exhibitions" hosted by **Galería / Radio Suyai TV**, an online platform
+that publishes PDF artist books and digital graphics as year-long
+exhibitions with commune "Santiago". Against Instagram's ~20%, 51% is a
+clean source. Shipped (PR #527): a generic `excludeFilters` option on
+`WordpressRestConfig` (list of {pattern, fields} rules, item dropped if
+any matches, applied after `includeFilter`, one log line per excluded
+item), configured only for chilecultura — a venue rule
+(`youtube|virtual|online|radio|tv|streaming|zoom`) and a title rule
+anchored at the start of the title (`Taller|Laboratorio|Club de|Programa
+de Formación|Curso|Seminario|Conferencia|Charla|Ciclo de cine|…`;
+anchored on purpose, "taller" mid-string is a real venue name often
+enough). Measured first against the source's full approved history (43):
+the venue rule hits zero physically-held events (only the 5 virtual
+ones), the title rule hits one (Taller de Arpillera, already removed by
+hand as scope creep) and would have spared 10/37 recent rejections. Live
+feed that day: 37 → 21 items to Haiku. A gotcha worth keeping: the regex
+was first written through a Python heredoc that turned `\b` into literal
+backspace characters — the unit test (written with `\\b`) passed while
+the real config silently matched nothing; caught only by running the
+real config over the captured live feed. Do that, not just tests.
+
+**Online-only "exhibitions" are out — a precedent set by hand.** Daniel
+had already removed one Suyai TV item; on this review he removed the
+other four the filter would have blocked (NUTRIR, El Desgarre del
+Espíritu, a Radio Suyai TV sound-art launch, Liquenlab "Virtual" in
+Punta Arenas). The calendar is placed by comuna and exists to send people
+to openings; a PDF or a YouTube stream has no comuna. Documented in
+overview.md's scope section; naming it in the curation prompt is a
+separate, policy-path change (the Instagram pipeline can approve the
+same shape — "ENTREACTO 03", a gallery's digital-only exhibition format,
+was inserted 2026-09-13).
+
+**uchile.cl — three sources, not one.** Two rows (`…/30dias/6` for both
+hosts, last fetched 2026-07-24) were leftovers of a July config that
+used an arbitrary page number; the admin attributes yield by hostname,
+so they mirrored the `/1` rows' numbers. Deleted from
+`bright_source_fetch_state`. Then, split correctly by host:
+`mac.uchile.cl` 12/13 (clean); `artes.uchile.cl` 10/24 but 9 of its 14
+rejections were duplicate re-listings of the rolling 30-day agenda (the
+same exhibition appears once per day it's open) — real content approval
+~67%; `uchile.cl` root 10/85 (12%) — a whole-university agenda full of
+seminarios, charlas, ceremonias — but 6 of its 10 approvals are venues no
+other source covers (MAPA, Plataforma Cultural ×3, Galería Micromedios,
+FAU, Museo Gabriela Mistral) at ~$0.16 per two months, so it stays. The
+`articleList` extractor has no filter hook; a title-prefix rule would
+cut ~35% of its rejections if the source ever grew — not worth it today.
+Two approvals that looked odd checked out: "1197" is a multichannel
+sound installation (Sonómetro) with guided entry, "Inauguración Plaza de
+la Memoria" a memorial sculpture unveiling.
+
+**Admin "Calidad" now excludes duplicate rejections** (PR #528): a
+regex over `rejected_candidates.reason` in the Edge Function counts
+duplicate re-listings per source (sampled 14/14 true before adding; 50
+of ~1,300 rejections overall, concentrated in rolling agendas), and the
+column subtracts them from the denominator, showing them apart ("67%
+aprobación (10/15) · 9 dup.") with a tooltip naming it a heuristic.
+
 ## Stale pre-fix titles found and manually corrected (2026-09-06)
 
 While testing the flyer redesign (see roadmap.md's own entry) against
