@@ -52,6 +52,19 @@ region-discovery.md's 2026-09-14 source review). Named in the curation
 prompt (`ART_SCOPE_POLICY`) the same day, since the Instagram pipeline
 has no venue field to prefilter on.
 
+**The test is the format, not the label (anti-reframing rule, 2026-09-14).**
+A show, concert, play, workshop, talk or circus act is out even when the
+text calls it "intervención", "experiencia", "performance" or "muestra";
+the artistic-intervention exception requires a concretely described
+gesture (what the artist does, how it alters the space or the viewer),
+not a genre in an unusual place. A documentary or heritage display whose
+purpose is to inform about a place, institution or infrastructure
+(panels, maquetas, archive objects, record photographs) is not a visual-
+art exhibition either — unlike artistic photography or an artist's show
+about memory, which are in. Added after the 6th "reframe to approve"
+instance and the "Campamento Sewell: 20 años" removal, measured on a
+local replay before shipping (see region-discovery.md, 2026-09-14).
+
 **Included — genuine artistic interventions:** a performance or happening
 staged specifically as an artistic gesture, not as a conventional show —
 e.g. a street performance blending dance and theater as a single artistic

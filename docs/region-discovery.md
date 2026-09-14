@@ -4232,6 +4232,73 @@ of ~1,300 rejections overall, concentrated in rolling agendas), and the
 column subtracts them from the denominator, showing them apart ("67%
 aprobación (10/15) · 9 dup.") with a tooltip naming it a heuristic.
 
+## Prompt optimization, measured (2026-09-14): shorter reasoning, defined tags, anti-reframing rule
+
+Daniel's ask: after the shadow pilot showed MiniMax barely emitting
+sensitivity tags, test whether that's prompt-fixable, and while at it
+make the prompt "más preciso, menos tokens de razonamiento y mejor
+calidad" for both models. Method: 16 real Instagram posts with known
+ground truth (the day's removals — La Ruta del Circo, Campamento Sewell
+—, Haiku-tagged posts, ENTREACTO 03, five untagged controls), captions
+recovered from each post page's `<meta name="description">`, run through
+the real `curateBrightSourceItems` with the production prompt and with
+transformed variants, 3 repetitions each, scored against the truth.
+Script lived only in the session scratchpad; ~$1 total.
+
+| Variant | Verdicts | Tag recall | False tags | Output tokens / run | Seconds / run |
+|---|---|---|---|---|---|
+| Haiku, prompt as-is | 40/45 | 12/12 | 1 | 4,569 | 29 |
+| **Haiku, optimized** | **42/45** | **12/12** | **0** | **3,448 (−24%)** | **14** |
+| MiniMax, as-is | 36/45 | 7/12 | 0 | 15,157 | 331 |
+| MiniMax, short tag boost only | 32/39 (1 chunk lost) | 9/10 | 0 | 28,431 | 398 |
+| MiniMax, optimized | 35/45 | 10/12 | 0 | 21,975 | 392 |
+
+**What "optimized" is** (shipped in the same PR as this entry):
+1. `sensitivityTags` defined one by one, with what they are FOR ("activan
+   el modo familiar… ante la duda, etiqueta") instead of "vacío si no
+   aplica".
+2. `curationReasoning` capped at 25 words, Spanish, "la categoría que
+   aplica y el dato decisivo" — median reasoning went 34 → 15 words on
+   Haiku with no lost information; this is where the token saving comes
+   from (output is the expensive side).
+3. An anti-reframing rule in `ART_SCOPE_POLICY`: a show/concert/play/
+   workshop/talk/circus act is rejected even when called "intervención",
+   "experiencia", "performance" or "muestra"; the intervention exception
+   needs a concretely described gesture. Added after the **6th** instance
+   of the reframe-to-approve pattern — "La Ruta del Circo y Organillero",
+   approved as "intervención circense en espacio público" the day after
+   circus was named in the prompt.
+4. A documentary/heritage clause: a display whose purpose is to inform
+   about a place, institution or infrastructure (panels, maquetas, archive
+   objects, record photographs) is not a visual-art exhibition — worded
+   to keep artistic photography and memory-themed artist shows in
+   (Campamento Sewell 3/3 rejected; Frágil como un volantín 3/3 still
+   approved on Haiku).
+
+**Haiku:** a clear win — two more correct verdicts, same tag recall, no
+false tags, a quarter fewer output tokens (~15% cheaper per item, ~$0.029
+vs $0.034 per 16 posts), half the latency. Verified once more with the
+real production prompt after the edit: 14/15 verdicts, 4/4 tags, 3,430
+tokens.
+
+**MiniMax:** tags are prompt-fixable (7 → 10/12) but verdicts don't
+improve, it over-applies the new documentary clause (rejects Frágil como
+un volantín 3/3 as "muestra patrimonial"), and — the structural part —
+any added instruction inflates its reasoning: the tag-only boost nearly
+doubled its output and lost a chunk again; the optimized prompt lands at
+~$0.031 per 16 posts, **the same as Haiku**, at 13× the latency. The
+per-call price advantage the pilot started from doesn't survive the
+verbosity. Conclusion recorded for Daniel: MiniMax won't be primary; what
+it contributed (catching Falun Gong, circus, Sewell) is now encoded in
+the prompt rules where it belongs. Whether to keep the shadow running as
+a disagreement-mining feed (~$3/month) or switch it off is his call.
+
+**Method notes worth keeping:** both models are non-deterministic on
+tags (Haiku tagged the same post 2/3 locally and 1/1 in production), so
+single-run comparisons of tags are noise — repeat 3×; and anchor prompt
+variants on exact production sentences so the experiment throws if the
+production prompt drifts.
+
 ## Stale pre-fix titles found and manually corrected (2026-09-06)
 
 While testing the flyer redesign (see roadmap.md's own entry) against
