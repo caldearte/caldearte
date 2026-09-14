@@ -2482,6 +2482,23 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
     addedAt: "2026-09-11",
     fixedLocation: { location: "Valdivia", placeName: "Galería Réplica UACh" },
   },
+  {
+    username: "balmaceda_artejoven",
+    note:
+      "Evaluada 2026-09-14 en Chrome (logueado). Balmaceda Arte Joven " +
+      "Metropolitana, Av. Presidente Balmaceda 1215, Santiago — 62.1 mil " +
+      "seguidores, 3460 publicaciones, muy activa. Contenido mixto " +
+      "(talleres, residencias, memoria/DDHH) pero con exposiciones " +
+      "reales y frecuentes propias (LAB 1/2, Balmaceda Visual) y fuera " +
+      "de sede (\"Premoniciones\" en MAC Quinta Normal, 25-09). Sus " +
+      "eventos ya llegaban por chilecultura.gob.cl, pero SIN hora " +
+      "(opening_datetime 00:00) — el reel de IG del 11-09 sí traía la " +
+      "hora de inauguración (19:00). Se agrega para tener el dato " +
+      "preciso; Haiku filtra los talleres. Sin fixedLocation: expone " +
+      "en sede propia y en otros espacios (MAC), y la sede de Santiago " +
+      "no es la única BAJ (Antofagasta ya tiene su cuenta propia).",
+    addedAt: "2026-09-14",
+  },
   // El resto de la lista la aporta Daniel — una decisión editorial, igual
   // que cada fuente brillante nueva se evaluó una por una. Confirmar
   // pública y activa antes de agregar cada cuenta.
