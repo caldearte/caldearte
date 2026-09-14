@@ -480,6 +480,22 @@ export interface WordpressRestConfig {
   // (tested against a full year of real posts, 2026-08-13). Absent means
   // no prefilter — unchanged default behavior for every other source.
   includeFilter?: { pattern: RegExp; fields: string[] }; // fields are dotted paths, e.g. ["title.rendered", "content.rendered"]
+  // The negative counterpart, applied after includeFilter: drop an item
+  // when ANY rule's pattern matches its fields. Real need,
+  // chilecultura.gob.cl (2026-09-14): its `disciplines=4` is a
+  // discipline tag ("Artes visuales"), not an event type, so the feed
+  // mixes real exhibitions with talleres, conferencias, cine, and —
+  // via `venue_name` — purely online "venues" (Canal de Youtube,
+  // Virtual, Galería/Radio Suyai TV, an online platform publishing PDF
+  // artist books as "exhibitions"). 51% approval on an official feed
+  // was that, not Haiku being strict. Measured before adding (see
+  // known-sources.ts's entry): the venue rule blocks 14/37 live items
+  // and ZERO physically-held approved events in the source's whole
+  // history (only the 5 virtual ones, one already removed by hand);
+  // the title rule would have spared 10/37 recent rejections and the one
+  // approved title it matches was itself removed by hand as scope creep.
+  // Still not a scope decision — Haiku judges everything that passes.
+  excludeFilters?: Array<{ pattern: RegExp; fields: string[] }>;
   // Dotted path to the source post's own publish date (e.g. "date" —
   // WordPress's standard field, "YYYY-MM-DDTHH:mm:ss"). Feeds
   // BrightSourceItem.publishedDate — see that field's own doc comment.
@@ -533,12 +549,24 @@ function formatWpDate(raw: string | undefined): string | null {
 // one, lives in the description field's free text (rawDateText), so
 // Haiku still reads that for openingDatetime specifically.
 export function extractWordpressItems(items: unknown[], config: WordpressRestConfig, fallbackUrl: string): BrightSourceItem[] {
-  const filteredItems = config.includeFilter
+  const includedItems = config.includeFilter
     ? items.filter((item) => {
         const text = config.includeFilter!.fields.map((field) => getStringPath(item, field) ?? "").join(" ");
         return config.includeFilter!.pattern.test(text);
       })
     : items;
+  const filteredItems = config.excludeFilters
+    ? includedItems.filter((item) => {
+        const excluded = config.excludeFilters!.some((rule) => {
+          const text = rule.fields.map((field) => getStringPath(item, field) ?? "").join(" ");
+          return rule.pattern.test(text);
+        });
+        if (excluded) {
+          console.log(`[event-discovery] ${fallbackUrl}: excluded before curation by excludeFilters: ${JSON.stringify(getStringPath(item, config.titleField) ?? "(sin título)")}`);
+        }
+        return !excluded;
+      })
+    : includedItems;
 
   return filteredItems.map((item) => {
     const title = getStringPath(item, config.titleField) ?? "(sin título)";
