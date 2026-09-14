@@ -4199,10 +4199,13 @@ other four the filter would have blocked (NUTRIR, El Desgarre del
 Espíritu, a Radio Suyai TV sound-art launch, Liquenlab "Virtual" in
 Punta Arenas). The calendar is placed by comuna and exists to send people
 to openings; a PDF or a YouTube stream has no comuna. Documented in
-overview.md's scope section; naming it in the curation prompt is a
-separate, policy-path change (the Instagram pipeline can approve the
-same shape — "ENTREACTO 03", a gallery's digital-only exhibition format,
-was inserted 2026-09-13).
+overview.md's scope section and, the same day (PR #530, Daniel's
+merge), named in the curation prompt itself (`ART_SCOPE_POLICY`) — the
+venue prefilter only covers chilecultura, and the Instagram pipeline has
+no venue field: "ENTREACTO 03", De Sarmiento Galería's digital-only
+exhibition format, had come in that way on 2026-09-13 and was removed
+along with the other five. A physical show that also has a virtual
+version is still approved.
 
 **uchile.cl — three sources, not one.** Two rows (`…/30dias/6` for both
 hosts, last fetched 2026-07-24) were leftovers of a July config that
