@@ -208,6 +208,18 @@ Deno.serve(async (req) => {
   const rejectedAccounts = new Map<string, number>();
   const acceptedDomains = new Map<string, number>();
   const rejectedDomains = new Map<string, number>();
+  // Rejections that are really re-listings of something the same batch
+  // already judged (Daniel, 2026-09-14): a rolling agenda like
+  // artes.uchile.cl/agenda/30dias lists the same exhibition once per day
+  // it's open, and Haiku correctly rejects the repeats as duplicates —
+  // but "Calidad" then reads 42% for a source whose real content
+  // approval is ~67%. Heuristic over the rejection text, labeled as such
+  // in the UI (no structured flag exists; rejected_candidates has only
+  // `reason`). Sampled 14/14 true duplicates/re-listings before adding;
+  // 50 of ~1,300 rejections overall, concentrated in rolling agendas.
+  const duplicateAccounts = new Map<string, number>();
+  const duplicateDomains = new Map<string, number>();
+  const DUPLICATE_REASON = /duplicad|duplicate|mismo evento|misma (exposici|muestra)|same (event|exhibition)|already (reported|covered|listed)|ya (reportad|cubiert|incluid|list)/i;
 
   function hostnameOf(url: string | null): string | null {
     if (!url) return null;
@@ -223,7 +235,7 @@ Deno.serve(async (req) => {
   // source_url/source_account separately here rather than widening that.
   const [eventsSourceRes, rejectedSourceRes] = await Promise.all([
     client.from("events").select("source_url, source_account").eq("curation_status", "approved").is("removed_at", null),
-    client.from("rejected_candidates").select("source_url, source_account"),
+    client.from("rejected_candidates").select("source_url, source_account, reason"),
   ]);
   if (eventsSourceRes.error || rejectedSourceRes.error) {
     console.error("admin-analytics: source attribution query failed", eventsSourceRes.error ?? rejectedSourceRes.error);
@@ -235,9 +247,16 @@ Deno.serve(async (req) => {
     if (hostname) acceptedDomains.set(hostname, (acceptedDomains.get(hostname) ?? 0) + 1);
   }
   for (const row of rejectedSourceRes.data ?? []) {
-    if (row.source_account) rejectedAccounts.set(row.source_account, (rejectedAccounts.get(row.source_account) ?? 0) + 1);
+    const isDuplicate = DUPLICATE_REASON.test(row.reason ?? "");
+    if (row.source_account) {
+      rejectedAccounts.set(row.source_account, (rejectedAccounts.get(row.source_account) ?? 0) + 1);
+      if (isDuplicate) duplicateAccounts.set(row.source_account, (duplicateAccounts.get(row.source_account) ?? 0) + 1);
+    }
     const hostname = hostnameOf(row.source_url);
-    if (hostname) rejectedDomains.set(hostname, (rejectedDomains.get(hostname) ?? 0) + 1);
+    if (hostname) {
+      rejectedDomains.set(hostname, (rejectedDomains.get(hostname) ?? 0) + 1);
+      if (isDuplicate) duplicateDomains.set(hostname, (duplicateDomains.get(hostname) ?? 0) + 1);
+    }
   }
 
   const brightSources: Array<{
@@ -246,6 +265,9 @@ Deno.serve(async (req) => {
     intervalDays: number | null;
     accepted: number;
     rejected: number;
+    // Subset of `rejected` that are duplicate re-listings — see
+    // DUPLICATE_REASON above. The UI's "Calidad" excludes them.
+    rejectedDuplicates: number;
     possiblyDead: boolean;
     // Which of the 3 non-Instagram bright-source pipelines this row
     // belongs to — added 2026-08-23 for /admin/cadencia (Daniel wanted
@@ -266,6 +288,7 @@ Deno.serve(async (req) => {
     intervalDays: number | null;
     accepted: number;
     rejected: number;
+    rejectedDuplicates: number;
     possiblyDead: boolean;
     // Real cadence state (not the possiblyDead heuristic) — added
     // 2026-08-23 for /admin/cadencia. consecutiveZeroYieldAtCap only
@@ -305,6 +328,7 @@ Deno.serve(async (req) => {
         intervalDays: row.interval_days,
         accepted,
         rejected,
+        rejectedDuplicates: duplicateAccounts.get(instagramUsername) ?? 0,
         possiblyDead: !hasYield && (atAdaptiveCap || row.last_fetched_at !== null),
         isInactive: row.is_inactive ?? false,
         consecutiveZeroYieldAtCap: row.consecutive_zero_yield_at_cap ?? 0,
@@ -325,6 +349,7 @@ Deno.serve(async (req) => {
         intervalDays: row.interval_days,
         accepted,
         rejected,
+        rejectedDuplicates: 0,
         possiblyDead: false,
         category: "google_alerts",
       });
@@ -339,6 +364,7 @@ Deno.serve(async (req) => {
         intervalDays: row.interval_days,
         accepted,
         rejected,
+        rejectedDuplicates: duplicateDomains.get(hostname) ?? 0,
         possiblyDead: !hasYield && (atAdaptiveCap || row.last_fetched_at !== null),
         category,
       });

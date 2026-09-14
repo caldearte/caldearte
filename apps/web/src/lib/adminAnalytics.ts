@@ -31,6 +31,10 @@ export interface AdminAnalyticsPayload {
     intervalDays: number | null;
     accepted: number;
     rejected: number;
+    // Duplicate re-listings within `rejected` (heuristic over the
+    // rejection text, see the Edge Function) — optional so a web deploy
+    // that lands before the function redeploy still renders.
+    rejectedDuplicates?: number;
     possiblyDead: boolean;
     category: "bright_source" | "headless" | "google_alerts";
   }>;
@@ -40,6 +44,10 @@ export interface AdminAnalyticsPayload {
     intervalDays: number | null;
     accepted: number;
     rejected: number;
+    // Duplicate re-listings within `rejected` (heuristic over the
+    // rejection text, see the Edge Function) — optional so a web deploy
+    // that lands before the function redeploy still renders.
+    rejectedDuplicates?: number;
     possiblyDead: boolean;
     isInactive: boolean;
     consecutiveZeroYieldAtCap: number;

@@ -71,6 +71,7 @@ export default function FuentesPage({
         lastFetchedAt: s.lastFetchedAt,
         accepted: s.accepted,
         rejected: s.rejected,
+        rejectedDuplicates: s.rejectedDuplicates ?? 0,
         possiblyDead: s.possiblyDead || s.isInactive,
       })),
       ...brightSources.map((s) => ({
@@ -79,6 +80,7 @@ export default function FuentesPage({
         lastFetchedAt: s.lastFetchedAt,
         accepted: s.accepted,
         rejected: s.rejected,
+        rejectedDuplicates: s.rejectedDuplicates ?? 0,
         possiblyDead: s.possiblyDead,
       })),
     ];
