@@ -2545,6 +2545,19 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
     addedAt: "2026-09-14",
     fixedLocation: { location: "Valparaíso", placeName: "Galería Bahía Utópica" },
   },
+  {
+    username: "centroculturalceina",
+    note:
+      "Encontrada 2026-09-15 revisando un post real de arte.udp+" +
+      "centroculturalceina (\"La Febril Mirada\", retrospectiva de 40 " +
+      "artistas por los 20 años de la Escuela de Arte UDP, agregada a " +
+      "mano) — CEINA no estaba en la base. Centro Cultural CEINA, " +
+      "Arturo Prat 33, Santiago (Metro U. de Chile) — cuenta " +
+      "verificada, 73,3 mil seguidores, 2745 publicaciones, muy activa. " +
+      "fixedLocation.",
+    addedAt: "2026-09-15",
+    fixedLocation: { location: "Santiago", placeName: "Centro Cultural CEINA", address: "Arturo Prat 33, Santiago" },
+  },
   // El resto de la lista la aporta Daniel — una decisión editorial, igual
   // que cada fuente brillante nueva se evaluó una por una. Confirmar
   // pública y activa antes de agregar cada cuenta.
