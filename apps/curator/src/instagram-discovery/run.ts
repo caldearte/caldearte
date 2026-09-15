@@ -24,7 +24,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { recordUsage, getConfigNumber, getCurrentMonthSpend } from "../lib/usage-tracking.js";
 import { estimateCostUsd } from "../lib/pricing.js";
 import { enrichCandidates, type FetchLike as PageFetchLike } from "../lib/page-fetch.js";
-import { fetchInstagramPosts, type ApifyInstagramPost } from "../lib/apify-instagram.js";
+import { fetchInstagramPosts, RESULTS_LIMIT_PER_ACCOUNT, type ApifyInstagramPost } from "../lib/apify-instagram.js";
 import { toBrightSourceItem, isCaptionWorthCurating, resolveAccountForPost, dedupeItemsBySourceUrl } from "../lib/instagram-item.js";
 import { INSTAGRAM_ACCOUNTS, type InstagramAccountConfig } from "../lib/instagram-accounts.js";
 import {
@@ -138,6 +138,27 @@ export async function run(deps: InstagramRunDeps = {}): Promise<void> {
   }
   if (collabPosts > 0) {
     console.log(`[instagram-discovery] ${collabPosts}/${rawItems.length} post(s) attributed to the requested account despite a different author (collab/co-authored posts)`);
+  }
+  // Apify's `resultsLimit` (apify-instagram.ts) hard-caps how many posts
+  // it returns per requested profile, regardless of onlyPostsNewerThan —
+  // an account whose real per-account count lands exactly on that cap is
+  // indistinguishable, from this data alone, between "posted exactly N"
+  // and "posted more than N and the rest got silently, permanently
+  // dropped" (found 2026-09-15: MAVI UC hit the cap exactly, no way to
+  // tell from the run itself whether anything was lost). Not proof of
+  // truncation, just the one signal available — surfaced here so a real
+  // pattern (an account hitting this often) is visible instead of
+  // invisible.
+  const rawCountByUsername = new Map<string, number>();
+  for (const account of accountForItem.values()) {
+    rawCountByUsername.set(account.username, (rawCountByUsername.get(account.username) ?? 0) + 1);
+  }
+  for (const [username, count] of rawCountByUsername) {
+    if (count >= RESULTS_LIMIT_PER_ACCOUNT) {
+      console.warn(
+        `[instagram-discovery] ${username} returned ${count} raw post(s) this run — at Apify's resultsLimit cap (${RESULTS_LIMIT_PER_ACCOUNT}), older posts may have been silently dropped`,
+      );
+    }
   }
   // Same post URL twice = a collab between two registered accounts, see
   // dedupeItemsBySourceUrl. Must happen before curation, not after.

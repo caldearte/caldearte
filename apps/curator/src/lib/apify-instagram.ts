@@ -77,7 +77,12 @@ export function coauthorUsernamesOf(coauthorProducers: unknown): string[] {
     .filter((u) => u.length > 0);
 }
 
-const RESULTS_LIMIT_PER_ACCOUNT = 5;
+// Exported so run.ts can log when an account's raw fetch count hits this
+// cap — the one signal we have that Apify's own resultsLimit (not our
+// onlyPostsNewerThan filter) may have truncated a burst of posts, since
+// a truncated fetch and a genuinely-quiet-past-5-posts account return
+// the exact same shape otherwise (see run.ts's own comment on this).
+export const RESULTS_LIMIT_PER_ACCOUNT = 5;
 
 // A real Instagram post always has a shortcode URL. The actor ALSO pushes
 // one item per requested profile that had nothing in the window (or was
