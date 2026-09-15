@@ -63,7 +63,11 @@ purpose is to inform about a place, institution or infrastructure
 art exhibition either — unlike artistic photography or an artist's show
 about memory, which are in. Added after the 6th "reframe to approve"
 instance and the "Campamento Sewell: 20 años" removal, measured on a
-local replay before shipping (see region-discovery.md, 2026-09-14).
+local replay before shipping (see region-discovery.md, 2026-09-14). On
+its first live day (2026-09-15) the documentary clause still let three
+through — archive photographs of Gabriela Mistral, naval ship models, an
+architect's centenary with a documentary and a heritage display — all
+removed by hand; the anti-reframing half held (two circus acts rejected).
 
 **Included — genuine artistic interventions:** a performance or happening
 staged specifically as an artistic gesture, not as a conventional show —

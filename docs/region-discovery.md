@@ -4344,8 +4344,13 @@ documental/patrimonial, no arte visual". Two more inserts sit on the
 same edge: an exhibition of naval ship models by a "modelista naval"
 (Ancud) and the Osvaldo Cáceres centenary in Los Ángeles (documentary
 screening + travelling exhibit + drawing activity for an architect who
-also painted). All three flagged for Daniel rather than removed. The
-other three inserts are clean inauguraciones/visita guiada (Atlas Visual
+also painted). Daniel removed all three the same day (`removed_reason`
+records the pattern on each) — so the documentary/heritage clause is
+0-for-3 in production on its first day, one day after Sewell. As with the
+theater pattern, the prompt sentence alone isn't holding; the next step,
+if a 4th appears, is a deterministic check on the caption (archive /
+patrimonio / maquetas / registros vocabulary with no artist named) rather
+than another prompt sentence. The other three inserts are clean inauguraciones/visita guiada (Atlas Visual
 de una Mala Imagen, Perderse para encontrar, Ejercicios de Empatía), and
 dedup skipped 8 already-stored events and upgraded 2 (Premoniciones now
 has a confirmed opening time; Registro Nacional de Espera moved to the
