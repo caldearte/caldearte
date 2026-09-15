@@ -33,18 +33,23 @@ export interface ApifyInstagramPost {
   displayUrl: string | null;
   ownerUsername: string;
   // The username whose profile the actor was asked to scrape, parsed from
-  // the item's `inputUrl` (a real output field, confirmed against the
-  // actor's own documented output 2026-09-13). Distinct from
-  // ownerUsername on purpose: a collaborative post ("colab", 2+ accounts
-  // as co-authors) shows up on every co-author's profile, but the actor
-  // reports only the primary author as ownerUsername — so a cultural
-  // center's own event, co-posted with its municipality, came back as
-  // owned by the municipality. Real production loss, 2026-09-13: 196 of
-  // 645 fetched posts (30%) were dropped as "unexpected owner" for
-  // exactly this reason — paid Apify results thrown away, and the
-  // registered account's own announcements never curated. null when the
-  // item carries no parseable inputUrl (older fixtures, malformed rows).
+  // the item's `inputUrl`. Checked against two real datasets (2026-09-14
+  // and 2026-09-15, 243 items): the actor sets inputUrl ONLY on its
+  // placeholder/error items — a real post never carries it — so this is
+  // null for every post that reaches curation and exists only as a
+  // defensive first attempt should the actor start emitting it.
   inputUsername: string | null;
+  // Co-authors of a collaborative post ("colab", 2+ accounts), from the
+  // item's `coauthorProducers[].username`, lowercased. A collab post
+  // shows up on every co-author's profile but the actor reports only the
+  // primary author as ownerUsername — so a cultural center's own event,
+  // co-posted with its municipality, comes back owned by the
+  // municipality. Real production loss: 196/645 posts (30%) dropped as
+  // "unexpected owner" on 2026-09-13, 49 on 09-14, 44 on 09-15 — and on
+  // 09-15 every single one of the 44 had a registered account among its
+  // coauthorProducers. #518 tried to fix this through inputUrl and never
+  // rescued a real post (see above); this field is the one that does.
+  coauthorUsernames: string[];
 }
 
 // "https://www.instagram.com/casaculturalyanulaque/" → "casaculturalyanulaque".
@@ -60,6 +65,16 @@ export function usernameFromProfileUrl(inputUrl: unknown): string | null {
   // Reserved path segments that are never a profile.
   if (["p", "reel", "reels", "explore", "stories", "accounts"].includes(username)) return null;
   return username;
+}
+
+// `coauthorProducers` is an array of {id, username, ...} on collab posts
+// and absent otherwise; anything that isn't that shape yields [] rather
+// than a crash on a malformed row.
+export function coauthorUsernamesOf(coauthorProducers: unknown): string[] {
+  if (!Array.isArray(coauthorProducers)) return [];
+  return coauthorProducers
+    .map((c) => (typeof c === "object" && c !== null && typeof (c as { username?: unknown }).username === "string" ? (c as { username: string }).username.trim().toLowerCase() : ""))
+    .filter((u) => u.length > 0);
 }
 
 const RESULTS_LIMIT_PER_ACCOUNT = 5;
@@ -97,6 +112,7 @@ export function parseApifyInstagramPostsWithStats(items: unknown[]): { posts: Ap
       displayUrl: typeof item.displayUrl === "string" ? item.displayUrl : null,
       ownerUsername: typeof item.ownerUsername === "string" ? item.ownerUsername : "",
       inputUsername: usernameFromProfileUrl(item.inputUrl),
+      coauthorUsernames: coauthorUsernamesOf(item.coauthorProducers),
     }))
     .filter((post) => {
       if (isInstagramPostUrl(post.url)) return true;

@@ -17,6 +17,7 @@ const POST: ApifyInstagramPost = {
   displayUrl: "https://scontent.cdninstagram.com/v/abc.jpg",
   ownerUsername: "casaculturalyanulaque",
   inputUsername: null,
+  coauthorUsernames: [],
 };
 
 test("toBrightSourceItem derives the title from the caption's first line when there's no quoted title", () => {
@@ -181,19 +182,34 @@ test("isCaptionWorthCurating does not false-positive on 'taller' inside an other
 // Real production loss, 2026-09-13: 196/645 fetched posts dropped as
 // "unexpected owner" — all collab posts where the registered cultural
 // center co-posted with its municipality and Apify reported the
-// municipality as the author.
-test("resolveAccountForPost attributes a collab post to the requested (registered) profile, not the co-author listed as owner", () => {
+// municipality as the author. The actor never sets inputUrl on a real
+// post (verified 2026-09-15), so the rescue has to come from
+// coauthorProducers — this is the shape of the 44 posts lost that day.
+test("resolveAccountForPost attributes a collab post to the registered co-author when the author isn't registered", () => {
   const registry = new Map([[ACCOUNT.username, ACCOUNT]]);
-  const collab = { ownerUsername: "municipalidadchiguayante", inputUsername: "casaculturalyanulaque" };
+  const collab = { ownerUsername: "municipalidadchiguayante", inputUsername: null, coauthorUsernames: ["turismochiguayante", "casaculturalyanulaque"] };
   assert.equal(resolveAccountForPost(collab, registry), ACCOUNT);
 });
 
-test("resolveAccountForPost still falls back to ownerUsername (case-insensitively) when there's no inputUrl", () => {
+test("resolveAccountForPost prefers the author over a registered co-author when both are registered", () => {
+  const other: InstagramAccountConfig = { ...ACCOUNT, username: "municipalidadchiguayante" };
+  const registry = new Map([[ACCOUNT.username, ACCOUNT], [other.username, other]]);
+  const collab = { ownerUsername: "municipalidadchiguayante", inputUsername: null, coauthorUsernames: ["casaculturalyanulaque"] };
+  assert.equal(resolveAccountForPost(collab, registry), other);
+});
+
+test("resolveAccountForPost still honours inputUsername first, should the actor ever report it", () => {
   const registry = new Map([[ACCOUNT.username, ACCOUNT]]);
-  assert.equal(resolveAccountForPost({ ownerUsername: "CasaCulturalYanulaque", inputUsername: null }, registry), ACCOUNT);
-  assert.equal(resolveAccountForPost({ ownerUsername: "someone_else", inputUsername: null }, registry), null);
+  const collab = { ownerUsername: "municipalidadchiguayante", inputUsername: "casaculturalyanulaque", coauthorUsernames: [] };
+  assert.equal(resolveAccountForPost(collab, registry), ACCOUNT);
+});
+
+test("resolveAccountForPost falls back to ownerUsername (case-insensitively) and returns null when nothing matches", () => {
+  const registry = new Map([[ACCOUNT.username, ACCOUNT]]);
+  assert.equal(resolveAccountForPost({ ownerUsername: "CasaCulturalYanulaque", inputUsername: null, coauthorUsernames: [] }, registry), ACCOUNT);
+  assert.equal(resolveAccountForPost({ ownerUsername: "someone_else", inputUsername: null, coauthorUsernames: ["also_unregistered"] }, registry), null);
   // An inputUrl that isn't a registered account doesn't block the owner fallback either.
-  assert.equal(resolveAccountForPost({ ownerUsername: "casaculturalyanulaque", inputUsername: "unregistered" }, registry), ACCOUNT);
+  assert.equal(resolveAccountForPost({ ownerUsername: "casaculturalyanulaque", inputUsername: "unregistered", coauthorUsernames: [] }, registry), ACCOUNT);
 });
 
 // Real case, 2026-09-13: Los Ríos Territorio Visual, co-posted by two
