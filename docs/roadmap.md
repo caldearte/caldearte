@@ -18,8 +18,11 @@ inserted; a cheaper model (MiniMax M3 via OpenRouter) runs in shadow mode
 on the same input for comparison only — see region-discovery.md's
 shadow-pilot entries. Outcome as of 2026-09-14: **MiniMax won't become
 the primary curator.** Its scope judgment was stricter and, in the cases
-Daniel reviewed, right (Falun Gong, circus, a heritage display) — but
-those catches are now rules in the prompt itself; its sensitivity
+Daniel reviewed, right (Falun Gong, circus, a heritage display — and on
+2026-09-15 it rejected two of the three documentary shows Haiku let
+through under the new clause) — but those catches are now rules in the
+prompt itself, and it still drops whole chunks (10 posts on 09-15,
+including a real inauguración); its sensitivity
 tagging is prompt-fixable yet its verbosity puts its cost at parity with
 Haiku at ~13× the latency (measured replay, region-discovery.md "Prompt
 optimization"). The same measurement produced the optimized prompt Haiku

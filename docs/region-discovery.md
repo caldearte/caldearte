@@ -4362,6 +4362,21 @@ venue's own post).
 inauguración) and SAFA. Tags identical to Haiku's (5 and 5). Batch-level
 agreement, per-item disagreements all on the documentary edge above.
 
+**Scorecard for the day, per Daniel's question:** Haiku 94/97 (the three
+documentary inserts); MiniMax 89/97 counting the lost chunk's 10 posts
+as failures — but its 8 misses are "didn't answer", not judgment: on the
+documentary edge it rejected Gabriela and Cáceres (right) and approved
+only the ship models. Judgment-wise MiniMax remains the stricter and
+more accurate of the two on that edge; reliability is what keeps it in
+shadow. And what the collab bug cost today: nothing — of the 44 posts,
+40 were ramadas/cuecas/concerts/notices Haiku would have rejected, and
+the 4 with art content (the "Donde cae el cielo" visita comentada,
+"Alquimia Textil", "Imaginemos Futuros Posibles", "Instrucciones para
+hablar con aves") were already stored from the venues' own posts or had
+no dates. The historical cost is unknowable: every collab post since the
+pipeline launched was dropped before curation and never persisted (196 of
+645 on 09-13 alone), so whatever real events they held left no trace.
+
 ## Stale pre-fix titles found and manually corrected (2026-09-06)
 
 While testing the flyer redesign (see roadmap.md's own entry) against
