@@ -3590,14 +3590,15 @@ per run) — the value is precision, not cost.
 **Evaluation playbook for adding a new account** (used ~40 times
 2026-08-14, see the entry below): fetch 5-6 real recent posts (no date
 filter) via a throwaway script, check (a) how many are genuinely the
-account's own — since 2026-09-13 a post is attributed to the *requested*
-profile (the actor's `inputUrl`) first and to `ownerUsername` only as a
-fallback, so a collab post co-authored with another account counts as
-the registered account's own (it chose to publish it on its feed; the
-old owner-only match was silently dropping 30% of a real run, see the
-shadow-pilot entry for 2026-09-13). The one thing this can no longer
-catch on its own is a mistyped/dead handle whose Apify fallback content
-now gets attributed to the requested profile instead of skipped — so
+account's own — since 2026-09-15 a post is attributed to `ownerUsername`
+first and, failing that, to the first registered account among its
+`coauthorProducers`, so a collab post co-authored with a registered
+account counts as that account's own (it chose to publish it on its
+feed; the old owner-only match was silently dropping 30% of a real run,
+see the shadow-pilot entry for 2026-09-13 and the correction under
+2026-09-15). The one thing this can no longer catch on its own is a
+mistyped/dead handle whose Apify fallback content lists the requested
+profile as a co-author — so
 this evaluation step is where a wrong handle must be caught, (b) content-type mix (clean exhibition-opening announcements
 vs. workshops/talks/convocatorias/institutional-news/recaps — all
 correctly rejected by Haiku's existing scope judgment already, proven
@@ -3865,16 +3866,13 @@ unrelated content (once, traceable to hashtag-adjacent fallback content)
 rather than erroring cleanly, for what's most likely a wrong/mistyped
 handle or a private/deleted account. Worth a real fix if this recurs:
 today it was caught only by manually noticing the returned `ownerUsername`
-never matched the requested account. **Sharper since 2026-09-13:** with
-attribution by `inputUrl` (collab-post fix, PR #518), that fallback
-content would now be attributed to the requested account and reach Haiku
-under its `defaultLocation` rather than being skipped as "unexpected
-owner" — Haiku rejects unrelated content anyway, but a real event from
-elsewhere could land with the wrong comuna. If it recurs, the fix is to
-require the requested username to appear in the item's
-`coauthorProducers` (a documented actor field) before trusting
-`inputUrl` over the owner; not done yet because no captured sample
-confirms that field is populated at the `basicData` detail level.
+never matched the requested account. **Since 2026-09-15** attribution
+goes through `coauthorProducers` (confirmed populated at the `basicData`
+detail level — 76 of 141 real posts carried it on 2026-09-15), so
+fallback content that doesn't list the registered account as a co-author
+is still skipped as "unexpected owner"; the earlier plan to trust
+`inputUrl` turned out moot because the actor never sets it on a real
+post (see the 2026-09-15 entry).
 
 **Verified same-day in production** (`workflow_dispatch` run of
 `instagram-bright-sources.yml`, real cost $0.022): 3 of the 10 new
@@ -4151,7 +4149,8 @@ the next few runs.
 PRs #518 and #519): 196/645 fetched posts (30%) dropped as
 "unexpected owner" — all collab posts where the registered account
 co-posted with its municipality and Apify reported the co-author as
-`ownerUsername` (now attributed by the actor's `inputUrl`); a collab
+`ownerUsername` (PR #518 tried `inputUrl`, which the actor never sets on
+a real post — the working fix is `coauthorProducers`, 2026-09-15); a collab
 between two registered accounts fetched once per account → same URL
 twice → `nullifyAggregatorSourceUrls` nulled it → rejected every run and
 never persisted (now deduped by URL before curation); and one Haiku
@@ -4298,6 +4297,65 @@ tags (Haiku tagged the same post 2/3 locally and 1/1 in production), so
 single-run comparisons of tags are noise — repeat 3×; and anchor prompt
 variants on exact production sentences so the experiment throws if the
 production prompt drifts.
+
+## Second daily run, 2026-09-15: the collab fix that never worked, and what the new prompt did live
+
+Tuesday's run (fired 13:37 UTC, 5 min end to end) was the first full
+day under PR #533's prompt and PR #532's placeholder handling, and the
+per-cutoff grouping did exactly what it was built for: **two Apify
+calls** — the 4 accounts added on 09-14 with the 4-day default cutoff
+(8 items, 7 posts) and the 173 already-fetched accounts with the exact
+timestamp of Monday's run (243 items) — and **0 posts "already seen"**,
+against 93/145 on 2026-08-26 under the shared-oldest-cutoff call.
+Placeholders were 102 of 243 in the main group (one per quiet account:
+`error: "no_items"`, "Empty or private data for provided input"), logged
+once with their keys and dropped, so 71 of 173 accounts had posted in
+the 22 hours since Monday.
+
+**The real finding — PR #518 never rescued a single post.** Reading the
+run's dataset: not one of the 141 real posts carries `inputUrl`; the
+actor sets it only on its placeholder/error items. So attribution had
+been falling back to `ownerUsername` all along, the "111 collab posts"
+seen on 09-14 were the placeholders, and the 49 (09-14) / 44 (09-15)
+`unexpected owner … (requested: ?)` lines were the same collab loss as
+before, just smaller. Every one of Tuesday's 44 had a registered account
+among its `coauthorProducers` (munisanfelipe → culturamunisanfelipe,
+canal_13c → matucana100, cramum → factoriasantarosa, sebastianmarquezmora
+→ departamentojota …). Fix: `resolveAccountForPost` now falls back to
+the first registered co-author (registry order) after the owner; the
+parser exposes `coauthorUsernames`. Replayed over the captured dataset:
+141 posts → 97 by owner + 44 by co-author, 0 dropped. Apify's dataset
+is the thing to read when a field assumption matters — the 09-13 fixture
+had been "confirmed" against the actor's documentation, not a real row.
+
+**The prompt, live:** Haiku curated 97 posts for $0.187 — $0.0019 each,
+same as before — with output down to ~196 tokens per item (243 on 09-14,
+~250 on 09-13): the −24% measured locally showed up as −19-22% in
+production. Nothing readable was lost to the 25-word cap. Both circus
+posts of the day ("La Ruta del Circo y Organillero" — the same series
+approved as an "intervención" on 09-14 — and "Bogardus, en Busca del
+Paraíso") were rejected as circus, so no 7th reframing case; "Antuco"
+(theater about the military tragedy) also rejected cleanly. But the
+documentary/heritage clause missed on its first real test: **"Los
+archivos de Gabriela"** (archive photographs and records of Gabriela
+Mistral, Copiapó) was approved and inserted — exactly the Sewell pattern
+the clause was written for — while MiniMax rejected it as "muestra
+documental/patrimonial, no arte visual". Two more inserts sit on the
+same edge: an exhibition of naval ship models by a "modelista naval"
+(Ancud) and the Osvaldo Cáceres centenary in Los Ángeles (documentary
+screening + travelling exhibit + drawing activity for an architect who
+also painted). All three flagged for Daniel rather than removed. The
+other three inserts are clean inauguraciones/visita guiada (Atlas Visual
+de una Mala Imagen, Perderse para encontrar, Ejercicios de Empatía), and
+dedup skipped 8 already-stored events and upgraded 2 (Premoniciones now
+has a confirmed opening time; Registro Nacional de Espera moved to the
+venue's own post).
+
+**Shadow:** MiniMax lost one chunk (10-19, returned 9 rows for 10 —
+`stop_reason=end_turn`, so a counting slip, not the token-cap failure of
+09-13), which happened to hold "Atlas Visual de una Mala Imagen" (a real
+inauguración) and SAFA. Tags identical to Haiku's (5 and 5). Batch-level
+agreement, per-item disagreements all on the documentary edge above.
 
 ## Stale pre-fix titles found and manually corrected (2026-09-06)
 

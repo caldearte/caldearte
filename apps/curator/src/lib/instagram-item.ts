@@ -152,25 +152,30 @@ export function toBrightSourceItem(post: ApifyInstagramPost, account: InstagramA
   };
 }
 
-// Which registered account a fetched post belongs to. The requested
-// profile (post.inputUsername, from the actor's own inputUrl) wins over
-// the post's author: a collaborative post lives on every co-author's
-// profile, and what matters for curation is that a REGISTERED account
-// chose to publish it on its own feed — not who Instagram lists as the
-// primary author (see ApifyInstagramPost.inputUsername for the real
-// 30%-of-a-run loss this caused). ownerUsername stays as the fallback so
-// an item without a parseable inputUrl still resolves exactly as before.
-// Returns null when neither matches a registered account, which the
-// caller logs and skips as it always did.
+// Which registered account a fetched post belongs to. A collaborative
+// post lives on every co-author's profile, and what matters for curation
+// is that a REGISTERED account chose to publish it on its own feed — not
+// who Instagram lists as the primary author. Order: the requested
+// profile if the actor ever reports it (inputUsername — it doesn't
+// today, see ApifyInstagramPost), then the author, then the first
+// registered co-author in registry order (coauthorUsernames — the field
+// the actor actually fills; see the 30%-of-a-run loss documented there).
+// Returns null when none matches a registered account, which the caller
+// logs and skips as it always did.
 export function resolveAccountForPost(
-  post: Pick<ApifyInstagramPost, "ownerUsername" | "inputUsername">,
+  post: Pick<ApifyInstagramPost, "ownerUsername" | "inputUsername" | "coauthorUsernames">,
   accountByUsername: ReadonlyMap<string, InstagramAccountConfig>,
 ): InstagramAccountConfig | null {
   if (post.inputUsername) {
     const byInput = accountByUsername.get(post.inputUsername);
     if (byInput) return byInput;
   }
-  return accountByUsername.get(post.ownerUsername) ?? accountByUsername.get(post.ownerUsername.toLowerCase()) ?? null;
+  const byOwner = accountByUsername.get(post.ownerUsername) ?? accountByUsername.get(post.ownerUsername.toLowerCase());
+  if (byOwner) return byOwner;
+  for (const account of accountByUsername.values()) {
+    if (post.coauthorUsernames.includes(account.username.toLowerCase())) return account;
+  }
+  return null;
 }
 
 // A collab post between TWO registered accounts is fetched once per

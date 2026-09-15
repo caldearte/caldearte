@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { parseApifyInstagramPosts, parseApifyInstagramPostsWithStats, usernameFromProfileUrl, isInstagramPostUrl } from "./apify-instagram.js";
+import { parseApifyInstagramPosts, parseApifyInstagramPostsWithStats, usernameFromProfileUrl, isInstagramPostUrl, coauthorUsernamesOf } from "./apify-instagram.js";
 
 // Best-guess shape for apify/instagram-post-scraper's basicData output —
 // see apify-instagram.ts's own doc comment: not confirmed field-by-field
@@ -51,6 +51,29 @@ test("parseApifyInstagramPosts handles an empty dataset", () => {
 test("parseApifyInstagramPosts parses inputUsername from the item's inputUrl", () => {
   const [post] = parseApifyInstagramPosts([{ ...SAMPLE_ITEM, inputUrl: "https://www.instagram.com/CasaCulturalYanulaque/" }]);
   assert.equal(post.inputUsername, "casaculturalyanulaque");
+});
+
+// Real shape from the 2026-09-15 run: coauthorProducers is a list of
+// {id, is_verified, profile_pic_url, username} on collab posts, absent
+// otherwise. Usernames are lowercased so they match the registry the same
+// way ownerUsername does.
+test("parseApifyInstagramPosts extracts co-author usernames from coauthorProducers", () => {
+  const [post] = parseApifyInstagramPosts([{
+    ...SAMPLE_ITEM,
+    ownerUsername: "munisanfelipe",
+    coauthorProducers: [
+      { id: "1", is_verified: false, profile_pic_url: "https://x/y.jpg", username: "turismomunisanfe" },
+      { id: "2", is_verified: false, profile_pic_url: "https://x/z.jpg", username: "CulturaMuniSanFelipe" },
+    ],
+  }]);
+  assert.deepEqual(post.coauthorUsernames, ["turismomunisanfe", "culturamunisanfelipe"]);
+});
+
+test("coauthorUsernamesOf is empty for a missing or malformed field", () => {
+  assert.deepEqual(coauthorUsernamesOf(undefined), []);
+  assert.deepEqual(coauthorUsernamesOf("nope"), []);
+  assert.deepEqual(coauthorUsernamesOf([{ id: "1" }, null, { username: 42 }, { username: " ok " }]), ["ok"]);
+  assert.deepEqual(parseApifyInstagramPosts([SAMPLE_ITEM])[0].coauthorUsernames, []);
 });
 
 test("parseApifyInstagramPosts leaves inputUsername null without a usable inputUrl", () => {
