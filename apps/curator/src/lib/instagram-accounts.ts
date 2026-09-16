@@ -1888,34 +1888,18 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
       "post, igual que @agac.cl.",
     addedAt: "2026-08-28",
   },
-  {
-    username: "matucana100",
-    note:
-      "Encontrada revisando el feed de @caldearte.oficial, 2026-08-28 " +
-      "(vía @salaanacortesumce, que reposteaba una inauguración ahí) — " +
-      "uno de los centros culturales más grandes de Santiago, 245 mil " +
-      "seguidores, muy activo (7664 publicaciones), 25 años de " +
-      "trayectoria. Se evaluó primero agregar su sitio web (m100.cl) en " +
-      "vez de Instagram, pero su página \"Esta semana en M100\" " +
-      "(m100.cl/esta-semana-en-m100) depende de un widget de calendario " +
-      "(plugin EventON) que no renderiza en HTML plano — habría que " +
-      "integrar contra ese plugin en vez de un simple fetch/parse, más " +
-      "trabajo del que amerita esta evaluación; queda como IG en su " +
-      "lugar. Cubre TODO el espectro cultural (teatro, danza, cine, " +
-      "música, talleres, artes visuales) — rendimiento esperado bajo, " +
-      "solo 1/12 posts muestreados en la grilla es una exposición real: " +
-      "\"La Ola\" de Patricio Vogel (artista visual real, vogelscl), " +
-      "sábado 29 de agosto 12:00 hrs, en su propia \"Galería Artes " +
-      "Visuales\" — sede interna dedicada exclusivamente a exposiciones, " +
-      "consistentemente etiquetada #ArtesVisuales en sus posts, lo que " +
-      "puede ayudar a Haiku a distinguir esta señal del resto del ruido " +
-      "multi-disciplina. Sin fixedLocation: aunque tiene dirección fija " +
-      "(Av. Matucana 100, Estación Central), el volumen de contenido " +
-      "fuera de alcance hace preferible que Haiku seleccione por texto " +
-      "del post en vez de asumir ubicación — mismo criterio que " +
-      "@agac.cl.",
-    addedAt: "2026-08-28",
-  },
+  // "matucana100" REMOVIDA 2026-09-16: reemplazada por
+  // m100.cl/programacion/artes-visuales (known-sources.ts) — a diferencia
+  // de la página "Esta semana en M100" descartada en 2026-08-28 (widget
+  // EventON, no renderiza en HTML plano), esta es una sección dedicada
+  // SOLO a artes visuales, markup limpio, server-rendered. La cuenta de
+  // IG cubría TODO el espectro del centro (teatro, danza, cine, música,
+  // talleres) con solo ~1/12 posts siendo una exposición real — la web
+  // resuelve exactamente ese ruido, en vez de depender de que Haiku filtre
+  // el resto. No volver a agregar esta cuenta a menos que
+  // m100.cl/programacion/artes-visuales deje de estar disponible o cambie
+  // de estructura — ver [[project_arteallimite_bright_source_2026_09_16]]
+  // y la nota de known-sources.ts para el detalle completo.
   {
     username: "muarse",
     note:

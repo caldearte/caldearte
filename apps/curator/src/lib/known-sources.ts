@@ -989,6 +989,23 @@ export const KNOWN_SOURCES: KnownSource[] = [
       pattern: /(?<day>\d{1,2}) de (?<month>[a-zé]{3})[a-zé]* a las (?<hour>\d{1,2}):(?<minute>\d{2})/i,
     },
   },
+  {
+    url: "https://www.m100.cl/programacion/artes-visuales",
+    note:
+      "Matucana 100, Av. Matucana #100, Estación Central, Santiago — evaluada 2026-09-16, Fase 2 del repaso web-vs-Instagram (candidata de nivel \"verificar antes de confiar\"). Gran centro cultural institucional, sección dedicada de Artes Visuales separada de cine/música/teatro/danza/circo.\n\n**Reemplaza a la cuenta de IG @matucana100 (removida de instagram-accounts.ts en este mismo cambio)**: esa cuenta había sido evaluada el 2026-08-28 y se prefirió sobre la web porque la página general \"Esta semana en M100\" depende de un widget EventON que no renderiza en HTML plano — pero esta URL (`/programacion/artes-visuales`) es una página completamente distinta, dedicada solo a artes visuales, server-rendered sin widgets. La IG cubría TODO el centro (teatro/danza/cine/música/talleres) con solo ~1/12 posts siendo una exposición real; esta página resuelve exactamente ese ruido.\n\nMarkup limpio y repetible (`<article class=\"post-card\">`), pero el listado mezcla la exposición vigente real con \"Recorridos Virtuales\" de exposiciones ya cerradas (tours digitales, sin fecha física) — estos últimos no traen fecha `DD/MM al DD/MM` en su `<span class=\"m100-fecha-desde\">` (dicen \"Digital\" o nada), así que `daysRegex` exige explícitamente ese patrón y `skipIfNoDate` descarta automáticamente todo lo demás. Verificado con Node contra el HTML real: de 7 bloques en la página, solo 1 (la exposición físicamente vigente, \"Malditas\") pasa el filtro.\n\nSin año en la fecha del listado (\"27/08 al 11/10\") — mismo patrón que otras fuentes de esta sesión, sin dateRangeExtractor, rawDateText para que Haiku lo interprete. Descripción completa (no solo el fragmento cortado del listado) en la página de detalle, ancla estable `<div class=\"m100-entry__barra-izquierda\"><p>` — sin frase de inauguración con hora en la página de detalle, no se agrega openingTimeExtractor.",
+    lastReviewedAt: "2026-09-16",
+    extractor: {
+      kind: "articleList",
+      blockRegex: /<article class="post-card">([\s\S]*?)<\/article>/g,
+      titleLinkRegex: /<h2 class="post-card__title"><a href="([^"]+)"[^>]*>([^<]*)<\/a>/,
+      daysRegex: /<span class="m100-fecha-desde">[^<]*?(\d{1,2}\/\d{1,2}\s*al\s*\d{1,2}\/\d{1,2})<\/span>/,
+      skipIfNoDate: true,
+    },
+    fixedLocation: { location: "Estación Central", placeName: "Matucana 100", address: "Av. Matucana #100, Estación Central, Santiago" },
+    descriptionExtractor: {
+      pattern: /m100-entry__barra-izquierda">\s*<p>([\s\S]*?)<\/p>/,
+    },
+  },
 ];
 
 export function knownSourceDomain(url: string): string {
