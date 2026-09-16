@@ -454,19 +454,20 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
       "muestreado.",
     addedAt: "2026-08-15",
   },
-  {
-    username: "museociudadano",
-    note:
-      "Evaluada 2026-08-15. Museo Ciudadano, Estación Central — real y " +
-      "muy activo. Buena densidad: cobertura completa de la " +
-      "inauguración de \"Convivencias verticales en Estación Central\" " +
-      "(post de inauguración + presentación del equipo curatorial), " +
-      "más avisos de cierre por feriado. El resto (convocatoria de " +
-      "cocreación, \"Museo en Calma\" programa de accesibilidad) " +
-      "fuera de alcance. fixedLocation.",
-    addedAt: "2026-08-15",
-    fixedLocation: { location: "Estación Central", placeName: "Museo Ciudadano" },
-  },
+  // "museociudadano" REMOVIDA 2026-09-16: revisada como parte del
+  // repaso web-vs-IG (su web, museovicunamackenna.gob.cl, es parte de
+  // la Red Nacional de Museos ya cubierta por museoschile.gob.cl, y su
+  // propia página de cartelera está vacía). Al revisar el contenido
+  // real de la cuenta se encontraron DOS cosas: (1) el `fixedLocation`
+  // de esta nota (Estación Central) estaba obsoleto — la bio actual de
+  // la cuenta dice "Museo Ciudadano Vicuña Mackenna, Av. Vicuña
+  // Mackenna 94, Providencia", una dirección completamente distinta
+  // (posts de esta cuenta llevaban semanas geolocalizados mal); (2) los
+  // ~12 posts más recientes son cartelera, colaboraciones con estudios
+  // urbanos/geografía, info de accesibilidad y un proyecto comunitario
+  // — ninguno es una exposición de arte visual. No volver a agregar sin
+  // revisar contenido real de nuevo — ver
+  // [[project_arteallimite_bright_source_2026_09_16]].
   {
     username: "museosaustral",
     note:
@@ -1293,19 +1294,16 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
     addedAt: "2026-08-27",
     fixedLocation: { location: "Las Condes", placeName: "Espacio A" },
   },
-  {
-    username: "museoaraucania",
-    note:
-      "Museo Regional Araucanía, Avda. Alemania 084, Temuco — museo " +
-      "público real, 13,3 mil seguidores. Encontrada navegando el feed " +
-      "real de @caldearte.oficial. Contenido mixto (historia regional, " +
-      "etnografía mapuche, además de arte) — mismo patrón que " +
-      "mhnv.gob.cl; sin filtro de disciplina por código en el pipeline " +
-      "de Instagram, Haiku descarta lo que no sea exposición visual real. " +
-      "fixedLocation.",
-    addedAt: "2026-08-27",
-    fixedLocation: { location: "Temuco", placeName: "Museo Regional Araucanía" },
-  },
+  // "museoaraucania" REMOVIDA 2026-09-16: revisada como parte del
+  // repaso web-vs-IG (su web, museoregionalaraucania.cl, es parte de la
+  // Red Nacional de Museos ya cubierta por museoschile.gob.cl, y su
+  // propia cartelera está vacía). Al revisar el contenido real de la
+  // cuenta, los ~12 posts más recientes son charlas abiertas, talleres
+  // y contenido etnográfico/patrimonial mapuche — ninguna exposición
+  // de arte visual real, confirmando (no contradiciendo) el "contenido
+  // mixto" ya anotado en 2026-08-27, pero sin nada aprovechable en la
+  // muestra actual. No volver a agregar sin revisar contenido real de
+  // nuevo — ver [[project_arteallimite_bright_source_2026_09_16]].
   {
     username: "casadelaculturalimache",
     note:
@@ -2042,19 +2040,17 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
       "Sin fixedLocation (varios espacios).",
     addedAt: "2026-08-30",
   },
-  {
-    username: "museoarteyartesanialinares",
-    note:
-      "Encontrada 2026-08-30 buscando comunas sin cobertura (Linares). " +
-      "Museo de Arte y Artesanía de Linares — museo especializado del " +
-      "Servicio Nacional del Patrimonio Cultural (SNPC), 7,3 mil " +
-      "seguidores. Alta densidad de exposiciones reales confirmadas: " +
-      "\"Contenedor/Cont...\" (12 jun-11 jul 2026), \"Territorios " +
-      "Tejidos\" (Fundación Artesanías de Chile), muestra de tres " +
-      "maestros (ene-mar 2026). fixedLocation.",
-    addedAt: "2026-08-30",
-    fixedLocation: { location: "Linares", placeName: "Museo de Arte y Artesanía de Linares" },
-  },
+  // "museoarteyartesanialinares" REMOVIDA 2026-09-16: SÍ tuvo densidad
+  // real cuando se agregó (2026-08-30, ver historial) y su web
+  // (museodelinares.gob.cl) SNPC/Red Nacional ya está cubierta por
+  // museoschile.gob.cl — pero el museo está cerrado "por razones de
+  // fuerza mayor" desde el 18 de agosto (confirmado en su propia
+  // cuenta Y en la web), sin reapertura anunciada; los posts recientes
+  // son avisos de cierre y un post político genérico ("#100xChile"),
+  // cero contenido aprovechable ahora mismo. Distinto de
+  // museociudadano/museoaraucania (esas dos ya no tenían buen contenido
+  // ni antes) — revisar de nuevo si reabre, no descartar como fuente
+  // débil en general. Ver [[project_arteallimite_bright_source_2026_09_16]].
   {
     username: "ccm_constitucion",
     note:
