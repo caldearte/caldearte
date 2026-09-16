@@ -919,6 +919,35 @@ export const KNOWN_SOURCES: KnownSource[] = [
       pattern: /inauguraci[oó]n se llevar[aá] a cabo el (?<day>\d{1,2}) de (?<month>[a-zé]{3})[a-zé]*,?\s*a las (?<hour>\d{1,2}):(?<minute>\d{2})/i,
     },
   },
+  {
+    url: "https://www.espaciolacochera.cl/exposiciones",
+    note:
+      "Espacio La Cochera, Barrio Yungay, Santiago — evaluada 2026-09-16 como parte del repaso de reemplazo web-vs-Instagram (su IG, @espaciolacochera, ya está en instagram-accounts.ts; esta web tenía las señales más fuertes de todo el repaso — highlights \"Expos_2026\" a \"Expos_2022\", uno por año). Confirmado con curl plano que SÍ es server-rendered (a diferencia de otros sitios Wix ya rechazados como redmuseosaysen.cl/culturapuertomontt.cl, que son SPA puro) — el HTML trae las ~15 exposiciones reales (título, artista, rango de fechas, descripción) directamente en la respuesta.\n\n**Sin extractor articleList, a propósito**: Wix (\"Rich Text\" de su editor) envuelve cada exposición en un árbol de componentes con IDs únicos por elemento (comp-lfimyx0k, comp-mr0u8rcx, ...) sin ninguna clase o wrapper repetible que marque de forma confiable dónde empieza/termina cada tarjeta — muy distinto de los templates WordPress (mnba.gob.cl, cclm.cl, etc.) donde blockRegex ancla en una clase consistente. Peor aún: el propio editor de Wix a veces fragmenta una palabra a mitad camino entre dos <span> con estilos distintos (confirmado: \"...6 de\" cierra un span y \"e diciembre\" abre el siguiente — collapseWhitespace's tag-a-espacio dejaría \"d e diciembre\", no \"de diciembre\"). Escribir un blockRegex contra esa estructura sería frágil y probablemente se rompería con la próxima edición del sitio.\n\n**Decisión**: se deja sin `extractor` — cae en el whole-page-flatten genérico (sources.ts, corte a 4000 caracteres). Verificado que esto es seguro para este caso específico: la página ordena las exposiciones de más reciente a más antigua (la primera del HTML es la vigente/futura, \"9 de mayo al 6 de junio 2026\" al momento de esta revisión), así que la exposición actual siempre cae dentro del corte de 4000 caracteres aunque las más antiguas del archivo se trunquen — mismo principio que confirmó el bug de molinomachmar.cl (real riesgo solo cuando lo relevante queda DESPUÉS del corte, no antes).",
+    lastReviewedAt: "2026-09-16",
+    fixedLocation: { location: "Santiago", placeName: "Espacio La Cochera" },
+  },
+  {
+    url: "https://www.galeriahifas.cl/",
+    note:
+      "Galería Hifas, Barrio Yungay, Santiago — evaluada 2026-09-16, segunda candidata \"fuerte\" del repaso web-vs-Instagram (su IG, @hifas.galeria, ya está en instagram-accounts.ts; el highlight propio \"Expo Actual\" fue la señal). La más limpia de todo el repaso: Webflow + Finsweet CMS slider (`fs-collection-item`), server-rendered (confirmado con curl plano), markup repetible y consistente por ítem — título (`<h3 class=\"blanco\">`), artista (\"De ARTISTA\"), rango de fechas DD/M/YYYY en ambos lados, imagen de fondo vía CSS `background-image`, y link a la página de detalle propia (`/exposiciones/<slug>/`). 11/11 exposiciones de la portada parsean título+fecha+link correctamente — verificado con Node contra el HTML real, sin ningún caso irregular (a diferencia de aninatgaleria.org/arteallimite.com/espaciolacochera.cl, las tres fuentes anteriores con fraseo de fecha inconsistente).\n\nSin `artist` como campo propio en BrightSourceItem — se deja que Haiku lo extraiga de la descripción, que en la página de detalle trae una frase \"Por ARTISTA\" limpia seguida de su biografía, no hace falta ensuciar el título con el nombre.\n\nDescripción y hora de inauguración reales y limpias en la página de detalle (confirmado contra \"Cartografía del Fuego\"): \"Galería Hifas te invita a la inauguración de 'TÍTULO', de ARTISTA, este próximo 1 de agosto a las 19:00 horas\" — mismo texto sirve para `descriptionExtractor` (primer bloque `w-richtext` tras el nombre del artista, hay que saltar un `</div>` extra que cierra el grid del nombre) y para `openingTimeExtractor` (sin año en la frase, cae en `inferYear`).",
+    lastReviewedAt: "2026-09-16",
+    extractor: {
+      kind: "articleList",
+      blockRegex: /<div role="listitem" class="fs-collection-item w-dyn-item">([\s\S]*?)<\/a><\/div><\/div>/g,
+      titleLinkRegex: /href="([^"]+)"[^>]*>[\s\S]*?<h3 class="blanco">([^<]*)<\/h3>/,
+      dateRangeExtractor: {
+        pattern:
+          /grid"><h5 class="blanco light">(?<startDay>\d{1,2})\/(?<startMonth>\d{1,2})\/(?<startYear>\d{4})<\/h5>[\s\S]*?<h5[^>]*>[^<]*<\/h5><h5 class="blanco light">(?<endDay>\d{1,2})\/(?<endMonth>\d{1,2})\/(?<endYear>\d{4})<\/h5>/,
+      },
+    },
+    fixedLocation: { location: "Santiago", placeName: "Galería Hifas", address: "Libertad 304, Barrio Yungay, Santiago" },
+    descriptionExtractor: {
+      pattern: /<h5 class="black capital">[^<]*<\/h5><\/div><div class="texto-rico-negro w-richtext"[^>]*>([\s\S]*?)<\/div>/,
+    },
+    openingTimeExtractor: {
+      pattern: /este pr[oó]ximo (?<day>\d{1,2}) de (?<month>[a-zé]{3})[a-zé]* a las (?<hour>\d{1,2}):(?<minute>\d{2})/i,
+    },
+  },
 ];
 
 export function knownSourceDomain(url: string): string {
