@@ -41,6 +41,7 @@ import { curateBrightSourceItems, currentMonthLabel, EVENT_DISCOVERY_MODEL, type
 import type { BrightSourceItem } from "../event-discovery/extractors.js";
 import { insertCandidates, loadAllRegions, loadExistingKeys, loadRecentlyRejectedSourceUrls, toCandidateSummary } from "../event-discovery/run.js";
 import { createShadowClient, runShadowCuration, startShadowCuration } from "../lib/model-comparison.js";
+import { collabEdgesForPosts, recordInstagramCollabEdges } from "../lib/instagram-collab-edges.js";
 
 export interface InstagramRunDeps {
   messagesClient?: MessagesClient;
@@ -139,6 +140,12 @@ export async function run(deps: InstagramRunDeps = {}): Promise<void> {
   if (collabPosts > 0) {
     console.log(`[instagram-discovery] ${collabPosts}/${rawItems.length} post(s) attributed to the requested account despite a different author (collab/co-authored posts)`);
   }
+  // The other half of the collab data: which accounts we DON'T follow
+  // co-post with the ones we do. Persisted as a discovery channel
+  // (instagram_collab_edges), reviewed by hand — against the full
+  // registry, not just the accounts due today, so a co-author we already
+  // follow is never recorded as a candidate.
+  await recordInstagramCollabEdges(collabEdgesForPosts(posts, new Set(INSTAGRAM_ACCOUNTS.map((a) => a.username.toLowerCase()))));
   // Apify's `resultsLimit` (apify-instagram.ts) hard-caps how many posts
   // it returns per requested profile, regardless of onlyPostsNewerThan —
   // an account whose real per-account count lands exactly on that cap is

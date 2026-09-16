@@ -4405,8 +4405,37 @@ registry is thin, because that's where a registered venue's partners are
 least likely to be registered already. What makes the signal usable is
 recurrence (a handle co-posting with 2-3 different registered accounts
 over weeks is almost certainly a place; once is usually an artist), and
-Apify datasets expire, so the next step is to persist the graph per run
-and query it monthly — see the entry below once it ships.
+Apify datasets expire, so the graph is now persisted per run.
+
+**Persisted (same day):** `instagram_collab_edges` — one row per fetched
+post × registered account × unregistered handle, with which side wrote
+the post (`handle_role`), built by `lib/instagram-collab-edges.ts`
+from every fetched post (including the ones attribution drops) against
+the FULL registry, upserted on the natural key so re-fetches never
+double-count, logged as one line per run and never able to fail the run.
+Replayed over the two captured datasets: 127 edges / 112 handles (Tue)
+and 168 / 134 (Wed), ~40 per day where the unregistered handle is the
+author (the stronger institutional hint). The monthly review is this
+query — handles seen with 2+ distinct registered accounts, newest first,
+with whether any of their posts became an event:
+
+```sql
+select e.handle,
+       count(distinct e.registered_account) as venues,
+       count(distinct e.post_url) as posts,
+       count(distinct ev.id) as events,
+       min(e.posted_at)::date as first_seen, max(e.posted_at)::date as last_seen,
+       string_agg(distinct e.registered_account, ', ') as with_accounts
+from instagram_collab_edges e
+left join events ev on ev.source_url = e.post_url and ev.removed_at is null
+group by e.handle
+having count(distinct e.registered_account) >= 2
+order by venues desc, last_seen desc;
+```
+
+Filter the result against the current `instagram-accounts.ts` (a handle
+recorded before it was added stays in the table), then evaluate the rest
+in Chrome as above. No admin view until the query has been useful twice.
 
 ## Stale pre-fix titles found and manually corrected (2026-09-06)
 
