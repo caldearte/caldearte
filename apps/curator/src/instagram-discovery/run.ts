@@ -40,7 +40,8 @@ import { recordRunSummary } from "../lib/run-summary-store.js";
 import { curateBrightSourceItems, currentMonthLabel, EVENT_DISCOVERY_MODEL, type MessagesClient } from "../event-discovery/discover.js";
 import type { BrightSourceItem } from "../event-discovery/extractors.js";
 import { insertCandidates, loadAllRegions, loadExistingKeys, loadRecentlyRejectedSourceUrls, toCandidateSummary } from "../event-discovery/run.js";
-import { createShadowClient, runShadowCuration, startShadowCuration } from "../lib/model-comparison.js";
+import { createShadowClient } from "../lib/model-comparison.js";
+import { applySecondOpinion } from "../lib/second-opinion.js";
 import { collabEdgesForPosts, recordInstagramCollabEdges } from "../lib/instagram-collab-edges.js";
 
 export interface InstagramRunDeps {
@@ -212,14 +213,13 @@ export async function run(deps: InstagramRunDeps = {}): Promise<void> {
     // toBrightSourceItem (only set for accounts with a confirmed fixed
     // venue), same per-item precedence curateBrightSourceItems already
     // gives a source-level `location` value.
-    // Shadow call starts first and runs alongside the real one — see
-    // startShadowCuration.
-    const shadowRun = shadowClient
-      ? startShadowCuration(shadowClient, (client) => curateBrightSourceItems(client, curatableItems, currentMonthLabel(now)))
-      : null;
     const { candidates, usage } = await curateBrightSourceItems(messagesClient, curatableItems, currentMonthLabel(now));
-    if (shadowClient && shadowRun) {
-      await runShadowCuration("instagram", "instagram_batch", shadowClient, candidates, shadowRun);
+    // Second opinion on the approvals only (lib/second-opinion.ts) —
+    // replaced the full parallel shadow on 2026-09-16: ~20 items a day
+    // instead of ~150, and a scope rejection from the second model is
+    // applied before insertion instead of just logged.
+    if (shadowClient) {
+      await applySecondOpinion(shadowClient, candidates, curatableItems, (client, reviewItems) => curateBrightSourceItems(client, reviewItems, currentMonthLabel(now)));
     }
 
     await recordUsage({ purpose: "event_discovery", model: EVENT_DISCOVERY_MODEL, pipeline: "instagram", usage });
