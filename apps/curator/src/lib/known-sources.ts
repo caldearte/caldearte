@@ -1022,6 +1022,20 @@ export const KNOWN_SOURCES: KnownSource[] = [
       pattern: /<!-- content -->\s*<p class="wp-block-paragraph">([\s\S]*?)<\/p>/,
     },
   },
+  {
+    url: "https://www.ilposto.cl/exposiciones/",
+    note:
+      "Il Posto, centro de investigación y archivo de arte — dos salas reales en direcciones distintas: Sala de Exhibición (Espoz 3150 piso -1 of 080, Vitacura) y Sala de Archivos (José Miguel de la Barra 480, of.201, Santiago Centro) — evaluada 2026-09-16, Fase 2 del repaso web-vs-Instagram (candidata \"necesita mirada directa\"). Archivo histórico completo desde 2023 con fechas mes+año siempre presentes.\n\n**Reemplaza a la cuenta de IG @ilposto.cl (removida de instagram-accounts.ts en este mismo cambio)**: su propia nota (2026-08-14) ya medía un rendimiento bajo — de 6 posts muestreados, solo 1 era una inauguración real (\"Del objeto al misterio\", Juan Pablo Langlois, la MISMA exposición que hoy está vigente en la web), el resto convocatorias/lanzamiento de libro/presentación de becarios. La web da exactamente las 2 exposiciones vigentes con markup limpio, sin ese ruido, y sin perder ninguna señal (no se encontró frase de hora de inauguración en ningún lado, ni en la web ni documentada en la nota de la IG).\n\nMarkup limpio y repetible (`<div class=\"col s12 l6 card\">` — la sección \"Exposiciones pasadas\" usa un markup totalmente distinto, no capturado, pero no hace falta: solo interesan las 2 activas). 2/2 ítems parsean título+link+descripción+fecha+sala, verificado con Node contra el HTML real y con un fetch real contra el sitio.\n\n**Sin fixedLocation, a propósito** (mismo motivo que la nota original de la IG): dos salas en dos comunas distintas — `placeRegex` captura la etiqueta de sala (\"Sala de Exhibición Vitacura\" / \"Sala de Archivos\") como locationHint para que Haiku infiera, igual que agac.cl/mapamuseo.\n\n**Sin dateRangeExtractor**: el formato de fecha varía entre exposiciones (\"agosto ⎯ 2026 / enero ⎯ 2027\" para una que cruza el año, \"mayo ⎯ octubre 2026\" para una que no) y nunca da día, solo mes — nada estructurado que extraer sin inventar un día. rawDateText completo para que Haiku interprete. Descripción completa ya viene en el propio bloque del listado (`<p>` tras el `<h4>`), sin necesidad de fetch a la página de detalle.",
+    lastReviewedAt: "2026-09-16",
+    extractor: {
+      kind: "articleList",
+      blockRegex: /<div class="col s12 l6 card">([\s\S]*?)(?=<div class="col s12 l6 card">|<div class="filter">)/g,
+      titleLinkRegex: /<h4><a class="black-text" href="([^"]+)"[^>]*>([^<]*)<\/a>/,
+      daysRegex: /right-align capitalize[^>]*>\s*(?:<br\/>)?<p>([\s\S]*?)<\/p>/,
+      descriptionRegex: /<\/h4>\s*<p>([^<]*)<\/p>/,
+      placeRegex: /location_on<\/span>\s*([^<]*)<\/span>/,
+    },
+  },
 ];
 
 export function knownSourceDomain(url: string): string {
