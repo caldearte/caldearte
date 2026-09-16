@@ -948,6 +948,22 @@ export const KNOWN_SOURCES: KnownSource[] = [
       pattern: /este pr[oó]ximo (?<day>\d{1,2}) de (?<month>[a-zé]{3})[a-zé]* a las (?<hour>\d{1,2}):(?<minute>\d{2})/i,
     },
   },
+  {
+    url: "https://galeriametropolitana.org/expos/",
+    note:
+      "Galería Metropolitana, Félix Mendelssohn 2941, Pedro Aguirre Cerda, Santiago — evaluada 2026-09-16 como parte de la Fase 2 del repaso web-vs-Instagram (candidata \"buena\", su IG @galeriametropolitana está en instagram-accounts.ts, no removida — sigue aportando lo que la web no cubre: la web solo trae mes+año, la IG a veces trae fecha de inauguración exacta). Espacio autónomo fundado en 1998 por Ana María Saavedra y Luis Alarcón, más de 400 exposiciones organizadas — la fuente con el archivo histórico más largo evaluado en todo este repaso (68 ítems en una sola página, de abril 2026 hasta 2005).\n\nWordPress simple, markup limpio y repetible (`<div class=\"foto newlist\">`, sin necesidad de headless). 68/68 ítems parsean título+link+fecha correctamente — verificado con Node contra el HTML real.\n\n**Sin dateRangeExtractor**: tanto el listado como la página de detalle solo dan mes+año (\"abril 2026\"), nunca un día — no hay nada estructurado que extraer sin inventar un día, mismo principio que fundaciongasco.cl/estacionmapocho.cl. Se deja como rawDateText para que Haiku lo interprete junto con la fecha de publicación del post como ancla.\n\n**Nota de contenido real, no un problema técnico**: algunas exposiciones tratan temas políticos explícitos con postura crítica declarada (ej. \"Síndrome de Estocolmo III\", sobre el líder de ultraderecha sueca Jimmie Åkesson, revisando críticamente sus \"operaciones de lavado de imagen\") — exactamente el tipo de caso que el eje 3 (extrema derecha) de la política de curación cubre: postura crítica explícita = INCLUIR, no es motivo de exclusión ni de duda técnica, solo señalando que esta fuente sí toca contenido sensible con cierta frecuencia dado su statement curatorial (\"reconexión entre el mundo popular y el mundo docto\").\n\nDescripción real en `<div class=\"entry-content\">` de la página de detalle (WordPress estándar), confirmado sin divs anidados antes del cierre.",
+    lastReviewedAt: "2026-09-16",
+    extractor: {
+      kind: "articleList",
+      blockRegex: /<div class="foto newlist">([\s\S]*?)<\/a>\s*<\/div>/g,
+      titleLinkRegex: /<a href="([^"]+)"[^>]*title="([^"]+)"/,
+      daysRegex: /<p class="date">([^<]*)<\/p>/,
+    },
+    fixedLocation: { location: "Pedro Aguirre Cerda", placeName: "Galería Metropolitana", address: "Félix Mendelssohn 2941, Pedro Aguirre Cerda, Santiago" },
+    descriptionExtractor: {
+      pattern: /<div class="entry-content">([\s\S]*?)<\/div>/,
+    },
+  },
 ];
 
 export function knownSourceDomain(url: string): string {
