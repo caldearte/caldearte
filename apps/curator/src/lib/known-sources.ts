@@ -900,6 +900,25 @@ export const KNOWN_SOURCES: KnownSource[] = [
       pattern: /[Ii]nauguraci[oó]n:\s*(?:\w+\s+)?(?<day>\d{1,2}) de (?<month>[a-záéíóúñ]{3})[a-záéíóúñ]*/,
     },
   },
+  {
+    url: "https://www.arteallimite.com/museo/",
+    note:
+      'Museo Arte al Límite, Panquehue (Región de Valparaíso) — agregada 2026-09-16 en vez de su cuenta de Instagram (@arteallimite, 96,3 mil seguidores), evaluada primero y descartada por ruido: es la cuenta de una REVISTA de arte contemporáneo internacional (Arte al Límite), no solo del museo — de 36 posts muestreados en 7 semanas, solo 2 exposiciones reales distintas generaron ~31 posts (uno por cada uno de los ~35 artistas de una muestra colectiva, republicación intensa del mismo evento), más ~5 posts de puro contenido de revista (portadas, entrevistas a artistas internacionales sin evento chileno, convocatorias en México) sin relación con un evento chileno fechado.\n\nEsta página web, en cambio, es exactamente "cuál es la exposición actual del museo": Essential Grid (plugin WordPress) renderizado server-side (NO requiere headless — confirmado con curl plano), con una sección "Exposición Actual" (1 ítem) y "Exposiciones Pasadas" (más abajo en la misma página, mismo markup) — cada `<li data-skin="exposiciones-futuras">` es una exposición real, una por vez, sin la repetición por artista de Instagram. El directorio "Artistas de la exposición" (`data-skin="artistas-de-la-exposicion"`) es un catálogo de la colección permanente, no un listado de eventos — blockRegex excluye esos bloques exigiendo `data-skin="exposiciones-futuras"` explícito.\n\nFecha de la tarjeta (`eg-exposiciones-futuras-element-3`) inconsistente entre ítems ("Septiembre - Marzo 2027", "Marzo - Septiembre" sin año, "Octubre 2025 - Marzo 2026") — mismo problema de fraseo irregular ya visto en aninatgaleria.org/estacionmapocho.cl, sin dateRangeExtractor a propósito, dejado como rawDateText para Haiku. La página de detalle sí trae una frase real y limpia (confirmada contra "Alquimia Textil"): "La inauguración se llevará a cabo el 5 de septiembre, a las 17:30 horas... Puede ser visitada hasta el 6 de marzo de 2027" — usada para `openingTimeExtractor` (día+mes+hora; sin año en esa frase, cae en `inferYear`) pero NO para un detailDateRangeExtractor: el año del inicio nunca se declara ahí (solo el del cierre), y compartir el año de cierre como fallback habría fabricado 2027 para una fecha de inicio real de 2026 — el mismo tipo de riesgo de año ya documentado en aninatgaleria.org, así que se deja el rango completo a la interpretación de Haiku sobre la descripción completa.\n\nDescripción real y sustancial en `<div class="content-inner">` (dentro de `post-content`) — confirmado sin divs anidados antes del cierre.\n\nRegexes verificados 2026-09-16 con Node contra HTML real (curl plano, sin JS): 3/3 exposiciones de la página (actual + 2 pasadas) parsean título+link+fecha correctamente; descripción y openingTimeExtractor confirmados contra el detalle de "Alquimia Textil".',
+    lastReviewedAt: "2026-09-16",
+    extractor: {
+      kind: "articleList",
+      blockRegex: /<li[^>]*data-skin="exposiciones-futuras"[^>]*>([\s\S]*?)<\/li>/g,
+      titleLinkRegex: /<a class="eg-invisiblebutton" href="([^"]+)"[^>]*>([^<]*)<\/a>/,
+      daysRegex: /eg-exposiciones-futuras-element-3">([^<]*)<\/div>/,
+    },
+    fixedLocation: { location: "Panquehue", placeName: "Museo Arte al Límite", address: "Lo Blanco, Parcela 43, Haras Lonco, Panquehue, Región de Valparaíso" },
+    descriptionExtractor: {
+      pattern: /<div class="content-inner">([\s\S]*?)<\/div>\s*<\/div>\s*<!--\/post-content-->/,
+    },
+    openingTimeExtractor: {
+      pattern: /inauguraci[oó]n se llevar[aá] a cabo el (?<day>\d{1,2}) de (?<month>[a-zé]{3})[a-zé]*,?\s*a las (?<hour>\d{1,2}):(?<minute>\d{2})/i,
+    },
+  },
 ];
 
 export function knownSourceDomain(url: string): string {
