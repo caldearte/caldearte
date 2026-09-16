@@ -782,6 +782,36 @@ export type Database = {
           },
         ]
       }
+      instagram_collab_edges: {
+        Row: {
+          created_at: string
+          handle: string
+          handle_role: string
+          id: string
+          post_url: string
+          posted_at: string | null
+          registered_account: string
+        }
+        Insert: {
+          created_at?: string
+          handle: string
+          handle_role: string
+          id?: string
+          post_url: string
+          posted_at?: string | null
+          registered_account: string
+        }
+        Update: {
+          created_at?: string
+          handle?: string
+          handle_role?: string
+          id?: string
+          post_url?: string
+          posted_at?: string | null
+          registered_account?: string
+        }
+        Relationships: []
+      }
       shadow_curation_comparisons: {
         Row: {
           agree: boolean

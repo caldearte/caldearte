@@ -304,6 +304,20 @@ instagram_posts, instagram_account_snapshots (both added
   -- Periodic reading of the account's own current follower/media counts —
   -- same "snapshot, not ledger" posture as platform_cost_snapshots, no
   -- per-event attribution for follower growth.
+
+instagram_collab_edges (20260916160000_add_instagram_collab_edges.sql)
+  id, created_at, post_url, posted_at, registered_account, handle,
+    handle_role (author | coauthor); unique (post_url, registered_account,
+    handle)
+  -- One row per fetched collab post × registered account × Instagram
+  -- username we DON'T follow, written by instagram-discovery/run.ts every
+  -- run (~130-170 rows/day). A discovery channel, not curation data: a
+  -- handle recurring across several registered venues is a venue
+  -- candidate the registry lacks (see region-discovery.md, "The collab
+  -- graph as a discovery channel"). Nothing reads it automatically; the
+  -- monthly review query lives in that entry. Not pruned. Whether the
+  -- post became an event is found by joining events.source_url /
+  -- rejected_candidates.source_url on post_url, not stored here.
 ```
 
 Field types and constraints (exact `CHECK`s, defaults, nullability) live in
