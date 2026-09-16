@@ -4377,6 +4377,62 @@ no dates. The historical cost is unknowable: every collab post since the
 pipeline launched was dropped before curation and never persisted (196 of
 645 on 09-13 alone), so whatever real events they held left no trace.
 
+## Third daily run, 2026-09-16: collabs in, documentary clause holding, and where the cost really is
+
+First run with co-author attribution (#538): `44/154 post(s) attributed
+to the requested account despite a different author` — the real collab
+count, curated instead of dropped — and a single `unexpected owner`
+(`la_erre`, an agency posting about Mercado París Londres with no
+registered co-author: the correct drop). Two Apify calls again (the two
+accounts added the day before at the 4-day default; 171 at Tuesday's
+exact timestamp), 0 already-seen, 86/232 placeholders, 8 minutes.
+Daniel's morning registry pruning (#546/#547) landed 3 minutes before the
+run and was picked up; the Matucana 100 and Il Posto moves to web
+sources (#551/#553) apply from the next one. Haiku: 152 posts, $0.273
+($0.0018/post), 194 output tokens per item — the #533 saving holds on
+its third day.
+
+**Judgment:** the documentary/heritage clause held this time — an
+archaeology post (aysana, jarro antropomorfo), #PiezaPrecolombina, the
+MHN furniture collection and a TV-commercials archive all rejected as
+"documental/patrimonial"; and the ship-model exhibition removed on
+09-15 was approved again but caught by dedup against the removed row,
+so a removal sticks. Four "La Ruta del Circo" posts rejected even when
+written as "intervención circense". Six inserts, all defensible
+(Permanece, Veta sonora, Funga por siempre, SUR URBANO, Feria Aparte,
+Orfebrería Ancestral Andina, Zaida González en Postigo). Shadow: no
+chunk lost; one disagreement in MiniMax's favour ("Pegado, pegado a las
+rocas" — a past conversatorio Haiku read as a visita guiada; the code
+filter rejected it anyway), and 12 sensitivity tags to Haiku's 5, the
+opposite of its old under-tagging, irrelevant since no insert carried a
+tag.
+
+**The `resultsLimit: 5` cap, measured.** Six accounts hit it (Fiestas
+Patrias week). Decoding the shortcode timestamps on the real profiles
+against the dataset: the actor keeps the **newest** 5 in the window, so
+with daily runs what's lost is yesterday-afternoon posts of accounts
+posting 6+/day — culturaprovidencia posted 7, lost a ciclo de cine and a
+música del mundo session; culturacoyhaique posted 7, lost a jornada
+dieciochera and a film; calamacultural had exactly 5. Only municipal
+accounts post at that rate, and four of the five capped ones have zero
+live events since they were added (Coyhaique 0/16, Puente Alto 0/16,
+Cauquenes 0/9, Calama 0/13; Providencia 3/23). Cap stays at 5, no
+per-account tiers: it would optimise a variable that doesn't move the
+bill.
+
+**Where the bill actually is:** across the three daily runs, **156 of
+292 curated posts (53%) came from 47 accounts that have never produced a
+live event** — ~52 posts/day ≈ $0.19/day ≈ $5.6 of the pipeline's ~$11
+a month, and the reason the Apify credit runs out before the cycle
+does. The lever is the registry, not the cap. Re-measurement scheduled
+for 2026-09-27 (a one-shot Claude task builds the per-account table:
+posts curated, live events, events/post, comuna and whether it has any
+other source, cost of the zero-yield set) with three options per
+account — keep, a manual `resultsLimit: 2` tier for a municipal account
+that gave one event in a comuna nobody else covers (not implemented;
+would group the Apify call by tier like it's grouped by cutoff today),
+or remove. Daniel decides; nothing automatic.
+
 ## The collab graph as a discovery channel (2026-09-16)
 
 Daniel's question after the co-author fix (#538): can collab posts point
@@ -4436,6 +4492,42 @@ order by venues desc, last_seen desc;
 Filter the result against the current `instagram-accounts.ts` (a handle
 recorded before it was added stays in the table), then evaluate the rest
 in Chrome as above. No admin view until the query has been useful twice.
+
+## Where the shadow pilot stands (2026-09-16)
+
+Asked plainly by Daniel: is it worth swapping Haiku for MiniMax? Data
+to date, `shadow_curation_comparisons` plus the per-item reviews above:
+
+- **Bright sources:** 57 comparisons since 09-06, 13 of them errors on a
+  single day (09-09, a 404 when the free model id disappeared), 40/44
+  valid ones agree (91%).
+- **Instagram:** four daily batches. 09-13: 8 of 22 chunks lost to
+  reasoning exhausting `max_tokens` (fixed with the thinking budget +
+  chunk 10); 09-14: 0 lost; 09-15: 1 of ~15 lost (returned 9 rows for 10,
+  a counting slip — the chunk held a real inauguración); 09-16: 0 lost.
+- **Judgment on the edge cases, cumulative:** MiniMax was right where
+  Haiku was wrong on Falun Gong (twice), circus (twice), Sewell, Los
+  archivos de Gabriela, Osvaldo Cáceres and the past conversatorio; it
+  matched Haiku's mistake on the ship models. No case yet where MiniMax
+  was wrong and Haiku right on a scope call.
+- **Tags:** under-tagged 13 vs 53 on 09-13; identical 5/5 on 09-15; 12 vs
+  5 on 09-16 — noisy in both directions, and only tags on *approved*
+  events matter, where the two have agreed.
+- **Cost and speed:** at parity with Haiku once its reasoning tokens are
+  counted (measured replay, "Prompt optimization" above), ~13× the
+  latency, and one chunk in ~30 still comes back short. Haiku, with the
+  #533 prompt, has lost zero chunks in the same runs.
+
+Verdict unchanged from 09-14, now with numbers: **not as a replacement**
+— the reliability gap is real and the savings aren't. What the data
+argues for is different: MiniMax as a **second opinion on approvals**,
+not as the curator. Every wrong approval Daniel has removed since the
+pilot started was one MiniMax rejected, so "Haiku approved, MiniMax
+rejected" is a high-precision review queue — cheaper to read than the
+full list, and it would have caught Gabriela and Cáceres on the day.
+That's an admin filter over data already stored (per-item alignment of
+the two reasoning columns), ~$3/month to keep the shadow on. Daniel's
+call whether that's worth it; the shadow stays on until he says.
 
 ## Stale pre-fix titles found and manually corrected (2026-09-06)
 
