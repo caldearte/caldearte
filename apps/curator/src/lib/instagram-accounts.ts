@@ -2546,6 +2546,20 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
     fixedLocation: { location: "Valparaíso", placeName: "Galería Bahía Utópica" },
   },
   {
+    username: "fundacionmecenas",
+    note:
+      "Encontrada 2026-09-16 verificando un post real (\"La muerte es " +
+      "una fiesta\", instalación de Daniel Bagnara Mena, agregada a " +
+      "mano) — no estaba en la base. Fundación Mecenas, Casa Mecenas, " +
+      "Compañía de Jesús 2930, Santiago — \"convergencia, desarrollo de " +
+      "talentos y posicionamiento del arte para la inclusión y " +
+      "bienestar de las disidencias\", cuenta verificada, 18,4 mil " +
+      "seguidores, 622 publicaciones, activa (becas, convocatorias, " +
+      "exposiciones propias). fixedLocation.",
+    addedAt: "2026-09-16",
+    fixedLocation: { location: "Santiago", placeName: "Casa Mecenas", address: "Compañía de Jesús 2930, Santiago" },
+  },
+  {
     username: "centroculturalceina",
     note:
       "Encontrada 2026-09-15 revisando un post real de arte.udp+" +
