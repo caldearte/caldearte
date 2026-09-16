@@ -964,6 +964,13 @@ export const KNOWN_SOURCES: KnownSource[] = [
       pattern: /<div class="entry-content">([\s\S]*?)<\/div>/,
     },
   },
+  {
+    url: "https://galeria1712.com/exposiciones/",
+    note:
+      "Galería 1712, Garibaldi 1712, Ñuñoa, Santiago — evaluada 2026-09-16, Fase 2 del repaso web-vs-Instagram. Muy activa, cadencia mensual real desde 2023, exposición actual confirmada al momento de la revisión (\"Cancelación de la deuda\", José Rojas Dresdner, del 29 de agosto al 26 de septiembre de 2026).\n\n**Sin extractor articleList, a propósito**: la exposición actual/destacada usa un markup distinto (banner) al de la grilla regular de exposiciones pasadas — un blockRegex anclado en la clase repetible de la grilla (`t-entry-title`) o bien no capturaba la actual, o (probado) terminaba fusionando bloques por el markup distinto, produciendo desalineces en cascada para los ítems siguientes. No vale la pena pelear con eso: la página COMPLETA (24 exposiciones, todo el archivo desde 2023) entra en apenas ~1965 caracteres del whole-page-flatten genérico (sources.ts, corte a 4000) — muy por debajo del corte, sin ningún riesgo de truncamiento ni siquiera para el archivo histórico completo, a diferencia de espaciolacochera.cl (donde solo la exposición vigente estaba garantizada). Se deja sin `extractor`.",
+    lastReviewedAt: "2026-09-16",
+    fixedLocation: { location: "Ñuñoa", placeName: "Galería 1712", address: "Garibaldi 1712, Ñuñoa, Santiago" },
+  },
 ];
 
 export function knownSourceDomain(url: string): string {
