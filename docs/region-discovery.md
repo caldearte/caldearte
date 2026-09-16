@@ -4377,6 +4377,37 @@ no dates. The historical cost is unknowable: every collab post since the
 pipeline launched was dropped before curation and never persisted (196 of
 645 on 09-13 alone), so whatever real events they held left no trace.
 
+## The collab graph as a discovery channel (2026-09-16)
+
+Daniel's question after the co-author fix (#538): can collab posts point
+us to new accounts to follow, or even new bright sources? Measured on the
+two days of datasets at hand (292 unique posts): 236 unregistered handles
+appear as co-authors of posts by registered accounts; 74 of them on
+captions with exhibition vocabulary. Most are **artists** (they co-post
+their own show with the gallery — coverage comes from the venue, so not
+sources), **municipal/tourism accounts** (already the pruning candidates)
+and **universities**. Seven looked like places and had never been
+evaluated; all seven checked in Chrome, not Apify:
+
+| Handle | Verdict | Why |
+|---|---|---|
+| `cajacrisol_arte` (Copiapó) | **added** | self-described gallery, real exhibitions + convocatorias, 287 posts, active |
+| `museoregionaldeatacama` (Copiapó) | **added** | state museum with a monthly cartelera incl. temporary exhibitions; mixed like museoregionalrancagua |
+| `lafoco_coyhaique` | skip | photo collective, not a venue; its shows are announced by `culturacoyhaique` (registered) — the same post arrived three times |
+| `galponesoctay` | skip | Museo Taller's Puerto Octay branch; `museotaller` (registered) already posts its Octay hours/events |
+| `espacioculturalarganda` (Arica) | rejected | community workshop space (cestería, arpilleras, micrófono abierto), no exhibitions |
+| `plataforma_arte_medios` | rejected | Latin America-wide media-art aggregator (1,068 posts, 11.5k) — volume and not a place |
+| `feria.aparte` | rejected as source | one fair a year, already inserted via `agac.cl`; dozens of exhibitor posts pre-fair would all curate as duplicates. Worth following from @caldearte.oficial |
+
+Yield: 2 sources from 2 days, both in a comuna with two sources total —
+the interesting property is that the graph surfaces places where the
+registry is thin, because that's where a registered venue's partners are
+least likely to be registered already. What makes the signal usable is
+recurrence (a handle co-posting with 2-3 different registered accounts
+over weeks is almost certainly a place; once is usually an artist), and
+Apify datasets expire, so the next step is to persist the graph per run
+and query it monthly — see the entry below once it ships.
+
 ## Stale pre-fix titles found and manually corrected (2026-09-06)
 
 While testing the flyer redesign (see roadmap.md's own entry) against

@@ -2532,6 +2532,37 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
     addedAt: "2026-09-15",
     fixedLocation: { location: "Santiago", placeName: "Centro Cultural CEINA", address: "Arturo Prat 33, Santiago" },
   },
+  {
+    username: "cajacrisol_arte",
+    note:
+      "Encontrada 2026-09-16 en el grafo de coautores de Instagram (primer " +
+      "candidato que sale de ahí): coautora con ccserhumano en el post de " +
+      "programación del Encuentro Nacional de Artes Visuales de Atacama. " +
+      "Caja Crisol Espacio Cultural, Maipú 836, Copiapó — se presenta " +
+      "como galería de arte (\"la galería del desierto más árido del " +
+      "mundo\"), 287 publicaciones, 1.380 seguidores, activa: exposición " +
+      "\"Ver de lejos\" (Filippa Lepe y Mabel Sepúlveda), convocatoria " +
+      "de exposición \"Desde mi lugar\", talleres de pintura y guitarra " +
+      "(Haiku filtra). Evaluada por Chrome, no por Apify. fixedLocation.",
+    addedAt: "2026-09-16",
+    fixedLocation: { location: "Copiapó", placeName: "Caja Crisol Espacio Cultural", address: "Maipú 836, Copiapó" },
+  },
+  {
+    username: "museoregionaldeatacama",
+    note:
+      "Encontrada 2026-09-16 en el grafo de coautores (mismo post que " +
+      "cajacrisol_arte). Museo Regional de Atacama, Av. Manuel Antonio " +
+      "Matta 265, Copiapó — museo estatal (Museos Chile), 429 " +
+      "publicaciones, 11,5 mil seguidores, activa. Contenido mixto como " +
+      "museoregionalrancagua: cartelera mensual con exposiciones " +
+      "temporales (\"Artesanía en movimiento\"), sede del Encuentro " +
+      "Nacional de Artes Visuales, más talleres, fiestas patrias y " +
+      "colección arqueológica (esto último cae bajo la cláusula " +
+      "documental/patrimonial, Haiku lo filtra). Evaluada por Chrome. " +
+      "fixedLocation.",
+    addedAt: "2026-09-16",
+    fixedLocation: { location: "Copiapó", placeName: "Museo Regional de Atacama", address: "Av. Manuel Antonio Matta 265, Copiapó" },
+  },
   // El resto de la lista la aporta Daniel — una decisión editorial, igual
   // que cada fuente brillante nueva se evaluó una por una. Confirmar
   // pública y activa antes de agregar cada cuenta.
