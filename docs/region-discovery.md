@@ -4529,6 +4529,47 @@ That's an admin filter over data already stored (per-item alignment of
 the two reasoning columns), ~$3/month to keep the shadow on. Daniel's
 call whether that's worth it; the shadow stays on until he says.
 
+## Second opinion on approvals (2026-09-16): the shadow becomes a veto
+
+Daniel's decision after the standing above: keep MiniMax, but only where
+its judgment has been demonstrably better — Haiku's approvals — and take
+the human out of the loop ("si minimax rechaza lo quitas no más").
+`lib/second-opinion.ts`, Instagram pipeline only:
+
+- After Haiku curates the batch, the items it APPROVED (~15-22 a day,
+  against ~150 curated) go to the second model with the exact same
+  prompt and chunking (`curateBrightSourceItems` against the OpenRouter
+  client). The full parallel shadow on the Instagram batch is gone;
+  bright sources keep theirs (one call per source run, negligible).
+- A **scope rejection** from the second model turns the approval into a
+  rejection before `insertCandidates` runs: the candidate is recorded in
+  `rejected_candidates` with the reasoning prefixed
+  `[VETO segunda opinión <model>] … — Haiku había aprobado: …`, carries
+  the second model's `rejectionAxis` (so the cross-source axis safety net
+  still applies), stays out of curation on later runs through the
+  rolling window, and shows up in the daily digest as a rejection with
+  that prefix. Nothing is inserted and then removed.
+- Bounded on purpose. A rejection that carries the code filters' own
+  marker (`[FILTRO DE CÓDIGO …]`) is NOT a veto — it means the second
+  model approved the event and merely read the dates differently. An
+  item the second model returned nothing for (a short chunk, a failed
+  call) keeps Haiku's verdict: the second model's failure never removes
+  anything. An item with several approved candidates is vetoed only if
+  the second model approved none of them.
+- The comparison row still goes to `shadow_curation_comparisons`, under
+  the label `instagram_second_opinion` — `real_status` is always
+  `approved` there, so the admin's agreement rate for Instagram now reads
+  "share of Haiku approvals the second model confirmed".
+
+Why pre-insert rather than "insert, then mark removed": no half-visible
+event, the axis net works on the rejection record, and the rolling
+window keeps the post from being re-curated. The cost of reversing a
+wrong veto is a manual add (the same as any missed event), which the
+evidence so far — 8 disagreements on approvals, 7 right, the 8th shared
+with Haiku — says will be rare. Projected monthly: Haiku Instagram
+~$5.2, bright sources ~$1, MiniMax ~$1 → ~$7-7.5, and ~$4.5-5 once the
+zero-yield accounts are pruned on 09-27.
+
 ## Stale pre-fix titles found and manually corrected (2026-09-06)
 
 While testing the flyer redesign (see roadmap.md's own entry) against

@@ -26,9 +26,13 @@ including a real inauguración); its sensitivity
 tagging is prompt-fixable yet its verbosity puts its cost at parity with
 Haiku at ~13× the latency (measured replay, region-discovery.md "Prompt
 optimization"). The same measurement produced the optimized prompt Haiku
-now runs (−24% output tokens, better verdicts). Whether the shadow keeps
-running as a disagreement-mining feed (~$3/month) or is switched off is
-Daniel's call. The earlier venue-based design (a separate "Event Crawler"
+now runs (−24% output tokens, better verdicts). **Since 2026-09-16 the
+Instagram pipeline uses it as a second opinion instead of a shadow:**
+only Haiku's approvals go to MiniMax, and a scope rejection from it
+vetoes the approval before insertion, automatically (Daniel: no human in
+the loop) — ~$1/month instead of ~$3, see region-discovery.md "Second
+opinion on approvals". Bright sources keep the full shadow (one call per
+source, negligible). The earlier venue-based design (a separate "Event Crawler"
 that revisited known venues, plus the `venues` table itself) has been
 retired — it was left disconnected after the pivot (nothing fed it new
 venues) and has been fully removed from the code and schema, not just
