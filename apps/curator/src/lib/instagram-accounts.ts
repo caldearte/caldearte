@@ -106,19 +106,15 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
     addedAt: "2026-08-14",
     fixedLocation: { location: "Providencia", placeName: "D21" },
   },
-  {
-    username: "hifas.galeria",
-    note:
-      "Encontrada revisando @artistasyungay (2026-08-14) — Galería Hifas, " +
-      "Libertad 304, Barrio Yungay, Santiago. La más limpia evaluada esta " +
-      "sesión: el anuncio original de \"Cartografía del Fuego\" (Ignacio " +
-      "Gutiérrez Crocco) trae fecha de inauguración Y de cierre completas " +
-      "en el mismo post (1 de agosto 19:00 hrs, disponible hasta el 13 de " +
-      "septiembre). Confirmado independientemente vía Google Alerts el " +
-      "mismo día. fixedLocation.",
-    addedAt: "2026-08-14",
-    fixedLocation: { location: "Santiago", placeName: "Galería Hifas" },
-  },
+  // "hifas.galeria" REMOVIDA 2026-09-16: reemplazada por
+  // galeriahifas.cl (known-sources.ts) — el sitio propio de la galería
+  // tiene el markup más limpio de todo el repaso web-vs-IG de esa sesión
+  // (Webflow/Finsweet, extractor articleList totalmente determinístico,
+  // 11/11 exposiciones parsean correctamente), sin la repetición/ruido
+  // de una cuenta de Instagram. No volver a agregar esta cuenta a menos
+  // que galeriahifas.cl deje de estar disponible o cambie de estructura
+  // — ver [[project_arteallimite_bright_source_2026_09_16]] y la nota
+  // de known-sources.ts para el detalle completo.
   {
     username: "espacioandreabrunson",
     note:
@@ -879,20 +875,12 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
     addedAt: "2026-08-24",
     fixedLocation: { location: "Santiago", placeName: "Gallery +" },
   },
-  {
-    username: "museo.arteallimite",
-    note:
-      "Evaluada 2026-08-24. Museo Arte Al Límite, Lo Blanco, Panquehue, V " +
-      "Región (Valparaíso) — martes a sábado 10-18hrs. 4889 seguidores, " +
-      "vinculado a la revista/marca \"Arte al Límite\" " +
-      "(arteallimite.com, no tracked como fuente web). La grilla del " +
-      "perfil mezcla posts propios con reposts de la cuenta madre " +
-      "@arteallimite y relacionadas, pero Apify solo trae posts con " +
-      "ownerUsername exacto \"museo.arteallimite\" — esos reposts no " +
-      "entran. Local fijo confirmado.",
-    addedAt: "2026-08-24",
-    fixedLocation: { location: "Panquehue", placeName: "Museo Arte Al Límite" },
-  },
+  // "museo.arteallimite" REMOVIDA 2026-09-16: agregada 2026-08-24 cuando
+  // arteallimite.com "no tracked como fuente web" (nota original) — ya
+  // no es cierto, arteallimite.com/museo/ se agregó ese día
+  // (known-sources.ts) y su propia bio de Instagram ahora apunta
+  // directo a ese dominio. No volver a agregar salvo que la web deje de
+  // estar disponible — ver [[project_arteallimite_bright_source_2026_09_16]].
   {
     username: "museopalaciovergara",
     note:
@@ -1205,19 +1193,14 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
       "igual que @ilposto.cl.",
     addedAt: "2026-08-25",
   },
-  {
-    username: "espaciolacochera",
-    note:
-      "Evaluada 2026-08-25. Espacio La Cochera, Huérfanos 2567, Barrio " +
-      "Yungay, Santiago — dirección confirmada directamente en un " +
-      "póster real de la grilla. Espacio cultural real y bien " +
-      "establecido, 5.325 seguidores, sitio web propio " +
-      "(espaciolacochera.cl). Highlights con cadencia anual real " +
-      "(\"Expos_2026\" a \"Expos_2022\", 5 años de programa expositivo). " +
-      "fixedLocation.",
-    addedAt: "2026-08-25",
-    fixedLocation: { location: "Santiago", placeName: "Espacio La Cochera" },
-  },
+  // "espaciolacochera" REMOVIDA 2026-09-16: reemplazada por
+  // espaciolacochera.cl (known-sources.ts) — la nota original (2026-08-25)
+  // ya señalaba que el sitio propio existía ("sitio web propio"), pero
+  // se agregó por Instagram igual sin evaluar la web en profundidad en
+  // su momento. 2026-09-16 se confirmó que la web ordena las
+  // exposiciones de más reciente a más antigua (fallback whole-page-
+  // flatten seguro). No volver a agregar salvo que la web deje de estar
+  // disponible — ver [[project_arteallimite_bright_source_2026_09_16]].
   {
     username: "biav_valpo",
     note:
