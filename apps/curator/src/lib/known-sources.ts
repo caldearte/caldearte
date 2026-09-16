@@ -1006,6 +1006,22 @@ export const KNOWN_SOURCES: KnownSource[] = [
       pattern: /m100-entry__barra-izquierda">\s*<p>([\s\S]*?)<\/p>/,
     },
   },
+  {
+    url: "https://www.d21virtual.cl/category/exposiciones/comunicados-d21/",
+    note:
+      "D21 Proyectos de Arte, Nueva de Lyon 19, dpto. 21, Providencia, Santiago — evaluada 2026-09-16, Fase 2 del repaso web-vs-Instagram (candidata \"necesita mirada directa\"). Espacio independiente fundado 2009, financiamiento FONDART, cadencia mensual real desde 2024 hasta hoy (12 comunicados en el archivo, verificado con Node contra el HTML real).\n\nWordPress con el tema tagDiv Newspaper (`td-block-span4`, `td-excerpt`) — la página de la categoría general \"Exposiciones\" mezcla 3 tipos de post por cada muestra (Comunicado + Galería de fotos + 360°), pero la subcategoría `/category/exposiciones/comunicados-d21/` trae solo el post con el texto real (\"A partir del DD de MES hasta DD de MES...\") — 12/12 bloques parsean título+link, 10/12 con fecha (los 2 restantes sin `daysRegex` no se descartan, solo quedan con rawDateText vacío, Haiku decide igual que en cualquier fuente sin fecha).\n\n**No reemplaza a la cuenta de IG @d21proyectosdearte (instagram-accounts.ts) — sigue activa, a propósito**: su nota ya documentaba que sus posts siempre traen hora exacta de inauguración (ej. \"jueves 20 de agosto, 19:00 hrs\" para esta misma exposición, \"Afecto Extraterrestre\") — confirmado que la web NO trae esa hora en ningún lado de la página de detalle (el único \"19:00\" que aparece es el horario general de atención de la galería, 11:00 a 19:00 hrs, no la inauguración). Mismo principio que galeriametropolitana.org/galeria1712.com/collectio-collectio.com: la web complementa, no reemplaza, cuando pierde una señal real que la IG sí tiene.\n\nSin año explícito en la mayoría de las fechas (\"20 de agosto hasta el 24 de septiembre\"), salvo un par de casos sueltos que sí lo incluyen — inconsistente, así que sin dateRangeExtractor, rawDateText completo para que Haiku decida. Descripción completa (primer párrafo real, no el excerpt cortado del listado) en la página de detalle, ancla estable `<!-- content --><p class=\"wp-block-paragraph\">`.",
+    lastReviewedAt: "2026-09-16",
+    extractor: {
+      kind: "articleList",
+      blockRegex: /<div class="td-block-span4">([\s\S]*?)<\/div> <!-- \.\/td-block-span4 -->/g,
+      titleLinkRegex: /<h3 class="entry-title td-module-title"><a href="([^"]+)"[^>]*>([^<]*)<\/a>/,
+      daysRegex: /<div class="td-excerpt">\s*(A partir del[^<]*)<\/div>/,
+    },
+    fixedLocation: { location: "Providencia", placeName: "D21", address: "Nueva de Lyon 19, dpto. 21, Providencia, Santiago" },
+    descriptionExtractor: {
+      pattern: /<!-- content -->\s*<p class="wp-block-paragraph">([\s\S]*?)<\/p>/,
+    },
+  },
 ];
 
 export function knownSourceDomain(url: string): string {
