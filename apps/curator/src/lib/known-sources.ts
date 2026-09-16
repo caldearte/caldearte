@@ -971,6 +971,24 @@ export const KNOWN_SOURCES: KnownSource[] = [
     lastReviewedAt: "2026-09-16",
     fixedLocation: { location: "Ñuñoa", placeName: "Galería 1712", address: "Garibaldi 1712, Ñuñoa, Santiago" },
   },
+  {
+    url: "https://collectio-collectio.com/blogs/exposiciones",
+    note:
+      "Collectio, Eduardo Marquina 3992, Vitacura, Santiago — evaluada 2026-09-16, Fase 2 del repaso web-vs-Instagram. Tienda Shopify de venta de obras (mismo tipo de plataforma que galerialasala.com/uprint.cl, ambas rechazadas por no tener sección de exposiciones), pero ESTA sí tiene un blog dedicado real (`/blogs/exposiciones`) con 8 exposiciones reales confirmadas, incluida al menos una con fecha y hora de inauguración explícitas en prosa (\"el sábado 9 de mayo... a las 12:00 hrs en Eduardo Marquina 3992, Vitacura\").\n\nMarkup limpio y repetible (`<a href=\"...\" class=\"blog-post-card__title h4\">`) — 8/8 ítems parsean título+link correctamente, verificado con Node.\n\nSin fecha estructurada en el listado — cada exposición trae su fecha en prosa dentro de la página de detalle (`<div class=\"prose\">`), sin año explícito (\"9 de mayo\", se infiere el año actual/próximo) — mismo tipo de fraseo que otras fuentes de esta sesión, dejado como descripción completa para que Haiku lo interprete; `openingTimeExtractor` sí captura día+mes+hora de forma determinística cuando la frase \"DD de MES a las HH:MM\" aparece.",
+    lastReviewedAt: "2026-09-16",
+    extractor: {
+      kind: "articleList",
+      blockRegex: /(<a href="[^"]+" class="blog-post-card__title h4">[^<]*<\/a>)/g,
+      titleLinkRegex: /<a href="([^"]+)" class="blog-post-card__title h4">([^<]*)<\/a>/,
+    },
+    fixedLocation: { location: "Vitacura", placeName: "Collectio", address: "Eduardo Marquina 3992, Vitacura, Santiago" },
+    descriptionExtractor: {
+      pattern: /<div class="prose[^"]*"[^>]*>([\s\S]*?)<\/div>/,
+    },
+    openingTimeExtractor: {
+      pattern: /(?<day>\d{1,2}) de (?<month>[a-zé]{3})[a-zé]* a las (?<hour>\d{1,2}):(?<minute>\d{2})/i,
+    },
+  },
 ];
 
 export function knownSourceDomain(url: string): string {
