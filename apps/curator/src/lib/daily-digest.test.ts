@@ -4,8 +4,8 @@ import { buildDailyDigestSubject, buildDailyDigestBody, buildDailyDigestHtmlBody
 
 const baseCost: DailyDigestSummary["cost"] = {
   anthropicTodayUsd: 0.1,
-  secondOpinionTodayUsd: 0.02,
-  secondOpinionMonthUsd: 0.45,
+  safetyNetTodayUsd: 0.02,
+  safetyNetMonthUsd: 0.45,
   apifyTodayGrossUsd: 0.2,
   apifyTodayFreeUsd: 0.2,
   apifyTodayRealUsd: 0,
@@ -106,18 +106,18 @@ test("buildDailyDigestBody's cost section separates Apify's real (billed) cost f
   assert.match(body, /\$0\.0000 real de \$0\.2000 bruto/);
 });
 
-// Daniel, 2026-09-17: the second-opinion model's spend was invisible in
+// Daniel, 2026-09-17: the safety-net model's spend was invisible in
 // the digest. It gets its own line (never folded into "Anthropic") and
 // counts toward the same monthly ceiling.
-test("the cost section shows the second-opinion model on its own line and in both totals", () => {
+test("the cost section shows the safety-net model on its own line and in both totals", () => {
   const summary = summaryWith([]);
   const body = buildDailyDigestBody(summary);
-  assert.match(body, /Hoy: \$0\.1200 real \(Anthropic \$0\.1000 \+ MiniMax \(segunda opinión\) \$0\.0200/);
+  assert.match(body, /Hoy: \$0\.1200 real \(Anthropic \$0\.1000 \+ MiniMax \(red de seguridad\) \$0\.0200/);
   assert.match(body, /Mes a la fecha: \$3\.90 de \$15\.00/);
-  assert.match(body, /  MiniMax \(segunda opinión\): \$0\.45 \(mes calendario\)/);
+  assert.match(body, /  MiniMax \(red de seguridad\): \$0\.45 \(mes calendario\)/);
   const html = buildDailyDigestHtmlBody(summary);
-  assert.match(html, /MiniMax \(segunda opinión\): \$0\.0200/);
-  assert.match(html, /MiniMax \(segunda opinión\): \$0\.45 \(mes calendario\)/);
+  assert.match(html, /MiniMax \(red de seguridad\): \$0\.0200/);
+  assert.match(html, /MiniMax \(red de seguridad\): \$0\.45 \(mes calendario\)/);
 });
 
 test("buildDailyDigestHtmlBody renders a row per pipeline and includes the per-event detail tables", () => {

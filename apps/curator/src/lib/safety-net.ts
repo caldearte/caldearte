@@ -1,4 +1,4 @@
-// Second opinion on Haiku's approvals (Daniel, 2026-09-16): the shadow
+// Safety net on Haiku's approvals (Daniel, 2026-09-16): the shadow
 // pilot's finding was that every wrong approval he removed by hand since
 // 2026-09-04 (Falun Gong ×2, circus ×2, Sewell, Los archivos de Gabriela,
 // Osvaldo Cáceres) was one the shadow model had rejected, and that it
@@ -31,10 +31,10 @@ import type { CurateResult, EventCandidate, MessagesClient } from "../event-disc
 import type { BrightSourceItem } from "../event-discovery/extractors.js";
 import { runShadowCuration, type ShadowClient } from "./model-comparison.js";
 
-export const SECOND_OPINION_LABEL = "instagram_second_opinion";
+export const SAFETY_NET_LABEL = "instagram_safety_net";
 const CODE_FILTER_MARKER = "[FILTRO DE CÓDIGO";
 
-export interface SecondOpinionVeto {
+export interface SafetyNetVeto {
   sourceUrl: string;
   reasoning: string;
   rejectionAxis: EventCandidate["rejectionAxis"];
@@ -42,9 +42,9 @@ export interface SecondOpinionVeto {
 
 // Pure: which of Haiku's approved source URLs the second model rejected
 // on scope. Exported for tests.
-export function secondOpinionVetoes(realCandidates: readonly EventCandidate[], shadowCandidates: readonly EventCandidate[]): SecondOpinionVeto[] {
+export function safetyNetVetoes(realCandidates: readonly EventCandidate[], shadowCandidates: readonly EventCandidate[]): SafetyNetVeto[] {
   const approvedUrls = new Set(realCandidates.filter((c) => c.status === "approved" && c.sourceUrl).map((c) => c.sourceUrl as string));
-  const vetoes: SecondOpinionVeto[] = [];
+  const vetoes: SafetyNetVeto[] = [];
   for (const sourceUrl of approvedUrls) {
     const shadowForUrl = shadowCandidates.filter((c) => c.sourceUrl === sourceUrl);
     if (shadowForUrl.length === 0) continue;
@@ -59,7 +59,7 @@ export function secondOpinionVetoes(realCandidates: readonly EventCandidate[], s
 // Mutates the vetoed candidates in place (status, reasoning, axis) so the
 // existing insert path records them as rejections. Returns how many
 // candidates were vetoed. Never throws.
-export async function applySecondOpinion(
+export async function applySafetyNet(
   shadow: ShadowClient,
   candidates: EventCandidate[],
   items: readonly BrightSourceItem[],
@@ -72,28 +72,28 @@ export async function applySecondOpinion(
   if (reviewItems.length === 0) return 0;
 
   let shadowCandidates: EventCandidate[] | null = null;
-  await runShadowCuration("instagram", SECOND_OPINION_LABEL, shadow, approved, async (client) => {
+  await runShadowCuration("instagram", SAFETY_NET_LABEL, shadow, approved, async (client) => {
     const result = await curateFn(client, reviewItems);
     shadowCandidates = result.candidates;
     return result;
   });
   if (!shadowCandidates) {
-    console.log(`[instagram-discovery][second-opinion] ${shadow.model} returned nothing for ${reviewItems.length} approved item(s) — keeping Haiku's verdicts`);
+    console.log(`[instagram-discovery][safety-net] ${shadow.model} returned nothing for ${reviewItems.length} approved item(s) — keeping Haiku's verdicts`);
     return 0;
   }
 
-  const vetoes = secondOpinionVetoes(candidates, shadowCandidates);
+  const vetoes = safetyNetVetoes(candidates, shadowCandidates);
   let vetoed = 0;
   for (const veto of vetoes) {
     for (const c of candidates) {
       if (c.status !== "approved" || c.sourceUrl !== veto.sourceUrl) continue;
-      console.log(`[instagram-discovery][second-opinion] veto: "${c.title}" — ${shadow.model}: ${veto.reasoning} (Haiku: ${c.curationReasoning})`);
+      console.log(`[instagram-discovery][safety-net] veto: "${c.title}" — ${shadow.model}: ${veto.reasoning} (Haiku: ${c.curationReasoning})`);
       c.status = "rejected";
-      c.curationReasoning = `[VETO segunda opinión ${shadow.model}] ${veto.reasoning} — Haiku había aprobado: ${c.curationReasoning}`;
+      c.curationReasoning = `[VETO red de seguridad ${shadow.model}] ${veto.reasoning} — Haiku había aprobado: ${c.curationReasoning}`;
       c.rejectionAxis = veto.rejectionAxis;
       vetoed += 1;
     }
   }
-  console.log(`[instagram-discovery][second-opinion] ${reviewItems.length} approved item(s) reviewed by ${shadow.model}, ${vetoed} candidate(s) vetoed`);
+  console.log(`[instagram-discovery][safety-net] ${reviewItems.length} approved item(s) reviewed by ${shadow.model}, ${vetoed} candidate(s) vetoed`);
   return vetoed;
 }

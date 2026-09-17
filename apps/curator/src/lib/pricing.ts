@@ -13,14 +13,14 @@ const PRICING: Record<ModelId, ModelPricing> = {
   "claude-haiku-4-5": { inputPerMtok: 1, outputPerMtok: 5 },
   "claude-sonnet-5": { inputPerMtok: 2, outputPerMtok: 10 },
   // OpenRouter list price for MiniMax M3 (2026-09-10, see
-  // model-comparison.ts) — the second-opinion model. Its reasoning tokens
+  // model-comparison.ts) — the safety-net model. Its reasoning tokens
   // are billed as output and arrive inside usage.output_tokens, so the
   // same formula applies; OpenRouter reports no cache fields for it.
   "minimax/minimax-m3": { inputPerMtok: 0.3, outputPerMtok: 1.2 },
 };
 
 // Which models are Anthropic's own — the daily digest splits the
-// api_usage_log spend by provider on this, so the second-opinion model's
+// api_usage_log spend by provider on this, so the safety-net model's
 // cost shows on its own line instead of inflating "Anthropic".
 export function isAnthropicModel(model: string): boolean {
   return model.startsWith("claude-");

@@ -41,7 +41,7 @@ import { curateBrightSourceItems, currentMonthLabel, EVENT_DISCOVERY_MODEL, type
 import type { BrightSourceItem } from "../event-discovery/extractors.js";
 import { insertCandidates, loadAllRegions, loadExistingKeys, loadRecentlyRejectedSourceUrls, toCandidateSummary } from "../event-discovery/run.js";
 import { createShadowClient } from "../lib/model-comparison.js";
-import { applySecondOpinion } from "../lib/second-opinion.js";
+import { applySafetyNet } from "../lib/safety-net.js";
 import { collabEdgesForPosts, recordInstagramCollabEdges } from "../lib/instagram-collab-edges.js";
 
 export interface InstagramRunDeps {
@@ -214,12 +214,12 @@ export async function run(deps: InstagramRunDeps = {}): Promise<void> {
     // venue), same per-item precedence curateBrightSourceItems already
     // gives a source-level `location` value.
     const { candidates, usage } = await curateBrightSourceItems(messagesClient, curatableItems, currentMonthLabel(now));
-    // Second opinion on the approvals only (lib/second-opinion.ts) —
+    // Safety net on the approvals only (lib/safety-net.ts) —
     // replaced the full parallel shadow on 2026-09-16: ~20 items a day
     // instead of ~150, and a scope rejection from the second model is
     // applied before insertion instead of just logged.
     if (shadowClient) {
-      await applySecondOpinion(shadowClient, candidates, curatableItems, (client, reviewItems) => curateBrightSourceItems(client, reviewItems, currentMonthLabel(now)));
+      await applySafetyNet(shadowClient, candidates, curatableItems, (client, reviewItems) => curateBrightSourceItems(client, reviewItems, currentMonthLabel(now)));
     }
 
     await recordUsage({ purpose: "event_discovery", model: EVENT_DISCOVERY_MODEL, pipeline: "instagram", usage });

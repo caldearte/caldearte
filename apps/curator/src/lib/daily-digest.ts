@@ -33,12 +33,12 @@ export interface DailyDigestPipelineRun {
 
 export interface DailyDigestCost {
   anthropicTodayUsd: number;
-  // The second-opinion model (MiniMax via OpenRouter, lib/second-opinion.ts
+  // The safety-net model (MiniMax via OpenRouter, lib/safety-net.ts
   // + the bright-source shadow) — recorded in the same api_usage_log
   // ledger since 2026-09-17, split out by model so it never reads as
   // Anthropic spend. Counts toward the same monthly ceiling.
-  secondOpinionTodayUsd: number;
-  secondOpinionMonthUsd: number;
+  safetyNetTodayUsd: number;
+  safetyNetMonthUsd: number;
   apifyTodayGrossUsd: number;
   apifyTodayFreeUsd: number;
   apifyTodayRealUsd: number;
@@ -98,17 +98,17 @@ function nextApifyCycleStart(cycleStartDate: string): string {
   return new Date(Date.UTC(y, m, Math.min(d, lastDayOfNextMonth))).toISOString().slice(0, 10);
 }
 
-const SECOND_OPINION_LABEL = "MiniMax (segunda opinión)";
+const SAFETY_NET_LABEL = "MiniMax (red de seguridad)";
 
 function buildCostLines(cost: DailyDigestCost): string[] {
-  const todayRealTotal = cost.anthropicTodayUsd + cost.secondOpinionTodayUsd + cost.apifyTodayRealUsd;
-  const monthRealTotal = cost.anthropicMonthUsd + cost.secondOpinionMonthUsd + cost.apifyCycleRealUsd;
+  const todayRealTotal = cost.anthropicTodayUsd + cost.safetyNetTodayUsd + cost.apifyTodayRealUsd;
+  const monthRealTotal = cost.anthropicMonthUsd + cost.safetyNetMonthUsd + cost.apifyCycleRealUsd;
   return [
     "COSTO",
-    `Hoy: ${fmtUsd(todayRealTotal)} real (Anthropic ${fmtUsd(cost.anthropicTodayUsd)} + ${SECOND_OPINION_LABEL} ${fmtUsd(cost.secondOpinionTodayUsd)} + Apify ${fmtUsd(cost.apifyTodayRealUsd)} real de ${fmtUsd(cost.apifyTodayGrossUsd)} bruto, ${fmtUsd(cost.apifyTodayFreeUsd)} cubierto por capa gratuita)`,
+    `Hoy: ${fmtUsd(todayRealTotal)} real (Anthropic ${fmtUsd(cost.anthropicTodayUsd)} + ${SAFETY_NET_LABEL} ${fmtUsd(cost.safetyNetTodayUsd)} + Apify ${fmtUsd(cost.apifyTodayRealUsd)} real de ${fmtUsd(cost.apifyTodayGrossUsd)} bruto, ${fmtUsd(cost.apifyTodayFreeUsd)} cubierto por capa gratuita)`,
     `Mes a la fecha: $${monthRealTotal.toFixed(2)} de $${cost.monthlyBudgetUsd.toFixed(2)} (techo mensual)`,
     `  Anthropic: $${cost.anthropicMonthUsd.toFixed(2)} (mes calendario)`,
-    `  ${SECOND_OPINION_LABEL}: $${cost.secondOpinionMonthUsd.toFixed(2)} (mes calendario)`,
+    `  ${SAFETY_NET_LABEL}: $${cost.safetyNetMonthUsd.toFixed(2)} (mes calendario)`,
     `  Apify: $${cost.apifyCycleRealUsd.toFixed(2)} real de $${cost.apifyCycleGrossUsd.toFixed(2)} bruto ($${cost.apifyCycleFreeUsd.toFixed(2)} en capa gratuita de $${APIFY_FREE_TIER_USD}, no cobrado) — ciclo desde el ${dateStrDDMMYYYY(cost.apifyCycleStartDate)}`,
     `  ${apifyLimitStatusLine(cost)}`,
   ];
@@ -161,8 +161,8 @@ export function buildDailyDigestHtmlBody(summary: DailyDigestSummary): string {
     .join("");
 
   const cost = summary.cost;
-  const todayRealTotal = cost.anthropicTodayUsd + cost.secondOpinionTodayUsd + cost.apifyTodayRealUsd;
-  const monthRealTotal = cost.anthropicMonthUsd + cost.secondOpinionMonthUsd + cost.apifyCycleRealUsd;
+  const todayRealTotal = cost.anthropicTodayUsd + cost.safetyNetTodayUsd + cost.apifyTodayRealUsd;
+  const monthRealTotal = cost.anthropicMonthUsd + cost.safetyNetMonthUsd + cost.apifyCycleRealUsd;
 
   const detailHtml = summary.runs
     .map((run) => {
@@ -194,12 +194,12 @@ export function buildDailyDigestHtmlBody(summary: DailyDigestSummary): string {
     <p>
       <b>Hoy:</b> ${fmtUsd(todayRealTotal)} real<br>
       &nbsp;&nbsp;Anthropic: ${fmtUsd(cost.anthropicTodayUsd)}<br>
-      &nbsp;&nbsp;${SECOND_OPINION_LABEL}: ${fmtUsd(cost.secondOpinionTodayUsd)}<br>
+      &nbsp;&nbsp;${SAFETY_NET_LABEL}: ${fmtUsd(cost.safetyNetTodayUsd)}<br>
       &nbsp;&nbsp;Apify: ${fmtUsd(cost.apifyTodayRealUsd)} real de ${fmtUsd(cost.apifyTodayGrossUsd)} bruto (${fmtUsd(cost.apifyTodayFreeUsd)} en capa gratuita)<br>
       <br>
       <b>Mes a la fecha:</b> $${monthRealTotal.toFixed(2)} de $${cost.monthlyBudgetUsd.toFixed(2)} (techo mensual)<br>
       &nbsp;&nbsp;Anthropic: $${cost.anthropicMonthUsd.toFixed(2)} (mes calendario)<br>
-      &nbsp;&nbsp;${SECOND_OPINION_LABEL}: $${cost.secondOpinionMonthUsd.toFixed(2)} (mes calendario)<br>
+      &nbsp;&nbsp;${SAFETY_NET_LABEL}: $${cost.safetyNetMonthUsd.toFixed(2)} (mes calendario)<br>
       &nbsp;&nbsp;Apify: $${cost.apifyCycleRealUsd.toFixed(2)} real de $${cost.apifyCycleGrossUsd.toFixed(2)} bruto ($${cost.apifyCycleFreeUsd.toFixed(2)} en capa gratuita de $${APIFY_FREE_TIER_USD}, no cobrado) — ciclo desde el ${escapeHtml(dateStrDDMMYYYY(cost.apifyCycleStartDate))}<br>
       &nbsp;&nbsp;<span style="${cost.apifyCycleGrossUsd >= APIFY_FREE_TIER_USD ? "color:#b3261e;font-weight:600;" : "color:#666;"}">${escapeHtml(apifyLimitStatusLine(cost))}</span>
     </p>

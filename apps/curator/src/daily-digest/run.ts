@@ -72,8 +72,8 @@ export async function run(deps: RunDeps = {}): Promise<void> {
 
   let anthropicTodayUsd = 0;
   let anthropicMonthUsd = 0;
-  let secondOpinionTodayUsd = 0;
-  let secondOpinionMonthUsd = 0;
+  let safetyNetTodayUsd = 0;
+  let safetyNetMonthUsd = 0;
   let apifyTodayGrossUsd = 0;
   let apifyTodayFreeUsd = 0;
   let apifyTodayRealUsd = 0;
@@ -87,7 +87,7 @@ export async function run(deps: RunDeps = {}): Promise<void> {
     const [{ data: usageRows, error: usageError }, { data: monthRows, error: monthError }, budget, { data: apifyRows, error: apifyError }] = await Promise.all([
       client.from("api_usage_log").select("estimated_cost_usd, model").gte("created_at", startUtc.toISOString()).lt("created_at", endUtc.toISOString()),
       // Same window getCurrentMonthSpend uses (calendar month, UTC), read
-      // with the model so the second-opinion model's spend can be shown
+      // with the model so the safety-net model's spend can be shown
       // on its own line — the ceiling itself still counts both.
       client.from("api_usage_log").select("estimated_cost_usd, model").gte("created_at", startOfCurrentUtcMonth()),
       getConfigNumber("monthly_budget_usd"),
@@ -109,11 +109,11 @@ export async function run(deps: RunDeps = {}): Promise<void> {
 
     for (const r of usageRows ?? []) {
       if (isAnthropicModel(r.model)) anthropicTodayUsd += Number(r.estimated_cost_usd);
-      else secondOpinionTodayUsd += Number(r.estimated_cost_usd);
+      else safetyNetTodayUsd += Number(r.estimated_cost_usd);
     }
     for (const r of monthRows ?? []) {
       if (isAnthropicModel(r.model)) anthropicMonthUsd += Number(r.estimated_cost_usd);
-      else secondOpinionMonthUsd += Number(r.estimated_cost_usd);
+      else safetyNetMonthUsd += Number(r.estimated_cost_usd);
     }
     monthlyBudgetUsd = budget;
 
@@ -140,8 +140,8 @@ export async function run(deps: RunDeps = {}): Promise<void> {
     runs,
     cost: {
       anthropicTodayUsd,
-      secondOpinionTodayUsd,
-      secondOpinionMonthUsd,
+      safetyNetTodayUsd,
+      safetyNetMonthUsd,
       apifyTodayGrossUsd,
       apifyTodayFreeUsd,
       apifyTodayRealUsd,

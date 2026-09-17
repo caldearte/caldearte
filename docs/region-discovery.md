@@ -4533,7 +4533,7 @@ to date, `shadow_curation_comparisons` plus the per-item reviews above:
 
 Verdict unchanged from 09-14, now with numbers: **not as a replacement**
 — the reliability gap is real and the savings aren't. What the data
-argues for is different: MiniMax as a **second opinion on approvals**,
+argues for is different: MiniMax as a **safety net on approvals**,
 not as the curator. Every wrong approval Daniel has removed since the
 pilot started was one MiniMax rejected, so "Haiku approved, MiniMax
 rejected" is a high-precision review queue — cheaper to read than the
@@ -4542,12 +4542,20 @@ That's an admin filter over data already stored (per-item alignment of
 the two reasoning columns), ~$3/month to keep the shadow on. Daniel's
 call whether that's worth it; the shadow stays on until he says.
 
-## Second opinion on approvals (2026-09-16): the shadow becomes a veto
+## Safety net on approvals (2026-09-16): the shadow becomes a veto
+
+Naming, per Daniel (2026-09-17): this is not a "second opinion" — MiniMax
+is not an alternative curator, it's the **safety net** that reviews
+everything Haiku approves before it enters the site. Everything below,
+the digest line, the veto prefix and the comparison label say "red de
+seguridad" / safety net for that reason. Distinct from the cross-source
+*axis* safety net (curation-policy.md), which is deterministic.
+
 
 Daniel's decision after the standing above: keep MiniMax, but only where
 its judgment has been demonstrably better — Haiku's approvals — and take
 the human out of the loop ("si minimax rechaza lo quitas no más").
-`lib/second-opinion.ts`, Instagram pipeline only:
+`lib/safety-net.ts`, Instagram pipeline only:
 
 - After Haiku curates the batch, the items it APPROVED (~15-22 a day,
   against ~150 curated) go to the second model with the exact same
@@ -4557,7 +4565,7 @@ the human out of the loop ("si minimax rechaza lo quitas no más").
 - A **scope rejection** from the second model turns the approval into a
   rejection before `insertCandidates` runs: the candidate is recorded in
   `rejected_candidates` with the reasoning prefixed
-  `[VETO segunda opinión <model>] … — Haiku había aprobado: …`, carries
+  `[VETO red de seguridad <model>] … — Haiku había aprobado: …`, carries
   the second model's `rejectionAxis` (so the cross-source axis safety net
   still applies), stays out of curation on later runs through the
   rolling window, and shows up in the daily digest as a rejection with
@@ -4570,7 +4578,7 @@ the human out of the loop ("si minimax rechaza lo quitas no más").
   anything. An item with several approved candidates is vetoed only if
   the second model approved none of them.
 - The comparison row still goes to `shadow_curation_comparisons`, under
-  the label `instagram_second_opinion` — `real_status` is always
+  the label `instagram_safety_net` — `real_status` is always
   `approved` there, so the admin's agreement rate for Instagram now reads
   "share of Haiku approvals the second model confirmed".
 
@@ -4624,7 +4632,7 @@ Anthropic's billing API.
 - **`api_usage_log`** table — one row per paid LLM call: model,
   purpose, token counts (including cache read/write), estimated cost from a
   hardcoded per-model $/Mtok table (`apps/curator/src/lib/pricing.ts`).
-  Since 2026-09-17 the second-opinion/shadow model's calls (OpenRouter
+  Since 2026-09-17 the safety-net/shadow model's calls (OpenRouter
   slug in `model`, same `event_discovery` purpose) land here too — Daniel
   wanted MiniMax in the digest's cost section, and until then its spend
   existed only on OpenRouter's dashboard. The digest splits the ledger by
