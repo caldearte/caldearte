@@ -204,6 +204,13 @@ rejected_candidates (added 20260728010000_add_rejected_candidates.sql —
     axis safety net; null means "no axis", which the net treats as no
     action. See curation-policy.md's "Cross-source axis safety net")
   -- Rolling ~90-day window, pruned on Event Discovery's own cadence.
+  -- Since 2026-09-16 a `reason` starting with `[VETO segunda opinión
+  -- <model>]` is an Instagram approval by Haiku that the second model
+  -- rejected on scope (lib/second-opinion.ts): the row carries the second
+  -- model's rejection_axis and Haiku's original reasoning after
+  -- "Haiku había aprobado:". No event row ever existed for it. The
+  -- companion comparison lives in shadow_curation_comparisons under
+  -- label `instagram_second_opinion` (real_status always 'approved' there).
 
 curation_escalations (added 20260730150000_add_curation_escalations.sql;
     RETIRED 2026-09-07 — the cross-source escalation flow it served was
