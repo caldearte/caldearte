@@ -4493,6 +4493,19 @@ Filter the result against the current `instagram-accounts.ts` (a handle
 recorded before it was added stays in the table), then evaluate the rest
 in Chrome as above. No admin view until the query has been useful twice.
 
+**Who runs it:** a Claude Code scheduled routine on Daniel's Mac
+(`revision-mensual-grafo-colaboradores-ig`, the 5th of each month at
+10:00 local, first run 2026-10-05) — it runs the query, filters against
+the registry, the web sources and the already-rejected list, evaluates
+the place-like handles in Chrome, and hands Daniel a table with a
+recommendation per handle (Instagram source / web source / follow only /
+nothing). It never adds a source. Same mechanism as the one-shot
+re-measurement of the registry on 2026-09-27 (above), and the same
+limit: these routines run inside the desktop app, so they fire when the
+app is open (or on next launch), unlike the pipeline's GitHub Actions
+crons. Two routines, two directions: the 09-27 one looks inward (what to
+prune), this one looks outward (what to add).
+
 ## Where the shadow pilot stands (2026-09-16)
 
 Asked plainly by Daniel: is it worth swapping Haiku for MiniMax? Data
