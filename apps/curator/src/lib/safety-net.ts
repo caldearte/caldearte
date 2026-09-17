@@ -32,6 +32,9 @@ import type { BrightSourceItem } from "../event-discovery/extractors.js";
 import { runShadowCuration, type ShadowClient } from "./model-comparison.js";
 
 export const SAFETY_NET_LABEL = "instagram_safety_net";
+// See BrightSourceCurateOpts.chunkSize — bounds what one runaway chunk
+// of the second model costs in unreviewed approvals.
+export const SAFETY_NET_CHUNK_SIZE = 5;
 const CODE_FILTER_MARKER = "[FILTRO DE CÓDIGO";
 
 export interface SafetyNetVeto {

@@ -4433,6 +4433,45 @@ that gave one event in a comuna nobody else covers (not implemented;
 would group the Apify call by tier like it's grouped by cutoff today),
 or remove. Daniel decides; nothing automatic.
 
+## Fourth daily run, 2026-09-17: first day of the safety net, and what it missed
+
+The run picked up #557, so the safety net ran a day earlier than
+expected. Numbers: 2 Apify calls (Caja Crisol + Museo Regional de
+Atacama on their first 4-day window, 8 posts; 171 accounts at
+Wednesday's timestamp, 140 posts), 101/241 placeholders, **60/148 collab
+posts attributed**, **199 collab edges / 149 unregistered handles
+recorded** (the table works), 142 curated, 11 inserted. Caja Crisol
+produced two events on its first fetch ("Ser, de lejos"; the Encuentro's
+collective show).
+
+**Safety net:** 19 approvals sent, in two chunks. Chunk 1 (10 items):
+**2 vetoes, both right** — "MICELÁNEO" (a garden club's flower show
+Haiku had approved as "montaje artístico") and "Artequin en Quilpué" (a
+school mediation programme Haiku read as an educational exhibition).
+Chunk 2 (9 items): **lost** — the second model ran away to the 20,000
+output-token ceiling (thinking budget 4,000 + Haiku's 16,000) and its
+JSON was cut mid-object, so the 9 approvals in it kept Haiku's verdict,
+as designed. Two of those nine are the misses of the day: "Ciencia y
+Territorio en Movimiento: Gran Terremoto de Valdivia de 1960" (a science
+museum exhibit with a seismic simulator — documentary/heritage, and
+tagged `memoria_dictadura` for a 1960 earthquake) and "PIKUNCHE: Memoria
+viva del territorio" (a community-museology display about Mapuche-
+Pikunche identity, also tagged `memoria_dictadura`). Both flagged to
+Daniel. The documentary clause is now 0/5 on its own; the safety net
+catches these when it answers — so what matters is that it answers.
+Fix shipped: the safety-net pass curates in **chunks of 5**
+(`BrightSourceCurateOpts.chunkSize`, `SAFETY_NET_CHUNK_SIZE`). It
+doesn't stop a runaway, it bounds one to 5 unreviewed approvals instead
+of 9-10, at the same token cost. If runaways recur, the next lever is a
+retry of the failed chunk with reasoning disabled.
+
+Also: 7 accounts at the `resultsLimit` cap today (bnchile, Casa de la
+Cultura Rancagua and Centro Cultural Quillota joined the usual
+municipal ones — still Fiestas Patrias week), and the `memoria_dictadura`
+tag misapplied twice to non-dictatorship "memoria" — the tag definition
+says dictatorship 1973-1990 explicitly, so this is Haiku pattern-matching
+the word; watch whether it recurs outside this week.
+
 ## The collab graph as a discovery channel (2026-09-16)
 
 Daniel's question after the co-author fix (#538): can collab posts point
