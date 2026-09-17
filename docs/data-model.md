@@ -141,6 +141,9 @@ api_usage_log
   input_tokens, output_tokens, cache_creation_input_tokens,
   cache_read_input_tokens, web_search_requests, estimated_cost_usd
   -- self-tracked spend ledger, see region-discovery.md#cost-governance.
+  -- `model` is an Anthropic id or, since 2026-09-17, the OpenRouter slug
+  -- of the second-opinion model (minimax/minimax-m3) — split by provider
+  -- with pricing.ts's isAnthropicModel when reporting.
   -- web_search_requests was added after the first real run: web search is
   -- billed separately from tokens ($10/1,000 searches) and wasn't tracked
   -- at all before, so isOverBudget() was blind to roughly half of real spend.

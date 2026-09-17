@@ -22,6 +22,8 @@
 // call volume (once per bright_source run, not per event).
 import type { CurateResult, EventCandidate, MessagesClient } from "../event-discovery/discover.js";
 import { getSupabaseClient } from "./supabase-client.js";
+import { hasPricing } from "./pricing.js";
+import { recordUsage } from "./usage-tracking.js";
 
 const DEFAULT_SHADOW_MODEL = "minimax/minimax-m3";
 
@@ -189,7 +191,22 @@ export async function runShadowCuration(
   const realTags = realCandidates.flatMap((c) => c.sensitivityTags);
   const realReasoning = reasoningOf(realCandidates);
   try {
-    const { candidates: shadowCandidates } = await shadowFn(shadow.client);
+    const { candidates: shadowCandidates, usage } = await shadowFn(shadow.client);
+    // Same ledger as Haiku's calls (api_usage_log, purpose event_discovery,
+    // model = the OpenRouter slug) so the daily digest and the monthly
+    // ceiling see this spend too — until 2026-09-17 the second model's
+    // cost was invisible everywhere but OpenRouter's own dashboard.
+    // Best-effort: a model without a price in pricing.ts is logged, not
+    // recorded, and a ledger failure never affects the comparison.
+    if (hasPricing(shadow.model)) {
+      try {
+        await recordUsage({ purpose: "event_discovery", model: shadow.model, pipeline, usage });
+      } catch (err) {
+        console.error(`[event-discovery][shadow-mode] failed to record usage: ${(err as Error).message}`);
+      }
+    } else {
+      console.warn(`[event-discovery][shadow-mode] no pricing for ${shadow.model} — its usage is not recorded in api_usage_log`);
+    }
     const shadowStatus = statusOf(shadowCandidates);
     const shadowTags = shadowCandidates.flatMap((c) => c.sensitivityTags);
     const shadowReasoning = reasoningOf(shadowCandidates);

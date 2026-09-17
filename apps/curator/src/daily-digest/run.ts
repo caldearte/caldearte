@@ -5,7 +5,8 @@
 // whatever ran — skips sending entirely on a day nothing ran (the new
 // cadence, 2026-08-26, means not every pipeline fires every day).
 import { getSupabaseClient } from "../lib/supabase-client.js";
-import { getCurrentMonthSpend, getConfigNumber } from "../lib/usage-tracking.js";
+import { getConfigNumber, startOfCurrentUtcMonth } from "../lib/usage-tracking.js";
+import { isAnthropicModel } from "../lib/pricing.js";
 import { splitApifyFreeTier, apifyCycleStart } from "../lib/apify-cost-split.js";
 import { sendDailyDigestEmail, type DailyDigestPipelineRun, type DailyDigestSummary, type DiscoveryEntrypoint } from "../lib/daily-digest.js";
 import type { EventGroup } from "../lib/notify.js";
@@ -71,6 +72,8 @@ export async function run(deps: RunDeps = {}): Promise<void> {
 
   let anthropicTodayUsd = 0;
   let anthropicMonthUsd = 0;
+  let secondOpinionTodayUsd = 0;
+  let secondOpinionMonthUsd = 0;
   let apifyTodayGrossUsd = 0;
   let apifyTodayFreeUsd = 0;
   let apifyTodayRealUsd = 0;
@@ -81,9 +84,12 @@ export async function run(deps: RunDeps = {}): Promise<void> {
   let monthlyBudgetUsd = 0;
 
   try {
-    const [{ data: usageRows, error: usageError }, monthSpend, budget, { data: apifyRows, error: apifyError }] = await Promise.all([
-      client.from("api_usage_log").select("estimated_cost_usd").gte("created_at", startUtc.toISOString()).lt("created_at", endUtc.toISOString()),
-      getCurrentMonthSpend(),
+    const [{ data: usageRows, error: usageError }, { data: monthRows, error: monthError }, budget, { data: apifyRows, error: apifyError }] = await Promise.all([
+      client.from("api_usage_log").select("estimated_cost_usd, model").gte("created_at", startUtc.toISOString()).lt("created_at", endUtc.toISOString()),
+      // Same window getCurrentMonthSpend uses (calendar month, UTC), read
+      // with the model so the second-opinion model's spend can be shown
+      // on its own line — the ceiling itself still counts both.
+      client.from("api_usage_log").select("estimated_cost_usd, model").gte("created_at", startOfCurrentUtcMonth()),
       getConfigNumber("monthly_budget_usd"),
       client
         .from("platform_cost_snapshots")
@@ -98,10 +104,17 @@ export async function run(deps: RunDeps = {}): Promise<void> {
     ]);
 
     if (usageError) throw new Error(usageError.message);
+    if (monthError) throw new Error(monthError.message);
     if (apifyError) throw new Error(apifyError.message);
 
-    anthropicTodayUsd = (usageRows ?? []).reduce((sum, r) => sum + Number(r.estimated_cost_usd), 0);
-    anthropicMonthUsd = monthSpend;
+    for (const r of usageRows ?? []) {
+      if (isAnthropicModel(r.model)) anthropicTodayUsd += Number(r.estimated_cost_usd);
+      else secondOpinionTodayUsd += Number(r.estimated_cost_usd);
+    }
+    for (const r of monthRows ?? []) {
+      if (isAnthropicModel(r.model)) anthropicMonthUsd += Number(r.estimated_cost_usd);
+      else secondOpinionMonthUsd += Number(r.estimated_cost_usd);
+    }
     monthlyBudgetUsd = budget;
 
     const apifySplit = splitApifyFreeTier((apifyRows ?? []).map((r) => ({ date: r.usage_date, amountUsd: Number(r.amount_usd) })));
@@ -127,6 +140,8 @@ export async function run(deps: RunDeps = {}): Promise<void> {
     runs,
     cost: {
       anthropicTodayUsd,
+      secondOpinionTodayUsd,
+      secondOpinionMonthUsd,
       apifyTodayGrossUsd,
       apifyTodayFreeUsd,
       apifyTodayRealUsd,

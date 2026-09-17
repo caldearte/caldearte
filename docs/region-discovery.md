@@ -4621,9 +4621,17 @@ Anthropic's billing API.
   cap — up to **$50/month** is acceptable if real event quality/coverage
   justifies it, confirmed against real measured Event Discovery costs (see
   above) that stay far under that even at meaningfully larger scale.
-- **`api_usage_log`** table — one row per paid Anthropic call: model,
+- **`api_usage_log`** table — one row per paid LLM call: model,
   purpose, token counts (including cache read/write), estimated cost from a
   hardcoded per-model $/Mtok table (`apps/curator/src/lib/pricing.ts`).
+  Since 2026-09-17 the second-opinion/shadow model's calls (OpenRouter
+  slug in `model`, same `event_discovery` purpose) land here too — Daniel
+  wanted MiniMax in the digest's cost section, and until then its spend
+  existed only on OpenRouter's dashboard. The digest splits the ledger by
+  provider (`isAnthropicModel`) into "Anthropic" and "MiniMax (segunda
+  opinión)" lines; the monthly ceiling counts both. The admin's cost
+  chart still labels the whole ledger "Anthropic" — a ~$1/month
+  mislabel, to fix the next time that chart is touched.
   **Tavily spend is not tracked here** — it's a separate provider/billing
   relationship, tracked on Tavily's own dashboard instead of force-fit into
   a schema built around Anthropic's pricing shape.
