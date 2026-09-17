@@ -1385,6 +1385,13 @@ export function fillRunStartFromPublishedDate(candidates: EventCandidate[], item
 
 export interface BrightSourceCurateOpts {
   fixedLocation?: { location: string; placeName: string; address?: string };
+  // Items per curation call, default CURATE_CHUNK_SIZE. The safety-net
+  // pass (lib/safety-net.ts) uses 5: on 2026-09-17 the second model ran
+  // away on a 9-item chunk (20,000 output tokens, JSON cut mid-object)
+  // and the 9 approvals in it went unreviewed — two of them were
+  // documentary shows it would have vetoed. Smaller chunks don't stop a
+  // runaway, they bound what one costs.
+  chunkSize?: number;
 }
 
 // Cap on items sent to Haiku in a single curation call. Real incident
@@ -1427,6 +1434,7 @@ export async function curateBrightSourceItems(
 ): Promise<CurateResult> {
   const emptyUsage: DiscoverUsage = { inputTokens: 0, outputTokens: 0 };
   if (items.length === 0) return { candidates: [], usage: emptyUsage };
+  const chunkSize = opts.chunkSize && opts.chunkSize > 0 ? Math.floor(opts.chunkSize) : CURATE_CHUNK_SIZE;
 
   // If every item already carries a real per-item location (e.g. a JSON
   // API that already gives commune/venue_name — see WordpressRestConfig's
@@ -1456,7 +1464,7 @@ export async function curateBrightSourceItems(
   const mergedByIndex: (EventCandidate[] | undefined)[] = new Array(items.length);
 
   const curateChunk = async (chunkStart: number): Promise<void> => {
-    const chunk = items.slice(chunkStart, chunkStart + CURATE_CHUNK_SIZE);
+    const chunk = items.slice(chunkStart, chunkStart + chunkSize);
     const block = buildBrightSourceBlock(chunk);
 
     const response = await client.messages.create({
@@ -1500,7 +1508,7 @@ export async function curateBrightSourceItems(
   };
 
   const chunkStarts: number[] = [];
-  for (let chunkStart = 0; chunkStart < items.length; chunkStart += CURATE_CHUNK_SIZE) chunkStarts.push(chunkStart);
+  for (let chunkStart = 0; chunkStart < items.length; chunkStart += chunkSize) chunkStarts.push(chunkStart);
   for (let i = 0; i < chunkStarts.length; i += CURATE_CONCURRENCY) {
     await Promise.all(chunkStarts.slice(i, i + CURATE_CONCURRENCY).map(curateChunk));
   }

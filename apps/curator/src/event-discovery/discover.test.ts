@@ -1709,6 +1709,43 @@ test("curateBrightSourceItems splits a batch larger than the chunk size into mul
   assert.equal(usage.inputTokens, 30, "usage must be summed across all chunk calls (10 + 10 + 10)");
 });
 
+// The safety-net pass (lib/safety-net.ts) asks for chunks of 5 — a
+// runaway chunk of the second model on 2026-09-17 left 9 approvals
+// unreviewed; the option bounds that to 5.
+test("curateBrightSourceItems honours opts.chunkSize", async () => {
+  const items: BrightSourceItem[] = Array.from({ length: 12 }, (_, i) => ({ ...baseBrightItem, title: `Muestra ${i}` }));
+  const chunkSizes: number[] = [];
+  const client: MessagesClient = {
+    messages: {
+      create: async (params: { messages: Array<{ content: string }> }) => {
+        const localCount = (params.messages[0].content.match(/^\[\d+\]/gm) ?? []).length;
+        chunkSizes.push(localCount);
+        const rows = Array.from({ length: localCount }, (_, i) => ({
+          index: i,
+          status: "rejected",
+          artist: null,
+          runStartDate: null,
+          runEndDate: null,
+          openingDatetime: null,
+          openingTimeConfirmed: false,
+          location: null,
+          placeName: null,
+          mediumType: "tradicional",
+          sensitivityTags: [],
+          curationReasoning: "no",
+        }));
+        return {
+          content: [{ type: "text", text: "```json\n" + JSON.stringify(rows) + "\n```" }],
+          usage: { input_tokens: 1, output_tokens: 1 },
+        };
+      },
+    },
+  };
+  const { candidates } = await curateBrightSourceItems(client, items, "septiembre 2026", { chunkSize: 5 });
+  assert.deepEqual(chunkSizes.sort((a, b) => b - a), [5, 5, 2]);
+  assert.equal(candidates.length, 12);
+});
+
 test("curateBrightSourceItems keeps a good chunk's real candidates even when another chunk in the same batch fails closed", async () => {
   const items: BrightSourceItem[] = Array.from({ length: 25 }, (_, i) => ({ ...baseBrightItem, title: `Muestra ${i}` }));
   let callCount = 0;
