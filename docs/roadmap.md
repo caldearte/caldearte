@@ -27,7 +27,7 @@ tagging is prompt-fixable yet its verbosity puts its cost at parity with
 Haiku at ~13× the latency (measured replay, region-discovery.md "Prompt
 optimization"). The same measurement produced the optimized prompt Haiku
 now runs (−24% output tokens, better verdicts). **Since 2026-09-16 the
-Instagram pipeline uses it as a second opinion instead of a shadow:**
+Instagram pipeline uses it as a safety net instead of a shadow:**
 only Haiku's approvals go to MiniMax, and a scope rejection from it
 vetoes the approval before insertion, automatically (Daniel: no human in
 the loop) — ~$1/month instead of ~$3, see region-discovery.md "Second

@@ -142,7 +142,7 @@ api_usage_log
   cache_read_input_tokens, web_search_requests, estimated_cost_usd
   -- self-tracked spend ledger, see region-discovery.md#cost-governance.
   -- `model` is an Anthropic id or, since 2026-09-17, the OpenRouter slug
-  -- of the second-opinion model (minimax/minimax-m3) — split by provider
+  -- of the safety-net model (minimax/minimax-m3) — split by provider
   -- with pricing.ts's isAnthropicModel when reporting.
   -- web_search_requests was added after the first real run: web search is
   -- billed separately from tokens ($10/1,000 searches) and wasn't tracked
@@ -207,13 +207,13 @@ rejected_candidates (added 20260728010000_add_rejected_candidates.sql —
     axis safety net; null means "no axis", which the net treats as no
     action. See curation-policy.md's "Cross-source axis safety net")
   -- Rolling ~90-day window, pruned on Event Discovery's own cadence.
-  -- Since 2026-09-16 a `reason` starting with `[VETO segunda opinión
+  -- Since 2026-09-16 a `reason` starting with `[VETO red de seguridad
   -- <model>]` is an Instagram approval by Haiku that the second model
-  -- rejected on scope (lib/second-opinion.ts): the row carries the second
+  -- rejected on scope (lib/safety-net.ts): the row carries the second
   -- model's rejection_axis and Haiku's original reasoning after
   -- "Haiku había aprobado:". No event row ever existed for it. The
   -- companion comparison lives in shadow_curation_comparisons under
-  -- label `instagram_second_opinion` (real_status always 'approved' there).
+  -- label `instagram_safety_net` (real_status always 'approved' there).
 
 curation_escalations (added 20260730150000_add_curation_escalations.sql;
     RETIRED 2026-09-07 — the cross-source escalation flow it served was
