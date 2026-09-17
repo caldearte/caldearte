@@ -1183,3 +1183,86 @@ test("extractArticleList leaves structuredStartDate/EndDate null when dateRangeE
   assert.equal(items[0].structuredStartDate, null);
   assert.equal(items[0].structuredEndDate, null);
 });
+
+// Matches rancaguacultura.cl's real markup (added 2026-09-17) — same
+// "The Events Calendar" (Modern Tribe/StellarWP) plugin as
+// mallecoescultura.cl, confirmed against a real fetch of
+// /event-directory/list/ (12/12 blocks parsed). Unlike Malleco, no
+// dateRangeExtractor here: the listing's own <time datetime="..."> only
+// carries the START date, the end date is free text with an inconsistent
+// year — real end/comuna recovery instead comes from a per-event JSON-LD
+// block on the detail page (detailDateRangeExtractor/locationExtractor,
+// see known-sources.ts's own note and its extractors.test.ts-style
+// coverage below).
+const RANCAGUA_CULTURA_CONFIG: ArticleListConfig = {
+  kind: "articleList",
+  blockRegex: /<article\s+class="tribe-events-calendar-list__event[^"]*"\s*>([\s\S]*?)<\/article>/g,
+  titleLinkRegex: /tribe-events-calendar-list__event-title[^"]*"\s*>\s*<a\s+href="([^"]+)"[\s\S]*?>\s*([^<]+?)\s*<\/a>/,
+  daysRegex: /tribe-events-calendar-list__event-datetime-wrapper[^"]*"\s*>([\s\S]*?)<\/div>/,
+  placeRegex: /tribe-events-calendar-list__event-venue-title[^"]*"\s*>\s*([^<]+?)\s*<\/span>/,
+};
+
+test("extractArticleList handles rancaguacultura.cl's real markup: title/href/image/venue extracted from a tribe-events-calendar-list__event article, raw date text captured for Haiku's fallback", () => {
+  const html = `
+    <article  class="tribe-events-calendar-list__event tribe-common-g-row tribe-common-g-row--gutters post-7311 tribe_events type-tribe_events status-publish has-post-thumbnail hentry tribe_events_cat-espacio-la-merced cat_espacio-la-merced" >
+      <div class="tribe-events-calendar-list__event-featured-image-wrapper tribe-common-g-col">
+        <img class="tribe-events-calendar-list__event-featured-image" src="https://rancaguacultura.cl/wp-content/uploads/2026/08/WhatsApp-Image-2026-08-24-at-16.33.28.jpeg" alt="" />
+      </div>
+      <div class="tribe-events-calendar-list__event-details tribe-common-g-col">
+        <header class="tribe-events-calendar-list__event-header">
+          <h4 class="tribe-events-calendar-list__event-title tribe-common-h6 tribe-common-h4--min-medium">
+            <a
+              href="https://rancaguacultura.cl/event-directory/exposicion-el-nombre-de-mis-calles-de-banca-frisius-entrada-liberada-espacio-cultural-la-merced/"
+              title="EXPOSICIÓN «EL NOMBRE DE MIS CALLES», DE BANCA FRISIUS &#8211; ENTRADA LIBERADA &#8211; ESPACIO CULTURAL LA MERCED"
+              rel="bookmark"
+              class="tribe-events-calendar-list__event-title-link tribe-common-anchor-thin"
+            >
+              EXPOSICIÓN «EL NOMBRE DE MIS CALLES», DE BANCA FRISIUS &#8211; ENTRADA LIBERADA &#8211; ESPACIO CULTURAL LA MERCED </a>
+          </h4>
+          <div class="tribe-events-calendar-list__event-datetime-wrapper tribe-common-b2">
+            <time class="tribe-events-calendar-list__event-datetime" datetime="2026-09-08">
+              <span class="tribe-event-date-start">8 septiembre- 10:00</span> - <span class="tribe-event-date-end">30 septiembre- 17:30</span> </time>
+          </div>
+          <address class="tribe-events-calendar-list__event-venue tribe-common-b2">
+            <span class="tribe-events-calendar-list__event-venue-title tribe-common-b2--bold">
+              Espacio Cultural La Merced </span>
+            <span class="tribe-events-calendar-list__event-venue-address">
+              Estado 339, Rancagua, Chile </span>
+          </address>
+        </header>
+      </div>
+    </article>
+  `;
+  const items = extractArticleList(html, "https://rancaguacultura.cl/event-directory/list/", RANCAGUA_CULTURA_CONFIG);
+  assert.ok(items);
+  assert.equal(items.length, 1);
+  assert.equal(
+    items[0].title,
+    "EXPOSICIÓN «EL NOMBRE DE MIS CALLES», DE BANCA FRISIUS – ENTRADA LIBERADA – ESPACIO CULTURAL LA MERCED",
+  );
+  assert.equal(
+    items[0].sourceUrl,
+    "https://rancaguacultura.cl/event-directory/exposicion-el-nombre-de-mis-calles-de-banca-frisius-entrada-liberada-espacio-cultural-la-merced/",
+  );
+  assert.equal(items[0].locationHint, "Espacio Cultural La Merced");
+  assert.equal(items[0].rawDateText, "8 septiembre- 10:00 - 30 septiembre- 17:30");
+  // No dateRangeExtractor configured — structured dates stay null,
+  // recovered later from the detail page's JSON-LD instead.
+  assert.equal(items[0].structuredStartDate, null);
+  assert.equal(items[0].structuredEndDate, null);
+});
+
+test("extractDateRange (rancaguacultura.cl-style): reads runStartDate/runEndDate straight off the detail page's real JSON-LD Event block, unaffected by WordPress escaping accented characters elsewhere in the same script tag", () => {
+  const config: DateRangeConfig = {
+    pattern: /"startDate":"(?<startIso>\d{4}-\d{2}-\d{2})T[\s\S]*?"endDate":"(?<endIso>\d{4}-\d{2}-\d{2})T/,
+  };
+  // Real shape (2026-09-17): the SAME script tag also carries the event's
+  // \u-escaped name earlier in the object — never matched here, only the
+  // plain-ASCII ISO dates are.
+  const html =
+    '<script type="application/ld+json">[{"@context":"http://schema.org","@type":"Event",' +
+    '"name":"EXPO FOTOGR\\u00c1FICA \\u00d1A\\u00d1A","url":"https://rancaguacultura.cl/event-directory/expo/",' +
+    '"startDate":"2026-09-08T10:00:00-03:00","endDate":"2026-09-30T17:30:00-03:00",' +
+    '"location":{"@type":"Place","name":"Espacio Cultural La Merced","address":{"@type":"PostalAddress","streetAddress":"Estado 339","addressRegion":"Rancagua","addressCountry":"Chile"}}}]</script>';
+  assert.deepEqual(extractDateRange(html, config), { runStartDate: "2026-09-08", runEndDate: "2026-09-30" });
+});
