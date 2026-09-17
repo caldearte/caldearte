@@ -1036,6 +1036,26 @@ export const KNOWN_SOURCES: KnownSource[] = [
       placeRegex: /location_on<\/span>\s*([^<]*)<\/span>/,
     },
   },
+  {
+    url: "https://rancaguacultura.cl/event-directory/list/",
+    note:
+      'Rancagua Cultura (Corporación de la Cultura y las Artes de la I. Municipalidad de Rancagua) — encontrada 2026-09-17 vía el grafo de coautores de Instagram (docs/region-discovery.md "The collab graph as a discovery channel"): `centrocultural.oriente` y `centroculturalbaquedano` co-postearon con cuentas registradas; ambas resultaron ser sedes de esta misma corporación, así que se agrega la corporación completa en vez de las cuentas IG sueltas — cubre de una vez Casa de la Cultura, Espacio Cultural La Merced, Centro Cultural Oriente y Centro Cultural y Teatro Baquedano (más Teatro Regional Lucho Gatica, mayoritariamente música/teatro).\n\n"The Events Calendar" (Modern Tribe/StellarWP), mismo plugin que mallecoescultura.cl, confirmado con Node contra el HTML real de `/event-directory/list/` (12/12 bloques parsean título+link+fecha+sala). Sin filtro de categoría "exposición" disponible (a diferencia de Malleco): las categorías `tribe_events_cat-*` son POR SEDE, no por disciplina, así que el feed mezcla ópera, talleres, conciertos y homenajes con las exposiciones reales — densidad medida sobre los 11 eventos próximos visibles al evaluar: 3 exposiciones genuinas (expo fotográfica Fundación Sewell, "El nombre de mis calles", muestra permanente) + 1 presentación de libro, resto no-visual — mismo orden de densidad que centex.cultura.gob.cl (7-8/12), aceptado con el mismo tradeoff; Haiku hace el juicio de alcance real como en cualquier otra fuente.\n\n**Sin dateRangeExtractor a nivel de listado**: el `<time datetime="...">` de la tarjeta solo da la fecha de INICIO en ISO; la fecha de término solo existe como texto libre (`tribe-event-date-end`), y el año aparece de forma inconsistente (a veces "8 septiembre- 10:00", a veces "1 enero, 2026- 10:30") — mismo patrón de fraseo inconsistente ya visto varias veces en esta fuente de datos (aninatgaleria.org/centex/d21virtual.cl), así que no se intenta parsear del listado.\n\n**En su lugar, `detailDateRangeExtractor` contra un JSON-LD real por evento** (confirmado con Node contra 2 páginas de detalle reales): cada página de evento trae `<script type="application/ld+json">{"@type":"Event",...,"startDate":"2026-09-08T10:00:00-03:00","endDate":"2026-09-30T17:30:00-03:00","location":{"name":"Espacio Cultural La Merced","address":{"streetAddress":"Estado 339","addressRegion":"Rancagua","addressCountry":"Chile"}}}</script>` — fechas ISO limpias, capturadas ANTES de la curación (page-fetch.ts\'s enrichBrightSourceItemDetails corre para todo item con structuredStartDate null, no solo los aprobados), igual que mssa.cl. Nunca se usó el título/nombre de ese JSON-LD para nada: WordPress lo emite con `\\uXXXX` para cada tilde/ñ (confirmado: "ARTESAN\\u00cdA", "A\\u00d1OS") — inútil como texto para Haiku sin decodificar, así que título/link/sala se toman del HTML normal del listado (UTF-8 real, sin escapar), y el JSON-LD se usa solo para los dos campos numéricos (fechas) donde el escapeo no importa.\n\n`locationExtractor` reutiliza el mismo JSON-LD en la página de detalle (`"addressRegion":"([^"]+)"` → "Rancagua" siempre, mismo patrón que `"addressLocality"` en la fuente de arriba) para fijar la comuna de forma determinística en vez de dejársela a Haiku — la sede (placeName) sí varía por evento y se pasa como locationHint vía `placeRegex` (texto limpio del listado, ej. "Espacio Cultural La Merced"), mismo patrón que mallecoescultura.cl (agregador real, sin fixedLocation porque la sede varía, aunque acá la comuna en sí es siempre la misma).\n\nSin descriptionExtractor: las 2 páginas de detalle muestreadas no tienen prosa real, solo la imagen de WhatsApp reinsertada — el título ya es suficientemente descriptivo en este formato (ej. "EXPOSICIÓN «EL NOMBRE DE MIS CALLES», DE BANCA FRISIUS – ENTRADA LIBERADA – ESPACIO CULTURAL LA MERCED").',
+    lastReviewedAt: "2026-09-17",
+    extractor: {
+      kind: "articleList",
+      blockRegex: /<article\s+class="tribe-events-calendar-list__event[^"]*"\s*>([\s\S]*?)<\/article>/g,
+      titleLinkRegex:
+        /tribe-events-calendar-list__event-title[^"]*"\s*>\s*<a\s+href="([^"]+)"[\s\S]*?>\s*([^<]+?)\s*<\/a>/,
+      daysRegex: /tribe-events-calendar-list__event-datetime-wrapper[^"]*"\s*>([\s\S]*?)<\/div>/,
+      placeRegex: /tribe-events-calendar-list__event-venue-title[^"]*"\s*>\s*([^<]+?)\s*<\/span>/,
+    },
+    detailDateRangeExtractor: {
+      pattern: /"startDate":"(?<startIso>\d{4}-\d{2}-\d{2})T[\s\S]*?"endDate":"(?<endIso>\d{4}-\d{2}-\d{2})T/,
+    },
+    locationExtractor: {
+      pattern: /"addressRegion":"([^"]+)"/,
+    },
+  },
 ];
 
 export function knownSourceDomain(url: string): string {

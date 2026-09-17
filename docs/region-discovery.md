@@ -4564,6 +4564,28 @@ app is open (or on next launch), unlike the pipeline's GitHub Actions
 crons. Two routines, two directions: the 09-27 one looks inward (what to
 prune), this one looks outward (what to add).
 
+**First manual run of the query, 2026-09-17** (ahead of the routine's
+own first Monday, 2026-09-21) — 9 handles with ≥2 registered accounts
+since 09-13. Evaluated in Chrome: `loretocarmonamanaut` (artist, not a
+venue), `universidadaustraldechile`/`vinculacion_uach` (university
+extension accounts, same "covered via the venue" pattern as other
+universities), `artequinvina_educa` (educational sub-account, not the
+venue's own handle) and `culturas_atacama` (Seremi de las Culturas de
+Atacama — a regional government press office, same low-density pattern
+as the municipal accounts already evaluated) all set aside. Two real
+finds: `centrocultural.oriente` and `centroculturalbaquedano`, both
+co-posting with `casadelaculturarancagua`/`espaciocultural.lamerced`,
+turned out to be sedes of the same Corporación de la Cultura y las Artes
+de Rancagua — **added as one web source** instead of three separate IG
+accounts, see rancaguacultura.cl below. `ccmvaldivia` (Corporación
+Cultural Municipal de Valdivia, co-posting with `museosaustral`/
+`replica.galeria`) was evaluated and NOT added — its own site
+(ccm-valdivia.cl) has a real "Exposiciones" category but only ~3 items
+ever, no structured date on the one current post (prose spans Valdivia/
+Santiago/Puerto Montt/Córdoba without saying which city's showing is
+when), and its Linktree skews to danza/Feria del Libro/convocatorias —
+same low-density verdict class as several rejected candidates above.
+
 ## Where the shadow pilot stands (2026-09-16)
 
 Asked plainly by Daniel: is it worth swapping Haiku for MiniMax? Data
