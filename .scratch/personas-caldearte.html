@@ -1,0 +1,708 @@
+<title>A Quién Le Hablamos</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Lato:wght@400;700;900&family=Work+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #d7dfe2;
+    --bg-deep: #cdd5d8;
+    --surface: #ffffff;
+    --ink: #3d373d;
+    --ink-soft: #626262;
+    --line: #b9c3c7;
+    --accent: #ff00fb;
+    --accent-ink: #ffffff;
+    --anti-line: #a9645f;
+    --anti-bg: #e4dcda;
+    --anti-ink: #7a4a46;
+    --shadow: 0 1px 0 rgba(61,55,61,0.06);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #211f24;
+      --bg-deep: #19171b;
+      --surface: #2c2932;
+      --ink: #f1eef2;
+      --ink-soft: #b7b0bb;
+      --line: #45414c;
+      --accent: #ff35fa;
+      --accent-ink: #1a0219;
+      --anti-line: #a9645f;
+      --anti-bg: #332a29;
+      --anti-ink: #d9a29c;
+      --shadow: 0 1px 0 rgba(0,0,0,0.3);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #211f24;
+    --bg-deep: #19171b;
+    --surface: #2c2932;
+    --ink: #f1eef2;
+    --ink-soft: #b7b0bb;
+    --line: #45414c;
+    --accent: #ff35fa;
+    --accent-ink: #1a0219;
+    --anti-line: #a9645f;
+    --anti-bg: #332a29;
+    --anti-ink: #d9a29c;
+    --shadow: 0 1px 0 rgba(0,0,0,0.3);
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: 'Work Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+    padding-inline: 20px;
+    padding-block: 56px 80px;
+  }
+
+  .page {
+    max-width: 980px;
+    margin: 0 auto;
+  }
+
+  .eyebrow {
+    font-family: 'IBM Plex Mono', ui-monospace, monospace;
+    font-size: 12px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+  }
+
+  .hero {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    padding-block-end: 40px;
+    border-bottom: 1px solid var(--line);
+    margin-block-end: 48px;
+  }
+
+  .hero h1 {
+    font-family: 'Lato', sans-serif;
+    font-weight: 900;
+    font-size: clamp(34px, 6vw, 58px);
+    line-height: 1.02;
+    margin: 0;
+    text-wrap: balance;
+    max-width: 14ch;
+  }
+
+  .hero h1 em {
+    font-style: normal;
+    color: var(--accent);
+  }
+
+  .hero p {
+    max-width: 62ch;
+    font-size: 17px;
+    line-height: 1.6;
+    color: var(--ink-soft);
+    margin: 0;
+  }
+
+  .hero .caveat {
+    font-family: 'IBM Plex Mono', ui-monospace, monospace;
+    font-size: 12.5px;
+    color: var(--ink-soft);
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    padding: 10px 14px;
+    max-width: fit-content;
+    line-height: 1.55;
+  }
+
+  section.group {
+    margin-block-end: 56px;
+  }
+
+  .group-head {
+    display: flex;
+    align-items: baseline;
+    gap: 14px;
+    margin-block-end: 20px;
+    flex-wrap: wrap;
+  }
+
+  .group-head h2 {
+    font-family: 'Lato', sans-serif;
+    font-weight: 900;
+    font-size: 26px;
+    margin: 0;
+  }
+
+  .group-head .tally {
+    font-family: 'IBM Plex Mono', ui-monospace, monospace;
+    font-size: 12px;
+    color: var(--ink-soft);
+    letter-spacing: 0.06em;
+  }
+
+  .group-head .note {
+    flex-basis: 100%;
+    font-size: 14.5px;
+    color: var(--ink-soft);
+    max-width: 68ch;
+    line-height: 1.5;
+  }
+
+  .cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 18px;
+  }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    box-shadow: var(--shadow);
+    padding: 22px 22px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .card .tag {
+    display: inline-flex;
+    align-self: flex-start;
+    align-items: center;
+    gap: 6px;
+    font-family: 'IBM Plex Mono', ui-monospace, monospace;
+    font-size: 10.5px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 4px 8px;
+    border-radius: 2px;
+  }
+
+  .primary .tag {
+    background: var(--accent);
+    color: var(--accent-ink);
+  }
+
+  .secondary .tag {
+    background: var(--bg-deep);
+    color: var(--ink-soft);
+    border: 1px solid var(--line);
+  }
+
+  .avatar-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+
+  .avatar {
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Lato', sans-serif;
+    font-weight: 900;
+    font-size: 17px;
+    flex-shrink: 0;
+  }
+
+  .primary .avatar {
+    background: color-mix(in srgb, var(--accent) 16%, var(--surface));
+    color: var(--accent);
+    border: 1.5px solid var(--accent);
+  }
+
+  .secondary .avatar {
+    background: var(--bg-deep);
+    color: var(--ink);
+    border: 1.5px solid var(--line);
+  }
+
+  .who h3 {
+    font-family: 'Lato', sans-serif;
+    font-weight: 900;
+    font-size: 19px;
+    margin: 0 0 2px;
+    line-height: 1.15;
+  }
+
+  .who .meta {
+    font-family: 'IBM Plex Mono', ui-monospace, monospace;
+    font-size: 12px;
+    color: var(--ink-soft);
+  }
+
+  .role {
+    font-size: 13.5px;
+    font-weight: 600;
+    color: var(--ink-soft);
+    margin-block-start: -4px;
+  }
+
+  .card p.body {
+    font-size: 14.5px;
+    line-height: 1.62;
+    margin: 0;
+  }
+
+  .friction {
+    margin-block-start: auto;
+    border-inline-start: 3px solid var(--accent);
+    padding-inline-start: 12px;
+    padding-block: 2px;
+  }
+
+  .secondary .friction { border-color: var(--ink-soft); }
+
+  .friction .flabel {
+    font-family: 'IBM Plex Mono', ui-monospace, monospace;
+    font-size: 10.5px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+    display: block;
+    margin-block-end: 4px;
+  }
+
+  .friction p {
+    font-size: 13.5px;
+    line-height: 1.55;
+    margin: 0;
+    color: var(--ink);
+  }
+
+  /* anti-persona */
+  .anti-wrap {
+    background: var(--anti-bg);
+    border: 1px dashed var(--anti-line);
+    border-radius: 10px;
+    padding: 24px 24px 22px;
+    display: grid;
+    gap: 18px;
+    grid-template-columns: minmax(240px, 320px) 1fr;
+  }
+
+  @media (max-width: 640px) {
+    .anti-wrap { grid-template-columns: 1fr; }
+  }
+
+  .anti-card {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .anti-card .tag {
+    align-self: flex-start;
+    font-family: 'IBM Plex Mono', ui-monospace, monospace;
+    font-size: 10.5px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 4px 8px;
+    border-radius: 2px;
+    background: var(--anti-line);
+    color: #fff;
+  }
+
+  .anti-card .avatar {
+    background: transparent;
+    border: 1.5px dashed var(--anti-line);
+    color: var(--anti-ink);
+  }
+
+  .anti-card p.body { font-size: 14.5px; line-height: 1.6; margin: 0; color: var(--ink); }
+
+  .anti-why {
+    align-self: center;
+  }
+
+  .anti-why .flabel {
+    font-family: 'IBM Plex Mono', ui-monospace, monospace;
+    font-size: 10.5px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--anti-ink);
+    display: block;
+    margin-block-end: 8px;
+  }
+
+  .anti-why p {
+    font-size: 14.5px;
+    line-height: 1.62;
+    margin: 0;
+    color: var(--ink);
+  }
+
+  .patterns {
+    background: color-mix(in srgb, var(--accent) 7%, var(--surface));
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 24px 26px;
+    display: grid;
+    gap: 16px;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  }
+
+  .patterns h2 {
+    grid-column: 1 / -1;
+    font-family: 'Lato', sans-serif;
+    font-weight: 900;
+    font-size: 22px;
+    margin: 0 0 -4px;
+  }
+
+  .pattern-item .flabel {
+    font-family: 'IBM Plex Mono', ui-monospace, monospace;
+    font-size: 10.5px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--accent);
+    display: block;
+    margin-block-end: 6px;
+  }
+
+  .pattern-item p {
+    font-size: 14px;
+    line-height: 1.6;
+    margin: 0;
+    color: var(--ink);
+  }
+
+  .validation {
+    margin-block-end: 56px;
+  }
+
+  .validation h2 {
+    font-family: 'Lato', sans-serif;
+    font-weight: 900;
+    font-size: 26px;
+    margin: 0 0 8px;
+  }
+
+  .validation > p.lead {
+    max-width: 66ch;
+    font-size: 14.5px;
+    line-height: 1.6;
+    color: var(--ink-soft);
+    margin: 0 0 22px;
+  }
+
+  .paths {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 18px;
+    margin-block-end: 18px;
+  }
+
+  .path {
+    border-radius: 10px;
+    padding: 20px 22px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .path.done {
+    background: var(--surface);
+    border: 1px solid var(--accent);
+  }
+
+  .path.pending {
+    background: transparent;
+    border: 1px dashed var(--line);
+  }
+
+  .path .flabel {
+    font-family: 'IBM Plex Mono', ui-monospace, monospace;
+    font-size: 10.5px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .path.done .flabel { color: var(--accent); }
+  .path.pending .flabel { color: var(--ink-soft); }
+
+  .path h3 {
+    font-family: 'Lato', sans-serif;
+    font-weight: 900;
+    font-size: 17px;
+    margin: 0;
+  }
+
+  .path p {
+    font-size: 13.5px;
+    line-height: 1.58;
+    margin: 0;
+    color: var(--ink);
+  }
+
+  .finding {
+    font-family: 'IBM Plex Mono', ui-monospace, monospace;
+    font-size: 12px;
+    color: var(--ink-soft);
+    background: var(--bg-deep);
+    border-radius: 6px;
+    padding: 12px 14px;
+    line-height: 1.6;
+  }
+
+  footer {
+    margin-block-start: 56px;
+    padding-block-start: 20px;
+    border-top: 1px solid var(--line);
+    font-family: 'IBM Plex Mono', ui-monospace, monospace;
+    font-size: 11.5px;
+    color: var(--ink-soft);
+    line-height: 1.6;
+  }
+</style>
+
+<div class="page">
+
+  <div class="hero">
+    <span class="eyebrow">Caldearte &middot; para Camila, de Daniel</span>
+    <h1>A quién le <em>hablamos</em></h1>
+    <p>
+      Tres personas deciden un plan cultural desde el calendario y el newsletter.
+      Dos más &mdash; espacios y artistas &mdash; llegan hoy vía rastreo automatizado,
+      sin cuenta propia todavía. Y una persona que existe a propósito para
+      <strong>no</strong> estar en este calendario.
+    </p>
+    <span class="caveat"><strong>Método: a priori, a propósito.</strong> Razonadas desde cómo
+      está construido el producto hoy (overview.md, curation-policy.md), no medidas desde
+      tráfico real &mdash; el sitio casi no tiene todavía. 3 agentes en paralelo, sin verse
+      entre sí, el 18-08-2026. Son la base para decidir hoy; la validación con datos reales
+      es un paso aparte, ver el cierre de esta página.</span>
+  </div>
+
+  <section class="group">
+    <div class="group-head">
+      <h2>Quién abre Caldearte</h2>
+      <span class="tally">3 personas &middot; primarias por igual</span>
+      <span class="note">Usuarias directas del producto que existe hoy. Ninguna pesa más
+        que las otras &mdash; el sitio cubre el espectro real de quién decide un plan
+        cultural en Chile: regional/familiar, joven/urbano/informal, profesional del rubro.</span>
+    </div>
+
+    <div class="cards">
+
+      <article class="card primary">
+        <span class="tag">Primaria</span>
+        <div class="avatar-row">
+          <div class="avatar">DR</div>
+          <div class="who">
+            <h3>Daniela Rojas</h3>
+            <span class="meta">34 &middot; Talca, Región del Maule</span>
+          </div>
+        </div>
+        <span class="role">Profesora básica, escuela municipal</span>
+        <p class="body">Busca planes de fin de semana distintos al mall o al parque de
+          siempre. Llega por un mensaje de WhatsApp de una amiga, entra desde el
+          celular, filtra por su región &mdash; nunca ha tocado el selector de
+          Santiago &mdash; y revisa inauguraciones para el sábado. Deja el modo
+          familiar activado sin pensarlo dos veces.</p>
+        <div class="friction">
+          <span class="flabel">Fricción real</span>
+          <p>No hay forma de guardar el evento del sábado. Entre la pestaña del
+            navegador y la semana, si no anota la fecha a mano se le olvida.</p>
+        </div>
+      </article>
+
+      <article class="card primary">
+        <span class="tag">Primaria</span>
+        <div class="avatar-row">
+          <div class="avatar">MI</div>
+          <div class="who">
+            <h3>Matías Ibacache</h3>
+            <span class="meta">22 &middot; Independencia, Santiago</span>
+          </div>
+        </div>
+        <span class="role">Estudiante de diseño, toca en una banda</span>
+        <p class="body">Sigue arte urbano y muralismo, no el circuito de galería
+          "seria" &mdash; su referencia es Instagram y Telegram. Que sea gratis por
+          definición (son inauguraciones) es lo que lo engancha. Entra errático, un
+          jueves o viernes en la noche, scrolleando por lo visualmente interesante
+          o cerca de su casa.</p>
+        <div class="friction">
+          <span class="flabel">Fricción real</span>
+          <p>No puede filtrar por disciplina. Arte callejero y galería top conviven en
+            la misma grilla &mdash; decisión editorial &mdash; y en su cabeza son
+            mundos distintos.</p>
+        </div>
+      </article>
+
+      <article class="card primary">
+        <span class="tag">Primaria</span>
+        <div class="avatar-row">
+          <div class="avatar">MJ</div>
+          <div class="who">
+            <h3>María José Aravena</h3>
+            <span class="meta">34 &middot; Valparaíso</span>
+          </div>
+        </div>
+        <span class="role">Gestora cultural independiente</span>
+        <p class="body">La postura editorial no-neutral de Caldearte le genera
+          confianza: le ahorra filtrar esoterismo disfrazado de "arte alternativo",
+          y vio de cerca cómo espacios "neutrales" terminan dando espacio a discursos
+          negacionistas por evitar tomar partido. Usa el newsletter los domingos en
+          la noche para planificar la semana.</p>
+        <div class="friction">
+          <span class="flabel">Fricción real</span>
+          <p>Viene de apps con cuentas y colecciones. La ausencia de una lista
+            "quiero ir" se siente como un paso atrás, aunque entienda la fase del
+            proyecto.</p>
+        </div>
+      </article>
+
+    </div>
+  </section>
+
+  <section class="group">
+    <div class="group-head">
+      <h2>Quién compone la oferta</h2>
+      <span class="tally">2 personas &middot; secundarias por fase, no por importancia</span>
+      <span class="note">Espacios y artistas cuyo contenido llega vía rastreo
+        automatizado &mdash; hoy no tienen cuenta ni autopublicación. Pasan a ser
+        primarias el día que exista la ficha de obra autoservicio del espacio.</span>
+    </div>
+
+    <div class="cards">
+
+      <article class="card secondary">
+        <span class="tag">Secundaria &middot; oferta</span>
+        <div class="avatar-row">
+          <div class="avatar">MT</div>
+          <div class="who">
+            <h3>Marisol Toledo</h3>
+            <span class="meta">34 &middot; Cerro Cordillera, Valparaíso</span>
+          </div>
+        </div>
+        <span class="role">Coordinadora, "La Errante" (casa cultural autogestionada)</span>
+        <p class="body">Colectivo de 5 personas, sin fines de lucro, financiado por
+          bazares y fondos intermitentes. Que Caldearte trate su intervención
+          callejera con la misma seriedad que una muestra en el GAM es, para ella,
+          significativo &mdash; la primera vez que algo institucional las pone en
+          el mismo plano sin exigir aparataje formal.</p>
+        <div class="friction">
+          <span class="flabel">Fricción real</span>
+          <p>Desconfía de que "un modelo de IA decida" si su evento califica, y no
+            tiene cómo corregir un dato mal extraído salvo un formulario genérico.</p>
+        </div>
+      </article>
+
+      <article class="card secondary">
+        <span class="tag">Secundaria &middot; oferta</span>
+        <div class="avatar-row">
+          <div class="avatar">RA</div>
+          <div class="who">
+            <h3>Rodrigo Anwandter</h3>
+            <span class="meta">52 &middot; Vitacura, Santiago</span>
+          </div>
+        </div>
+        <span class="role">Director, galería comercial (15 años, 12 artistas)</span>
+        <p class="body">Le importa que Caldearte sea un canal adicional hacia público
+          que no sigue su newsletter ni su Instagram &mdash; coleccionistas jóvenes
+          fuera de su círculo. Aparecer junto a otras galerías reconocidas valida el
+          calendario como referencia seria.</p>
+        <div class="friction">
+          <span class="flabel">Fricción real</span>
+          <p>Le inquieta más el control que la exposición: no poder editar la ficha,
+            y no saber si una obra con carga política o sexual explícita será
+            malinterpretada por el filtro.</p>
+        </div>
+      </article>
+
+    </div>
+  </section>
+
+  <section class="group">
+    <div class="group-head">
+      <h2>A quién NO buscamos</h2>
+      <span class="tally">anti-persona &mdash; la curación es no-neutral por diseño</span>
+    </div>
+
+    <div class="anti-wrap">
+      <div class="anti-card">
+        <span class="tag">Excluida, a propósito</span>
+        <div class="avatar-row">
+          <div class="avatar">PN</div>
+          <div class="who">
+            <h3>Perla Núñez</h3>
+            <span class="meta">45 &middot; Ñuñoa, Santiago</span>
+          </div>
+        </div>
+        <p class="body">Terapeuta holística, organiza ferias de bienestar &mdash;
+          tarot, cristales, constelaciones familiares &mdash; bajo el paraguas de
+          "arte y espiritualidad alternativa". Mandó los datos de su próxima feria
+          por el formulario. Nunca se publicó: cae directo en el eje de
+          pseudociencia que la política de curación excluye por defecto. No recibió
+          explicación puntual, solo silencio.</p>
+      </div>
+      <div class="anti-why">
+        <span class="flabel">Por qué esto está bien</span>
+        <p>Para Perla se siente como rechazo arbitrario. Pero es exactamente el
+          filtro que María José &mdash; persona primaria &mdash; valora que exista.
+          Diseñar para reducir la frustración de Perla, explicándole caso a caso o
+          suavizando el criterio, iría directo en contra de la propuesta de valor.
+          Su fricción no se resuelve: se acepta.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="group patterns">
+    <h2>Dos patrones que salieron solos</h2>
+    <div class="pattern-item">
+      <span class="flabel">Sin coordinación entre agentes &mdash; 1</span>
+      <p>Las 3 personas primarias, cada una por su lado, chocan con lo mismo: no
+        hay forma de guardar o marcar interés en un evento. Daniela pierde la
+        fecha entre pestañas, Matías no puede marcar "voy" para invitar a la banda,
+        María José extraña sus colecciones de otras apps.</p>
+    </div>
+    <div class="pattern-item">
+      <span class="flabel">Sin coordinación entre agentes &mdash; 2</span>
+      <p>Las 2 personas de la oferta apuntan a la misma necesidad no construida:
+        Marisol quiere corregir datos mal extraídos, Rodrigo quiere revisar su
+        ficha y poder apelar un rechazo &mdash; la ficha de obra autoservicio del
+        espacio, ya en el roadmap.</p>
+    </div>
+  </section>
+
+  <section class="validation">
+    <h2>Cómo se valida esto después</h2>
+    <p class="lead">Las personas de esta página y "medir quién nos sigue" son dos caminos
+      distintos, no uno dependiente del otro &mdash; no hacía falta esperar tráfico para
+      tener personas.</p>
+    <div class="paths">
+      <div class="path done">
+        <span class="flabel">A priori &middot; ya tenemos esto</span>
+        <h3>Razonado desde el producto</h3>
+        <p>Quién decidiría un plan cultural en Chile, deducido de cómo está construido
+          Caldearte hoy y de la política de curación &mdash; no de datos de seguidores.
+          Es la base para decidir ahora mismo.</p>
+      </div>
+      <div class="path pending">
+        <span class="flabel">Empírico &middot; futuro, sin apurar</span>
+        <h3>Validado contra quién nos sigue</h3>
+        <p>Confirmar o corregir estas personas contra datos reales de audiencia. Necesita
+          una muestra mucho más grande que la que Instagram deja sacar a mano, y una
+          metodología automatizable &mdash; posiblemente vía Apify. No resuelto ahora.</p>
+      </div>
+    </div>
+    <p class="finding">Primer asomo, 17-09-2026: muestra manual de 10 seguidores de
+      @caldearte.oficial &mdash; 5 nos siguen sin que los sigamos nosotros, 5 son mutuos
+      (cuentas del mundo del arte que agregamos como fuente). Ni confirma ni descarta nada
+      todavía; solo dice que "la mayoría son amigos y familia" tampoco se ve claro en esta
+      muestra chica.</p>
+  </section>
+
+  <footer>
+    Fuente: docs/personas.md &middot; ejercicio de 3 agentes en paralelo, 18-08-2026 &middot;
+    sintetizado sin editar su sustancia. Pendiente y fuera de alcance de este documento:
+    research/assessment del sitio y usuarios sintéticos basados en estos perfiles.
+  </footer>
+
+</div>

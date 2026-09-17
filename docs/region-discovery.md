@@ -4456,8 +4456,18 @@ Territorio en Movimiento: Gran Terremoto de Valdivia de 1960" (a science
 museum exhibit with a seismic simulator — documentary/heritage, and
 tagged `memoria_dictadura` for a 1960 earthquake) and "PIKUNCHE: Memoria
 viva del territorio" (a community-museology display about Mapuche-
-Pikunche identity, also tagged `memoria_dictadura`). Both flagged to
-Daniel. The documentary clause is now 0/5 on its own; the safety net
+Pikunche identity, also tagged `memoria_dictadura`). Both removed by
+Daniel the same day — PIKUNCHE with a note: he liked it, and it opened a
+real question about widening the scope to community/ethnographic
+museography, collections activated as experience and material heritage
+with a curatorial montage ("arte desde nuestros territorios"). Analysed
+and NOT adopted: it would move the criterion from "an artist's work or
+gesture" to "visual culture with a montage", which lets back in most of
+what the documentary clause removes; Iconoclasistas-style collaborative
+work already enters today because the collective authors the exhibited
+pieces. Logged as precedent #1; the agreed next step, if a 2nd or 3rd
+case appears, is to measure a month of documental/patrimonial rejections
+before touching the policy. The documentary clause is now 0/5 on its own; the safety net
 catches these when it answers — so what matters is that it answers.
 Fix shipped: the safety-net pass curates in **chunks of 5**
 (`BrightSourceCurateOpts.chunkSize`, `SAFETY_NET_CHUNK_SIZE`). It
