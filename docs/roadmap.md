@@ -444,6 +444,20 @@ building infra" discipline the rest of this project has followed.
 
 ## Phase 4 — Social distribution (Instagram shipped 2026-08-23; TikTok not started)
 
+- **Audience, staged (Daniel, 2026-09-17).** With ~100 Instagram
+  followers, 2 confirmed newsletter subscribers and 0 venue submissions,
+  the machine is no longer the bottleneck — attention is. Stage 1, now:
+  organic Instagram growth with what already works (daily content, the
+  video interviews, writing to the venue and artist behind each approved
+  event, following the collab-graph handles; the Monday routine in
+  region-discovery.md produces the contact list). Stage 2, at ~200+
+  followers: ask for the conversion — Instagram videos aimed at
+  newsletter sign-ups and at venues submitting their own openings,
+  organic first; the newsletter needs a reason of its own by then (the
+  full week by comuna, previews, the editorial voice). Stage 3, only
+  after stage 2 yields feedback: paid promotion on Instagram or
+  elsewhere. Don't skip ahead.
+
 - Needs a new piece: flyer-style image generation (card with image + title +
   date + artist) per event.
 - Instagram: Business/Creator account + Facebook Page + Meta developer app +
