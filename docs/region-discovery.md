@@ -4533,12 +4533,21 @@ recorded before it was added stays in the table), then evaluate the rest
 in Chrome as above. No admin view until the query has been useful twice.
 
 **Who runs it:** a Claude Code scheduled routine on Daniel's Mac
-(`revision-mensual-grafo-colaboradores-ig`, the 5th of each month at
-10:00 local, first run 2026-10-05) — it runs the query, filters against
-the registry, the web sources and the already-rejected list, evaluates
-the place-like handles in Chrome, and hands Daniel a table with a
-recommendation per handle (Instagram source / web source / follow only /
-nothing). It never adds a source. Same mechanism as the one-shot
+(`revision-mensual-grafo-colaboradores-ig` — the id is historical; made
+**weekly, Mondays 10:00 local, from 2026-09-21** after one day of data
+showed ~150 new handles a day and Daniel judged a monthly look "too long
+a wait"). Three blocks: the week's audience signals (followers,
+newsletter, venue submissions, vs the previous week); the handles first
+seen this week, filtered against the registry, the web sources and the
+already-rejected list, place-like ones evaluated in Chrome, each with a
+recommendation (Instagram source / web source / follow only / nothing);
+and a **contact list** — the week's approved events with the venue's @,
+the artist's @ and the post's co-authors, so every approved event
+becomes a reason to write to someone. The routine never sends anything
+and never adds a source; Daniel writes in his own voice. Context for the
+shift: on 2026-09-17 the site had 98 Instagram followers, 2 confirmed
+newsletter subscribers (none since 2026-08-04) and 0 venue submissions —
+the machine was no longer the bottleneck, attention was. Same mechanism as the one-shot
 re-measurement of the registry on 2026-09-27 (above), and the same
 limit: these routines run inside the desktop app, so they fire when the
 app is open (or on next launch), unlike the pipeline's GitHub Actions
