@@ -43,6 +43,7 @@ import { insertCandidates, loadAllRegions, loadExistingKeys, loadRecentlyRejecte
 import { createShadowClient } from "../lib/model-comparison.js";
 import { applySafetyNet, SAFETY_NET_CHUNK_SIZE } from "../lib/safety-net.js";
 import { collabEdgesForPosts, recordInstagramCollabEdges } from "../lib/instagram-collab-edges.js";
+import { postStatsRows, recordInstagramPostStats } from "../lib/instagram-post-stats.js";
 
 export interface InstagramRunDeps {
   messagesClient?: MessagesClient;
@@ -147,6 +148,9 @@ export async function run(deps: InstagramRunDeps = {}): Promise<void> {
   // registry, not just the accounts due today, so a co-author we already
   // follow is never recorded as a candidate.
   await recordInstagramCollabEdges(collabEdgesForPosts(posts, new Set(INSTAGRAM_ACCOUNTS.map((a) => a.username.toLowerCase()))));
+  // Likes/comments/format of every fetched post — an editorial signal
+  // (instagram_source_post_stats), never a curation input.
+  await recordInstagramPostStats(postStatsRows(posts, (post) => resolveAccountForPost(post, accountByUsername)?.username ?? null));
   // Apify's `resultsLimit` (apify-instagram.ts) hard-caps how many posts
   // it returns per requested profile, regardless of onlyPostsNewerThan —
   // an account whose real per-account count lands exactly on that cap is

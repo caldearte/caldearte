@@ -812,6 +812,45 @@ export type Database = {
         }
         Relationships: []
       }
+      instagram_source_post_stats: {
+        Row: {
+          comments_count: number | null
+          fetched_at: string
+          hashtags: string[]
+          likes_count: number | null
+          media_type: string | null
+          owner_full_name: string | null
+          owner_username: string
+          post_url: string
+          posted_at: string | null
+          source_account: string | null
+        }
+        Insert: {
+          comments_count?: number | null
+          fetched_at?: string
+          hashtags?: string[]
+          likes_count?: number | null
+          media_type?: string | null
+          owner_full_name?: string | null
+          owner_username: string
+          post_url: string
+          posted_at?: string | null
+          source_account?: string | null
+        }
+        Update: {
+          comments_count?: number | null
+          fetched_at?: string
+          hashtags?: string[]
+          likes_count?: number | null
+          media_type?: string | null
+          owner_full_name?: string | null
+          owner_username?: string
+          post_url?: string
+          posted_at?: string | null
+          source_account?: string | null
+        }
+        Relationships: []
+      }
       shadow_curation_comparisons: {
         Row: {
           agree: boolean
