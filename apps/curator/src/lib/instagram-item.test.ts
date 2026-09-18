@@ -18,6 +18,11 @@ const POST: ApifyInstagramPost = {
   ownerUsername: "casaculturalyanulaque",
   inputUsername: null,
   coauthorUsernames: [],
+  ownerFullName: null,
+  likesCount: null,
+  commentsCount: null,
+  mediaType: null,
+  hashtags: [],
 };
 
 test("toBrightSourceItem derives the title from the caption's first line when there's no quoted title", () => {

@@ -50,6 +50,14 @@ export interface ApifyInstagramPost {
   // coauthorProducers. #518 tried to fix this through inputUrl and never
   // rescued a real post (see above); this field is the one that does.
   coauthorUsernames: string[];
+  // Engagement and format, straight from the actor (2026-09-18) —
+  // persisted per fetched post in instagram_source_post_stats, never
+  // read by curation. null when the actor omits the field.
+  ownerFullName: string | null;
+  likesCount: number | null;
+  commentsCount: number | null;
+  mediaType: string | null;
+  hashtags: string[];
 }
 
 // "https://www.instagram.com/casaculturalyanulaque/" → "casaculturalyanulaque".
@@ -118,6 +126,11 @@ export function parseApifyInstagramPostsWithStats(items: unknown[]): { posts: Ap
       ownerUsername: typeof item.ownerUsername === "string" ? item.ownerUsername : "",
       inputUsername: usernameFromProfileUrl(item.inputUrl),
       coauthorUsernames: coauthorUsernamesOf(item.coauthorProducers),
+      ownerFullName: typeof item.ownerFullName === "string" ? item.ownerFullName : null,
+      likesCount: typeof item.likesCount === "number" ? item.likesCount : null,
+      commentsCount: typeof item.commentsCount === "number" ? item.commentsCount : null,
+      mediaType: typeof item.type === "string" ? item.type : null,
+      hashtags: Array.isArray(item.hashtags) ? item.hashtags.filter((h): h is string => typeof h === "string") : [],
     }))
     .filter((post) => {
       if (isInstagramPostUrl(post.url)) return true;

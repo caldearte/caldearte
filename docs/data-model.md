@@ -328,6 +328,20 @@ instagram_collab_edges (20260916160000_add_instagram_collab_edges.sql)
   -- monthly review query lives in that entry. Not pruned. Whether the
   -- post became an event is found by joining events.source_url /
   -- rejected_candidates.source_url on post_url, not stored here.
+
+instagram_source_post_stats (20260918150000_add_instagram_source_post_stats.sql)
+  post_url (pk), source_account (nullable — the registered account the
+    post was attributed to), owner_username, owner_full_name, posted_at,
+    likes_count, comments_count, media_type (Image | Video | Sidecar),
+    hashtags, fetched_at
+  -- Engagement of every SOURCE post the Instagram pipeline fetches
+  -- (~120-150/day), curated or not, upserted per run so a re-fetched
+  -- post keeps its latest counts. Apify already returns all of it; it
+  -- was dropped after parsing until 2026-09-18. Editorial signal only
+  -- (which openings already have traction, which formats the busiest
+  -- venues use) — nothing in curation reads it. Join to events /
+  -- rejected_candidates on source_url. Distinct from instagram_posts,
+  -- which is OUR account's carousels and their reach.
 ```
 
 Field types and constraints (exact `CHECK`s, defaults, nullability) live in
