@@ -4551,9 +4551,15 @@ newsletter, venue submissions, vs the previous week); the handles first
 seen this week, filtered against the registry, the web sources and the
 already-rejected list, place-like ones evaluated in Chrome, each with a
 recommendation (Instagram source / web source / follow only / nothing);
-and a **contact list** — the week's approved events with the venue's @,
-the artist's @ and the post's co-authors, so every approved event
-becomes a reason to write to someone. The routine never sends anything
+a **contact list** — the week's approved events with the venue's @ and
+the post's co-authors, so every approved event becomes a reason to
+write to someone; and (since 2026-09-18) an **artists block** — every
+live event with an `artist_instagram_handle`, newest marked, plus the
+artists with a name but no handle (28 of 187 had one on 09-18: the
+handle is only extracted when the post @-mentions the artist) and the
+graph handles that look like artists. Daniel's aim is that each artist
+knows their opening is on the site and shares it — by hand, 5-10 a day,
+never automated. The routine never sends anything
 and never adds a source; Daniel writes in his own voice. Context for the
 shift: on 2026-09-17 the site had 98 Instagram followers, 2 confirmed
 newsletter subscribers (none since 2026-08-04) and 0 venue submissions —
