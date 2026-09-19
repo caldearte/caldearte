@@ -4529,6 +4529,26 @@ plus the artists with a name but no handle and the graph handles that
 look like artists. Daniel's aim: every artist knows their opening is on
 the site and shares it — by hand, 5-10 a day, never automated.
 
+## Saturday 2026-09-19: a quiet run, and the safety net on a fiesta post
+
+The Saturday run exists on purpose (cron `1-6` since #523: Friday posts
+announce Saturday openings). Today: 41 posts from 173 accounts, 140
+placeholders (almost nobody posted on the 18th), 12 collab posts, the
+first 41 rows in `instagram_source_post_stats`, Haiku $0.09. Haiku
+approved 3; the safety net **vetoed 2, correctly** — "La Mesa Chilena"
+and "Ese mar que tranquilo te baña" were one line inside Pueblito Los
+Dominicos' Fiestas Patrias post (pasacalle, orquesta, gastronomía,
+"exposiciones imperdibles" as one activity among many): the generic
+cultural-event rule, applied as written. The third was a duplicate. 0
+inserted, and the digest's per-source table now says so: PR #574 adds an
+**Insertados** column (what survived dedup, the axis net and the safety
+net) next to Aprobados — the subject line already counted it, the table
+didn't.
+
+Safety-net tally after four days: 12 vetoes on 38 approvals, 11 clearly
+right, 1 debatable and harmless (a press re-post of an event already
+stored); one runaway chunk on day one, none since chunks went to 5.
+
 ## The collab graph as a discovery channel (2026-09-16)
 
 Daniel's question after the co-author fix (#538): can collab posts point
