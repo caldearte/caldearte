@@ -134,6 +134,9 @@ test("buildDailyDigestHtmlBody renders a row per pipeline and includes the per-e
   const html = buildDailyDigestHtmlBody(summary);
   assert.match(html, /Web \(comuna \+ agregadores\)/);
   assert.match(html, /Muestra real/);
+  assert.match(html, /Insertados/);
+  assert.match(html, /<td[^>]*font-weight:600;">1<\/td>/, "the per-source row must show how many candidates were actually inserted");
+  assert.match(buildDailyDigestBody(summary), /1 aprobados · 0 rechazados · 1 insertados/);
   assert.doesNotMatch(html, /<script/i);
 });
 
