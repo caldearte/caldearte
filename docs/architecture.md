@@ -545,6 +545,41 @@ hit, `HIT` with incrementing `age` afterward.
 
 PRs: #438 (ISR Writes), #439 (Fast Origin Transfer / list-mode removal).
 
+## Third Vercel free-tier incident (2026-09-18): ISR Writes again, from builds this time
+
+Found while opening Vercel Analytics for the first time: **ISR Writes at
+294K of the Hobby plan's 200K** for the Aug 19 – Sep 18 window, plus
+Deployment Storage at 6/10 GB. Same metric as 2026-08-28, different
+cause: `revalidate` was already 600s everywhere; what changed was the
+work rhythm — 239 PRs merged in 30 days, each producing a preview and a
+production build, and every build pre-rendered all ~360 event pages
+through `generateStaticParams` (~360 writes per build, ~170K a month from
+builds alone).
+
+**Fix (PR #569):** `/eventos/[id]` now returns an empty
+`generateStaticParams` with `dynamicParams = true` — the documented
+"all paths at runtime" ISR pattern. A build writes nothing; a page is
+written on its first visit and every 600s while visited, same as before
+for the visitor (first hit `MISS`, then `HIT`). And `apps/web/vercel.json`
+sets `ignoreCommand` to `git diff --quiet HEAD^ HEAD -- ':/apps/web'
+':/packages'` so builds run only when the site or a shared package
+changed — docs-, curator-, workflow- and migration-only merges no longer
+build at all. Gotcha worth keeping: the command runs from the project's
+Root Directory (`apps/web`), so plain `apps/web` pathspecs resolve to
+`apps/web/apps/web` and would skip every build; the `:/` prefix anchors
+them at the repo root. Verified locally against real commits (a
+packages/ change → build, a docs-only merge → skip). Hobby doesn't bill
+overages but can pause the project; the number is worth a glance in
+Vercel's Usage page whenever the PR rate spikes.
+
+**Analytics, first read (30 days):** 155 visitors, 451 page views,
+bounce 52%; ~34 of the visitors are us (`/admin*`), so ~120 real
+visitors a month, ~4 a day. Referrers: Google 32, Instagram 14, Facebook
+7 — search already brings twice what Instagram does. `/agrega-tu-expo`:
+6 visitors, 0 submissions. UTM breakdown is a paid feature on Hobby.
+The chain of signals, in order: ~100 followers → ~120 visitors/month →
+2 subscribers → 0 submissions (see roadmap.md, "Audience, staged").
+
 ## Cron watchdog (2026-08-28)
 
 Same day, a separate but related discovery: GitHub Actions' `schedule`
