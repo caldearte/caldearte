@@ -97,8 +97,15 @@ export function useEventCardActions(event: EventRecord, variant: "inauguracion" 
   // comment: the OS-native sheet is inconsistent across platforms, and a
   // custom menu with explicit, always-available targets is more
   // predictable for this audience (WhatsApp specifically dominates here).
-  function eventUrl(): string {
-    return `${window.location.origin}/eventos/${event.id}`;
+  // Every shared link is tagged `utm_source=share` + the channel
+  // (Daniel, 2026-09-18): the outreach plan is to send venues and
+  // artists the link to their own ficha and hope they re-share it, and
+  // this is what lets a visit from a re-shared link be told apart from a
+  // visit from Instagram's bio or from Google. The event page never
+  // reads searchParams server-side, so the query changes nothing about
+  // ISR caching (see app/eventos/[id]/page.tsx).
+  function eventUrl(channel: "whatsapp" | "x" | "facebook" | "link"): string {
+    return `${window.location.origin}/eventos/${event.id}?utm_source=share&utm_medium=${channel}`;
   }
 
   function openShareIntent(url: string) {
@@ -107,21 +114,21 @@ export function useEventCardActions(event: EventRecord, variant: "inauguracion" 
   }
 
   function handleShareWhatsApp() {
-    openShareIntent(`https://api.whatsapp.com/send?text=${encodeURIComponent(`${event.title} — ${eventUrl()}`)}`);
+    openShareIntent(`https://api.whatsapp.com/send?text=${encodeURIComponent(`${event.title} — ${eventUrl("whatsapp")}`)}`);
   }
 
   function handleShareTwitter() {
-    openShareIntent(`https://twitter.com/intent/tweet?text=${encodeURIComponent(event.title)}&url=${encodeURIComponent(eventUrl())}`);
+    openShareIntent(`https://twitter.com/intent/tweet?text=${encodeURIComponent(event.title)}&url=${encodeURIComponent(eventUrl("x"))}`);
   }
 
   function handleShareFacebook() {
-    openShareIntent(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(eventUrl())}`);
+    openShareIntent(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(eventUrl("facebook"))}`);
   }
 
   function handleCopyLink() {
     setShareSubmenuOpen(false);
     navigator.clipboard
-      .writeText(eventUrl())
+      .writeText(eventUrl("link"))
       .then(() => {
         setLinkCopied(true);
         setTimeout(() => setLinkCopied(false), 2000);
