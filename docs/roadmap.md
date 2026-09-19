@@ -457,6 +457,24 @@ building infra" discipline the rest of this project has followed.
   full week by comuna, previews, the editorial voice). Stage 3, only
   after stage 2 yields feedback: paid promotion on Instagram or
   elsewhere. Don't skip ahead.
+- **Outreach doctrine (2026-09-18).** The Monday message is a gift, not
+  an ask — "publicamos tu inauguración, aquí está el link" — sent also
+  to accounts that already follow us: the goal is the re-share (their
+  story reaches their audience), follows and subscriptions come after.
+  Never ask for a follow or the newsletter in a first contact. Venues
+  submit their own shows only after seeing two or three of theirs
+  published; the form is the correction step, offered around the third
+  contact. What Caldearte offers that Instagram doesn't: the show stays
+  up until it closes (not 24 hours), it's findable on Google (already
+  twice the referrals Instagram sends), it sits in the same grid as the
+  big venues, it's a selection with a line, and the video interviews —
+  the one offer nobody can copy. Shared links carry
+  `utm_source=share&utm_medium=<channel>` since PR #572 so re-shares can
+  be told apart once analytics can read UTMs (paid on Vercel Hobby; an
+  own counter is the fallback). Considered and deferred: an embeddable
+  HTML card for venue websites — venues with sites have their own
+  sections and the rest live on Instagram; a downloadable story image of
+  the ficha fits better and reuses the flyer generator.
 
 - Needs a new piece: flyer-style image generation (card with image + title +
   date + artist) per event.
