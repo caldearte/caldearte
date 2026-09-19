@@ -4482,6 +4482,53 @@ tag misapplied twice to non-dictatorship "memoria" — the tag definition
 says dictatorship 1973-1990 explicitly, so this is Haiku pattern-matching
 the word; watch whether it recurs outside this week.
 
+## Fifth daily run, 2026-09-18: the safety net in chunks of 5, and engagement kept
+
+One Apify call (173 accounts at Thursday's timestamp), 123 posts, 100
+placeholders, 48 collab posts attributed, 165 new collab edges (364
+total, 242 handles after two days), 3-minute job. Haiku $0.22; the
+safety-net model's first ledger line: **$0.0125** for the day (~$0.35 a
+month at this rate, under the ~$1 projected).
+
+**Safety net, day 2:** 8 approvals in 2 chunks of ≤5, no runaway, **4
+vetoes** — two clearly right (Museo Baburizza opening its fonda with a
+Nemesio Antúnez work, read by Haiku as an exhibition opening; a press
+note about ART CUT 26 talks read as a visita guiada), one debatable
+("Perderse para Encontrar" from a press account — the event was already
+live from Factor F's own post, so the veto changed nothing). Casa de la
+Cultura de Rancagua re-announced Sewell and **Haiku rejected it on its
+own** this time ("fotografías, maquetas, paneles") — the documentary
+clause works when the caption is explicit. Four inserts (Bolaño at
+Pabellón 83 in Lota, HUINCA in Concepción's Noche de las Artes de la
+Visualidad, Barro y Memoria at Pucará de Chena) plus one removed by
+hand: "Ser de Lejos" from culturas_atacama was the same show as "Ser, de
+lejos" inserted the day before from Caja Crisol — the second dedup miss
+on title punctuation/case (first: Clara Murillo, 2026-09-12); a third
+means normalising titles in the comparison. Two of the inserts came
+from places we don't follow (Pabellón 83, Punto de Cultura Federico
+Ramírez), candidates for Monday's routine.
+
+**Engagement kept (PR #568, migration deployed):** Apify returns likes,
+comments, media type, hashtags and the owner's display name for every
+post we already pay for, and all of it was dropped after parsing.
+`instagram_source_post_stats` now keeps one row per fetched post (curated
+or not, ~120-150 a day, upserted on `post_url`) — see data-model.md. An
+editorial signal only: which openings already have traction before we
+publish them, which formats the busiest venues use. Nothing in curation
+reads it. Same day, an inventory of data already in hand but unused
+(memory: "untapped data inventory"): own-account snapshot is weekly
+only; Vercel Analytics had never been opened (first read in
+architecture.md); Resend open/click isn't tracked (needed before the
+audience plan's stage 2); rejected_candidates doubles as a per-venue
+programming profile.
+
+**Monday routine, extended (2026-09-18):** a 4th block, artists with a
+live event and an `artist_instagram_handle` (28 of 187 artist names had
+one — the handle is only extracted when the post @-mentions the artist),
+plus the artists with a name but no handle and the graph handles that
+look like artists. Daniel's aim: every artist knows their opening is on
+the site and shares it — by hand, 5-10 a day, never automated.
+
 ## The collab graph as a discovery channel (2026-09-16)
 
 Daniel's question after the co-author fix (#538): can collab posts point
