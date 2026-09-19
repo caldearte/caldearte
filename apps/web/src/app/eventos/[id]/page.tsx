@@ -25,9 +25,23 @@ interface PageParams {
 // below).
 export const revalidate = 600;
 
-export async function generateStaticParams() {
-  const { events } = await fetchApprovedEvents();
-  return events.map((e) => ({ id: e.id }));
+// Third Vercel free-tier incident, 2026-09-18: ISR Writes at 294K of the
+// Hobby plan's 200K. The 2026-08-28 fix (below, and app/page.tsx) had
+// settled regeneration at 600s; what blew the budget this time was
+// BUILDS — 239 PRs merged in 30 days, each a preview and a production
+// build, and every build pre-rendered all ~360 event pages through
+// generateStaticParams (~360 ISR writes per build, ~170K a month from
+// builds alone). Event pages are now generated on first request instead
+// (empty static params + dynamicParams): a build writes nothing, a page
+// is written once when someone first visits it and then every 600s while
+// it keeps getting visits, exactly as before. Same `●`→ISR semantics for
+// the visitor (x-vercel-cache MISS on the very first hit, HIT after),
+// just no build-time fan-out. Companion fix: vercel.json's ignoreCommand
+// skips builds for changes that can't affect the site.
+export const dynamicParams = true;
+
+export function generateStaticParams(): Array<{ id: string }> {
+  return [];
 }
 
 export async function generateMetadata({ params }: { params: Promise<PageParams> }): Promise<Metadata> {
