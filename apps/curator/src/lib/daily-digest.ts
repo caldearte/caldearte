@@ -64,8 +64,16 @@ function dateStrDDMMYYYY(date: string): string {
   return date.split("-").reverse().join("/");
 }
 
+// "Aprobados" is Haiku's verdict; what actually reached the site is the
+// subset that survived dedup, the axis net and the safety net. Daniel
+// asked for that number in the per-source table (2026-09-19): the
+// subject line already counted it, the table didn't.
+function insertedCount(run: DailyDigestPipelineRun): number {
+  return run.eventGroups.flatMap((g) => g.candidates).filter((c) => c.outcome === "inserted").length;
+}
+
 export function buildDailyDigestSubject(summary: DailyDigestSummary): string {
-  const insertedTotal = summary.runs.reduce((sum, r) => sum + r.eventGroups.flatMap((g) => g.candidates).filter((c) => c.outcome === "inserted").length, 0);
+  const insertedTotal = summary.runs.reduce((sum, r) => sum + insertedCount(r), 0);
   return `Caldearte — resumen diario (${dateStrDDMMYYYY(summary.date)}) — ${summary.runs.length} fuente(s), ${insertedTotal} evento(s) nuevo(s)`;
 }
 
@@ -124,7 +132,7 @@ export function buildDailyDigestBody(summary: DailyDigestSummary): string {
   for (const run of summary.runs) {
     lines.push(
       `-- ${ENTRYPOINT_LABEL[run.entrypoint]} (${run.startedAt.toISOString()}) --`,
-      `  ${run.candidates.total} candidatos · ${run.candidates.approvedByCuration} aprobados · ${run.candidates.rejectedByCuration} rechazados · costo corrida ${fmtUsd(run.costUsd)}`,
+      `  ${run.candidates.total} candidatos · ${run.candidates.approvedByCuration} aprobados · ${run.candidates.rejectedByCuration} rechazados · ${insertedCount(run)} insertados · costo corrida ${fmtUsd(run.costUsd)}`,
     );
     if (run.fetchError) {
       lines.push(`  ⚠️ BLOQUEADO — no se revisó ninguna cuenta/fuente: ${run.fetchError}`);
@@ -151,6 +159,7 @@ export function buildDailyDigestHtmlBody(summary: DailyDigestSummary): string {
         <td style="padding:4px 12px 4px 0;text-align:right;">${run.candidates.total}</td>
         <td style="padding:4px 12px 4px 0;text-align:right;">${run.candidates.approvedByCuration}</td>
         <td style="padding:4px 12px 4px 0;text-align:right;">${run.candidates.rejectedByCuration}</td>
+        <td style="padding:4px 12px 4px 0;text-align:right;font-weight:600;">${insertedCount(run)}</td>
         <td style="padding:4px 0;text-align:right;">${fmtUsd(run.costUsd)}</td>
       </tr>${
         run.fetchError
@@ -184,6 +193,7 @@ export function buildDailyDigestHtmlBody(summary: DailyDigestSummary): string {
           <th style="padding:4px 12px 4px 0;text-align:right;">Candidatos</th>
           <th style="padding:4px 12px 4px 0;text-align:right;">Aprobados</th>
           <th style="padding:4px 12px 4px 0;text-align:right;">Rechazados</th>
+          <th style="padding:4px 12px 4px 0;text-align:right;">Insertados</th>
           <th style="padding:4px 0;text-align:right;">Costo</th>
         </tr>
       </thead>
