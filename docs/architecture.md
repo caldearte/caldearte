@@ -545,7 +545,15 @@ hit, `HIT` with incrementing `age` afterward.
 
 PRs: #438 (ISR Writes), #439 (Fast Origin Transfer / list-mode removal).
 
-## Third Vercel free-tier incident (2026-09-18): ISR Writes again, from builds this time
+## Vercel ISR Writes warning (2026-09-18): rolling-window badge, not a cycle overage — and two waste fixes
+
+Correction recorded the same day (Daniel): the "Exceeded free resources"
+badge is the Overview's rolling "Last 30 Days" view; the Usage page
+showed no overage, and Vercel never paused the project or emailed —
+Hobby limits are enforced per billing cycle (account anniversary, see
+Settings → Billing), not per rolling window. So this was a warning, not
+an incident. The two changes below stand on their own as waste reduction.
+
 
 Found while opening Vercel Analytics for the first time: **ISR Writes at
 294K of the Hobby plan's 200K** for the Aug 19 – Sep 18 window, plus
