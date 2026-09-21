@@ -2563,6 +2563,20 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
     addedAt: "2026-09-16",
     fixedLocation: { location: "Copiapó", placeName: "Museo Regional de Atacama", address: "Av. Manuel Antonio Matta 265, Copiapó" },
   },
+  {
+    username: "pabellon83",
+    note:
+      "Encontrada 2026-09-17 en el grafo de coautores (coautora con " +
+      "ccm_la en el post de \"Bolaño, Regreso al país natal\", ya " +
+      "curado). Centro Cultural Comunitario Pabellón 83, Lota — 3269 " +
+      "publicaciones, 6251 seguidores, muy activa: publica una cartelera " +
+      "mensual (\"Cartelera septiembre 2026\") con exposiciones propias " +
+      "mezcladas con patrimonio, congresos, talleres y danza/teatro " +
+      "(Haiku filtra lo no visual). Evaluada por Chrome, no por Apify. " +
+      "fixedLocation.",
+    addedAt: "2026-09-21",
+    fixedLocation: { location: "Lota", placeName: "Centro Cultural Comunitario Pabellón 83" },
+  },
   // El resto de la lista la aporta Daniel — una decisión editorial, igual
   // que cada fuente brillante nueva se evaluó una por una. Confirmar
   // pública y activa antes de agregar cada cuenta.
