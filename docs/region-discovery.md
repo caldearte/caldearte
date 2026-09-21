@@ -4584,6 +4584,31 @@ and hour) — removed by hand, the **third** dedup miss on differently
 worded titles (Clara Murillo 09-12, "Ser, de lejos" 09-18); the next one
 gets title normalisation in the comparison.
 
+**Outreach started.** Six DMs sent from @caldearte.oficial in the
+afternoon (text and list approved by Daniel; sent through Chrome): four
+venues with an opening this week — Pinacoteca UdeC, Pabellón 83,
+Fundación Mecenas (followed first: a registered source with no follow),
+Punto de Cultura / Sala Federico Ramírez (the actual venue of HUINCA,
+chosen over the municipal aggregator that posted it) — and two artists,
+Agustín López Valdés and Daniel Bagnara. The gift-not-ask text from the
+roadmap, link to the ficha, which unfurls in the DM as a card with the
+flyer. One thing learned on the first send: Instagram italicises
+`_text_` pairs, so `utm_source=share&utm_medium=dm` broke the URL; the
+links carry `?utm_source=dm` (one underscore) instead. Batch 2 (Factor F,
+CEINA, MUG-UPLA, Espacio 218, MAPA, Trinidad Zerené, Giovanna Elzo) goes
+out Tuesday; the Monday routine measures replies, follows and shares.
+Names, times and outcomes live in the local editorial log.
+
+**Six duplicates removed by hand in ten days** — Clara Murillo (09-12),
+"Ser, de lejos" (09-18), Atlas Visual, Convergentes/"Pedazos de
+contingencia", Artemar/"ARTE MAR" and Premoniciones ×2 (all 09-21), each
+time keeping the fuller row and copying over what the other had (artist
+list, closing date). The pattern is always the same: same venue, same
+opening hour, differently worded title, or one row from a web source and
+one from Instagram. Dedup compares titles; it needs a "same place + same
+opening datetime = same event" rule with title similarity as the
+tie-break. Queued right after the cron change.
+
 **Two operational notes from the day.** The digest's 10:30 UTC cron
 fired 3-5 hours late all week and hadn't fired by 16:00 on Monday; a
 manual `workflow_dispatch` sent it (the digest only reads the database
@@ -4591,6 +4616,18 @@ and mails — a second copy costs nothing). And `gh` had silently switched
 its active account to `probable-spa` (read-only on the org), which is
 why the dispatch first failed with 403; `gh auth switch --user
 daniel-llach` restored admin. Both recorded in memory, no code changed.
+The Instagram carousel's 12:05 UTC cron was 6 h late too; a manual
+dispatch (the button defaults to dry run — pass `dry_run=false`) raced
+the late cron by 17 seconds and *lost*: Instagram rejected one of its
+PNGs ("chunk declares more data than the image contains") while the
+cron's run published fine — one post, the right one. If that PNG error
+recurs it's a flyer-generator bug, not Instagram. Daniel asked whether
+to move every cron two hours earlier: no — the drift isn't a fixed
+offset, it's minute-of-hour congestion (`:05`, `:17`, `:30` are popular).
+Tuesday's PR (touches `.github/workflows/`, so with Daniel): odd minutes
+(Instagram 8:43, digest 11:52, carousel 12:58 UTC) and, more usefully,
+digest and carousel waiting for the day's Instagram run to exist instead
+of trusting the clock.
 
 ## The collab graph as a discovery channel (2026-09-16)
 
