@@ -4549,6 +4549,49 @@ Safety-net tally after four days: 12 vetoes on 38 approvals, 11 clearly
 right, 1 debatable and harmless (a press re-post of an event already
 stored); one runaway chunk on day one, none since chunks went to 5.
 
+## Monday 2026-09-21: the first weekly routine, and the run behind it
+
+**The run:** two Apify calls (Pabellón 83, added that morning, 3 posts;
+173 accounts at Saturday's timestamp, 137 posts), 107 placeholders, 53
+collab posts attributed, 199 collab edges, 133 engagement rows, 8
+municipal/cultural accounts at the 5-post cap after the long weekend.
+Safety net: 9 approvals, **2 vetoes, both right** — "Diálogos de Barro"
+(an October programme of talks, workshops, a residency and a fair, no
+specific show) and a *registro* post of a Los Ríos Territorio Visual
+meeting (the opening itself was already stored from Réplica's post). 5
+inserted, all sound, including Convergentes 2026 at Sala de Arte CCU —
+found through Réplica UACh because two of the 19 artists are its
+graduates, and placed in Santiago by the location filter, not Valdivia.
+
+**The routine** (Claude Code, Mondays 10:00; ran 10:03, 38 min, all four
+blocks): audience signals flat (newsletter 0/0/0, submissions 0; the
+follower figure was stale at 95/09-14 because the weekly insights cron
+fires Monday 20:45 UTC, *after* the routine — a daily snapshot is the
+fix). Graph: 13 handles co-posting with 2+ registered venues, nearly all
+already covered or rejected; it recommended **Pabellón 83** (Lota),
+Daniel said "agrega", and the routine's own session evaluated it, opened
+#576 and merged it — and correctly refused to re-add Caja Crisol and
+Réplica, which were on its *outreach* list, not its source list. Contact
+list: 41 approved events with the venue's @ and co-authors; priorities
+Pabellón 83, Caja Crisol, Réplica. Artists: 18 live events with a handle,
+**107 without** — the handle backfill is the biggest lever for the
+outreach list. On Daniel's "síguelas tú" the routine followed
+pabellon83, cajacrisol_arte and museoregionaldeatacama from
+@caldearte.oficial (feria.aparte was blocked by the permission classifier
+as a repeated external write and left to Daniel). It also flagged a
+real duplicate ("Atlas visual de una mala imagen", two posts, same room
+and hour) — removed by hand, the **third** dedup miss on differently
+worded titles (Clara Murillo 09-12, "Ser, de lejos" 09-18); the next one
+gets title normalisation in the comparison.
+
+**Two operational notes from the day.** The digest's 10:30 UTC cron
+fired 3-5 hours late all week and hadn't fired by 16:00 on Monday; a
+manual `workflow_dispatch` sent it (the digest only reads the database
+and mails — a second copy costs nothing). And `gh` had silently switched
+its active account to `probable-spa` (read-only on the org), which is
+why the dispatch first failed with 403; `gh auth switch --user
+daniel-llach` restored admin. Both recorded in memory, no code changed.
+
 ## The collab graph as a discovery channel (2026-09-16)
 
 Daniel's question after the co-author fix (#538): can collab posts point
