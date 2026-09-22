@@ -31,15 +31,84 @@ interface RawSummaryShape {
   apifyError?: string | null;
 }
 
+// The Instagram pipeline runs Monday through Saturday
+// (instagram-bright-sources.yml, cron `1-6`). getUTCDay(): 0 = Sunday.
+function instagramRunsOn(now: Date): boolean {
+  const day = now.getUTCDay();
+  return day >= 1 && day <= 6;
+}
+
+// Why the digest waits (2026-09-22): GitHub delays EVERY scheduled
+// workflow in this repo by 4-7 hours, measured across a week — Instagram
+// (08:17 UTC) fired between 12:32 and 15:08, this digest (10:30) between
+// 13:57 and 16:32. The delay is the same whatever minute a cron asks for
+// (09:33 drifts exactly like 10:30), so moving crons around buys nothing;
+// what saves the digest today is only that both drift together and are
+// scheduled 2 h apart. The margin is thin — 84 minutes on 2026-09-19 —
+// and the day the digest drifts 3.5 h while Instagram drifts 6.8 h, the
+// email goes out without the day's main run in it. So: on a day Instagram
+// is due, wait for its row to appear before reading, up to
+// INSTAGRAM_WAIT_TIMEOUT_MS. Timing out is not an error — the run may
+// genuinely have failed, and a digest that says so is the point.
+const INSTAGRAM_WAIT_TIMEOUT_MS = 90 * 60 * 1000;
+const INSTAGRAM_WAIT_POLL_MS = 5 * 60 * 1000;
+
 export interface RunDeps {
   now?: Date;
   sendDailyDigestEmailFn?: typeof sendDailyDigestEmail;
+  // Test seams for the wait loop above.
+  sleepFn?: (ms: number) => Promise<void>;
+  instagramWaitTimeoutMs?: number;
+}
+
+// Exported for tests: polls until today's Instagram run summary exists,
+// or the timeout passes. Returns whether it showed up.
+export async function waitForInstagramRun(
+  hasRunFn: () => Promise<boolean>,
+  opts: { timeoutMs: number; pollMs: number; sleepFn: (ms: number) => Promise<void>; nowFn: () => number },
+): Promise<boolean> {
+  const deadline = opts.nowFn() + opts.timeoutMs;
+  for (;;) {
+    if (await hasRunFn()) return true;
+    if (opts.nowFn() >= deadline) return false;
+    console.log(`[daily-digest] today's Instagram run isn't recorded yet — waiting ${Math.round(opts.pollMs / 60000)} min (GitHub cron drift, see run.ts)`);
+    await opts.sleepFn(opts.pollMs);
+  }
 }
 
 export async function run(deps: RunDeps = {}): Promise<void> {
   const now = deps.now ?? new Date();
   const { dateStr, startUtc, endUtc } = santiagoDayBoundsUtc(now);
   const client = getSupabaseClient();
+
+  if (instagramRunsOn(now)) {
+    const found = await waitForInstagramRun(
+      async () => {
+        const { data, error } = await client
+          .from("discovery_run_summaries")
+          .select("entrypoint")
+          .eq("entrypoint", "instagram")
+          .gte("started_at", startUtc.toISOString())
+          .lt("started_at", endUtc.toISOString())
+          .limit(1);
+        // A read failure is not "hasn't run" — don't spin on it.
+        if (error) {
+          console.error(`[daily-digest] failed to check for today's Instagram run: ${error.message}`);
+          return true;
+        }
+        return (data ?? []).length > 0;
+      },
+      {
+        timeoutMs: deps.instagramWaitTimeoutMs ?? INSTAGRAM_WAIT_TIMEOUT_MS,
+        pollMs: INSTAGRAM_WAIT_POLL_MS,
+        sleepFn: deps.sleepFn ?? ((ms) => new Promise((resolve) => setTimeout(resolve, ms))),
+        nowFn: () => Date.now(),
+      },
+    );
+    if (!found) {
+      console.warn(`[daily-digest] today's Instagram run never showed up — sending the digest without it`);
+    }
+  }
 
   const { data: runRows, error: runsError } = await client
     .from("discovery_run_summaries")

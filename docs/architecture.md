@@ -588,6 +588,38 @@ visitors a month, ~4 a day. Referrers: Google 32, Instagram 14, Facebook
 The chain of signals, in order: ~100 followers → ~120 visitors/month →
 2 subscribers → 0 submissions (see roadmap.md, "Audience, staged").
 
+## GitHub cron drift, measured (2026-09-22) — and why the digest waits instead
+
+A week of real firing times, every scheduled workflow in this repo:
+
+| Workflow | Asked for | Actually fired | Late by |
+|---|---|---|---|
+| instagram-bright-sources | 08:17 | 12:32 – 15:08 | 4.2 – 6.8 h |
+| apify-usage-snapshot | 09:33 | 13:19 – 15:59 | 3.8 – 6.4 h |
+| daily-digest | 10:30 | 13:57 – 16:32 | 3.5 – 6.0 h |
+| publish-social | 12:05 | 16:19 – 18:10 | 4.2 – 6.0 h |
+
+Two conclusions, both of which killed an earlier plan. **Minute choice
+is irrelevant**: `:33` drifts exactly like `:05` and `:30`, so the
+"move everything to odd minutes" idea (floated 2026-09-21, after the
+digest and the carousel both ran hours late the same day) buys nothing.
+**Shifting everything two hours earlier is no good either** (Daniel's
+question): the spread is ~3 h, so a uniform shift would sometimes land
+before the data exists. Nothing in the repo is actually broken by the
+delay — the runs land mid-morning Chile time, and because every cron
+drifts together and they're scheduled 2 h apart, order has held.
+
+What is thin is the margin: 84 minutes between the Instagram run and the
+digest on 2026-09-19. The day the digest drifts 3.5 h while Instagram
+drifts 6.8 h, the email goes out without the day's main run. So the fix
+is in the digest, not in the schedule: on a day Instagram is due
+(Mon-Sat), `daily-digest/run.ts` polls `discovery_run_summaries` for
+today's `instagram` row every 5 minutes for up to 90 before reading
+anything. A timeout is not an error — the run may genuinely have failed,
+and a digest reporting that is exactly what it's for. A failed read
+counts as "found" so a database problem can't turn into a spin.
+GitHub's own job timeout (6 h default) comfortably covers the wait.
+
 ## Cron watchdog (2026-08-28)
 
 Same day, a separate but related discovery: GitHub Actions' `schedule`
