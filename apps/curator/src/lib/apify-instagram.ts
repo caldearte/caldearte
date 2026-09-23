@@ -109,6 +109,29 @@ export function isInstagramPostUrl(url: string): boolean {
   return POST_URL.test(url);
 }
 
+// Real incident, 2026-09-23 (espaciovilches, "Apariciones"): for a carousel
+// (`type: "Sidecar"`) whose first slide is a video, `displayUrl` isn't a
+// human-designed static image — it's Instagram's own auto-generated cover
+// frame for that video, tagged via the CDN URL's own `efg` param (base64
+// JSON) as `video_default_cover_frame`. Confirmed by re-fetching the exact
+// same post 11 days later: same tag, but this time the frame resolved to
+// the real flyer — at curation time it had resolved to an unrelated photo
+// from a DIFFERENT post on the same account instead. basicData gives no way
+// to ask for a specific later slide instead (that's `childPosts`, gated
+// behind the paid `detailedData` add-on) — this only detects the risky case
+// so the caller can decline to store it rather than gamble on which frame
+// Instagram happens to serve that day.
+export function isVideoCoverFrameUrl(url: string): boolean {
+  try {
+    const efg = new URL(url).searchParams.get("efg");
+    if (!efg) return false;
+    const decoded = Buffer.from(efg, "base64").toString("utf8");
+    return /video_default_cover_frame/i.test(decoded);
+  } catch {
+    return false;
+  }
+}
+
 // Pure and separately exported so the real output shape can be verified
 // against a captured sample without hitting the real API — same pattern
 // as lib/mavi-headless.ts's parseMaviActivities. Returns the placeholder

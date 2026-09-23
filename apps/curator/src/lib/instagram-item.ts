@@ -3,7 +3,7 @@
 // can judge it with the exact same scope/date criteria as every other
 // bright source, no new prompt needed.
 import { truncateSafely, type BrightSourceItem } from "../event-discovery/extractors.js";
-import type { ApifyInstagramPost } from "./apify-instagram.js";
+import { isVideoCoverFrameUrl, type ApifyInstagramPost } from "./apify-instagram.js";
 import type { InstagramAccountConfig } from "./instagram-accounts.js";
 import { toPlainLatin } from "./plain-text.js";
 
@@ -111,10 +111,17 @@ export function toBrightSourceItem(post: ApifyInstagramPost, account: InstagramA
   // raw caption for its own extraction regardless.
   const title = toPlainLatin(truncateSafely(extractQuotedTitle(caption) || firstSubstantiveLine || account.username, TITLE_MAX_LENGTH));
 
+  // Real incident, 2026-09-23 (espaciovilches, "Apariciones") — see
+  // isVideoCoverFrameUrl's own doc comment in apify-instagram.ts. A
+  // carousel's own displayUrl, when it's an auto-generated video cover
+  // frame, is a gamble at curation time: better to publish no image than
+  // risk an unrelated photo from a different post on the same account.
+  const imageUrl = post.mediaType === "Sidecar" && post.displayUrl && isVideoCoverFrameUrl(post.displayUrl) ? null : post.displayUrl;
+
   return {
     title,
     sourceUrl: post.url,
-    imageUrl: post.displayUrl,
+    imageUrl,
     description: caption || null,
     locationHint: null,
     // No structured date exists — the real event date, if any, lives

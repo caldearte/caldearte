@@ -1,6 +1,13 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { parseApifyInstagramPosts, parseApifyInstagramPostsWithStats, usernameFromProfileUrl, isInstagramPostUrl, coauthorUsernamesOf } from "./apify-instagram.js";
+import {
+  parseApifyInstagramPosts,
+  parseApifyInstagramPostsWithStats,
+  usernameFromProfileUrl,
+  isInstagramPostUrl,
+  coauthorUsernamesOf,
+  isVideoCoverFrameUrl,
+} from "./apify-instagram.js";
 
 // Best-guess shape for apify/instagram-post-scraper's basicData output —
 // see apify-instagram.ts's own doc comment: not confirmed field-by-field
@@ -105,6 +112,26 @@ test("parseApifyInstagramPostsWithStats drops items whose url is not a post URL 
   assert.equal(posts.length, 2);
   assert.equal(placeholders, 2);
   assert.deepEqual(posts.map((p) => p.url), [SAMPLE_ITEM.url, "https://www.instagram.com/reel/XYZ123/"]);
+});
+
+// Real shapes captured 2026-09-23 debugging the espaciovilches "Apariciones"
+// incident — see isVideoCoverFrameUrl's own doc comment.
+test("isVideoCoverFrameUrl detects Instagram's own efg tag for an auto-generated video cover frame", () => {
+  const coverFrameUrl =
+    "https://scontent.cdninstagram.com/v/abc.jpg?efg=eyJlbmNvZGVfdGFnIjoiQ0FST1VTRUxfSVRFTS54cGlkcy43MjAuc2RyLnZpZGVvX2RlZmF1bHRfY292ZXJfZnJhbWUuQzMifQ%3D%3D";
+  assert.equal(isVideoCoverFrameUrl(coverFrameUrl), true);
+});
+
+test("isVideoCoverFrameUrl is false for a plain image URL (different or missing efg tag)", () => {
+  const plainImageUrl =
+    "https://scontent.cdninstagram.com/v/abc.jpg?efg=eyJlZmdfdGFnIjoiQ0FST1VTRUxfSVRFTS5iZXN0X2ltYWdlX3VybGdlbi5DMyJ9";
+  assert.equal(isVideoCoverFrameUrl(plainImageUrl), false);
+  assert.equal(isVideoCoverFrameUrl("https://scontent.cdninstagram.com/v/abc.jpg"), false);
+});
+
+test("isVideoCoverFrameUrl never throws on a malformed URL", () => {
+  assert.equal(isVideoCoverFrameUrl("not a url"), false);
+  assert.equal(isVideoCoverFrameUrl(""), false);
 });
 
 test("isInstagramPostUrl: post/reel/tv shortcode URLs yes, profile/explore/empty no", () => {

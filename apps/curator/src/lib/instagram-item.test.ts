@@ -94,6 +94,31 @@ test("toBrightSourceItem carries sourceUrl/imageUrl straight through", () => {
   assert.equal(item.imageUrl, POST.displayUrl);
 });
 
+// Real incident, 2026-09-23 (espaciovilches, "Apariciones") — see
+// isVideoCoverFrameUrl's doc comment in apify-instagram.ts. A carousel
+// whose first slide is a video resolved, at curation time, to an unrelated
+// photo from a different post on the same account; the same URL shape
+// resolved correctly 11 days later. No way to tell good from bad without
+// the paid childPosts data, so this case is skipped instead of guessed at.
+test("toBrightSourceItem drops the image when a Sidecar's displayUrl is an auto-generated video cover frame — real bug found 2026-09-23 (espaciovilches)", () => {
+  const videoCoverFrameUrl =
+    "https://scontent.cdninstagram.com/v/abc.jpg?efg=eyJlbmNvZGVfdGFnIjoiQ0FST1VTRUxfSVRFTS54cGlkcy43MjAuc2RyLnZpZGVvX2RlZmF1bHRfY292ZXJfZnJhbWUuQzMifQ%3D%3D";
+  const item = toBrightSourceItem({ ...POST, mediaType: "Sidecar", displayUrl: videoCoverFrameUrl }, ACCOUNT);
+  assert.equal(item.imageUrl, null);
+});
+
+test("toBrightSourceItem keeps a Sidecar's displayUrl when it isn't a video cover frame", () => {
+  const item = toBrightSourceItem({ ...POST, mediaType: "Sidecar" }, ACCOUNT);
+  assert.equal(item.imageUrl, POST.displayUrl);
+});
+
+test("toBrightSourceItem keeps a video-cover-frame-tagged displayUrl for a non-Sidecar post (single video, nothing better to fall back to)", () => {
+  const videoCoverFrameUrl =
+    "https://scontent.cdninstagram.com/v/abc.jpg?efg=eyJlbmNvZGVfdGFnIjoiQ0FST1VTRUxfSVRFTS54cGlkcy43MjAuc2RyLnZpZGVvX2RlZmF1bHRfY292ZXJfZnJhbWUuQzMifQ%3D%3D";
+  const item = toBrightSourceItem({ ...POST, mediaType: "Video", displayUrl: videoCoverFrameUrl }, ACCOUNT);
+  assert.equal(item.imageUrl, videoCoverFrameUrl);
+});
+
 test("toBrightSourceItem falls back to the account username as title when the caption is empty", () => {
   const item = toBrightSourceItem({ ...POST, caption: null }, ACCOUNT);
   assert.equal(item.title, ACCOUNT.username);
