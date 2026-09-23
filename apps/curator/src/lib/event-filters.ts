@@ -179,6 +179,35 @@ export function isLikelySameTitleWithoutRatio(a: string, b: string, placeName: s
   return shared.length >= 2;
 }
 
+// A shape the ">= 2 shared words" bar above can't see, found in real
+// duplicate pairs (2026-09-23, after 8 removed by hand in 12 days): one
+// source's title is the other's plus a prefix the second dropped —
+// "Premoniciones" vs "Balmaceda Visual, Premoniciones" (MAC Quinta
+// Normal) shares exactly one significant word, so the bar says no.
+//
+// A STRICT subset only, never a partial overlap — partial overlap is what
+// the MAC - Parque Forestal regression is made of ("Obras extraordinarias"
+// vs "Tierras Raras. Quadra Minerale"). ONLY safe because every caller
+// already requires an exact venue match and an agreeing date; see run.ts's
+// sameVenueMatch.
+//
+// What this deliberately does NOT catch: the same name written with and
+// without a space ("ARTE MAR" vs "Artemar", Casa Condell). Comparing the
+// concatenated words was tried and dropped — "arte" is in
+// GENERIC_TITLE_WORDS, so the two sides reduce to {mar} and {artemar} and
+// never line up. Widening the stopword list to fix that would weaken every
+// other comparator here, which is a worse trade than one missed duplicate.
+export function isTitleSubsetOfOther(a: string, b: string, placeName: string | null): boolean {
+  const placeWords = placeName ? tokenizeSignificantWords(placeName) : new Set<string>();
+  const words = (title: string) => [...tokenizeSignificantWords(title)].filter((w) => !placeWords.has(w));
+  const wordsA = words(a);
+  const wordsB = words(b);
+  if (wordsA.length === 0 || wordsB.length === 0) return false;
+  const setA = new Set(wordsA);
+  const setB = new Set(wordsB);
+  return wordsA.every((w) => setB.has(w)) || wordsB.every((w) => setA.has(w));
+}
+
 // Used by run.ts's cross-source axis safety net (2026-09-07, which
 // replaced the escalation flow originally added 2026-07-30, found via
 // a manual curation audit — see docs/curation-policy.md's "Cross-source
