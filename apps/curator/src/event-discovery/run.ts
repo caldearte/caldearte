@@ -32,6 +32,7 @@ import {
   isLikelySameTitle,
   isLikelySameTitleIgnoringPlaceName,
   isLikelySameTitleWithoutRatio,
+  isTitleSubsetOfOther,
   placeNamesLikelySame,
   isWithinAnchorWindow,
 } from "../lib/event-filters.js";
@@ -288,6 +289,23 @@ function locationDateOnlyKey(
       ? `${c.runStartDate}|${c.runEndDate}`
       : (c.openingDatetime?.slice(0, 10) ?? `${c.runStartDate ?? ""}|${c.runEndDate ?? ""}`);
   return `${normalizeLocation(location)}|${dateOnly}`;
+}
+
+// The single day two rows about the same real event agree on, whatever
+// date fields each source happened to fill: the opening's day when there
+// is one, the run's first day otherwise. See sameVenueMatch's own comment
+// for the duplicates this exists to catch.
+function anchorDay(e: Pick<EventCandidate, "openingDatetime" | "runStartDate">): string | null {
+  return e.openingDatetime?.slice(0, 10) ?? e.runStartDate ?? null;
+}
+
+function sameAnchorDay(
+  a: Pick<EventCandidate, "openingDatetime" | "runStartDate">,
+  b: Pick<EventCandidate, "openingDatetime" | "runStartDate">,
+): boolean {
+  const dayA = anchorDay(a);
+  const dayB = anchorDay(b);
+  return dayA !== null && dayA === dayB;
 }
 
 // Carries enough of an already-stored event's own data for
@@ -864,12 +882,27 @@ export async function insertCandidates(
     // listing is noise, not fabrication) rather than risking the
     // regression; a moderator can merge duplicates via the admin "Quitar"
     // action same as any other curation touch-up.
+    // Third date-agreement option added 2026-09-23 after 8 duplicates
+    // removed by hand in 12 days. Two of them (Sala de Obra's "Atlas
+    // visual de una mala imagen", Caja Crisol's "Ser, de lejos") had the
+    // SAME venue and the SAME opening instant, and still matched no tier:
+    // one source gave a full run range and the other only the opening, so
+    // runEndDate comparison fails on a null and locationDateOnlyKey
+    // compares a range against a single day. anchorDay reduces both
+    // shapes to the one day they actually agree on — the opening when
+    // there is one, the run start otherwise. Safe here only because this
+    // tier already demands an exact venue match AND a title match: the
+    // MAC - Parque Forestal shape (8 genuinely different shows opening the
+    // same minute in the same room) shares venue and day but no title
+    // words, and the regression test for it is in this file.
     const sameVenueMatch = c.placeName
       ? (seen.titlesByPlaceName.get(normalizeTitle(c.placeName)) ?? []).find(
           (existing) =>
             ((existing.runEndDate && c.runEndDate && existing.runEndDate === c.runEndDate) ||
-              locationDateOnlyKey(c.location, existing) === locDateOnlyKey) &&
-            isLikelySameTitleWithoutRatio(existing.title, c.title, c.placeName),
+              locationDateOnlyKey(c.location, existing) === locDateOnlyKey ||
+              sameAnchorDay(existing, c)) &&
+            (isLikelySameTitleWithoutRatio(existing.title, c.title, c.placeName) ||
+              isTitleSubsetOfOther(existing.title, c.title, c.placeName)),
         )
       : undefined;
     const existingMatch = titleMatch ?? sourceUrlMatch ?? locationDateMatch ?? fuzzyMatch ?? sameVenueMatch;

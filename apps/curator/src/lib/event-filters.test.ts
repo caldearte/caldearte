@@ -7,6 +7,7 @@ import {
   isLikelySameTitleWithoutRatio,
   placeNamesLikelySame,
   isWithinAnchorWindow,
+ isTitleSubsetOfOther,
 } from "./event-filters.js";
 
 test("normalizeLocation collapses a trailing ', Chile'/region suffix — real bug, found 2026-07-20: the same festival got inserted 3x in one run because 'Valparaíso, Chile' vs 'Valparaíso' produced different dedup fingerprints", () => {
@@ -178,4 +179,33 @@ test("isWithinAnchorWindow: the same date is always within any window", () => {
 test("isWithinAnchorWindow defaults to a 30-day window", () => {
   assert.equal(isWithinAnchorWindow("2026-07-01", "2026-07-29"), true);
   assert.equal(isWithinAnchorWindow("2026-07-01", "2026-08-05"), false);
+});
+
+// Real duplicate pairs removed by hand (8 in 12 days, 2026-09-12 → 09-23).
+// This comparator only ever runs where the venue is already an exact
+// match and the dates agree (run.ts's sameVenueMatch).
+test("isTitleSubsetOfOther catches a title that is the other plus a dropped prefix", () => {
+  assert.equal(isTitleSubsetOfOther("Balmaceda Visual, Premoniciones", "Premoniciones", "MAC Quinta Normal"), true);
+  assert.equal(isTitleSubsetOfOther("Premoniciones", "Balmaceda Visual, Premoniciones", "MAC Quinta Normal"), true, "order must not matter");
+});
+
+// Documented limitation, not an oversight: "arte" is a generic stopword,
+// so these reduce to {mar} and {artemar} and cannot be lined up without
+// weakening GENERIC_TITLE_WORDS for every other comparator.
+test("isTitleSubsetOfOther does NOT catch a spacing variant whose other word is generic", () => {
+  assert.equal(isTitleSubsetOfOther("ARTE MAR", "Artemar", "Casa Condell (Uprint Fine Art)"), false);
+});
+
+// The regressions this must never reopen: genuinely different shows that
+// share a venue (and, in the MAC cases, the same opening minute).
+test("isTitleSubsetOfOther leaves genuinely different shows at the same venue alone", () => {
+  assert.equal(isTitleSubsetOfOther("Obras extraordinarias", "Tierras Raras. Quadra Minerale", "MAC Parque Forestal"), false);
+  assert.equal(isTitleSubsetOfOther("Estéticas intuitivas", "Remanencias locales", "CNAC"), false);
+  assert.equal(isTitleSubsetOfOther("Topología del vacío", "Sastrería Doméstica", "Centro Cultural Las Condes"), false);
+  assert.equal(isTitleSubsetOfOther("Pedazos de contingencia, otros vocablos", "CONVERGENTES", "Sala de Arte CCU"), false, "genuinely unrelated wording stays uncaught — a human merged this one");
+});
+
+test("isTitleSubsetOfOther ignores the venue's own words and empty titles", () => {
+  // Every significant word is the venue's → nothing left to compare.
+  assert.equal(isTitleSubsetOfOther("Galería Réplica", "Galería Réplica UACh", "Galería Réplica UACh"), false);
 });

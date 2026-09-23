@@ -4629,6 +4629,51 @@ Tuesday's PR (touches `.github/workflows/`, so with Daniel): odd minutes
 digest and carousel waiting for the day's Instagram run to exist instead
 of trusting the clock.
 
+## Dedup, diagnosed properly (2026-09-23): the run-range vs opening-day gap
+
+Eight duplicates removed by hand in twelve days (Clara Murillo 09-12,
+"Ser, de lejos" 09-18, Atlas Visual 09-21, Convergentes, Artemar,
+Premoniciones 09-21, CONVERGENTES again and "Frágil como un volantín"
+09-23) made this worth diagnosing rather than patching. Daniel's ask was
+a "same place + same opening hour = same event" rule; the data says that
+rule would have been a disaster: **same venue + same exact opening
+instant is common for genuinely different shows** — MAC - Museo de Arte
+Contemporáneo opened 8 that minute, MAC Quinta Normal 5, CNAC 3, Patricia
+Ready and Aninat 2 each. A blind version would have silently dropped
+~25 real events, exactly the regression this file already guards twice.
+
+Running the real comparators over the real pairs found three separate
+causes instead:
+
+1. **Run range vs opening day.** Atlas Visual and "Ser, de lejos" had an
+   identical venue and an identical opening, and still matched no tier:
+   one source gave a full run range, the other only the opening, so
+   `runEndDate` equality fails on a null and `locationDateOnlyKey`
+   compares a range string against a single day. This was the main cause.
+2. **The two-shared-words bar.** "Premoniciones" vs "Balmaceda Visual,
+   Premoniciones" shares exactly one.
+3. **`freeform_location` wording.** "Tucapel 482, Concepción" vs
+   "Concepción", "Av. Vitacura 2680, Las Condes" vs "Santiago" — every
+   location-keyed bucket splits on it. (Not fixed here; `placeName`
+   buckets sidestep it.)
+
+Fixed, inside the existing `sameVenueMatch` tier only — the one that
+already demands an exact venue match AND a title match: a third
+date-agreement option (`sameAnchorDay`: the opening's day when there is
+one, the run's first day otherwise) and `isTitleSubsetOfOther` (a STRICT
+subset, never a partial overlap). Replayed over all eight real pairs plus
+MAC/CNAC/Patricia Ready as controls: 9/9 as intended.
+
+**Still uncaught, on purpose:** "ARTE MAR" vs "Artemar" — comparing
+concatenated words was tried and dropped, since "arte" is a generic
+stopword and the two reduce to {mar} and {artemar}; widening the stopword
+list would weaken every other comparator. "Pedazos de contingencia,
+otros vocablos" vs "CONVERGENTES" — the same show under its subtitle and
+its festival name, no shared vocabulary at all; only a human knows.
+"Frágil como un volantín" — the two rows name the same two venues with
+different wording, so they never share a `placeName` bucket. A fuzzy
+venue bucket is the next lever if this shape recurs.
+
 ## The collab graph as a discovery channel (2026-09-16)
 
 Daniel's question after the co-author fix (#538): can collab posts point
