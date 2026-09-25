@@ -2584,9 +2584,9 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
       "espacios (Daniel pidió ver más espacios reales sin scraping " +
       "viable). El sitio flach.cl había sido rechazado como fuente web " +
       "(sin listado de exposiciones), pero su Instagram resultó activo " +
-      "y grande: FLACH Galería, "10 Años de Fotografía Chilena y " +
-      "Latinoamericana", 1455 publicaciones, 17,2 mil seguidores, " +
-      "destacados "Exposiciones" y "Convocatoria", collab reciente " +
+      "y grande: FLACH Galería, \"10 Años de Fotografía Chilena y " +
+      "Latinoamericana\", 1455 publicaciones, 17,2 mil seguidores, " +
+      "destacados \"Exposiciones\" y \"Convocatoria\", collab reciente " +
       "(agosto 2026) con @stgofotoferia. Evaluada por Chrome, no por " +
       "Apify. fixedLocation.",
     addedAt: "2026-09-24",
@@ -2614,7 +2614,7 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
       " — pero es la web general de la Corporación Cultural, no la " +
       "cuenta del espacio. Espacio Cultural Viña del Mar tiene su " +
       "propio Instagram, grande y activo: 1033 publicaciones, 16,5 mil " +
-      "seguidores, destacado "Cartelera" propio. Evaluada por Chrome, " +
+      "seguidores, destacado \"Cartelera\" propio. Evaluada por Chrome, " +
       "no por Apify. fixedLocation.",
     addedAt: "2026-09-24",
     fixedLocation: { location: "Viña del Mar", placeName: "Espacio Cultural Viña del Mar", address: "Arlegui 683, Viña del Mar" },
@@ -2624,10 +2624,10 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
     note:
       "Evaluada 2026-09-24 (mismo pase). fme.cl/extension-cultural/ " +
       "sala-de-arte-{antofagasta,san-pedro-atacama}/ había sido " +
-      "rechazada como fuente web (páginas ancladas en "temporada " +
-      "2025", stale). Su Instagram es grande y activo (6442 " +
-      "publicaciones, 26,1 mil seguidores) con destacado "Salas de " +
-      "Arte", pero es la cuenta de TODA la fundación (educación, " +
+      "rechazada como fuente web (páginas ancladas en \"temporada " +
+      "2025\", stale). Su Instagram es grande y activo (6442 " +
+      "publicaciones, 26,1 mil seguidores) con destacado \"Salas de " +
+      "Arte\", pero es la cuenta de TODA la fundación (educación, " +
       "deporte, comunidad), no solo las dos salas — mismo tipo de " +
       "densidad mixta que ccaho__/pabellon83, Haiku filtra lo no " +
       "visual. Dos sedes (Antofagasta y San Pedro de Atacama), sin " +
@@ -2644,7 +2644,7 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
       "categoría Exposiciones con solo ~3 ítems) y de paso describió " +
       "el Instagram como secundario/poco enfocado en exposiciones — " +
       "pero es una cuenta grande y activa por su cuenta: CCM Valdivia, " +
-      "3334 publicaciones, 26,7 mil seguidores, destacado "Expo 🖼️" " +
+      "3334 publicaciones, 26,7 mil seguidores, destacado \"Expo 🖼️\" " +
       "propio. Cuenta municipal mixta (danza, biblioteca, " +
       "convocatorias) — mismo patrón que ccaho__, Haiku filtra lo no " +
       "visual. Evaluada por Chrome, no por Apify. fixedLocation.",
