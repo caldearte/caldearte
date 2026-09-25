@@ -503,11 +503,59 @@ test("run(): dry run skips Facebook verification entirely when no Facebook confi
   assert.equal(facebookVerifyCalled, false);
 });
 
-test("run(): publishes the same images and caption to Facebook right after Instagram, when configured", async () => {
-  let facebookCall: { imageUrls: string[]; caption: string } | null = null;
-  let instagramCaption = "";
+test("run(): publishes the same images to Facebook right after Instagram, when configured", async () => {
+  let facebookImageUrls: string[] = [];
+  let instagramImageUrls: string[] = [];
   await run({
     supabase: oneEventSupabase("e1"),
+    now: new Date("2026-08-31T12:00:00.000Z"),
+    instagramConfig: { igBusinessAccountId: "fake-account", accessToken: "fake-token" },
+    publishInstagramCarouselFn: async (_config, imageUrls) => {
+      instagramImageUrls = imageUrls;
+      return "fake-media-id";
+    },
+    facebookConfig: { pageId: "fake-page", accessToken: "fake-token" },
+    publishFacebookPostFn: async (_config, imageUrls) => {
+      facebookImageUrls = imageUrls;
+      return "fake-facebook-post-id";
+    },
+  });
+  assert.deepEqual(facebookImageUrls, instagramImageUrls);
+});
+
+// Daniel 2026-09-25, right after the first real Facebook post: the "Con:
+// @handle" line names Instagram accounts (venue/artist) that don't exist
+// on Facebook — posting it there would just be inert, unlinked "@handle"
+// text with no real account behind it.
+test("run(): Facebook's caption never includes Instagram's venue/artist @mentions, even when Instagram's does", async () => {
+  const supabase = fakeSupabase({
+    events: [
+      {
+        id: "e1",
+        title: "Evento con fuente de Instagram",
+        artist: null,
+        place_name: null,
+        region_id: null,
+        image_url: "https://example.com/a.jpg",
+        description: null,
+        sensitivity_tags: [],
+        opening_datetime: "2026-08-31T20:00:00.000Z",
+        opening_time_confirmed: true,
+        run_start_date: null,
+        run_end_date: null,
+        freeform_location: "Santiago",
+        source_account: "galeria_uno",
+        event_type: "inauguracion",
+      },
+    ],
+    regions: [],
+    social_post_log: [],
+  });
+
+  let instagramCaption = "";
+  let facebookCaption = "";
+  await run({
+    supabase,
     now: new Date("2026-08-31T12:00:00.000Z"),
     instagramConfig: { igBusinessAccountId: "fake-account", accessToken: "fake-token" },
     publishInstagramCarouselFn: async (_config, _imageUrls, caption) => {
@@ -515,13 +563,15 @@ test("run(): publishes the same images and caption to Facebook right after Insta
       return "fake-media-id";
     },
     facebookConfig: { pageId: "fake-page", accessToken: "fake-token" },
-    publishFacebookPostFn: async (_config, imageUrls, caption) => {
-      facebookCall = { imageUrls, caption };
+    publishFacebookPostFn: async (_config, _imageUrls, caption) => {
+      facebookCaption = caption;
       return "fake-facebook-post-id";
     },
   });
-  assert.ok(facebookCall);
-  assert.equal(facebookCall!.caption, instagramCaption);
+
+  assert.match(instagramCaption, /Con: @galeria_uno/);
+  assert.doesNotMatch(facebookCaption, /@galeria_uno/);
+  assert.doesNotMatch(facebookCaption, /Con:/);
 });
 
 test("run(): a Facebook posting failure is logged, not thrown — Instagram already published by that point and must not be undone", async () => {

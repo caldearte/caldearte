@@ -288,29 +288,36 @@ export async function run(deps: RunDeps = {}): Promise<void> {
     ...dynamicSlides.map((e) => buildFlyerUrl(e, comunaAndRegionById.get(e.id) ?? { comuna: null, region: "" })),
     CLOSING_SLIDE_URL,
   ];
-  const caption = withVenueMentions(CAPTION, dynamicSlides);
+  // Instagram-only — the "Con: @handle" line names Instagram accounts
+  // (venue/artist), which don't correspond to any real Facebook page or
+  // profile. Posting that same text to Facebook would just show up as
+  // inert, unlinked "@handle" text with no account behind it — Daniel
+  // 2026-09-25, right after the first real Facebook post went out.
+  const instagramCaption = withVenueMentions(CAPTION, dynamicSlides);
 
   if (dryRun) {
     console.log(
       `[social-publish] DRY RUN — would publish a carousel with ${dynamicSlides.length} event(s) + closing slide (window ${window.start}..${window.end}).\n` +
-        `  caption: ${caption}\n` +
+        `  Instagram caption: ${instagramCaption}\n` +
+        `  Facebook caption: ${CAPTION}\n` +
         imageUrls.map((url, i) => `  [${i + 1}/${imageUrls.length}] ${url}`).join("\n"),
     );
     return;
   }
 
   console.log(`[social-publish] publishing a carousel with ${dynamicSlides.length} event(s) + closing slide (window ${window.start}..${window.end}).`);
-  const publishedId = await publish(instagramConfig, imageUrls, caption);
+  const publishedId = await publish(instagramConfig, imageUrls, instagramCaption);
   console.log(`[social-publish] published, Instagram media id ${publishedId}.`);
 
-  // Same images, same caption, posted to the Page too — best-effort: a
-  // Facebook failure is logged and never thrown, since by this point the
-  // Instagram post (the primary channel) has already gone out and its
-  // de-dup rows are about to be written regardless of what happens here.
+  // Same images, base caption (no Instagram-only venue mentions — see
+  // above) — best-effort: a Facebook failure is logged and never thrown,
+  // since by this point the Instagram post (the primary channel) has
+  // already gone out and its de-dup rows are about to be written
+  // regardless of what happens here.
   if (facebookConfig) {
     try {
       const publishFacebook = deps.publishFacebookPostFn ?? publishFacebookPost;
-      const facebookPostId = await publishFacebook(facebookConfig, imageUrls, caption);
+      const facebookPostId = await publishFacebook(facebookConfig, imageUrls, CAPTION);
       console.log(`[social-publish] published to Facebook too, post id ${facebookPostId}.`);
     } catch (err) {
       console.error(`[social-publish] Instagram published fine, but the Facebook post failed: ${err instanceof Error ? err.message : String(err)}`);
