@@ -2666,6 +2666,25 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
       "en un solo lugar. Evaluada por Chrome, no por Apify.",
     addedAt: "2026-09-24",
   },
+  {
+    username: "ccesantiago",
+    note:
+      "Evaluada 2026-09-24 vía grafo de colaboraciones. Descartada en un " +
+      "primer pase por densidad (agenda de la web dominada por letras/" +
+      "cine/charlas), pero corregida el mismo día: Daniel ha asistido " +
+      "él mismo a exposiciones y otras actividades ahí. Centro Cultural " +
+      "de España en Chile — 46,1 mil seguidores, real y activo, con " +
+      "destacado \"Exposiciones\" propio (instalaciones reales " +
+      "confirmadas, con ficha de sala). El filtro de categorías de su " +
+      "sitio (ccesantiago.aecid.es) estaba caído (\"Publicador no " +
+      "disponible temporalmente\") al evaluar, así que la densidad no " +
+      "se pudo medir ahí — se agrega igual por Instagram, mismo patrón " +
+      "que ccaho__/fundacionmineraescondida/ccmvaldivia: institución " +
+      "grande y multidisciplinaria (música, cine, letras, pensamiento), " +
+      "Haiku filtra lo no visual. fixedLocation.",
+    addedAt: "2026-09-24",
+    fixedLocation: { location: "Santiago", placeName: "Centro Cultural de España en Chile", address: "Av. Providencia 927, Santiago" },
+  },
   // El resto de la lista la aporta Daniel — una decisión editorial, igual
   // que cada fuente brillante nueva se evaluó una por una. Confirmar
   // pública y activa antes de agregar cada cuenta.
