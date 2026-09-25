@@ -2651,6 +2651,21 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
     addedAt: "2026-09-24",
     fixedLocation: { location: "Valdivia", placeName: "Corporación Cultural Municipal de Valdivia" },
   },
+  {
+    username: "cce_arvis_uach",
+    note:
+      "Evaluada 2026-09-24 vía grafo de colaboraciones (co-posts con 3 " +
+      "fuentes registradas). Comisión Cultural Estudiantil del " +
+      "Instituto de Artes Visuales UACh — cuenta chica (73 " +
+      "publicaciones, 530 seguidores) pero con densidad real: " +
+      "exposiciones concretas con fecha y \"entrada liberada\" " +
+      "(\"SUR URBANO\", Galería de Arte UCT en Temuco; \"Convergentes\", " +
+      "19 artistas de las escuelas de arte en Chile, Sala Arte CCU en " +
+      "Vitacura, Santiago), mezcladas con conversatorios y un festival " +
+      "musical. Sin fixedLocation: las exposiciones que difunde no son " +
+      "en un solo lugar. Evaluada por Chrome, no por Apify.",
+    addedAt: "2026-09-24",
+  },
   // El resto de la lista la aporta Daniel — una decisión editorial, igual
   // que cada fuente brillante nueva se evaluó una por una. Confirmar
   // pública y activa antes de agregar cada cuenta.
