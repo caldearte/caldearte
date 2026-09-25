@@ -2636,6 +2636,21 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
       "Apify.",
     addedAt: "2026-09-24",
   },
+  {
+    username: "ccmvaldivia",
+    note:
+      "Evaluada 2026-09-24 (mismo pase). Corrección de una nota propia " +
+      "del 2026-09-17: esa evaluación rechazó ccm-valdivia.cl (la web, " +
+      "categoría Exposiciones con solo ~3 ítems) y de paso describió " +
+      "el Instagram como secundario/poco enfocado en exposiciones — " +
+      "pero es una cuenta grande y activa por su cuenta: CCM Valdivia, " +
+      "3334 publicaciones, 26,7 mil seguidores, destacado "Expo 🖼️" " +
+      "propio. Cuenta municipal mixta (danza, biblioteca, " +
+      "convocatorias) — mismo patrón que ccaho__, Haiku filtra lo no " +
+      "visual. Evaluada por Chrome, no por Apify. fixedLocation.",
+    addedAt: "2026-09-24",
+    fixedLocation: { location: "Valdivia", placeName: "Corporación Cultural Municipal de Valdivia" },
+  },
   // El resto de la lista la aporta Daniel — una decisión editorial, igual
   // que cada fuente brillante nueva se evaluó una por una. Confirmar
   // pública y activa antes de agregar cada cuenta.
