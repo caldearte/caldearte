@@ -442,8 +442,29 @@ building infra" discipline the rest of this project has followed.
   this adds general validation that "this is actually the artwork/flyer, not
   a banner or logo."
 
-## Phase 4 — Social distribution (Instagram shipped 2026-08-23; TikTok not started)
+## Phase 4 — Social distribution (Instagram shipped 2026-08-23; Facebook shipped 2026-09-25; TikTok not started)
 
+- **Facebook, shipped 2026-09-25 (Daniel: reviving Caldearte's own
+  +10-year-old Facebook Page).** Same carousel images as Instagram,
+  posted right after it in the same `social-publish` run
+  (`apps/curator/src/social-publish/facebook.ts`) — but with a
+  Facebook-specific caption, not Instagram's: the "Con: @handle" line
+  names Instagram accounts (venue/artist) that don't exist on Facebook,
+  so it's dropped there (found right after the first real post went
+  out). Optional and backwards-compatible — `FACEBOOK_PAGE_ID`/
+  `FACEBOOK_PAGE_ACCESS_TOKEN` unset just skips it, logged, never
+  thrown; a Facebook failure never undoes or blocks the Instagram post
+  (posted first, already succeeded by that point). Credentials: a Page
+  Access Token via "Facebook Login for Business" (not the "Instagram
+  Login" flow the existing Instagram integration uses — different
+  token family, `EAA...` vs `IGAA...`, different Graph API host too,
+  `graph.facebook.com` vs `graph.instagram.com`), `pages_show_list` +
+  `pages_manage_posts` scopes, exchanged for a non-expiring Page token
+  (Meta's Graph API Explorer's own "Obtener token de acceso a la
+  página" shortcut didn't work reliably — the token that worked came
+  from querying the Page's own `access_token` field directly with a
+  long-lived User token). No app review needed: Daniel is admin of both
+  the Meta app and the Page.
 - **Audience, staged (Daniel, 2026-09-17).** With ~100 Instagram
   followers, 2 confirmed newsletter subscribers and 0 venue submissions,
   the machine is no longer the bottleneck — attention is. Stage 1, now:
