@@ -15,6 +15,7 @@ import { getSupabaseClient } from "../lib/supabase-client.js";
 import { shortRegionName } from "../lib/regionNames.js";
 import { selectUpcoming, type SocialEvent } from "./selection.js";
 import { publishInstagramCarousel, verifyInstagramAccount, type InstagramClientConfig } from "./instagram.js";
+import { publishFacebookPost, verifyFacebookPage, type FacebookClientConfig } from "./facebook.js";
 
 const SITE_URL = "https://www.caldearte.com";
 const CLOSING_SLIDE_URL = `${SITE_URL}/social/ig-post-cierre.png`;
@@ -147,6 +148,14 @@ export interface RunDeps {
   instagramConfig?: InstagramClientConfig;
   publishInstagramCarouselFn?: typeof publishInstagramCarousel;
   verifyInstagramAccountFn?: typeof verifyInstagramAccount;
+  // Facebook is optional, unlike Instagram — added 2026-09-25 (Daniel:
+  // the +10-year-old Caldearte Page, reviving it). FACEBOOK_PAGE_ID/
+  // FACEBOOK_PAGE_ACCESS_TOKEN unset simply skips it (logged, not
+  // thrown), so this stays backwards-compatible with every existing
+  // deployment/test that only knows about Instagram.
+  facebookConfig?: FacebookClientConfig;
+  publishFacebookPostFn?: typeof publishFacebookPost;
+  verifyFacebookPageFn?: typeof verifyFacebookPage;
   // Test-and-verify support, 2026-08-23: lets a manual workflow_dispatch
   // run the full real pipeline (real Supabase query, real selection, real
   // flyer URLs against production data, real Instagram credentials
@@ -200,10 +209,22 @@ export async function run(deps: RunDeps = {}): Promise<void> {
   }
   const instagramConfig: InstagramClientConfig = { igBusinessAccountId, accessToken };
 
+  const facebookPageId = deps.facebookConfig?.pageId ?? process.env.FACEBOOK_PAGE_ID;
+  const facebookAccessToken = deps.facebookConfig?.accessToken ?? process.env.FACEBOOK_PAGE_ACCESS_TOKEN;
+  const facebookConfig: FacebookClientConfig | null =
+    facebookPageId && facebookAccessToken ? { pageId: facebookPageId, accessToken: facebookAccessToken } : null;
+
   if (dryRun) {
     const verify = deps.verifyInstagramAccountFn ?? verifyInstagramAccount;
     const account = await verify(instagramConfig);
     console.log(`[social-publish] DRY RUN — Instagram credentials verified: @${account.username} (${account.mediaCount} posts).`);
+    if (facebookConfig) {
+      const verifyFacebook = deps.verifyFacebookPageFn ?? verifyFacebookPage;
+      const page = await verifyFacebook(facebookConfig);
+      console.log(`[social-publish] DRY RUN — Facebook credentials verified: "${page.name}".`);
+    } else {
+      console.log("[social-publish] DRY RUN — FACEBOOK_PAGE_ID/FACEBOOK_PAGE_ACCESS_TOKEN not set, Facebook posting will be skipped.");
+    }
   }
 
   // Retried a few times with backoff (2026-09-02: a scheduled run failed
@@ -281,6 +302,20 @@ export async function run(deps: RunDeps = {}): Promise<void> {
   console.log(`[social-publish] publishing a carousel with ${dynamicSlides.length} event(s) + closing slide (window ${window.start}..${window.end}).`);
   const publishedId = await publish(instagramConfig, imageUrls, caption);
   console.log(`[social-publish] published, Instagram media id ${publishedId}.`);
+
+  // Same images, same caption, posted to the Page too — best-effort: a
+  // Facebook failure is logged and never thrown, since by this point the
+  // Instagram post (the primary channel) has already gone out and its
+  // de-dup rows are about to be written regardless of what happens here.
+  if (facebookConfig) {
+    try {
+      const publishFacebook = deps.publishFacebookPostFn ?? publishFacebookPost;
+      const facebookPostId = await publishFacebook(facebookConfig, imageUrls, caption);
+      console.log(`[social-publish] published to Facebook too, post id ${facebookPostId}.`);
+    } catch (err) {
+      console.error(`[social-publish] Instagram published fine, but the Facebook post failed: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
 
   // Real engagement data (reach/saved/likes/comments) is filled in later by
   // a separate weekly cron (instagram-insights/run.ts) — this just records

@@ -445,6 +445,105 @@ test("run(): @mentions the artist too when the source caption named one, combine
   assert.equal(capturedCaption.match(/@galeria_dos/g)?.length, 1, "handle shared by venue and artist mentioned only once");
 });
 
+function oneEventSupabase(id: string) {
+  return fakeSupabase({
+    events: [
+      {
+        id,
+        title: "Evento de prueba",
+        artist: null,
+        place_name: null,
+        region_id: null,
+        image_url: "https://example.com/a.jpg",
+        description: null,
+        sensitivity_tags: [],
+        opening_datetime: "2026-08-31T20:00:00.000Z", // Monday
+        opening_time_confirmed: true,
+        run_start_date: null,
+        run_end_date: null,
+        freeform_location: "Santiago",
+        event_type: "inauguracion",
+      },
+    ],
+    regions: [],
+    social_post_log: [],
+  });
+}
+
+test("run(): dry run verifies Facebook credentials too when configured, alongside Instagram", async () => {
+  let facebookVerifyCalled = false;
+  await run({
+    supabase: oneEventSupabase("e1"),
+    now: new Date("2026-08-31T12:00:00.000Z"), // a Monday
+    dryRun: true,
+    instagramConfig: { igBusinessAccountId: "fake-account", accessToken: "fake-token" },
+    verifyInstagramAccountFn: async () => ({ username: "caldearte.oficial", mediaCount: 0 }),
+    facebookConfig: { pageId: "fake-page", accessToken: "fake-token" },
+    verifyFacebookPageFn: async () => {
+      facebookVerifyCalled = true;
+      return { name: "Caldearte" };
+    },
+  });
+  assert.equal(facebookVerifyCalled, true);
+});
+
+test("run(): dry run skips Facebook verification entirely when no Facebook config is present — stays backwards-compatible", async () => {
+  let facebookVerifyCalled = false;
+  await run({
+    supabase: oneEventSupabase("e1"),
+    now: new Date("2026-08-31T12:00:00.000Z"),
+    dryRun: true,
+    instagramConfig: { igBusinessAccountId: "fake-account", accessToken: "fake-token" },
+    verifyInstagramAccountFn: async () => ({ username: "caldearte.oficial", mediaCount: 0 }),
+    verifyFacebookPageFn: async () => {
+      facebookVerifyCalled = true;
+      return { name: "Caldearte" };
+    },
+  });
+  assert.equal(facebookVerifyCalled, false);
+});
+
+test("run(): publishes the same images and caption to Facebook right after Instagram, when configured", async () => {
+  let facebookCall: { imageUrls: string[]; caption: string } | null = null;
+  let instagramCaption = "";
+  await run({
+    supabase: oneEventSupabase("e1"),
+    now: new Date("2026-08-31T12:00:00.000Z"),
+    instagramConfig: { igBusinessAccountId: "fake-account", accessToken: "fake-token" },
+    publishInstagramCarouselFn: async (_config, _imageUrls, caption) => {
+      instagramCaption = caption;
+      return "fake-media-id";
+    },
+    facebookConfig: { pageId: "fake-page", accessToken: "fake-token" },
+    publishFacebookPostFn: async (_config, imageUrls, caption) => {
+      facebookCall = { imageUrls, caption };
+      return "fake-facebook-post-id";
+    },
+  });
+  assert.ok(facebookCall);
+  assert.equal(facebookCall!.caption, instagramCaption);
+});
+
+test("run(): a Facebook posting failure is logged, not thrown — Instagram already published by that point and must not be undone", async () => {
+  let instagramPublished = false;
+  await assert.doesNotReject(
+    run({
+      supabase: oneEventSupabase("e1"),
+      now: new Date("2026-08-31T12:00:00.000Z"),
+      instagramConfig: { igBusinessAccountId: "fake-account", accessToken: "fake-token" },
+      publishInstagramCarouselFn: async () => {
+        instagramPublished = true;
+        return "fake-media-id";
+      },
+      facebookConfig: { pageId: "fake-page", accessToken: "fake-token" },
+      publishFacebookPostFn: async () => {
+        throw new Error("Facebook Graph API error: something went wrong");
+      },
+    }),
+  );
+  assert.equal(instagramPublished, true);
+});
+
 test(
   "run(): publishes a mixed carousel on Monday, logs every published event (including what used to be exempt as 'inauguracion'), and a second run the same day doesn't repeat it",
   { skip: !hasLocalSupabase },
