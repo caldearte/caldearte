@@ -2577,6 +2577,65 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
     addedAt: "2026-09-21",
     fixedLocation: { location: "Lota", placeName: "Centro Cultural Comunitario Pabellón 83" },
   },
+  {
+    username: "flachgaleria",
+    note:
+      "Evaluada 2026-09-24 al revisar candidatos al formulario de " +
+      "espacios (Daniel pidió ver más espacios reales sin scraping " +
+      "viable). El sitio flach.cl había sido rechazado como fuente web " +
+      "(sin listado de exposiciones), pero su Instagram resultó activo " +
+      "y grande: FLACH Galería, "10 Años de Fotografía Chilena y " +
+      "Latinoamericana", 1455 publicaciones, 17,2 mil seguidores, " +
+      "destacados "Exposiciones" y "Convocatoria", collab reciente " +
+      "(agosto 2026) con @stgofotoferia. Evaluada por Chrome, no por " +
+      "Apify. fixedLocation.",
+    addedAt: "2026-09-24",
+    fixedLocation: { location: "Santiago", placeName: "Flach Galería", address: "Villavicencio 301, depto. A, Santiago" },
+  },
+  {
+    username: "ccaho__",
+    note:
+      "Evaluada 2026-09-24 (mismo pase que flachgaleria). Centro " +
+      "Cultural de Alto Hospicio — la web/Facebook del municipio " +
+      "estaban bloqueados (muro de login), pero tiene Instagram propio " +
+      "y activo: 538 publicaciones, 4474 seguidores. Cuenta municipal " +
+      "mixta (arte, formación, comunidad) — mismo patrón que las demás " +
+      "cuentas municipales ya registradas, Haiku filtra lo no visual. " +
+      "Evaluada por Chrome, no por Apify. fixedLocation.",
+    addedAt: "2026-09-24",
+    fixedLocation: { location: "Alto Hospicio", placeName: "Centro Cultural de Alto Hospicio" },
+  },
+  {
+    username: "espacioculturalvina",
+    note:
+      "Evaluada 2026-09-24 (mismo pase). culturaviva.cl/.../exposiciones" +
+      "-sala-vina-del-mar/ había sido rechazada como fuente web (baja " +
+      "densidad, solo 2 exposiciones repetidas en 12 posts muestreados)" +
+      " — pero es la web general de la Corporación Cultural, no la " +
+      "cuenta del espacio. Espacio Cultural Viña del Mar tiene su " +
+      "propio Instagram, grande y activo: 1033 publicaciones, 16,5 mil " +
+      "seguidores, destacado "Cartelera" propio. Evaluada por Chrome, " +
+      "no por Apify. fixedLocation.",
+    addedAt: "2026-09-24",
+    fixedLocation: { location: "Viña del Mar", placeName: "Espacio Cultural Viña del Mar", address: "Arlegui 683, Viña del Mar" },
+  },
+  {
+    username: "fundacionmineraescondida",
+    note:
+      "Evaluada 2026-09-24 (mismo pase). fme.cl/extension-cultural/ " +
+      "sala-de-arte-{antofagasta,san-pedro-atacama}/ había sido " +
+      "rechazada como fuente web (páginas ancladas en "temporada " +
+      "2025", stale). Su Instagram es grande y activo (6442 " +
+      "publicaciones, 26,1 mil seguidores) con destacado "Salas de " +
+      "Arte", pero es la cuenta de TODA la fundación (educación, " +
+      "deporte, comunidad), no solo las dos salas — mismo tipo de " +
+      "densidad mixta que ccaho__/pabellon83, Haiku filtra lo no " +
+      "visual. Dos sedes (Antofagasta y San Pedro de Atacama), sin " +
+      "fixedLocation por eso — location la infiere Haiku del texto, " +
+      "mismo patrón que museosaustral. Evaluada por Chrome, no por " +
+      "Apify.",
+    addedAt: "2026-09-24",
+  },
   // El resto de la lista la aporta Daniel — una decisión editorial, igual
   // que cada fuente brillante nueva se evaluó una por una. Confirmar
   // pública y activa antes de agregar cada cuenta.
