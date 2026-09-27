@@ -793,6 +793,9 @@ function fmtWeekLine(weekStart: string, weekEnd: string): string {
 }
 
 const SITE_URL = "https://www.caldearte.com";
+// @caldearte.oficial — same handle used throughout
+// apps/curator/src/lib/instagram-accounts.ts.
+const INSTAGRAM_URL = "https://www.instagram.com/caldearte.oficial/";
 
 function eventUrl(id: string): string {
   return `${SITE_URL}/eventos/${id}`;
@@ -897,6 +900,8 @@ export function buildDigestBody(
     }
     lines.push("");
   }
+  lines.push("");
+  lines.push(`Síguenos en Instagram y no te pierdas las entrevistas que le hacemos a algunos artistas en sus propias inauguraciones: ${INSTAGRAM_URL}`);
   lines.push("");
   lines.push(
     "Este es el boletín semanal de Caldearte, un calendario de arte curado por inteligencia humana potenciada por IA. Te lo enviamos porque te suscribiste para recibir la agenda de tu región cada semana.",
@@ -1170,6 +1175,10 @@ export function buildDigestHtmlBody(
       <p style="margin:80px 0 14px;font-size:21px;color:${TEXT_PRIMARY};line-height:1.6;">
         ¿Sientes que nos perdimos una exposición, o que clasificamos algo mal? ¿Estás por compartir tu propia obra con el mundo?
         <a href="mailto:contacto@caldearte.com" style="color:${BRAND_MAGENTA};font-weight:700;text-decoration:underline;">Escríbenos a contacto@caldearte.com</a>.
+      </p>
+      <p style="margin:0 0 14px;font-size:21px;color:${TEXT_PRIMARY};line-height:1.6;">
+        Síguenos en Instagram y no te pierdas las entrevistas que le hacemos a algunos artistas en sus propias inauguraciones —
+        <a href="${INSTAGRAM_URL}" style="color:${BRAND_MAGENTA};font-weight:700;text-decoration:underline;">@caldearte.oficial</a>.
       </p>
     </div>
     <div style="background:${BRAND_MAGENTA};color:${SURFACE_SAGE};padding:40px 28px;margin-top:56px;">
