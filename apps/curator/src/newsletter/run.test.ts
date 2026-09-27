@@ -225,6 +225,49 @@ test("buildDigestSections: toDigestEvent carries comuna, image, and opening_time
   assert.equal(e.id, event.id);
 });
 
+// A table's first select() fails `failCount` times (e.g. simulating the
+// real "JWT issued at future" transient Supabase error that crashed the
+// 2026-09-27 newsletter run with no retry at all) before succeeding —
+// mirrors social-publish/run.test.ts's own flakySupabase helper for the
+// same real-world error.
+function flakySupabase(failingTable: string, failCount: number) {
+  let calls = 0;
+  return {
+    from(table: string) {
+      const builder = {
+        select: () => builder,
+        eq: () => builder,
+        is: () => builder,
+        not: () => builder,
+        then: (resolve: (v: { data: unknown[] | null; error: Error | null }) => void) => {
+          if (table === failingTable && calls < failCount) {
+            calls++;
+            resolve({ data: null, error: new Error("JWT issued at future") });
+            return;
+          }
+          resolve({ data: [], error: null });
+        },
+      };
+      return builder;
+    },
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- test double, not the real typed client
+  } as any;
+}
+
+test("run(): retries a transient Supabase read failure instead of crashing outright — real bug found 2026-09-27: the weekly newsletter cron hit this with no retry and silently skipped that week's send", async () => {
+  const supabase = flakySupabase("regions", 2);
+  // Doesn't throw and doesn't send anything (no subscribers in the fake
+  // data) — the point here is only that the transient error is
+  // absorbed by the retry loop instead of crashing the whole run.
+  await run({
+    supabase,
+    now: new Date("2026-08-05T12:00:00.000Z"),
+    sendDigestEmailFn: async () => {},
+    generateRegionIntroFn: async () => null,
+    generateOtherRegionsIntroFn: async () => null,
+  });
+});
+
 // Integration test against local Supabase. Run `supabase start`, then export
 // SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY before running this suite.
 // Resend is always stubbed via RunDeps.sendDigestEmailFn — no real
