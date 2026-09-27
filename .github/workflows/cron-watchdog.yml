@@ -115,11 +115,19 @@ jobs:
             exit 0
           fi
 
+          # status=success, not status=completed — real gap found
+          # 2026-09-27: weekly-newsletter.yml crashed outright (a
+          # transient Supabase auth error) and this watchdog saw its
+          # failed run as "completed", concluded the gap was tiny, and
+          # never re-triggered it. GitHub's runs-list `status` filter
+          # doubles as a conclusion filter (success/failure/etc, not just
+          # completed/in_progress/queued), so this now measures the gap
+          # since the last run that actually SUCCEEDED.
           LAST=$(gh api -X GET "repos/$REPO/actions/workflows/${{ matrix.workflow }}/runs" \
-            -f status=completed -f per_page=1 --jq '.workflow_runs[0].created_at // empty')
+            -f status=success -f per_page=1 --jq '.workflow_runs[0].created_at // empty')
 
           if [ -z "$LAST" ]; then
-            echo "${{ matrix.workflow }}: no completed run found at all — triggering now."
+            echo "${{ matrix.workflow }}: no successful run found at all — triggering now."
             gh workflow run "${{ matrix.workflow }}" -R "$REPO" ${{ matrix.extra_dispatch_flag }}
             exit 0
           fi
@@ -127,7 +135,7 @@ jobs:
           LAST_EPOCH=$(date -u -d "$LAST" +%s)
           NOW_EPOCH=$(date -u +%s)
           GAP_HOURS=$(( (NOW_EPOCH - LAST_EPOCH) / 3600 ))
-          echo "${{ matrix.workflow }}: last completed run $LAST (${GAP_HOURS}h ago), max_gap_hours=${{ matrix.max_gap_hours }}"
+          echo "${{ matrix.workflow }}: last successful run $LAST (${GAP_HOURS}h ago), max_gap_hours=${{ matrix.max_gap_hours }}"
 
           if [ "$GAP_HOURS" -gt "${{ matrix.max_gap_hours }}" ]; then
             echo "${{ matrix.workflow }}: overdue — triggering now."

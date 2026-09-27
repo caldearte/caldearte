@@ -230,23 +230,40 @@ export async function run(deps: RunDeps = {}): Promise<void> {
   const now = deps.now ?? new Date();
   const week = weekBoundsInSantiago(now);
 
-  const [subscribersRes, eventsRes, regionsRes] = await Promise.all([
-    supabase
-      .from("newsletter_subscribers")
-      .select("id, email, admin_region_name, confirm_token")
-      .not("confirmed_at", "is", null)
-      .is("unsubscribed_at", null),
-    // Real bug found 2026-08-08: this used to be missing the removed_at
-    // filter that events_public (what apps/web actually reads) already
-    // applies — an event soft-removed via the admin "Quitar" action (see
-    // docs/data-model.md) still had curation_status='approved', so it
-    // kept appearing in the newsletter (with a permalink that 404s, since
-    // the site itself does exclude it) even though it had already
-    // disappeared from the live site.
-    supabase.from("events").select("*").eq("curation_status", "approved").is("removed_at", null),
-    supabase.from("regions").select("id, name, admin_region_name"),
-  ]);
+  // Retried a few times with backoff — mirrors social-publish/run.ts's
+  // own fix for the exact same transient Supabase error (2026-09-02: "JWT
+  // issued at future", same service role key working fine hours earlier
+  // and later). Real bug found 2026-09-27: the weekly newsletter cron hit
+  // this same error with no retry at all and just crashed outright,
+  // silently skipping that week's send — Cron Watchdog didn't catch it
+  // either, since it only checks whether a run completed, not whether it
+  // succeeded. Safe to retry here specifically because nothing has been
+  // sent yet at this point in the run.
+  const loadAll = () =>
+    Promise.all([
+      supabase
+        .from("newsletter_subscribers")
+        .select("id, email, admin_region_name, confirm_token")
+        .not("confirmed_at", "is", null)
+        .is("unsubscribed_at", null),
+      // Real bug found 2026-08-08: this used to be missing the removed_at
+      // filter that events_public (what apps/web actually reads) already
+      // applies — an event soft-removed via the admin "Quitar" action (see
+      // docs/data-model.md) still had curation_status='approved', so it
+      // kept appearing in the newsletter (with a permalink that 404s, since
+      // the site itself does exclude it) even though it had already
+      // disappeared from the live site.
+      supabase.from("events").select("*").eq("curation_status", "approved").is("removed_at", null),
+      supabase.from("regions").select("id, name, admin_region_name"),
+    ]);
 
+  let [subscribersRes, eventsRes, regionsRes] = await loadAll();
+  for (let attempt = 1; attempt <= 3 && (subscribersRes.error || eventsRes.error || regionsRes.error); attempt++) {
+    const err = subscribersRes.error ?? eventsRes.error ?? regionsRes.error;
+    console.warn(`[newsletter] Supabase read failed (attempt ${attempt}/3): ${err?.message}. Retrying...`);
+    await new Promise((resolve) => setTimeout(resolve, attempt * 1500));
+    [subscribersRes, eventsRes, regionsRes] = await loadAll();
+  }
   if (subscribersRes.error) throw new Error(`Failed to load newsletter_subscribers: ${subscribersRes.error.message}`);
   if (eventsRes.error) throw new Error(`Failed to load events: ${eventsRes.error.message}`);
   if (regionsRes.error) throw new Error(`Failed to load regions: ${regionsRes.error.message}`);
