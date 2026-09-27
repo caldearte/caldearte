@@ -712,6 +712,14 @@ export interface DigestSection {
   // whether the section itself was capped, since "En otras regiones"
   // always offers it alongside its sample.
   moreLink?: { label: string; url: string };
+  // Renders as one small summary line (label + count + moreLink) instead
+  // of the full card grid — Daniel 2026-09-27: the digest should read as
+  // "exclusivo de inauguraciones" primarily, with visitas guiadas and
+  // exposiciones vigentes demoted to a number readers can act on (click
+  // through) rather than a full listing competing for the same attention.
+  // `events` is still populated as usual for a compact section — only its
+  // length is used, no per-event card is rendered.
+  compact?: boolean;
 }
 
 // Same wall-clock formatting as apps/web/src/lib/date.ts's fmtOpeningHour
@@ -785,6 +793,9 @@ function fmtWeekLine(weekStart: string, weekEnd: string): string {
 }
 
 const SITE_URL = "https://www.caldearte.com";
+// @caldearte.oficial — same handle used throughout
+// apps/curator/src/lib/instagram-accounts.ts.
+const INSTAGRAM_URL = "https://www.instagram.com/caldearte.oficial/";
 
 function eventUrl(id: string): string {
   return `${SITE_URL}/eventos/${id}`;
@@ -860,6 +871,15 @@ export function buildDigestBody(
   }
   for (const section of sections) {
     lines.push(`-- ${section.label} --`);
+    // Compact sections (see DigestSection.compact) — just the count/link
+    // line, no per-event listing, matching the HTML version.
+    if (section.compact) {
+      const count = section.events.length;
+      lines.push(section.emptyMessage ?? `${count} ${section.label.toLowerCase()}`);
+      if (section.moreLink) lines.push(`${section.moreLink.label}: ${section.moreLink.url}`);
+      lines.push("");
+      continue;
+    }
     if (section.label === "En otras regiones" && otherRegionsIntro) {
       lines.push(otherRegionsIntro, "");
     }
@@ -880,6 +900,8 @@ export function buildDigestBody(
     }
     lines.push("");
   }
+  lines.push("");
+  lines.push(`Síguenos en Instagram y no te pierdas las entrevistas que le hacemos a algunos artistas en sus propias inauguraciones: ${INSTAGRAM_URL}`);
   lines.push("");
   lines.push(
     "Este es el boletín semanal de Caldearte, un calendario de arte curado por inteligencia humana potenciada por IA. Te lo enviamos porque te suscribiste para recibir la agenda de tu región cada semana.",
@@ -919,9 +941,11 @@ const LATO_STACK = "'Lato',Helvetica,Arial,sans-serif";
 // heading (see buildDigestHtmlBody's per-section branch below). Any
 // section not in this map falls back to its plain label on one unbroken
 // line, still at the same big size.
+// "Expos para visitar esta semana" removed 2026-09-27 — it's a compact
+// section now (see DigestSection.compact), never reaches this map's
+// wordmark treatment at all.
 const SECTION_LABEL_LINES: Record<string, string[]> = {
   "Inauguraciones de esta semana": ["INAUGU", "RACIONES."],
-  "Expos para visitar esta semana": ["EXPO", "SICIONES."],
 };
 
 // Same "within 7 days, never past" rule as apps/web/src/lib/date.ts's own
@@ -1004,6 +1028,20 @@ export function buildDigestHtmlBody(
   const todayStr = week?.start ?? null;
   const sectionsHtml = sections
     .map((section) => {
+      // Compact sections (2026-09-27, Daniel: visitas guiadas + expos
+      // vigentes demoted to secondary) skip the card grid and the big
+      // magenta wordmark entirely — just a small line naming the count,
+      // linked through when there's something to click into.
+      if (section.compact) {
+        const count = section.events.length;
+        const countLine = section.moreLink
+          ? `<a href="${escapeHtml(section.moreLink.url)}" style="color:${TEXT_PRIMARY};text-decoration:underline;">${escapeHtml(section.moreLink.label)}</a>`
+          : escapeHtml(section.emptyMessage ?? `${count} ${section.label.toLowerCase()}`);
+        return `<div style="margin:24px 0 0;">
+      <p style="margin:0;font-size:16px;color:${TEXT_PRIMARY};">${countLine}</p>
+      </div>`;
+      }
+
       const bodyHtml =
         section.events.length === 0 && section.emptyMessage
           ? `<p style="margin:14px 0 0;font-size:13px;color:#888;font-style:italic;">${escapeHtml(section.emptyMessage)}</p>`
@@ -1137,6 +1175,10 @@ export function buildDigestHtmlBody(
       <p style="margin:80px 0 14px;font-size:21px;color:${TEXT_PRIMARY};line-height:1.6;">
         ¿Sientes que nos perdimos una exposición, o que clasificamos algo mal? ¿Estás por compartir tu propia obra con el mundo?
         <a href="mailto:contacto@caldearte.com" style="color:${BRAND_MAGENTA};font-weight:700;text-decoration:underline;">Escríbenos a contacto@caldearte.com</a>.
+      </p>
+      <p style="margin:0 0 14px;font-size:21px;color:${TEXT_PRIMARY};line-height:1.6;">
+        Síguenos en Instagram y no te pierdas las entrevistas que le hacemos a algunos artistas en sus propias inauguraciones —
+        <a href="${INSTAGRAM_URL}" style="color:${BRAND_MAGENTA};font-weight:700;text-decoration:underline;">@caldearte.oficial</a>.
       </p>
     </div>
     <div style="background:${BRAND_MAGENTA};color:${SURFACE_SAGE};padding:40px 28px;margin-top:56px;">

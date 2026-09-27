@@ -10,7 +10,6 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database, Tables } from "@caldearte/shared-types";
 import { getSupabaseClient } from "../lib/supabase-client.js";
 import { sendDigestEmail, type DigestEvent, type DigestSection } from "../lib/notify.js";
-import { diversifyByComuna } from "../lib/diversify.js";
 import { generateRegionIntro, generateOtherRegionsIntro } from "./intro.js";
 
 type Subscriber = Pick<Tables<"newsletter_subscribers">, "id" | "email" | "admin_region_name" | "confirm_token">;
@@ -22,9 +21,9 @@ type EventRow = Tables<"events">;
 // carries region_id, not either name directly.
 type EventWithRegion = EventRow & { adminRegionName: string | null; comunaName: string | null };
 
-const VISIT_CAP = 10;
-// Bumped 5 -> 10, 2026-08-08 (user request) — matches VISIT_CAP now, both
-// read as "up to 10" sections.
+// Bumped 5 -> 10, 2026-08-08 (user request). "Expos para visitar" had its
+// own matching VISIT_CAP here too until 2026-09-27, when that section
+// went compact (count-only, no cards) and stopped needing a cap at all.
 const OTHER_REGIONS_CAP = 10;
 const SITE_URL = "https://www.caldearte.com";
 
@@ -141,15 +140,12 @@ export function buildDigestSections(
   // before it closes. No separate "Expos nuevas esta semana" split by
   // run_start_date (removed 2026-08-08, user feedback: an inauguración
   // already IS how a new exhibition starts — a second "new" bucket read
-  // as confusing, not clarifying). Kept as two values: the full pool (for
-  // the "ver todas" count and the empty-state check) and the capped slice
-  // actually rendered as cards — a región like Región Metropolitana can
-  // easily have 40+ of these, showing all of them would bury everything
-  // else in the email.
+  // as confusing, not clarifying). No longer capped/diversified either
+  // (removed 2026-09-27 alongside the section going compact) — it never
+  // renders individual cards anymore, so there's nothing left to cap.
   const alsoVisitAll = runningThisWeek
     .filter((e) => !openingIds.has(e.id))
     .sort((a, b) => (a.run_end_date ?? "9999-12-31").localeCompare(b.run_end_date ?? "9999-12-31"));
-  const alsoVisit = diversifyByComuna(alsoVisitAll, VISIT_CAP);
 
   // Deterministic (soonest-closing first, same convention as alsoVisitAll
   // above), not randomized — was shuffle()'d per-subscriber until
@@ -186,28 +182,31 @@ export function buildDigestSections(
       openings.length === 0 ? "No hemos encontrado ninguna inauguración para esta semana aún. Si sabes de una, avísanos." : undefined,
   });
 
-  // Added 2026-08-29 alongside events.event_type — mismo orden que el
-  // resto del sitio (mayor a menor interacción con la obra): inauguración,
-  // visita guiada, exposición. Omitida por completo cuando no hay ninguna
-  // esta semana, no se le da su propio emptyMessage (a diferencia de las
-  // otras 2 secciones, que siempre se muestran) porque es la sección más
-  // nueva/opcional de las 3 y aún no se sabe qué tan seguido va a tener
-  // contenido real.
-  if (visitasGuiadas.length > 0) {
-    sections.push({
-      label: "Visitas guiadas de esta semana",
-      events: visitasGuiadas.map((e) => toDigestEvent(e, week)),
-    });
-  }
+  // Compact + always shown (2026-09-27, Daniel: the digest's primary
+  // content is inauguraciones only — visitas guiadas and exposiciones
+  // vigentes are demoted to a count instead of full cards, and shown even
+  // at zero so their absence reads as a real "none this week" rather than
+  // an unexplained gap. Previously omitted entirely when empty and never
+  // got a moreLink at all — both changed here.
+  sections.push({
+    label: "Visitas guiadas de esta semana",
+    events: visitasGuiadas.map((e) => toDigestEvent(e, week)),
+    compact: true,
+    emptyMessage: visitasGuiadas.length === 0 ? "Ninguna visita guiada programada esta semana." : undefined,
+  });
 
+  // No longer capped/diversified for card-rendering purposes — a compact
+  // section only needs the true total (alsoVisitAll, not the old 10-card
+  // diversified slice), since it never renders individual cards anymore.
   sections.push({
     label: "Expos para visitar esta semana",
-    events: alsoVisit.map((e) => toDigestEvent(e, week)),
+    events: alsoVisitAll.map((e) => toDigestEvent(e, week)),
+    compact: true,
     emptyMessage:
       alsoVisitAll.length === 0 ? "No hemos encontrado exposiciones para visitar esta semana aún. Si sabes de una, avísanos." : undefined,
     moreLink:
-      alsoVisitAll.length > VISIT_CAP
-        ? { label: `Ver todas las ${regionTotalThisWeek} exposiciones en ${adminRegionName}`, url: SITE_URL }
+      alsoVisitAll.length > 0
+        ? { label: `Ver las ${regionTotalThisWeek} exposiciones vigentes en ${adminRegionName}`, url: SITE_URL }
         : undefined,
   });
 
