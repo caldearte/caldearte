@@ -106,13 +106,17 @@ test("buildDigestSections: a visita_guiada event goes in its own 'Visitas guiada
   assert.equal(sections.find((s) => s.label === "Expos para visitar esta semana")?.events.length, 0);
 });
 
-test("buildDigestSections: 'Visitas guiadas de esta semana' is omitted entirely when there are none this week (unlike 'Inauguraciones'/'Expos para visitar', which always render with an emptyMessage)", () => {
+test("buildDigestSections: 'Visitas guiadas de esta semana' is compact and always renders, even at zero — changed 2026-09-27 (Daniel: primary content is inauguraciones only, visitas guiadas demoted to a count instead of omitted or full cards)", () => {
   const event = makeEvent({ run_start_date: "2026-08-01", run_end_date: "2026-08-20" });
   const { sections } = buildDigestSections([event], REGION_A, WEEK);
-  assert.equal(sections.some((s) => s.label === "Visitas guiadas de esta semana"), false);
+  const visitas = sections.find((s) => s.label === "Visitas guiadas de esta semana");
+  assert.ok(visitas, "expected the section to still render at zero, not be omitted");
+  assert.equal(visitas.compact, true);
+  assert.equal(visitas.events.length, 0);
+  assert.equal(visitas.emptyMessage, "Ninguna visita guiada programada esta semana.");
 });
 
-test("buildDigestSections: 'Expos para visitar esta semana' shows up to 10 already-running events, ending-soonest first, with no 'ver todas' link at exactly the cap", () => {
+test("buildDigestSections: 'Expos para visitar esta semana' is compact — full count, no card cap, always a 'ver' link naming the región's TRUE total when there's at least one (changed 2026-09-27, demoted from primary full-card section)", () => {
   const events = [
     makeEvent({ run_end_date: "2026-08-20" }),
     makeEvent({ run_end_date: "2026-08-10" }),
@@ -122,15 +126,13 @@ test("buildDigestSections: 'Expos para visitar esta semana' shows up to 10 alrea
   const { sections } = buildDigestSections(events, REGION_A, WEEK);
   const paraVisitar = sections.find((s) => s.label === "Expos para visitar esta semana");
   assert.ok(paraVisitar);
-  assert.equal(paraVisitar.events.length, 4);
-  assert.deepEqual(
-    paraVisitar.events.map((e) => e.runEndDate),
-    ["2026-08-10", "2026-08-12", "2026-08-20", "2026-09-01"],
-  );
-  assert.equal(paraVisitar.moreLink, undefined);
+  assert.equal(paraVisitar.compact, true);
+  assert.equal(paraVisitar.events.length, 4, "full count, no 10-card cap anymore — nothing is rendered as cards");
+  assert.equal(paraVisitar.moreLink?.label, `Ver las 4 exposiciones vigentes en ${REGION_A}`);
+  assert.equal(paraVisitar.moreLink?.url, "https://www.caldearte.com");
 });
 
-test("buildDigestSections: 'Expos para visitar esta semana' diversifies across comunas when capping at 10 (2026-08-08 user request: 'ojalá de distintas comunas') — round-robins one event per comuna per pass, instead of letting one comuna's closing-soon cluster crowd out the rest", () => {
+test("buildDigestSections: 'Expos para visitar esta semana' still diversified-by-comuna behavior is gone — full count now, no cap at all (2026-08-08 'ojalá de distintas comunas' request no longer applies, superseded 2026-09-27 by the section going compact)", () => {
   const events = [
     // Comuna A has 8 closing-soon events — a flat soonest-first cut would
     // fill the whole cap with just this one comuna.
@@ -142,12 +144,12 @@ test("buildDigestSections: 'Expos para visitar esta semana' diversifies across c
   const { sections } = buildDigestSections(events, REGION_A, WEEK);
   const paraVisitar = sections.find((s) => s.label === "Expos para visitar esta semana");
   assert.ok(paraVisitar);
-  assert.equal(paraVisitar.events.length, 10);
+  assert.equal(paraVisitar.events.length, 11, "no cap anymore — the full pool, all 4 comunas' events counted");
   const comunas = new Set(paraVisitar.events.map((e) => e.comunaName));
-  assert.equal(comunas.size, 4, "expected all 4 comunas represented, not just Comuna A's closing-soon cluster");
+  assert.equal(comunas.size, 4);
 });
 
-test("buildDigestSections: 'Expos para visitar esta semana' caps cards at 10 and adds a 'ver todas' link naming the región's TRUE total (including openings/new, not just the para-visitar pool) when there's more", () => {
+test("buildDigestSections: 'Expos para visitar esta semana' names the región's TRUE total (including openings/new, not just the para-visitar pool) in its moreLink, past what used to be the 10-card cap", () => {
   const events = [
     makeEvent({ opening_datetime: "2026-08-05T20:00:00.000Z" }), // +1 opening
     ...Array.from({ length: 14 }, (_, i) => makeEvent({ run_end_date: `2026-08-${10 + i}` })), // 14 para-visitar
@@ -156,8 +158,8 @@ test("buildDigestSections: 'Expos para visitar esta semana' caps cards at 10 and
   assert.equal(regionTotalThisWeek, 15);
   const paraVisitar = sections.find((s) => s.label === "Expos para visitar esta semana");
   assert.ok(paraVisitar);
-  assert.equal(paraVisitar.events.length, 10);
-  assert.equal(paraVisitar.moreLink?.label, `Ver todas las 15 exposiciones en ${REGION_A}`);
+  assert.equal(paraVisitar.events.length, 14, "no cap — the full para-visitar pool, distinct from regionTotalThisWeek which also counts openings");
+  assert.equal(paraVisitar.moreLink?.label, `Ver las 15 exposiciones vigentes en ${REGION_A}`);
   assert.equal(paraVisitar.moreLink?.url, "https://www.caldearte.com");
 });
 
