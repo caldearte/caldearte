@@ -25,6 +25,10 @@ Claude API + Supabase).
     "Expos anteriores" archive (see [roadmap.md](roadmap.md)) needs them
     to stay available indefinitely. Only rejected/pending_review rows
     still follow the ~1-year cadence.
+  - **2026-09-28**: approved events are kept indefinitely on purpose — they
+    are the base of Caldearte's own catastro of Chilean art (artists,
+    venues, who showed what where and when; see data-model.md's
+    `artist_history`). No age-based deletion of approved rows.
 - Schema implication: an event needs its run's start and end dates as two
   separate fields (`runStartDate`/`runEndDate` in the current design,
   distinct from the exhibition's overall duration), plus a separate,

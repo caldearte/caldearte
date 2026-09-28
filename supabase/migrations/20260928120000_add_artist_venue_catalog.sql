@@ -104,7 +104,8 @@ create table outreach_contacts (
   artist_id uuid references artists (id) on delete cascade,
   venue_id uuid references venues (id) on delete cascade,
   -- The event the message was about, if any ("tu inauguración está en
-  -- Caldearte"). Kept when the event is later pruned.
+  -- Caldearte"). Approved events are never pruned; set null only if one
+  -- is ever deleted by hand.
   event_id uuid references events (id) on delete set null,
   channel text not null default 'dm'
     check (channel in ('dm', 'comment', 'email', 'in_person', 'other')),

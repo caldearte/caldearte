@@ -124,6 +124,10 @@ events
   -- as the región-selector change), but the exclusion itself stayed —
   -- there's no reason to start pruning approved history again just
   -- because the one feature that originally justified it is gone.
+  -- Since 2026-09-28 the reason is explicit (Daniel): approved events,
+  -- removed ones included, are the base of the artists/venues catastro
+  -- (artist_history below) and are kept indefinitely. Do not add any
+  -- age-based deletion of approved rows without asking him.
 
 system_config
   key (primary key), value, updated_at
@@ -357,7 +361,7 @@ artists, venues, event_artists, outreach_contacts, view artist_history
   events.venue_id, events.catalog_synced_at (null = not yet in the
     catalog)
   outreach_contacts: id, contacted_at, artist_id | venue_id (at least
-    one), event_id (set null when the event is pruned), channel (dm |
+    one), event_id (set null if the event is ever deleted), channel (dm |
     comment | email | in_person | other), replied_at, note
   -- Our own registry of artists and venues (Daniel, 2026-09-28), derived
   -- from the events: lib/catalog.ts's syncCatalog sweeps every event
@@ -383,8 +387,8 @@ artists, venues, event_artists, outreach_contacts, view artist_history
   -- Luis Soto") stay two rows until merged by hand (repoint
   -- event_artists and outreach_contacts to the kept id, then delete the
   -- other); an event with only a handle creates an artist named
-  -- "@handle"; events are pruned a year after their run ends and their
-  -- links go with them (artist rows and outreach stay).
+  -- "@handle". Approved events are never pruned (see events above), so
+  -- the history is permanent; only rejected/pending rows age out.
 ```
 
 Field types and constraints (exact `CHECK`s, defaults, nullability) live in

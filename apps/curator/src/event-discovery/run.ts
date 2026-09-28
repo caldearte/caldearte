@@ -1090,8 +1090,10 @@ export async function insertCandidates(
 
 const EVENT_RETENTION_MS = 365 * 24 * 60 * 60 * 1000;
 
-// overview.md's retention policy: delete events roughly a year past their
-// run's end, not their opening date. Mirrors date.ts's activeRange "end"
+// overview.md's retention policy: delete REJECTED/PENDING events roughly a
+// year past their run's end — approved ones are never deleted (the SQL
+// function excludes them; since 2026-09-28 they are the artists/venues
+// catastro, see lib/catalog.ts). Mirrors date.ts's activeRange "end"
 // derivation (run_end_date, else run_start_date, else opening_datetime) so
 // an event with only a confirmed opening and no run dates is still retained
 // relative to that date. Piggybacked on this run's own weekly cadence
