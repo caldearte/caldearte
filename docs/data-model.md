@@ -354,7 +354,10 @@ artists, venues, event_artists, outreach_contacts, view artist_history
     name), instagram_handle (unique when set), instagram_handle_source
     (event | collab | manual), follows_caldearte_at,
     newsletter_subscribed_at, notes
-  venues: id, name, name_key (unique — `<normalized name>|<region_id>`),
+  venues: id, name, name_key (unique — `<normalized name>|<normalized
+    admin_region_name>`; the migration's comment says region_id, changed
+    the same day because `regions` are comunas and split one place across
+    "Santiago"/"Vitacura" tags),
     region_id, comuna, instagram_handle, follows_caldearte_at,
     newsletter_subscribed_at, notes
   event_artists: (event_id, artist_id) — cascade on either side
@@ -369,7 +372,7 @@ artists, venues, event_artists, outreach_contacts, view artist_history
   -- (comuna, headless, Instagram, Google Alerts), splits `events.artist`
   -- into names ("A, B y C", member lists in parentheses, curators
   -- dropped), finds or creates each artist by name_key, and links the
-  -- venue by place_name + region. Handles come from the event's own
+  -- venue by place_name + administrative region. Handles come from the event's own
   -- artist_instagram_handle or from the source post's co-authors
   -- (instagram_collab_edges) when the username contains every word of
   -- the name; a handle already on another row wins over the spelling.

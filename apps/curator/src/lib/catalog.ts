@@ -23,8 +23,13 @@ export function catalogKey(text: string): string {
     .trim();
 }
 
-export function venueKey(placeName: string, regionId: string | null): string {
-  return `${catalogKey(placeName)}|${regionId ?? ""}`;
+// Keyed on the ADMINISTRATIVE region (Región Metropolitana, Región de
+// Valparaíso...), not on `regions` — those are comunas, and the same place
+// is often tagged "Santiago" by one source and "Vitacura" by another.
+// Two same-named places in different regions (the GAM in Santiago and the
+// Centro Cultural Gabriela Mistral in Villa Alemana) stay apart.
+export function venueKey(placeName: string, adminRegion: string | null): string {
+  return `${catalogKey(placeName)}|${catalogKey(adminRegion ?? "")}`;
 }
 
 // Segments that name a curator or a crowd, not an artist of the show.
@@ -176,6 +181,9 @@ export async function syncCatalog(client: Client = getSupabaseClient()): Promise
   const byHandle = new Map(artists.filter((a) => a.instagram_handle).map((a) => [a.instagram_handle as string, a]));
   const venues = await loadVenues(client);
   const registryByPlace = registryHandlesByPlace();
+  const { data: regionRows, error: regionError } = await client.from("regions").select("id, admin_region_name");
+  if (regionError) throw new Error(`loading regions: ${regionError.message}`);
+  const adminRegionOf = new Map(regionRows.map((r) => [r.id, r.admin_region_name]));
 
   const setHandle = async (artist: ArtistRow, handle: string, source: "event" | "collab"): Promise<ArtistRow> => {
     if (artist.instagram_handle) return artist;
@@ -206,7 +214,7 @@ export async function syncCatalog(client: Client = getSupabaseClient()): Promise
 
   const findOrCreateVenue = async (e: UnsyncedEvent): Promise<string | null> => {
     if (!e.place_name || catalogKey(e.place_name).length === 0) return null;
-    const key = venueKey(e.place_name, e.region_id);
+    const key = venueKey(e.place_name, e.region_id ? (adminRegionOf.get(e.region_id) ?? null) : null);
     const registryHandle = registryByPlace.get(catalogKey(e.place_name)) ?? null;
     const existing = venues.get(key);
     if (existing) {
