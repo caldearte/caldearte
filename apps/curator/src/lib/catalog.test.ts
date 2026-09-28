@@ -7,9 +7,13 @@ test("catalogKey strips accents, case and punctuation", () => {
   assert.equal(catalogKey("  MAVI UC — Sala 2 "), "mavi uc sala 2");
 });
 
-test("venueKey keeps same-named places in different regions apart", () => {
-  assert.notEqual(venueKey("Casa de la Cultura", "r1"), venueKey("Casa de la Cultura", "r2"));
+test("venueKey keeps same-named places in different administrative regions apart", () => {
+  assert.notEqual(
+    venueKey("Centro Cultural Gabriela Mistral", "Región Metropolitana de Santiago"),
+    venueKey("Centro Cultural Gabriela Mistral", "Región de Valparaíso"),
+  );
   assert.equal(venueKey("Museo Baburizza", null), "museo baburizza|");
+  assert.equal(venueKey("Taller 99", "Región Metropolitana de Santiago"), "taller 99|region metropolitana de santiago");
 });
 
 test("splitArtistNames splits the separators Haiku uses", () => {
