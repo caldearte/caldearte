@@ -251,23 +251,12 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
       "distintas sedes, no un solo local — sin fixedLocation.",
     addedAt: "2026-08-14",
   },
-  {
-    username: "valpocultura",
-    note:
-      "Aportada por Daniel, 2026-08-14. Cuenta oficial de cultura de la " +
-      "Municipalidad de Valparaíso — cubre TODO el espectro cultural " +
-      "(música, literatura, talleres, infraestructura), no solo artes " +
-      "visuales, así que el rendimiento de eventos relevantes es bajo " +
-      "proporcionalmente. 1 exposición real y completa encontrada: " +
-      "\"Prácticas Situadas\" (46° Salón de Estudiantes, Escuela " +
-      "Municipal de Bellas Artes), 5 al 21 de agosto, Galería Municipal " +
-      "de Arte de Valparaíso, Condell 1550. El resto: Festival de Jazz, " +
-      "convocatoria Premio de Literatura, club de lectura infantil, " +
-      "convocatoria de cartas de apoyo, renovación de infraestructura — " +
-      "todo fuera de alcance. Multi-sede dentro de Valparaíso — sin " +
-      "fixedLocation.",
-    addedAt: "2026-08-14",
-  },
+  // "valpocultura" REMOVIDA 2026-09-28 (decisión de Daniel, poda de cuentas
+  // municipales/institucionales de bajo rendimiento): 9 candidatos curados
+  // entre 2026-09-14 y 09-27 con 0 eventos vivos, y ninguno en toda su
+  // historia salvo lo indicado; Valparaíso ampliamente cubierto. Posts
+  // descargados = costo fijo de Apify + Haiku sin retorno. No volver a agregar
+  // sin evidencia real de exposiciones que otras fuentes no capten.
   {
     username: "espaciovilches",
     note:
@@ -664,20 +653,13 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
     addedAt: "2026-08-18",
     fixedLocation: { location: "Talca", placeName: "Centro Amigos del Arte" },
   },
-  {
-    username: "casadelartediegorivera",
-    note:
-      "Evaluada 2026-08-18. Casa del Arte Diego Rivera, Puerto Montt " +
-      "(Los Lagos) — real y activa. El único post propio en la muestra " +
-      "es cine, pero evidencia real de exposición vía terceros: ENFOTO " +
-      "2026 (12ª edición, Encuentro Regional de Fotografía) — exposición " +
-      "colectiva \"Sur Extendido\" (15 fotógrafos), inauguración 14 de " +
-      "agosto 19:00 hrs, Sala Hardy Wistuba — confirmado por 3 posts de " +
-      "@enfotoloslagos (anuncio + recap de la inauguración). " +
-      "fixedLocation.",
-    addedAt: "2026-08-18",
-    fixedLocation: { location: "Puerto Montt", placeName: "Casa del Arte Diego Rivera" },
-  },
+  // "casadelartediegorivera" REMOVIDA 2026-09-28 (decisión de Daniel, poda de
+  // cuentas municipales/institucionales de bajo rendimiento): 26 candidatos
+  // curados entre 2026-09-14 y 09-27 con 0 eventos vivos, y ninguno en toda su
+  // historia salvo lo indicado; Puerto Montt ya cubierta por
+  // galeria.basgmarine, estacionsuralia y ptomontt.cl. Posts descargados =
+  // costo fijo de Apify + Haiku sin retorno. No volver a agregar sin evidencia
+  // real de exposiciones que otras fuentes no capten.
   {
     username: "loica_arte",
     note:
@@ -892,23 +874,13 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
     addedAt: "2026-08-24",
     fixedLocation: { location: "Viña del Mar", placeName: "Museo Palacio Vergara" },
   },
-  {
-    username: "bnchile",
-    note:
-      "Evaluada 2026-08-24. Biblioteca Nacional de Chile — real, enorme " +
-      "(103.281 seguidores, varias publicaciones diarias), pero " +
-      "primariamente institución literaria/patrimonial, no un espacio de " +
-      "arte visual dedicado (highlights: Aniversario 213, 25 años RAV, " +
-      "La Proclama — radio, concursos de fotos; cuentas relacionadas " +
-      "sugeridas por Instagram son literarias — Café Literario de Ñuñoa, " +
-      "Editorial Catalonia). Rendimiento esperado bajo-moderado, con " +
-      "redundancia parcial: ya sabemos por @museoschile (Red Nacional de " +
-      "Museos, fuente web) que la Biblioteca Nacional monta exposiciones " +
-      "de arte visual reales ocasionalmente (\"Roberto Matta. Abrir la " +
-      "mirada\" fue una). fixedLocation.",
-    addedAt: "2026-08-24",
-    fixedLocation: { location: "Santiago", placeName: "Biblioteca Nacional de Chile" },
-  },
+  // "bnchile" REMOVIDA 2026-09-28 (decisión de Daniel, poda de cuentas
+  // municipales/institucionales de bajo rendimiento): 30 candidatos curados
+  // entre 2026-09-14 y 09-27 con 0 eventos vivos, y ninguno en toda su
+  // historia salvo lo indicado; Santiago ampliamente cubierto; sus
+  // exposiciones ya llegan por museoschile.gob.cl. Posts descargados = costo
+  // fijo de Apify + Haiku sin retorno. No volver a agregar sin evidencia real
+  // de exposiciones que otras fuentes no capten.
   {
     username: "bellasartesvina",
     note:
@@ -1253,17 +1225,13 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
     addedAt: "2026-08-26",
     fixedLocation: { location: "Santiago", placeName: "MAVI UC" },
   },
-  {
-    username: "artequinvina",
-    note:
-      "Museo Artequín Viña del Mar — museo educativo de arte para niños, " +
-      "26,4 mil seguidores. Encontrada navegando el feed real de " +
-      "@caldearte.oficial (sugerencia algorítmica). Sede única, distinta " +
-      "del Museo Artequín de Estación Central (@artequin) ya cubierto — " +
-      "misma marca, dos museos físicos independientes.",
-    addedAt: "2026-08-27",
-    fixedLocation: { location: "Viña del Mar", placeName: "Museo Artequín Viña del Mar" },
-  },
+  // "artequinvina" REMOVIDA 2026-09-28 (decisión de Daniel, poda de cuentas
+  // municipales/institucionales de bajo rendimiento): 24 candidatos curados
+  // entre 2026-09-14 y 09-27 con 0 eventos vivos, y ninguno en toda su
+  // historia salvo lo indicado; Viña del Mar ya cubierta por 6 fuentes que sí
+  // rinden. Posts descargados = costo fijo de Apify + Haiku sin retorno. No
+  // volver a agregar sin evidencia real de exposiciones que otras fuentes no
+  // capten.
   {
     username: "huechurabacultura",
     note:
@@ -1368,16 +1336,6 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
     fixedLocation: { location: "Valparaíso", placeName: "La Escala Galería" },
   },
   {
-    username: "valpocultura",
-    note:
-      "Dirección de Desarrollo Cultural, Municipio de Valparaíso — " +
-      "64,7 mil seguidores. Cuenta municipal, contenido mixto (música, " +
-      "danza, familia) — Haiku filtra lo que no sea artes visuales. " +
-      "Encontrada buscando \"galería arte Valparaíso\" en Instagram. " +
-      "Sin fixedLocation (múltiples sedes municipales).",
-    addedAt: "2026-08-27",
-  },
-  {
     username: "estampa_valparaiso",
     note:
       "Estampa Valparaíso — colectivo de grabadores de la región de " +
@@ -1465,16 +1423,14 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
     addedAt: "2026-08-27",
     fixedLocation: { location: "Iquique", placeName: "Casa Municipal de la Cultura de Iquique" },
   },
-  {
-    username: "culturacopiapo.cl",
-    note:
-      "Cultura, Turismo y Patrimonio, Copiapó — cuenta municipal, " +
-      "10,4 mil seguidores, bio menciona \"música, teatro, arte y " +
-      "patrimonio\" explícitamente. Encontrada buscando \"galería arte " +
-      "Copiapó\" en Instagram. Contenido mixto — Haiku filtra lo que " +
-      "no sea artes visuales. Sin fixedLocation.",
-    addedAt: "2026-08-27",
-  },
+  // "culturacopiapo.cl" REMOVIDA 2026-09-28 (decisión de Daniel, poda de
+  // cuentas municipales/institucionales de bajo rendimiento): 15 candidatos
+  // curados entre 2026-09-14 y 09-27 con 0 eventos vivos, y ninguno en toda su
+  // historia salvo lo indicado; su única aprobación fue una muestra documental
+  // quitada a mano. Copiapó ya cubierta por cajacrisol_arte, ccserhumano y
+  // museoregionaldeatacama. Posts descargados = costo fijo de Apify + Haiku
+  // sin retorno. No volver a agregar sin evidencia real de exposiciones que
+  // otras fuentes no capten.
   {
     username: "museograficachillan",
     note:
@@ -1499,26 +1455,18 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
     addedAt: "2026-08-27",
     fixedLocation: { location: "Talca", placeName: "Museo O'Higginiano y de Bellas Artes de Talca" },
   },
-  {
-    username: "culturacoyhaique",
-    note:
-      "Corporación Cultural Municipal de Coyhaique — 25 mil seguidores, " +
-      "\"impulsando la creatividad, el saber y las artes desde 1996\". " +
-      "Contenido mixto (cartelera, microcine, talleres) — Haiku filtra " +
-      "lo que no sea artes visuales. Encontrada buscando \"galería " +
-      "arte Coyhaique\" en Instagram. Sin fixedLocation.",
-    addedAt: "2026-08-27",
-  },
-  {
-    username: "culturalcurico",
-    note:
-      "Corporación Cultural Curicó — 22,7 mil seguidores, \"acceso " +
-      "igualitario a la cultura y las artes\". Contenido mixto " +
-      "(talleres, catastros) — Haiku filtra lo que no sea artes " +
-      "visuales. Encontrada buscando \"galería arte Curicó\" en " +
-      "Instagram. Sin fixedLocation.",
-    addedAt: "2026-08-27",
-  },
+  // "culturacoyhaique" REMOVIDA 2026-09-28 (decisión de Daniel, poda de
+  // cuentas municipales/institucionales de bajo rendimiento): 41 candidatos
+  // curados entre 2026-09-14 y 09-27 con 0 eventos vivos, y ninguno en toda su
+  // historia salvo lo indicado; Coihaique queda sin fuente. Posts descargados
+  // = costo fijo de Apify + Haiku sin retorno. No volver a agregar sin
+  // evidencia real de exposiciones que otras fuentes no capten.
+  // "culturalcurico" REMOVIDA 2026-09-28 (decisión de Daniel, poda de cuentas
+  // municipales/institucionales de bajo rendimiento): 23 candidatos curados
+  // entre 2026-09-14 y 09-27 con 0 eventos vivos, y ninguno en toda su
+  // historia salvo lo indicado; Curicó queda sin fuente. Posts descargados =
+  // costo fijo de Apify + Haiku sin retorno. No volver a agregar sin evidencia
+  // real de exposiciones que otras fuentes no capten.
   {
     username: "bellasartesquillota",
     note:
@@ -1581,26 +1529,20 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
     addedAt: "2026-08-27",
     fixedLocation: { location: "Puerto Varas", placeName: "Casa de la Cultura Puerto Varas" },
   },
-  {
-    username: "culturaancud",
-    note:
-      "Corporación Cultural Municipal de Ancud — 10,6 mil seguidores, " +
-      "bio \"Arte, cultura y patrimonio de Chiloé\". Encontrada " +
-      "buscando \"corporacion cultural Arica\" en Instagram (la " +
-      "búsqueda ignoró \"Arica\" y devolvió resultados de otras " +
-      "comunas). Sin fixedLocation.",
-    addedAt: "2026-08-27",
-  },
-  {
-    username: "culturamunisanfelipe",
-    note:
-      "Oficina de Cultura San Felipe — Av. O'Higgins 651, 6.383 " +
-      "seguidores, cuenta municipal (patrimonio, talleres, catastro). " +
-      "Encontrada buscando \"cultura San Felipe\" en Instagram. " +
-      "Contenido mixto — Haiku filtra lo que no sea artes visuales. " +
-      "Sin fixedLocation.",
-    addedAt: "2026-08-27",
-  },
+  // "culturaancud" REMOVIDA 2026-09-28 (decisión de Daniel, poda de cuentas
+  // municipales/institucionales de bajo rendimiento): 30 candidatos curados
+  // entre 2026-09-14 y 09-27 con 0 eventos vivos, y ninguno en toda su
+  // historia salvo lo indicado; su única aprobación (maquetas navales) fue
+  // quitada a mano. Ancud ya cubierta por museodeancud.gob.cl. Posts
+  // descargados = costo fijo de Apify + Haiku sin retorno. No volver a agregar
+  // sin evidencia real de exposiciones que otras fuentes no capten.
+  // "culturamunisanfelipe" REMOVIDA 2026-09-28 (decisión de Daniel, poda de
+  // cuentas municipales/institucionales de bajo rendimiento): 17 candidatos
+  // curados entre 2026-09-14 y 09-27 con 0 eventos vivos, y ninguno en toda su
+  // historia salvo lo indicado; San Felipe conserva centro_almendral y
+  // artparadisegaleria. Posts descargados = costo fijo de Apify + Haiku sin
+  // retorno. No volver a agregar sin evidencia real de exposiciones que otras
+  // fuentes no capten.
   {
     username: "culturasanbernardo",
     note:
@@ -1620,34 +1562,26 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
       "visuales. Sin fixedLocation.",
     addedAt: "2026-08-27",
   },
-  {
-    username: "maipu_cultura",
-    note:
-      "Departamento de Cultura de la Municipalidad de Maipú — 43 mil " +
-      "seguidores, bio \"potenciar las artes, las culturas y el " +
-      "patrimonio\". Encontrada buscando \"cultura Maipú\" en " +
-      "Instagram. Contenido mixto — Haiku filtra lo que no sea artes " +
-      "visuales. Sin fixedLocation.",
-    addedAt: "2026-08-27",
-  },
-  {
-    username: "culturanunoa",
-    note:
-      "Corporación Cultural de Ñuñoa — 102 mil seguidores, \"oferta " +
-      "cultural y artística diversa y plural\". Encontrada buscando " +
-      "\"galería arte Ñuñoa\" en Instagram. Contenido mixto (cine, " +
-      "talleres) — Haiku filtra lo que no sea artes visuales. Sin " +
-      "fixedLocation.",
-    addedAt: "2026-08-27",
-  },
-  {
-    username: "chimkowecentro",
-    note:
-      "Corporación Cultural de Peñalolén (Centro Chimkowe) — 47,7 mil " +
-      "seguidores, highlight propio \"EXPO\". Encontrada buscando " +
-      "\"cultura Peñalolén\" en Instagram. Sin fixedLocation.",
-    addedAt: "2026-08-27",
-  },
+  // "maipu_cultura" REMOVIDA 2026-09-28 (decisión de Daniel, poda de cuentas
+  // municipales/institucionales de bajo rendimiento): 21 candidatos curados
+  // entre 2026-09-14 y 09-27 con 0 eventos vivos, y ninguno en toda su
+  // historia salvo lo indicado; Maipú queda sin fuente. Posts descargados =
+  // costo fijo de Apify + Haiku sin retorno. No volver a agregar sin evidencia
+  // real de exposiciones que otras fuentes no capten.
+  // "culturanunoa" REMOVIDA 2026-09-28 (decisión de Daniel, poda de cuentas
+  // municipales/institucionales de bajo rendimiento): 37 candidatos curados
+  // entre 2026-09-14 y 09-27 con 0 eventos vivos, y ninguno en toda su
+  // historia salvo lo indicado; Ñuñoa ya cubierta por 5 fuentes que sí rinden
+  // (galeria1712, mapamuseo, galerianemesioantunez, casastudioart.n32,
+  // uchile.cl). Posts descargados = costo fijo de Apify + Haiku sin retorno.
+  // No volver a agregar sin evidencia real de exposiciones que otras fuentes
+  // no capten.
+  // "chimkowecentro" REMOVIDA 2026-09-28 (decisión de Daniel, poda de cuentas
+  // municipales/institucionales de bajo rendimiento): 13 candidatos curados
+  // entre 2026-09-14 y 09-27 con 0 eventos vivos, y ninguno en toda su
+  // historia salvo lo indicado; Peñalolén queda sin fuente. Posts descargados
+  // = costo fijo de Apify + Haiku sin retorno. No volver a agregar sin
+  // evidencia real de exposiciones que otras fuentes no capten.
   {
     username: "culturalestacioncentral",
     note:
@@ -1678,26 +1612,18 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
     addedAt: "2026-08-27",
     fixedLocation: { location: "Vitacura", placeName: "Lo Matta Cultural" },
   },
-  {
-    username: "corporacionculturallb",
-    note:
-      "Corporación Cultural de Lo Barnechea — 30,9 mil seguidores, " +
-      "\"experiencias culturales significativas\", cartelera activa. " +
-      "Encontrada buscando \"cultura Lo Barnechea\" en Instagram. " +
-      "Contenido mixto — Haiku filtra lo que no sea artes visuales. " +
-      "Sin fixedLocation.",
-    addedAt: "2026-08-27",
-  },
-  {
-    username: "centrocultural_losandes",
-    note:
-      "Centro Cultural de Los Andes — Municipalidad de Los Andes, " +
-      "10,1 mil seguidores, \"acciones artísticas culturales y " +
-      "patrimoniales\". Encontrada buscando \"cultura Los Andes\" en " +
-      "Instagram. Contenido mixto (festival, talleres, conciertos) — " +
-      "Haiku filtra lo que no sea artes visuales. Sin fixedLocation.",
-    addedAt: "2026-08-27",
-  },
+  // "corporacionculturallb" REMOVIDA 2026-09-28 (decisión de Daniel, poda de
+  // cuentas municipales/institucionales de bajo rendimiento): 20 candidatos
+  // curados entre 2026-09-14 y 09-27 con 0 eventos vivos, y ninguno en toda su
+  // historia salvo lo indicado; Lo Barnechea queda sin fuente. Posts
+  // descargados = costo fijo de Apify + Haiku sin retorno. No volver a agregar
+  // sin evidencia real de exposiciones que otras fuentes no capten.
+  // "centrocultural_losandes" REMOVIDA 2026-09-28 (decisión de Daniel, poda de
+  // cuentas municipales/institucionales de bajo rendimiento): 20 candidatos
+  // curados entre 2026-09-14 y 09-27 con 0 eventos vivos, y ninguno en toda su
+  // historia salvo lo indicado; Los Andes queda sin fuente. Posts descargados
+  // = costo fijo de Apify + Haiku sin retorno. No volver a agregar sin
+  // evidencia real de exposiciones que otras fuentes no capten.
   {
     username: "lacasona.centrodeartes",
     note:
@@ -1709,16 +1635,14 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
     addedAt: "2026-08-27",
     fixedLocation: { location: "Viña del Mar", placeName: "La Casona Cultural de Viña del Mar" },
   },
-  {
-    username: "calamacultural",
-    note:
-      "Corporación de Cultura y Turismo Calama — 31,3 mil seguidores, " +
-      "\"generación de espacios y promoción del arte y la cultura\". " +
-      "Encontrada buscando \"cultura Calama\" en Instagram. Contenido " +
-      "mixto — Haiku filtra lo que no sea artes visuales. Sin " +
-      "fixedLocation.",
-    addedAt: "2026-08-27",
-  },
+  // "calamacultural" REMOVIDA 2026-09-28 (decisión de Daniel, poda de cuentas
+  // municipales/institucionales de bajo rendimiento): 45 candidatos curados
+  // entre 2026-09-14 y 09-27 con 0 eventos vivos, y ninguno en toda su
+  // historia salvo lo indicado; Corporación de Cultura y Turismo: rechazos
+  // dominados por fiestas patrias y promoción turística. Calama queda sin
+  // fuente. Posts descargados = costo fijo de Apify + Haiku sin retorno. No
+  // volver a agregar sin evidencia real de exposiciones que otras fuentes no
+  // capten.
   {
     username: "centroculturalrojasmagallanes",
     note:
@@ -1728,16 +1652,12 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
       "— Haiku filtra lo que no sea artes visuales. Sin fixedLocation.",
     addedAt: "2026-08-27",
   },
-  {
-    username: "cultura_angol",
-    note:
-      "Centro Cultural Angol — 7.063 seguidores, bio \"Donde el arte se " +
-      "vive y la cultura nos une\", highlight propio \"Artes\". " +
-      "Encontrada buscando \"cultura Angol\" en Instagram. Contenido " +
-      "mixto (conciertos, música, cine, teatro) — Haiku filtra lo que " +
-      "no sea artes visuales. Sin fixedLocation.",
-    addedAt: "2026-08-27",
-  },
+  // "cultura_angol" REMOVIDA 2026-09-28 (decisión de Daniel, poda de cuentas
+  // municipales/institucionales de bajo rendimiento): 16 candidatos curados
+  // entre 2026-09-14 y 09-27 con 0 eventos vivos, y ninguno en toda su
+  // historia salvo lo indicado; Angol queda sin fuente. Posts descargados =
+  // costo fijo de Apify + Haiku sin retorno. No volver a agregar sin evidencia
+  // real de exposiciones que otras fuentes no capten.
   {
     username: "culturapuconmunicipal",
     note:
@@ -1828,26 +1748,14 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
       "@ilposto.cl/@mamchiloe.",
     addedAt: "2026-08-28",
   },
-  {
-    username: "mhnchile",
-    note:
-      "Encontrada revisando el feed de @caldearte.oficial, 2026-08-28. " +
-      "Museo Histórico Nacional de Chile — 116 mil seguidores, muy " +
-      "activa (7292 publicaciones). Rendimiento esperado bajo, mismo " +
-      "perfil que @bnchile: primariamente contenido de colecciones/" +
-      "archivo histórico (fotos de bodas de época, útiles escolares " +
-      "antiguos, \"Zoom de Colecciones\") en vez de anuncios de " +
-      "exposición puntuales — solo 1/6 posts muestreados en la grilla " +
-      "es una exposición real y completa: \"La vida en una mirada. " +
-      "Fernando Opazo\" (fotógrafo documentalista chileno del siglo XX, " +
-      "curaduría de Carla Franceschini, desde el 31 de agosto, Sala " +
-      "Patrimonial del MHN en la estación de Metro Plaza de Armas — " +
-      "parte de su programa institucional \"Mes de la Fotografía\"). " +
-      "Sin fixedLocation: el museo tiene su sede principal pero también " +
-      "monta exposiciones en la sala patrimonial de Metro Plaza de " +
-      "Armas — Haiku infiere ubicación por post.",
-    addedAt: "2026-08-28",
-  },
+  // "mhnchile" REMOVIDA 2026-09-28 (decisión de Daniel, poda de cuentas
+  // municipales/institucionales de bajo rendimiento): 25 candidatos curados
+  // entre 2026-09-14 y 09-27 con 0 eventos vivos, y ninguno en toda su
+  // historia salvo lo indicado; 1 solo evento vivo en toda su historia
+  // (2026-08-29); contenido mayormente de colecciones/archivo (cláusula
+  // documental). Santiago ampliamente cubierto. Posts descargados = costo fijo
+  // de Apify + Haiku sin retorno. No volver a agregar sin evidencia real de
+  // exposiciones que otras fuentes no capten.
   {
     username: "salaanacortesumce",
     note:
@@ -2057,72 +1965,36 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
     addedAt: "2026-08-30",
     fixedLocation: { location: "Coronel", placeName: "Casa de la Cultura Jorge Vigueras Llanos" },
   },
-  {
-    username: "sppcultura",
-    note:
-      "Encontrada 2026-08-30 buscando comunas sin cobertura (San Pedro " +
-      "de la Paz). Corporación Cultural SPP — 13,2 mil seguidores, sala " +
-      "de exposiciones propia. Alta densidad de exposiciones reales " +
-      "confirmadas: \"Ñuble Íntimo\" (Jacqueline Santos Luarte), " +
-      "\"Surrealismo entre paréntesis\", \"Kabbalah\". fixedLocation.",
-    addedAt: "2026-08-30",
-    fixedLocation: { location: "San Pedro de la Paz", placeName: "Corporación Cultural San Pedro de la Paz" },
-  },
-  {
-    username: "centroculturaltome",
-    note:
-      "Encontrada 2026-08-30 buscando comunas sin cobertura (Tomé). " +
-      "Centro Cultural Tomé — 10 mil seguidores, Galería Artes " +
-      "Municipal. Muy alta densidad de exposiciones reales confirmadas " +
-      "vía búsqueda web: \"Origen y Plenitud\", \"Sabiduría Ancestral\" " +
-      "(itinerante), \"Vestigios Textiles Urbanos\", \"Bordando " +
-      "Copiulemu\" (Galería Humana) — al menos 4 muestras reales " +
-      "distintas encontradas. Sin fixedLocation (múltiples espacios: " +
-      "Galería Artes Municipal, Círculo de Bellas Artes El Vagón, " +
-      "Galería Humana).",
-    addedAt: "2026-08-30",
-  },
-  {
-    username: "cultura.cauquenes",
-    note:
-      "Encontrada 2026-08-30 buscando comunas sin cobertura " +
-      "(Cauquenes). Casa de la Cultura, Depto. de Cultura, las Artes y " +
-      "el Patrimonio de la Municipalidad de Cauquenes — 5,5 mil " +
-      "seguidores. Exposiciones reales confirmadas: \"Indómita\" " +
-      "(fotográfica, Francisca Acuña), \"Cauqueninos en la Pintura\", " +
-      "muestra de pinturas y xilografía (37 obras). Contenido mixto — " +
-      "Haiku filtra lo que no sea artes visuales. Sin fixedLocation " +
-      "(Casa de la Cultura + Club Social de Cauquenes).",
-    addedAt: "2026-08-30",
-  },
-  {
-    username: "culturaquilpue",
-    note:
-      "Encontrada 2026-08-30 buscando comunas sin cobertura (Quilpué). " +
-      "Dirección de Cultura, Municipalidad de Quilpué — 36 mil " +
-      "seguidores, muy activa. Centro Cultural Daniel de la Vega, " +
-      "altísima densidad de exposiciones reales confirmadas: " +
-      "\"Artequin llega a Quilpué\" (07-30 sept 2026), \"Patente " +
-      "Latente\" (bordado, Daniela Lara Espinoza), \"El Secreto que " +
-      "sostiene la Vida\", \"Mala Imagen\", \"La Galería de los " +
-      "Ilustres\". fixedLocation.",
-    addedAt: "2026-08-30",
-    fixedLocation: { location: "Quilpué", placeName: "Centro Cultural Daniel de la Vega" },
-  },
-  {
-    username: "casadelaculturachiguayante",
-    note:
-      "Encontrada 2026-08-30 buscando comunas sin cobertura " +
-      "(Chiguayante). Casa de la Cultura de Chiguayante — 17,7 mil " +
-      "seguidores, muy activa (posts casi diarios), sala de " +
-      "exposiciones dedicada. Altísima densidad de exposiciones reales " +
-      "confirmadas y vigentes: \"Todas las formas para ser\" (Roberta " +
-      "Alué, hasta 26 oct 2026), \"El Jardín Interior\" (Rocío Osses " +
-      "Lastra), \"Karukinka\", \"VOLVER. Entre neblinas a la tierra del " +
-      "sol\" (Guillermo Moscoso). fixedLocation.",
-    addedAt: "2026-08-30",
-    fixedLocation: { location: "Chiguayante", placeName: "Casa de la Cultura de Chiguayante" },
-  },
+  // "sppcultura" REMOVIDA 2026-09-28 (decisión de Daniel, poda de cuentas
+  // municipales/institucionales de bajo rendimiento): 13 candidatos curados
+  // entre 2026-09-14 y 09-27 con 0 eventos vivos, y ninguno en toda su
+  // historia salvo lo indicado; San Pedro de la Paz queda sin fuente. Posts
+  // descargados = costo fijo de Apify + Haiku sin retorno. No volver a agregar
+  // sin evidencia real de exposiciones que otras fuentes no capten.
+  // "centroculturaltome" REMOVIDA 2026-09-28 (decisión de Daniel, poda de
+  // cuentas municipales/institucionales de bajo rendimiento): 7 candidatos
+  // curados entre 2026-09-14 y 09-27 con 0 eventos vivos, y ninguno en toda su
+  // historia salvo lo indicado; Tomé queda sin fuente. Posts descargados =
+  // costo fijo de Apify + Haiku sin retorno. No volver a agregar sin evidencia
+  // real de exposiciones que otras fuentes no capten.
+  // "cultura.cauquenes" REMOVIDA 2026-09-28 (decisión de Daniel, poda de
+  // cuentas municipales/institucionales de bajo rendimiento): 25 candidatos
+  // curados entre 2026-09-14 y 09-27 con 0 eventos vivos, y ninguno en toda su
+  // historia salvo lo indicado; Cauquenes queda sin fuente. Posts descargados
+  // = costo fijo de Apify + Haiku sin retorno. No volver a agregar sin
+  // evidencia real de exposiciones que otras fuentes no capten.
+  // "culturaquilpue" REMOVIDA 2026-09-28 (decisión de Daniel, poda de cuentas
+  // municipales/institucionales de bajo rendimiento): 18 candidatos curados
+  // entre 2026-09-14 y 09-27 con 0 eventos vivos, y ninguno en toda su
+  // historia salvo lo indicado; Quilpué queda sin fuente. Posts descargados =
+  // costo fijo de Apify + Haiku sin retorno. No volver a agregar sin evidencia
+  // real de exposiciones que otras fuentes no capten.
+  // "casadelaculturachiguayante" REMOVIDA 2026-09-28 (decisión de Daniel, poda
+  // de cuentas municipales/institucionales de bajo rendimiento): 20 candidatos
+  // curados entre 2026-09-14 y 09-27 con 0 eventos vivos, y ninguno en toda su
+  // historia salvo lo indicado; Chiguayante queda sin fuente. Posts
+  // descargados = costo fijo de Apify + Haiku sin retorno. No volver a agregar
+  // sin evidencia real de exposiciones que otras fuentes no capten.
   {
     username: "centroculturalmob",
     note:
