@@ -42,6 +42,7 @@ it's not automatically included.
 | "Eyes in the Trench: War Photojournalism 1936–1945" | A retrospective of war photographers, historical memory, and documentary archive, with no stated stance. | War/violence | **EXCLUDE** | "Neutral" documentation/memory doesn't qualify — missing an explicit critical stance against the war or period. |
 | "After the Occupation: Art and Memory in Palestine" | An exhibit with an explicit curatorial statement denouncing the occupation and its consequences. | War/violence | **INCLUDE** | Explicit stance of denunciation/criticism, not neutral documentation. |
 | "Tribute to Victory: The Heroic Feat" | An exhibit celebrating military glories of one side in a conflict, with a commemorative/exalting tone. | War/violence | **EXCLUDE** | Explicit glorification. |
+| "Memoria de Cuartel: Uniformes y Objetos de Carabineros" (illustrative, same pattern as the 2026-09-28 real case below) | A patrimonial/documentary display of historical Carabineros uniforms, badges, and archive photographs, informative tone, no stated stance. | War/violence | **EXCLUDE** | Same "peso de la hegemonía" logic as war photojournalism: patrimonial/documentary treatment of a military or police institution doesn't qualify without an explicit, declared critical stance against that institution — content about Carabineros/FFAA, not just the venue, is covered by this axis. |
 | "Aesthetics of Fascism: Art, Propaganda, and Warning" | An exhibit displaying authoritarian-regime symbolism with "contextualizing" text, with no declared rejection. | Far right | **EXCLUDE** | Without an unambiguous, declared anti-fascist stance, it's excluded — "contextualizing" or "analyzing" without explicit rejection doesn't qualify. |
 | "Gathering of National Identity Art" | An exhibit with the aesthetic of a recognized far-right movement, with no critical distance, calling to "reclaim values." | Far right | **EXCLUDE** | Promotes the ideology with no critical framing. |
 | "Stations of the Cross: A Retrospective of [Religious Painter]" | A retrospective of an established artist, including religious Christian-themed work from one period of their career. | Religion | **EXCLUDE** | Explicit religious imagery, even in a recognized retrospective — excluded regardless. |
@@ -127,18 +128,22 @@ higher than on the other axes, which are text-only.
 > Apply a default-exclusion policy across four axes: (1) religion — explicit
 > religious imagery or themes, especially Christian or Jewish; Buddhism is
 > evaluated case by case with a more permissive standard, but isn't
-> automatically included; (2) war or extreme violence; (3) far right or
-> authoritarian ideologies; (4) pseudoscience and superstition (tarot,
-> esotericism, energy healing, and similar). For any of these four axes, the
-> default decision is **EXCLUDE**. The only exception is when the event
-> declares an **explicit and unambiguous** critical stance against that
-> specific institution, ideology, or conflict — for example, an installation
-> that explicitly denounces the Church's economic power, or an exhibit with
-> an explicit curatorial statement denouncing an occupation or a
-> dictatorship. "Exploring," "reflecting on," "contextualizing,"
-> "documenting," or showing ambiguous aesthetic/curatorial distance isn't
-> enough — without an explicit, declared rejection stance, the event is
-> excluded. There's no middle ground: either the event explicitly criticizes
+> automatically included; (2) war, extreme violence, or military/police
+> institutions — this includes patrimonial or documentary content about the
+> Armed Forces, Carabineros, the PDI, or a specific branch/regiment
+> (uniforms, medals, historical archives, tributes), not just combat
+> imagery; (3) far right or authoritarian ideologies; (4) pseudoscience and
+> superstition (tarot, esotericism, energy healing, and similar). For any of
+> these four axes, the default decision is **EXCLUDE**. The only exception is
+> when the event declares an **explicit and unambiguous** critical stance
+> against that specific institution, ideology, or conflict — for example, an
+> installation that explicitly denounces the Church's economic power, or an
+> exhibit with an explicit curatorial statement denouncing an occupation, a
+> dictatorship, or the Armed Forces/Carabineros specifically. "Exploring,"
+> "reflecting on," "contextualizing," "documenting," or showing ambiguous
+> aesthetic/curatorial distance isn't enough — without an explicit, declared
+> rejection stance, the event is excluded. There's no middle ground: either
+> the event explicitly criticizes
 > the institution/ideology/conflict, or it's excluded, regardless of
 > artistic quality or the venue's prestige.
 >
