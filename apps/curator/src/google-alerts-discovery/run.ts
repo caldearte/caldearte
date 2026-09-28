@@ -35,6 +35,7 @@ import {
   recordBrightSourcesFetched,
   toCandidateSummary,
 } from "../event-discovery/run.js";
+import { syncCatalogSafely } from "../lib/catalog.js";
 
 // Identity tracked in bright_source_fetch_state — the ALERT's identity
 // (stable across runs), not the feed URL itself (which embeds a
@@ -189,6 +190,8 @@ export async function run(deps: GoogleAlertsRunDeps = {}): Promise<void> {
     console.error(`[google-alerts-discovery] failed to compute month-to-date spend for the summary email: ${(err as Error).message}`);
   }
 
+  // Artists/venues registry (lib/catalog.ts): links this run's new events.
+  await syncCatalogSafely("google-alerts-discovery");
   await recordRunSummary("google_alerts", summary.startedAt, summary.candidates, summary.eventGroups, summary.cost);
   // Individual per-pipeline email disabled 2026-08-26 — superseded by
   // the consolidated once-a-day digest (daily-digest/run.ts).

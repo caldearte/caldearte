@@ -64,6 +64,7 @@ import {
   mergeBrightSources,
   type BrightSource,
 } from "./sources.js";
+import { syncCatalogSafely } from "../lib/catalog.js";
 
 type Region = Tables<"regions">;
 
@@ -965,6 +966,8 @@ export async function insertCandidates(
           image_url: imageUrl,
           curation_status: c.status,
           curation_reasoning: c.curationReasoning,
+          // New artist/place text → let the catalog sync re-link it.
+          catalog_synced_at: null,
         })
         .eq("id", existingMatch.id);
 
@@ -1087,8 +1090,10 @@ export async function insertCandidates(
 
 const EVENT_RETENTION_MS = 365 * 24 * 60 * 60 * 1000;
 
-// overview.md's retention policy: delete events roughly a year past their
-// run's end, not their opening date. Mirrors date.ts's activeRange "end"
+// overview.md's retention policy: delete REJECTED/PENDING events roughly a
+// year past their run's end — approved ones are never deleted (the SQL
+// function excludes them; since 2026-09-28 they are the artists/venues
+// catastro, see lib/catalog.ts). Mirrors date.ts's activeRange "end"
 // derivation (run_end_date, else run_start_date, else opening_datetime) so
 // an event with only a confirmed opening and no run dates is still retained
 // relative to that date. Piggybacked on this run's own weekly cadence
@@ -1524,6 +1529,8 @@ export async function run(deps: RunDeps = {}): Promise<void> {
     // failure (RESEND_API_KEY not set today just no-ops, doesn't throw,
     // but a genuine API error shouldn't cost us the persisted summary
     // too, see recordRunSummary's own doc comment on why this exists).
+    // Artists/venues registry (lib/catalog.ts): links this run's new events.
+    await syncCatalogSafely("event-discovery");
     await recordRunSummary("event_discovery", summary.startedAt, summary.candidates, summary.eventGroups, summary.cost);
     // Individual per-pipeline email disabled 2026-08-26 — superseded by
     // the consolidated once-a-day digest (daily-digest/run.ts), which

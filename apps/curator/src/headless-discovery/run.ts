@@ -38,6 +38,7 @@ import {
   recordBrightSourcesFetched,
   toCandidateSummary,
 } from "../event-discovery/run.js";
+import { syncCatalogSafely } from "../lib/catalog.js";
 
 // The listing page itself is the identity tracked in
 // bright_source_fetch_state — same table/cadence mechanism the main run's
@@ -162,6 +163,8 @@ export async function run(deps: HeadlessRunDeps = {}): Promise<void> {
     console.error(`[headless-discovery] failed to compute month-to-date spend for the summary email: ${(err as Error).message}`);
   }
 
+  // Artists/venues registry (lib/catalog.ts): links this run's new events.
+  await syncCatalogSafely("headless-discovery");
   await recordRunSummary("headless", summary.startedAt, summary.candidates, summary.eventGroups, summary.cost);
   // Individual per-pipeline email disabled 2026-08-26 — superseded by
   // the consolidated once-a-day digest (daily-digest/run.ts).

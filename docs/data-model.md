@@ -40,8 +40,9 @@ regions (one row per COMUNA despite the table name — 346 Chile rows as of
   last_run_at, created_at
 
 events
-  id, freeform_location (text, required — the only location concept; there
-    is no venue entity),
+  id, freeform_location (text, required — the only location concept the
+    site reads; since 2026-09-28 `venue_id` links to the internal `venues`
+    registry below, which nothing public reads),
   title, description, artist,
   run_start_date, run_end_date (the exhibition's actual run, shown for its
     full duration — see overview.md's "full exhibition run" policy; both
@@ -123,6 +124,10 @@ events
   -- as the región-selector change), but the exclusion itself stayed —
   -- there's no reason to start pruning approved history again just
   -- because the one feature that originally justified it is gone.
+  -- Since 2026-09-28 the reason is explicit (Daniel): approved events,
+  -- removed ones included, are the base of the artists/venues catastro
+  -- (artist_history below) and are kept indefinitely. Do not add any
+  -- age-based deletion of approved rows without asking him.
 
 system_config
   key (primary key), value, updated_at
@@ -342,6 +347,48 @@ instagram_source_post_stats (20260918150000_add_instagram_source_post_stats.sql)
   -- venues use) — nothing in curation reads it. Join to events /
   -- rejected_candidates on source_url. Distinct from instagram_posts,
   -- which is OUR account's carousels and their reach.
+
+artists, venues, event_artists, outreach_contacts, view artist_history
+  (20260928120000_add_artist_venue_catalog.sql)
+  artists: id, name, name_key (unique — lowercased, accent-stripped
+    name), instagram_handle (unique when set), instagram_handle_source
+    (event | collab | manual), follows_caldearte_at,
+    newsletter_subscribed_at, notes
+  venues: id, name, name_key (unique — `<normalized name>|<region_id>`),
+    region_id, comuna, instagram_handle, follows_caldearte_at,
+    newsletter_subscribed_at, notes
+  event_artists: (event_id, artist_id) — cascade on either side
+  events.venue_id, events.catalog_synced_at (null = not yet in the
+    catalog)
+  outreach_contacts: id, contacted_at, artist_id | venue_id (at least
+    one), event_id (set null if the event is ever deleted), channel (dm |
+    comment | email | in_person | other), replied_at, note
+  -- Our own registry of artists and venues (Daniel, 2026-09-28), derived
+  -- from the events: lib/catalog.ts's syncCatalog sweeps every event
+  -- with catalog_synced_at null at the end of each discovery run
+  -- (comuna, headless, Instagram, Google Alerts), splits `events.artist`
+  -- into names ("A, B y C", member lists in parentheses, curators
+  -- dropped), finds or creates each artist by name_key, and links the
+  -- venue by place_name + region. Handles come from the event's own
+  -- artist_instagram_handle or from the source post's co-authors
+  -- (instagram_collab_edges) when the username contains every word of
+  -- the name; a handle already on another row wins over the spelling.
+  -- A venue gets the handle of our registered Instagram source whose
+  -- fixedLocation names it. An event replaced in place gets its
+  -- catalog_synced_at reset so it is re-linked.
+  -- Outreach (follows/subscribed/outreach_contacts) is written by hand,
+  -- on Daniel's word, never by a pipeline — 5-10 DMs a day, never
+  -- automated.
+  -- Private: RLS on, no public policy, service_role only; the web app
+  -- reads none of it. `artist_history` (security_invoker) answers "what
+  -- has this artist shown, where and when": one row per artist × live
+  -- event with venue, dates and the caldearte.com URL.
+  -- Known limits: two spellings of one person ("José Soto" / "José
+  -- Luis Soto") stay two rows until merged by hand (repoint
+  -- event_artists and outreach_contacts to the kept id, then delete the
+  -- other); an event with only a handle creates an artist named
+  -- "@handle". Approved events are never pruned (see events above), so
+  -- the history is permanent; only rejected/pending rows age out.
 ```
 
 Field types and constraints (exact `CHECK`s, defaults, nullability) live in
