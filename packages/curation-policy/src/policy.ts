@@ -135,4 +135,12 @@ export const VISION_AXIS5_POLICY = `Apply a fifth axis, independent of the four 
 // Crawler's venue filter, now retired along with the venues table) — Event
 // Discovery has no venue entity, so this is judged directly from the
 // source text during curation instead.
-export const INSTITUTIONAL_EXCLUSION_POLICY = `Independent of and prior to the axes above: if the event's venue/location is explicitly identifiable as a church, temple, or house of worship of any religious cult, or the headquarters of a right-wing or far-right political party, reject it regardless of the event's own content or any critical stance it claims — the calendar's purpose isn't to drive visits to those institutions. This only applies when the institutional nature is explicit and unambiguous (the venue's own name or the source text states it plainly) — don't infer it from indirect signals, and don't let it override an otherwise-clear approval when the institutional nature is merely ambiguous.`;
+// Real miss (found 2026-09-28, Daniel via the daily digest): "Arte para
+// la Diplomacia Cultural" was approved at the Centro Cultural de
+// Carabineros, Santiago — Haiku's own curationReasoning evaluated only
+// the content ("jóvenes pintores de Azerbaiyán") and never applied an
+// institutional filter to the venue name at all, because police/military
+// venues weren't in this list yet. Soft-removed by hand; policy text
+// widened the same day, same wording pattern as the existing church/party
+// clause (explicit-only, no inference from indirect signals).
+export const INSTITUTIONAL_EXCLUSION_POLICY = `Independent of and prior to the axes above: if the event's venue/location is explicitly identifiable as a church, temple, or house of worship of any religious cult; the headquarters of a right-wing or far-right political party; or a police or military institution (e.g. Carabineros, the Armed Forces, the PDI, or a specific branch/regiment/garrison), reject it regardless of the event's own content or any critical stance it claims — the calendar's purpose isn't to drive visits to those institutions. This only applies when the institutional nature is explicit and unambiguous (the venue's own name or the source text states it plainly) — don't infer it from indirect signals, and don't let it override an otherwise-clear approval when the institutional nature is merely ambiguous.`;

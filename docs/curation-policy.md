@@ -63,7 +63,9 @@ anyway — the calendar's purpose isn't to drive visits to those institutions.
 
 Excludes any event whose venue/location is **explicitly and unambiguously**
 identifiable as: a church, temple, or house of worship of any religious
-cult; or the headquarters of a right-wing or far-right political party.
+cult; the headquarters of a right-wing or far-right political party; or a
+police or military institution (Carabineros, the Armed Forces, the PDI, or
+a specific branch/regiment/garrison).
 Applies only when the source text states this plainly (the venue's own
 name, or an explicit statement) — not inferred from indirect signals. When
 it's merely ambiguous, this filter doesn't force a rejection; ordinary
@@ -72,6 +74,18 @@ human-escalation path for this filter — Event Discovery's `status` is
 binary (approved/rejected), unlike the Event Crawler's old three-state
 flow, and as of 2026-09-07 there is no human escalation path anywhere in
 curation (see "Cross-source axis safety net" below).
+
+**Real miss, 2026-09-28:** "Arte para la Diplomacia Cultural: Del Mar
+Caspio a los Andes" was approved at the **Centro Cultural de
+Carabineros**, Santiago (`place_name` states it explicitly) — Haiku's own
+`curationReasoning` evaluated only the content ("Exposición de pintura de
+jóvenes artistas azerbaiyanos"), because police/military venues weren't
+in this list at the time. Caught by Daniel via the daily digest,
+soft-removed by hand the same day; the policy text above and the
+`INSTITUTIONAL_EXCLUSION_POLICY` prompt string
+(`packages/curation-policy/src/policy.ts`) were both widened to name
+police/military institutions explicitly, same wording pattern as the
+existing church/party clause.
 
 This is unrelated to the Chile-location whitelist in region-discovery.md,
 which is a *geographic* check (is this really in Chile?), not an
