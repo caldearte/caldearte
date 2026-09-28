@@ -2294,9 +2294,16 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
       "\"Los Ríos Territorio Visual\") pero nunca agregada por sí sola. " +
       "Encontrada vía el anuncio real del 1er Festival de Arte " +
       "Contemporáneo Los Ríos Territorio Visual — agregado a mano, ver " +
-      "su propio evento. fixedLocation.",
+      "su propio evento. SIN fixedLocation desde 2026-09-28: funciona " +
+      "como plataforma/productora del festival y anuncia obras en OTROS " +
+      "espacios del Campus de los Museos UACh (Réplica, Museo Philippi, " +
+      "Museo Maurice van de Maele, La Leñera). Con el fixedLocation, las " +
+      "5 fichas del festival quedaron en \"Galería Barrios Bajos\" — el " +
+      "default de Instagram solo cede cuando el texto nombra otra COMUNA, " +
+      "no otro espacio en la misma comuna — y se detectó al revisar las " +
+      "fichas antes de mandarles DM a los artistas. Sin fixedLocation, " +
+      "Haiku extrae comuna y espacio del texto de cada post.",
     addedAt: "2026-09-11",
-    fixedLocation: { location: "Valdivia", placeName: "Galería Barrios Bajos" },
   },
   {
     username: "replica.galeria",
