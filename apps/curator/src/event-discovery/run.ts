@@ -64,6 +64,7 @@ import {
   mergeBrightSources,
   type BrightSource,
 } from "./sources.js";
+import { syncCatalogSafely } from "../lib/catalog.js";
 
 type Region = Tables<"regions">;
 
@@ -965,6 +966,8 @@ export async function insertCandidates(
           image_url: imageUrl,
           curation_status: c.status,
           curation_reasoning: c.curationReasoning,
+          // New artist/place text → let the catalog sync re-link it.
+          catalog_synced_at: null,
         })
         .eq("id", existingMatch.id);
 
@@ -1524,6 +1527,8 @@ export async function run(deps: RunDeps = {}): Promise<void> {
     // failure (RESEND_API_KEY not set today just no-ops, doesn't throw,
     // but a genuine API error shouldn't cost us the persisted summary
     // too, see recordRunSummary's own doc comment on why this exists).
+    // Artists/venues registry (lib/catalog.ts): links this run's new events.
+    await syncCatalogSafely("event-discovery");
     await recordRunSummary("event_discovery", summary.startedAt, summary.candidates, summary.eventGroups, summary.cost);
     // Individual per-pipeline email disabled 2026-08-26 — superseded by
     // the consolidated once-a-day digest (daily-digest/run.ts), which

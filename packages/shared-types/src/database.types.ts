@@ -94,6 +94,42 @@ export type Database = {
           },
         ]
       }
+      artists: {
+        Row: {
+          created_at: string
+          follows_caldearte_at: string | null
+          id: string
+          instagram_handle: string | null
+          instagram_handle_source: string | null
+          name: string
+          name_key: string
+          newsletter_subscribed_at: string | null
+          notes: string | null
+        }
+        Insert: {
+          created_at?: string
+          follows_caldearte_at?: string | null
+          id?: string
+          instagram_handle?: string | null
+          instagram_handle_source?: string | null
+          name: string
+          name_key: string
+          newsletter_subscribed_at?: string | null
+          notes?: string | null
+        }
+        Update: {
+          created_at?: string
+          follows_caldearte_at?: string | null
+          id?: string
+          instagram_handle?: string | null
+          instagram_handle_source?: string | null
+          name?: string
+          name_key?: string
+          newsletter_subscribed_at?: string | null
+          notes?: string | null
+        }
+        Relationships: []
+      }
       bright_source_fetch_state: {
         Row: {
           consecutive_zero_yield_at_cap: number
@@ -177,6 +213,13 @@ export type Database = {
           resolved_at?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "curation_escalations_existing_event_id_fkey"
+            columns: ["existing_event_id"]
+            isOneToOne: false
+            referencedRelation: "artist_history"
+            referencedColumns: ["event_id"]
+          },
           {
             foreignKeyName: "curation_escalations_existing_event_id_fkey"
             columns: ["existing_event_id"]
@@ -281,6 +324,57 @@ export type Database = {
         }
         Relationships: []
       }
+      event_artists: {
+        Row: {
+          artist_id: string
+          event_id: string
+        }
+        Insert: {
+          artist_id: string
+          event_id: string
+        }
+        Update: {
+          artist_id?: string
+          event_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_artists_artist_id_fkey"
+            columns: ["artist_id"]
+            isOneToOne: false
+            referencedRelation: "artist_history"
+            referencedColumns: ["artist_id"]
+          },
+          {
+            foreignKeyName: "event_artists_artist_id_fkey"
+            columns: ["artist_id"]
+            isOneToOne: false
+            referencedRelation: "artists"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_artists_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "artist_history"
+            referencedColumns: ["event_id"]
+          },
+          {
+            foreignKeyName: "event_artists_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_artists_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events_public"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       event_images: {
         Row: {
           created_at: string
@@ -308,6 +402,13 @@ export type Database = {
             foreignKeyName: "event_images_event_id_fkey"
             columns: ["event_id"]
             isOneToOne: false
+            referencedRelation: "artist_history"
+            referencedColumns: ["event_id"]
+          },
+          {
+            foreignKeyName: "event_images_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
             referencedRelation: "events"
             referencedColumns: ["id"]
           },
@@ -326,6 +427,7 @@ export type Database = {
           admin_sensitive_marked_at: string | null
           artist: string | null
           artist_instagram_handle: string | null
+          catalog_synced_at: string | null
           created_at: string
           curation_reasoning: string | null
           curation_status: string
@@ -354,12 +456,14 @@ export type Database = {
           submitter_email: string | null
           submitter_name: string | null
           title: string
+          venue_id: string | null
         }
         Insert: {
           address?: string | null
           admin_sensitive_marked_at?: string | null
           artist?: string | null
           artist_instagram_handle?: string | null
+          catalog_synced_at?: string | null
           created_at?: string
           curation_reasoning?: string | null
           curation_status?: string
@@ -388,12 +492,14 @@ export type Database = {
           submitter_email?: string | null
           submitter_name?: string | null
           title: string
+          venue_id?: string | null
         }
         Update: {
           address?: string | null
           admin_sensitive_marked_at?: string | null
           artist?: string | null
           artist_instagram_handle?: string | null
+          catalog_synced_at?: string | null
           created_at?: string
           curation_reasoning?: string | null
           curation_status?: string
@@ -422,6 +528,7 @@ export type Database = {
           submitter_email?: string | null
           submitter_name?: string | null
           title?: string
+          venue_id?: string | null
         }
         Relationships: [
           {
@@ -436,6 +543,13 @@ export type Database = {
             columns: ["region_id"]
             isOneToOne: false
             referencedRelation: "regions_public"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "events_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
             referencedColumns: ["id"]
           },
         ]
@@ -461,6 +575,36 @@ export type Database = {
           id?: string
           media_count?: number
           snapshot_date?: string
+        }
+        Relationships: []
+      }
+      instagram_collab_edges: {
+        Row: {
+          created_at: string
+          handle: string
+          handle_role: string
+          id: string
+          post_url: string
+          posted_at: string | null
+          registered_account: string
+        }
+        Insert: {
+          created_at?: string
+          handle: string
+          handle_role: string
+          id?: string
+          post_url: string
+          posted_at?: string | null
+          registered_account: string
+        }
+        Update: {
+          created_at?: string
+          handle?: string
+          handle_role?: string
+          id?: string
+          post_url?: string
+          posted_at?: string | null
+          registered_account?: string
         }
         Relationships: []
       }
@@ -503,6 +647,45 @@ export type Database = {
           reach?: number | null
           saved?: number | null
           week_start?: string
+        }
+        Relationships: []
+      }
+      instagram_source_post_stats: {
+        Row: {
+          comments_count: number | null
+          fetched_at: string
+          hashtags: string[]
+          likes_count: number | null
+          media_type: string | null
+          owner_full_name: string | null
+          owner_username: string
+          post_url: string
+          posted_at: string | null
+          source_account: string | null
+        }
+        Insert: {
+          comments_count?: number | null
+          fetched_at?: string
+          hashtags?: string[]
+          likes_count?: number | null
+          media_type?: string | null
+          owner_full_name?: string | null
+          owner_username: string
+          post_url: string
+          posted_at?: string | null
+          source_account?: string | null
+        }
+        Update: {
+          comments_count?: number | null
+          fetched_at?: string
+          hashtags?: string[]
+          likes_count?: number | null
+          media_type?: string | null
+          owner_full_name?: string | null
+          owner_username?: string
+          post_url?: string
+          posted_at?: string | null
+          source_account?: string | null
         }
         Relationships: []
       }
@@ -586,6 +769,85 @@ export type Database = {
             columns: ["region_id"]
             isOneToOne: false
             referencedRelation: "regions_public"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      outreach_contacts: {
+        Row: {
+          artist_id: string | null
+          channel: string
+          contacted_at: string
+          created_at: string
+          event_id: string | null
+          id: string
+          note: string | null
+          replied_at: string | null
+          venue_id: string | null
+        }
+        Insert: {
+          artist_id?: string | null
+          channel?: string
+          contacted_at?: string
+          created_at?: string
+          event_id?: string | null
+          id?: string
+          note?: string | null
+          replied_at?: string | null
+          venue_id?: string | null
+        }
+        Update: {
+          artist_id?: string | null
+          channel?: string
+          contacted_at?: string
+          created_at?: string
+          event_id?: string | null
+          id?: string
+          note?: string | null
+          replied_at?: string | null
+          venue_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "outreach_contacts_artist_id_fkey"
+            columns: ["artist_id"]
+            isOneToOne: false
+            referencedRelation: "artist_history"
+            referencedColumns: ["artist_id"]
+          },
+          {
+            foreignKeyName: "outreach_contacts_artist_id_fkey"
+            columns: ["artist_id"]
+            isOneToOne: false
+            referencedRelation: "artists"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "outreach_contacts_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "artist_history"
+            referencedColumns: ["event_id"]
+          },
+          {
+            foreignKeyName: "outreach_contacts_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "outreach_contacts_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events_public"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "outreach_contacts_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
             referencedColumns: ["id"]
           },
         ]
@@ -782,75 +1044,6 @@ export type Database = {
           },
         ]
       }
-      instagram_collab_edges: {
-        Row: {
-          created_at: string
-          handle: string
-          handle_role: string
-          id: string
-          post_url: string
-          posted_at: string | null
-          registered_account: string
-        }
-        Insert: {
-          created_at?: string
-          handle: string
-          handle_role: string
-          id?: string
-          post_url: string
-          posted_at?: string | null
-          registered_account: string
-        }
-        Update: {
-          created_at?: string
-          handle?: string
-          handle_role?: string
-          id?: string
-          post_url?: string
-          posted_at?: string | null
-          registered_account?: string
-        }
-        Relationships: []
-      }
-      instagram_source_post_stats: {
-        Row: {
-          comments_count: number | null
-          fetched_at: string
-          hashtags: string[]
-          likes_count: number | null
-          media_type: string | null
-          owner_full_name: string | null
-          owner_username: string
-          post_url: string
-          posted_at: string | null
-          source_account: string | null
-        }
-        Insert: {
-          comments_count?: number | null
-          fetched_at?: string
-          hashtags?: string[]
-          likes_count?: number | null
-          media_type?: string | null
-          owner_full_name?: string | null
-          owner_username: string
-          post_url: string
-          posted_at?: string | null
-          source_account?: string | null
-        }
-        Update: {
-          comments_count?: number | null
-          fetched_at?: string
-          hashtags?: string[]
-          likes_count?: number | null
-          media_type?: string | null
-          owner_full_name?: string | null
-          owner_username?: string
-          post_url?: string
-          posted_at?: string | null
-          source_account?: string | null
-        }
-        Relationships: []
-      }
       shadow_curation_comparisons: {
         Row: {
           agree: boolean
@@ -926,6 +1119,13 @@ export type Database = {
             foreignKeyName: "social_post_log_event_id_fkey"
             columns: ["event_id"]
             isOneToOne: false
+            referencedRelation: "artist_history"
+            referencedColumns: ["event_id"]
+          },
+          {
+            foreignKeyName: "social_post_log_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
             referencedRelation: "events"
             referencedColumns: ["id"]
           },
@@ -956,8 +1156,80 @@ export type Database = {
         }
         Relationships: []
       }
+      venues: {
+        Row: {
+          comuna: string | null
+          created_at: string
+          follows_caldearte_at: string | null
+          id: string
+          instagram_handle: string | null
+          name: string
+          name_key: string
+          newsletter_subscribed_at: string | null
+          notes: string | null
+          region_id: string | null
+        }
+        Insert: {
+          comuna?: string | null
+          created_at?: string
+          follows_caldearte_at?: string | null
+          id?: string
+          instagram_handle?: string | null
+          name: string
+          name_key: string
+          newsletter_subscribed_at?: string | null
+          notes?: string | null
+          region_id?: string | null
+        }
+        Update: {
+          comuna?: string | null
+          created_at?: string
+          follows_caldearte_at?: string | null
+          id?: string
+          instagram_handle?: string | null
+          name?: string
+          name_key?: string
+          newsletter_subscribed_at?: string | null
+          notes?: string | null
+          region_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "venues_region_id_fkey"
+            columns: ["region_id"]
+            isOneToOne: false
+            referencedRelation: "regions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "venues_region_id_fkey"
+            columns: ["region_id"]
+            isOneToOne: false
+            referencedRelation: "regions_public"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
+      artist_history: {
+        Row: {
+          artist: string | null
+          artist_id: string | null
+          caldearte_url: string | null
+          comuna: string | null
+          event_id: string | null
+          instagram_handle: string | null
+          opening_datetime: string | null
+          opening_time_confirmed: boolean | null
+          run_end_date: string | null
+          run_start_date: string | null
+          source_url: string | null
+          title: string | null
+          venue: string | null
+        }
+        Relationships: []
+      }
       events_public: {
         Row: {
           address: string | null

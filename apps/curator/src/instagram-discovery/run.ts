@@ -44,6 +44,7 @@ import { createShadowClient } from "../lib/model-comparison.js";
 import { applySafetyNet, SAFETY_NET_CHUNK_SIZE } from "../lib/safety-net.js";
 import { collabEdgesForPosts, recordInstagramCollabEdges } from "../lib/instagram-collab-edges.js";
 import { postStatsRows, recordInstagramPostStats } from "../lib/instagram-post-stats.js";
+import { syncCatalogSafely } from "../lib/catalog.js";
 
 export interface InstagramRunDeps {
   messagesClient?: MessagesClient;
@@ -278,6 +279,8 @@ export async function run(deps: InstagramRunDeps = {}): Promise<void> {
     console.error(`[instagram-discovery] failed to compute month-to-date spend for the summary email: ${(err as Error).message}`);
   }
 
+  // Artists/venues registry (lib/catalog.ts): links this run's new events.
+  await syncCatalogSafely("instagram-discovery");
   await recordRunSummary("instagram", summary.startedAt, summary.candidates, summary.eventGroups, summary.cost, { apifyError: summary.apifyError });
   // Individual per-pipeline email disabled 2026-08-26 — superseded by the
   // consolidated once-a-day digest (daily-digest/run.ts). Real bug found
