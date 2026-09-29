@@ -496,6 +496,41 @@ building infra" discipline the rest of this project has followed.
   HTML card for venue websites — venues with sites have their own
   sections and the rest live on Instagram; a downloadable story image of
   the ficha fits better and reuses the flyer generator.
+- **Instagram growth analysis routine, established 2026-09-29.** The
+  account-level aggregate view (Insights > Cuenta) conflates every
+  simultaneous cause into one number — not enough on its own to know
+  what's actually driving growth. Monthly, not weekly (a week rarely has
+  enough varied posts — reels are irregular, Camila-dependent — to see a
+  real pattern; the per-post click-through is real manual effort):
+  1. Triage from the free "contenido destacado" ranking (by views) —
+     low-reach posts essentially never convert (confirmed 2026-09-29:
+     every post under ~100 views converted 0–1 followers), skip the
+     tail entirely.
+  2. Deep-dive the top posts by views/interactions that are now
+     **30–60 days old** (a rolling age window, not calendar-month
+     buckets — a post from the last week of a month wouldn't have had
+     time to mature by that month's review otherwise). Check each
+     one's own Insights, the **"Perfil" section's "Seguidores"
+     metric** — the real per-post follower-attribution number, not
+     just views/reach.
+  3. Cross-reference that period's DM tandas (`outreach_contacts`
+     table) against the real followers list, with at least ~1 week's
+     lag from send date (follow-back isn't instant).
+  4. Re-measure the **winners** (not the zeros) from the prior run to
+     test whether Meta's per-post "Seguidores" number keeps
+     accumulating past the first month — open question, not yet
+     verified. Do this for 2–3 iterations only, then decide whether the
+     long-tail check is worth keeping.
+  First run (2026-09-29): reels converted followers at ~75% of posts
+  (24 of 25 attributed followers from 4 reels — the best single post,
+  a museum-crowd reel, converted 16 on its own); the automated
+  Mon/Wed/Fri carousel converted at ~17% (1 of 6) despite reaching
+  *more* non-followers on average — its real value looks like feeding
+  the DM list, not driving follows directly. DM outreach converted at
+  29% (5 of 17 contacts), the highest of any channel measured.
+  Long-tail baseline recorded for the next run (late Oct/early Nov
+  2026): reel entrevista Bernardo Oyarzún 7 seguidores, reel museo 16,
+  carrusel MAC 1.
 
 - Needs a new piece: flyer-style image generation (card with image + title +
   date + artist) per event.
