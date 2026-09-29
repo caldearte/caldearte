@@ -11,20 +11,25 @@ const GRAPH_API_BASE = "https://graph.instagram.com/v21.0";
 const REEL_MEDIA_ID = "3995041147952472670"; // reel entrevista Bernardo Oyarzún — 7 seguidores in the UI
 const CAROUSEL_MEDIA_ID = "3994117324928772920"; // carrusel MAC — 1 seguidor in the UI
 
-async function checkFollows(label: string, mediaId: string, accessToken: string) {
+async function checkMetric(label: string, metric: string, mediaId: string, accessToken: string) {
   const url = new URL(`${GRAPH_API_BASE}/${mediaId}/insights`);
-  url.searchParams.set("metric", "follows");
+  url.searchParams.set("metric", metric);
   url.searchParams.set("access_token", accessToken);
   const res = await fetch(url);
   const body = await res.json();
-  console.log(`[test-follows] ${label} (${mediaId}): ok=${res.ok}`, JSON.stringify(body));
+  console.log(`[test-follows] ${label} metric=${metric} (${mediaId}): ok=${res.ok}`, JSON.stringify(body));
 }
 
 async function main() {
   const accessToken = process.env.INSTAGRAM_ACCESS_TOKEN;
   if (!accessToken) throw new Error("INSTAGRAM_ACCESS_TOKEN must be set.");
-  await checkFollows("REEL", REEL_MEDIA_ID, accessToken);
-  await checkFollows("CAROUSEL (FEED)", CAROUSEL_MEDIA_ID, accessToken);
+  // Control first — a metric the production code already uses
+  // successfully (lib/instagram-insights.ts), to isolate whether a
+  // failure is specific to `follows` or a broader token/permission issue.
+  await checkMetric("REEL", "reach", REEL_MEDIA_ID, accessToken);
+  await checkMetric("CAROUSEL (FEED)", "reach", CAROUSEL_MEDIA_ID, accessToken);
+  await checkMetric("REEL", "follows", REEL_MEDIA_ID, accessToken);
+  await checkMetric("CAROUSEL (FEED)", "follows", CAROUSEL_MEDIA_ID, accessToken);
 }
 
 main().catch((err) => {
