@@ -6,6 +6,7 @@ import {
   extractImgTags,
   extractWordpressItems,
   filterKnownSourceImages,
+  isObviouslyExpiredByDate,
   truncateSafely,
   type ArticleListConfig,
   type DateRangeConfig,
@@ -1143,6 +1144,44 @@ test("extractDateRange returns null instead of a wrong date when the second slot
 test("extractDateRange returns null when the pattern doesn't match at all", () => {
   const config: DateRangeConfig = { pattern: /nunca va a matchear/ };
   assert.equal(extractDateRange("Vigente", config), null);
+});
+
+// isObviouslyExpiredByDate — real 2026-09-30 finding: galeriametropolitana.org/
+// galeriahifas.cl send their FULL historical archive every run, wasting a
+// real Haiku call on items whose own date already says they're long past.
+const NOW = new Date("2026-09-30T12:00:00Z");
+
+test("isObviouslyExpiredByDate: a structuredEndDate before today is expired (galeriahifas.cl-style, exact day)", () => {
+  assert.equal(isObviouslyExpiredByDate({ structuredEndDate: "2026-08-15", rawDateText: "" }, NOW), true);
+});
+
+test("isObviouslyExpiredByDate: a structuredEndDate today or in the future is not expired", () => {
+  assert.equal(isObviouslyExpiredByDate({ structuredEndDate: "2026-09-30", rawDateText: "" }, NOW), false);
+  assert.equal(isObviouslyExpiredByDate({ structuredEndDate: "2026-12-01", rawDateText: "" }, NOW), false);
+});
+
+test("isObviouslyExpiredByDate: structuredEndDate takes precedence over rawDateText when both are present", () => {
+  assert.equal(isObviouslyExpiredByDate({ structuredEndDate: "2020-01-01", rawDateText: "diciembre 2026" }, NOW), true);
+});
+
+test("isObviouslyExpiredByDate: a rawDateText month+year more than 3 months past is expired (galeriametropolitana.org-style)", () => {
+  assert.equal(isObviouslyExpiredByDate({ structuredEndDate: null, rawDateText: "diciembre 2020" }, NOW), true);
+  assert.equal(isObviouslyExpiredByDate({ structuredEndDate: null, rawDateText: "marzo 2020" }, NOW), true);
+});
+
+test("isObviouslyExpiredByDate: a rawDateText month+year within the 3-month grace window is NOT expired — still Haiku's/isCurrentOrUpcoming's call", () => {
+  assert.equal(isObviouslyExpiredByDate({ structuredEndDate: null, rawDateText: "julio 2026" }, NOW), false);
+  assert.equal(isObviouslyExpiredByDate({ structuredEndDate: null, rawDateText: "septiembre 2026" }, NOW), false);
+});
+
+test("isObviouslyExpiredByDate: a rawDateText month+year in the future is never expired", () => {
+  assert.equal(isObviouslyExpiredByDate({ structuredEndDate: null, rawDateText: "diciembre 2026" }, NOW), false);
+  assert.equal(isObviouslyExpiredByDate({ structuredEndDate: null, rawDateText: "enero 2027" }, NOW), false);
+});
+
+test("isObviouslyExpiredByDate: rawDateText with no recognizable month+year (no date at all, or day-only text) is left to Haiku, never expired here", () => {
+  assert.equal(isObviouslyExpiredByDate({ structuredEndDate: null, rawDateText: "fecha no indicada" }, NOW), false);
+  assert.equal(isObviouslyExpiredByDate({ structuredEndDate: null, rawDateText: "" }, NOW), false);
 });
 
 test("extractArticleList populates structuredStartDate/EndDate when dateRangeExtractor is configured and matches, leaving rawDateText as the display fallback either way", () => {

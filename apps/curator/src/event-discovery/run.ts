@@ -58,6 +58,7 @@ import {
   type MessagesClient,
   type RawResult,
 } from "./discover.js";
+import { isObviouslyExpiredByDate } from "./extractors.js";
 import {
   detectNewBrightSources,
   fetchBrightSources,
@@ -1444,10 +1445,36 @@ export async function run(deps: RunDeps = {}): Promise<void> {
           // Pre-curation dedup — skip anything already approved (ever) or
           // rejected (within the rolling window) before it ever reaches
           // Haiku. See excludedSourceUrls' own comment, above.
-          const newItems = result.items.filter((item) => !excludedSourceUrls.has(item.sourceUrl));
-          const skipped = result.items.length - newItems.length;
+          const unseenItems = result.items.filter((item) => !excludedSourceUrls.has(item.sourceUrl));
+          const skipped = result.items.length - unseenItems.length;
           if (skipped > 0) {
             console.log(`[event-discovery] bright source ${sourceUrl}: ${skipped}/${result.items.length} item(s) already seen, skipped before curation`);
+          }
+          // Second pre-curation filter — obviously stale by the source's
+          // OWN date text/structured date, before Haiku ever sees it. See
+          // isObviouslyExpiredByDate's own doc comment (extractors.ts) for
+          // why this exists and its conservative grace window.
+          const staleItems = unseenItems.filter((item) => isObviouslyExpiredByDate(item, now));
+          const newItems = unseenItems.filter((item) => !isObviouslyExpiredByDate(item, now));
+          if (staleItems.length > 0) {
+            console.log(`[event-discovery] bright source ${sourceUrl}: ${staleItems.length}/${unseenItems.length} item(s) obviously past-dated, skipped before curation`);
+            for (const item of staleItems) {
+              const { error: staleError } = await getSupabaseClient().from("rejected_candidates").upsert(
+                {
+                  source_url: item.sourceUrl,
+                  title: item.title,
+                  reason: `[FILTRO DE CÓDIGO: fecha obviamente pasada (${item.structuredEndDate ?? item.rawDateText}); no se envió a Haiku]`,
+                  created_at: now.toISOString(),
+                  location: item.location,
+                  pipeline: "bright_source",
+                  source_account: item.sourceAccount ?? null,
+                },
+                { onConflict: "source_url" },
+              );
+              if (staleError) {
+                console.error(`[event-discovery] failed to record obviously-expired candidate "${item.title}": ${staleError.message}`);
+              }
+            }
           }
           if (newItems.length === 0) {
             console.log(`[event-discovery] bright source ${sourceUrl}: nothing new, skipping curation entirely`);

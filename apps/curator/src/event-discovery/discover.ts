@@ -209,7 +209,9 @@ export function filterImageCandidates(images: TavilyImage[]): ImageCandidate[] {
     .map((img) => ({ url: img.url, description: img.description ?? null }));
 }
 
-const ES_MONTHS = [
+// Exported for extractors.ts's isObviouslyExpiredByDate — same full
+// Spanish month names, reused rather than duplicated.
+export const ES_MONTHS = [
   "enero", "febrero", "marzo", "abril", "mayo", "junio",
   "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre",
 ];
