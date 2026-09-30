@@ -28,7 +28,7 @@
 // imageUrl/title/structured dates never touch Haiku at all for a
 // source with a real extractor config; see discover.ts's
 // curateBrightSourceItems for the curatorial-only Haiku call these feed.
-import { isJunkImage, type ImageCandidate } from "./discover.js";
+import { isJunkImage, ES_MONTHS, type ImageCandidate } from "./discover.js";
 
 // One real event, already resolved to its true per-event identity by the
 // extractor — never the listing/API page's own URL. `rawDateText` is
@@ -348,6 +348,44 @@ export function extractDateRange(html: string, config: DateRangeConfig): { runSt
   const runStartDate = buildDateString(g.startDay, startMonth, g.startYear ?? g.year);
   const runEndDate = buildDateString(g.endDay, endMonth, g.endYear ?? g.year);
   return runStartDate && runEndDate ? { runStartDate, runEndDate } : null;
+}
+
+// Pre-curation date filter, 2026-09-30: a source whose page lists its
+// FULL historical archive (galeriametropolitana.org: 68 items, 2005 to
+// today; galeriahifas.cl similarly archival) sends every item to Haiku
+// every run regardless of age — measured 2026-09-30, one day's run: 41
+// candidates from galeriametropolitana.org and 9 from galeriahifas.cl
+// were approved by Haiku on content grounds and only THEN discarded by
+// isCurrentOrUpcoming (discover.ts) for having already-past dates,
+// wasting a real curation call on something a deterministic date check
+// could have skipped for free. Runs BEFORE curateBrightSourceItems
+// (run.ts), using only what the extractor itself already produced — a
+// structured end date when dateRangeExtractor exists (galeriahifas.cl),
+// or rawDateText's "MES AAAA" text otherwise (galeriametropolitana.org,
+// month+year only, no day — see its known-sources.ts note on why there's
+// no dateRangeExtractor there). Never used to mark a DECIDED verdict
+// (that stays Haiku's + isCurrentOrUpcoming's job for anything not
+// obviously stale) — only to skip items clearly past a generous grace
+// window, the same posture as every other deterministic pre-filter in
+// this file (never invent a date, only act on one the source already
+// gave).
+const RAW_MONTH_YEAR_REGEX = new RegExp(`\\b(${ES_MONTHS.join("|")})\\s+(\\d{4})\\b`, "i");
+// Month+year alone can't say exactly when a show closes, and a run of
+// several weeks/months past its stated opening month is normal — only
+// flag something clearly stale, not merely "opened a while ago."
+const RAW_DATE_EXPIRY_GRACE_MONTHS = 3;
+
+export function isObviouslyExpiredByDate(item: Pick<BrightSourceItem, "structuredEndDate" | "rawDateText">, now: Date): boolean {
+  if (item.structuredEndDate) {
+    return item.structuredEndDate < now.toISOString().slice(0, 10);
+  }
+  const match = item.rawDateText.match(RAW_MONTH_YEAR_REGEX);
+  if (!match) return false;
+  const monthIndex = ES_MONTHS.indexOf(match[1].toLowerCase());
+  const year = Number(match[2]);
+  if (monthIndex === -1 || Number.isNaN(year)) return false;
+  const monthsSince = (now.getUTCFullYear() - year) * 12 + (now.getUTCMonth() - monthIndex);
+  return monthsSince > RAW_DATE_EXPIRY_GRACE_MONTHS;
 }
 
 // --- articleList: repeating HTML blocks, one event per block ------------
