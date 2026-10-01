@@ -58,7 +58,7 @@ import {
   type MessagesClient,
   type RawResult,
 } from "./discover.js";
-import { isObviouslyExpiredByDate } from "./extractors.js";
+import { isObviouslyExpiredByDate, type BrightSourceItem } from "./extractors.js";
 import {
   detectNewBrightSources,
   fetchBrightSources,
@@ -326,6 +326,14 @@ export interface ExistingEventInfo {
   // reliable match key here.
   runStartDate: string | null;
   runEndDate: string | null;
+  // Added 2026-10-01 (buildSeenKeys' own extraction from loadExistingKeys):
+  // the row's freeform_location (NOT NULL in the DB schema), needed to
+  // build locationDates/titlesByLocationDateOnly's bucket keys from
+  // ExistingEventInfo alone instead of the raw DB row. Not used by any
+  // tier's actual MATCH decision (title/placeName/date comparisons drive
+  // that) — only to narrow the bucket a candidate's own location is
+  // compared within.
+  location: string;
 }
 
 export interface SeenKeys {
@@ -404,48 +412,108 @@ export async function loadExistingKeys(): Promise<SeenKeys> {
     openingTimeConfirmed: row.opening_time_confirmed,
     runStartDate: row.run_start_date,
     runEndDate: row.run_end_date,
+    location: row.freeform_location,
   });
 
+  return buildSeenKeys(rows.map(toInfo));
+}
+
+// Pure map-building step, factored out of loadExistingKeys so it's
+// testable without a database — same inputs/outputs, just given
+// already-fetched rows instead of fetching them itself. Also what
+// findPreCurationDuplicate's own tests build a SeenKeys against.
+export function buildSeenKeys(rows: ExistingEventInfo[]): SeenKeys {
   const titlesByPlaceName = new Map<string, ExistingEventInfo[]>();
   for (const row of rows) {
-    if (!row.place_name) continue;
-    const key = normalizeTitle(row.place_name);
+    if (!row.placeName) continue;
+    const key = normalizeTitle(row.placeName);
     const existing = titlesByPlaceName.get(key);
-    if (existing) existing.push(toInfo(row));
-    else titlesByPlaceName.set(key, [toInfo(row)]);
+    if (existing) existing.push(row);
+    else titlesByPlaceName.set(key, [row]);
   }
 
   const titlesByLocationDateOnly = new Map<string, ExistingEventInfo[]>();
   for (const row of rows) {
-    const key = locationDateOnlyKey(row.freeform_location, {
-      openingDatetime: row.opening_datetime,
-      runStartDate: row.run_start_date,
-      runEndDate: row.run_end_date,
-    });
+    const key = locationDateOnlyKey(row.location, row);
     const existing = titlesByLocationDateOnly.get(key);
-    if (existing) existing.push(toInfo(row));
-    else titlesByLocationDateOnly.set(key, [toInfo(row)]);
+    if (existing) existing.push(row);
+    else titlesByLocationDateOnly.set(key, [row]);
   }
 
   const locationDates = new Map<string, ExistingEventInfo[]>();
   for (const row of rows) {
-    const key = locationDateKey(row.freeform_location, row.place_name, {
-      openingDatetime: row.opening_datetime,
-      runStartDate: row.run_start_date,
-      runEndDate: row.run_end_date,
-    });
+    const key = locationDateKey(row.location, row.placeName, row);
     const existing = locationDates.get(key);
-    if (existing) existing.push(toInfo(row));
-    else locationDates.set(key, [toInfo(row)]);
+    if (existing) existing.push(row);
+    else locationDates.set(key, [row]);
   }
 
   return {
-    titles: new Map(rows.map((row) => [normalizeTitle(row.title), toInfo(row)])),
-    sourceUrls: new Map(rows.flatMap((row) => (row.source_url ? [[row.source_url, toInfo(row)] as const] : []))),
+    titles: new Map(rows.map((row) => [normalizeTitle(row.title), row])),
+    sourceUrls: new Map(rows.flatMap((row) => (row.sourceUrl ? [[row.sourceUrl, row] as const] : []))),
     locationDates,
     titlesByLocationDateOnly,
     titlesByPlaceName,
   };
+}
+
+// Pre-curation cross-source duplicate check, 2026-10-01: a national/
+// multi-venue aggregator (chilecultura.gob.cl, today's real case — see
+// its own known-sources.ts note) re-reports an exhibition we already have
+// from that institution's OWN primary source (mnba.gob.cl,
+// centronacionaldearte.cultura.gob.cl, mavi.uc.cl...) under a different
+// URL every single run for as long as the show stays open — measured
+// 2026-09-30: 12 of that day's 46 cross-source "duplicate_skipped"
+// candidates, each one a real Haiku call spent only to be thrown away at
+// insertCandidates afterward. Runs the exact same matching tiers
+// insertCandidates already uses post-curation (titleMatch/
+// locationDateMatch/fuzzyMatch/sameVenueMatch — see that function's own
+// comments for why each tier exists) against the raw BrightSourceItem,
+// just earlier — never a new comparison, only the proven one moved up.
+//
+// Deliberately narrow: only runs when the item already carries TRUSTED
+// structured location+placeName (BrightSourceItem.location/.placeName —
+// never .locationHint, which is explicitly a hint for Haiku to confirm,
+// not a fact — see that field's own doc comment) and a full start+end
+// date pair. Anything short of that (the common case for an
+// HTML-scraped aggregator with no fixedLocation, e.g. the since-removed
+// artes.uchile.cl) falls straight through to Haiku exactly as before —
+// a missed pre-filter opportunity costs one Haiku call; a false merge
+// here would silently drop a real, distinct event, which is the one
+// mistake this whole dedup system has always refused to risk.
+//
+// Doesn't replicate shouldReplaceExisting (below) on purpose: a pre-Haiku
+// match only ever SKIPS the candidate, never updates the stored row with
+// possibly-better data the way insertCandidates' post-curation path can.
+// That's an accepted, narrow tradeoff — an occasional missed refresh of
+// an already-correct event, never a lost one — not worth needing Haiku's
+// normalized output just to decide whether to overwrite.
+export function findPreCurationDuplicate(item: BrightSourceItem, seen: SeenKeys): ExistingEventInfo | undefined {
+  if (!item.location || !item.placeName || !item.structuredStartDate || !item.structuredEndDate) return undefined;
+
+  const pseudo = { openingDatetime: null, runStartDate: item.structuredStartDate, runEndDate: item.structuredEndDate };
+  const locDateKey = locationDateKey(item.location, item.placeName, pseudo);
+  const locDateOnlyKey = locationDateOnlyKey(item.location, pseudo);
+
+  const titleMatch = seen.titles.get(normalizeTitle(item.title));
+  const locationDateMatch = (seen.locationDates.get(locDateKey) ?? []).find((existing) =>
+    isLikelySameTitleIgnoringPlaceName(existing.title, item.title, item.placeName),
+  );
+  const fuzzyMatch = (seen.titlesByLocationDateOnly.get(locDateOnlyKey) ?? []).find(
+    (existing) =>
+      isLikelySameTitleIgnoringPlaceName(existing.title, item.title, item.placeName) &&
+      placeNamesLikelySame(existing.placeName, item.placeName),
+  );
+  const sameVenueMatch = (seen.titlesByPlaceName.get(normalizeTitle(item.placeName)) ?? []).find(
+    (existing) =>
+      ((existing.runEndDate && pseudo.runEndDate && existing.runEndDate === pseudo.runEndDate) ||
+        locationDateOnlyKey(item.location as string, existing) === locDateOnlyKey ||
+        sameAnchorDay(existing, pseudo)) &&
+      (isLikelySameTitleWithoutRatio(existing.title, item.title, item.placeName) ||
+        isTitleSubsetOfOther(existing.title, item.title, item.placeName)),
+  );
+
+  return titleMatch ?? locationDateMatch ?? fuzzyMatch ?? sameVenueMatch;
 }
 
 // Real rule, set by the project owner (2026-07-28): a duplicate isn't
@@ -1476,7 +1544,21 @@ export async function run(deps: RunDeps = {}): Promise<void> {
               }
             }
           }
-          if (newItems.length === 0) {
+          // Third pre-curation filter — same real event, already on the
+          // calendar via a different source (a national/multi-venue
+          // aggregator re-reporting an institution's own exhibition). See
+          // findPreCurationDuplicate's own doc comment for the matching
+          // tiers reused and why it's scoped narrowly.
+          const freshItems: BrightSourceItem[] = [];
+          let crossSourceDupeCount = 0;
+          for (const item of newItems) {
+            if (findPreCurationDuplicate(item, seenKeys)) crossSourceDupeCount++;
+            else freshItems.push(item);
+          }
+          if (crossSourceDupeCount > 0) {
+            console.log(`[event-discovery] bright source ${sourceUrl}: ${crossSourceDupeCount}/${newItems.length} item(s) already on the calendar via another source, skipped before curation`);
+          }
+          if (freshItems.length === 0) {
             console.log(`[event-discovery] bright source ${sourceUrl}: nothing new, skipping curation entirely`);
             continue;
           }
@@ -1486,15 +1568,15 @@ export async function run(deps: RunDeps = {}): Promise<void> {
           // LISTING page has no prose, only its detail page does, and that
           // was previously only fetched for already-approved candidates.
           // See enrichBrightSourceItemDetails' own doc comment.
-          await enrichBrightSourceItemDetails(newItems, pageFetchFn);
+          await enrichBrightSourceItemDetails(freshItems, pageFetchFn);
           // Shadow call starts first and runs alongside the real one —
           // see startShadowCuration.
           const shadowRun = shadowClient
             ? startShadowCuration(shadowClient, (client) =>
-                curateBrightSourceItems(client, newItems, monthLabel, { fixedLocation: result.source.fixedLocation }),
+                curateBrightSourceItems(client, freshItems, monthLabel, { fixedLocation: result.source.fixedLocation }),
               )
             : null;
-          ({ candidates, usage } = await curateBrightSourceItems(messagesClient, newItems, monthLabel, {
+          ({ candidates, usage } = await curateBrightSourceItems(messagesClient, freshItems, monthLabel, {
             fixedLocation: result.source.fixedLocation,
           }));
           if (shadowClient && shadowRun) {
