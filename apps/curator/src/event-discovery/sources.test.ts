@@ -248,32 +248,6 @@ test("fetchBrightSources logs and skips (doesn't crash the run) a json-api sourc
   assert.equal(results.length, 0);
 });
 
-test("fetchBrightSources against the real KNOWN_SOURCES config for uchile.cl parses per-event structure (regression check against production config)", async () => {
-  const uchile = KNOWN_SOURCES.find((s) => s.url.includes("artes.uchile.cl"));
-  assert.ok(uchile?.extractor?.kind === "articleList");
-  const config = uchile.extractor as ArticleListConfig;
-
-  const html = `
-    <article class="mod-cal-result__item">
-      <figure><img src="/dam/uno.jpg" alt="Imagen"></figure>
-      <h4 class="mod__item-title"><a href="/agenda/evento-uno">Muestra Real</a></h4>
-      <p class="mod-cal-result__item-days">Todos los días (excepto el lunes) del 11/07/2026 al 11/10/2026</p>
-      <p class="mod-cal-result__item-placer">MAC Quinta Normal</p>
-    </article>
-  `;
-
-  const results = await withStubFetch(() => textResponse(html), () => fetchBrightSources([{ url: uchile.url, note: uchile.note, extractor: config }]));
-
-  assert.equal(results.length, 1);
-  assert.equal(results[0].kind, "items");
-  if (results[0].kind !== "items") throw new Error("unreachable");
-  assert.equal(results[0].items[0].title, "Muestra Real");
-  assert.equal(results[0].items[0].locationHint, "MAC Quinta Normal");
-  assert.equal(results[0].items[0].imageUrl, "https://artes.uchile.cl/dam/uno.jpg");
-  assert.equal(results[0].items[0].structuredStartDate, "2026-07-11", "dateRangeExtractor parses the real DD/MM/YYYY markup deterministically");
-  assert.equal(results[0].items[0].structuredEndDate, "2026-10-11");
-});
-
 test("fetchBrightSources against the real KNOWN_SOURCES config for uchile.cl (root domain, cross-faculty) resolves relative hrefs against its own domain, not artes.uchile.cl (regression check against production config, real bug found 2026-07-20)", async () => {
   const uchile = KNOWN_SOURCES.find((s) => s.url === "https://uchile.cl/agenda/30dias/1");
   assert.ok(uchile?.extractor?.kind === "articleList");
@@ -637,11 +611,11 @@ test("fetchBrightSources against the real KNOWN_SOURCES config for centronaciona
 test("mergeBrightSources dedups by domain with the hand-curated list winning", () => {
   const merged = mergeBrightSources([
     // Same domain as a KNOWN_SOURCES entry — must not appear twice.
-    { url: "https://artes.uchile.cl/otra-pagina", note: "auto" },
+    { url: "https://uchile.cl/otra-pagina", note: "auto" },
     { url: "https://otro.cl/agenda", note: "auto" },
   ]);
 
-  const uchile = merged.filter((s) => s.url.includes("artes.uchile.cl"));
+  const uchile = merged.filter((s) => s.url.includes("://uchile.cl/"));
   assert.equal(uchile.length, 1);
   assert.notEqual(uchile[0].note, "auto"); // the curated entry won
   assert.ok(merged.some((s) => s.url === "https://otro.cl/agenda"));

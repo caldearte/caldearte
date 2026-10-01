@@ -115,63 +115,16 @@ export interface KnownSource {
 
 export const KNOWN_SOURCES: KnownSource[] = [
   {
-    url: "https://artes.uchile.cl/agenda/30dias/1",
-    note: "Rolling 30-day agenda, Universidad de Chile — lists multiple real exhibitions per entry, updates dynamically.",
-    lastReviewedAt: "2026-07-24",
-    // Real bug, found 2026-07-24 (user caught it from a screenshot): the
-    // trailing number is real pagination (confirmed live — links up to
-    // page 30+), not an arbitrary suffix. This was "/6" — no page 1, no
-    // justification for 6 anywhere in history — likely a leftover from
-    // whatever page a manual test happened to load originally. Each real
-    // exhibition repeats across many pages (the agenda lists every open
-    // day within the 30-day window as its own entry), so "/6" alone
-    // wasn't silently broken (it still had ~14/15 real exhibitions), but
-    // "/1" is the correct, current, non-arbitrary starting page. Even so,
-    // page 1 alone was still missing 1 real exhibition ("Materia
-    // sensible") that only showed on later pages — additionalPages: page
-    // 2 closes that gap (page 1 + page 2 together had all 15/15 real
-    // exhibitions in the live check), same pattern as arteinformado.com.
-    additionalPages: ["https://artes.uchile.cl/agenda/30dias/2"],
-    extractor: {
-      kind: "articleList",
-      blockRegex: /<article class="mod-cal-result__item">([\s\S]*?)<\/article>/g,
-      titleLinkRegex: /<h4 class="mod__item-title"><a href="([^"]+)">([^<]*)<\/a><\/h4>/,
-      // Real markup has a typo — some entries use "item-place", most use
-      // "item-placer" — match both rather than assuming the source will fix it.
-      daysRegex: /class="mod-cal-result__item-days"[^>]*>([\s\S]*?)<\/p>/,
-      placeRegex: /class="mod-cal-result__item-place[a-z]*"[^>]*>([\s\S]*?)<\/p>/,
-      // Real markup, confirmed 2026-07-24: "Todos los días (excepto el
-      // lunes) del 11/07/2026 al 11/10/2026" — DD/MM/YYYY, always a range.
-      dateRangeExtractor: {
-        pattern: /del\s+(?<startDay>\d{1,2})\/(?<startMonth>\d{1,2})\/(?<startYear>\d{4})\s+al\s+(?<endDay>\d{1,2})\/(?<endMonth>\d{1,2})\/(?<endYear>\d{4})/i,
-      },
-    },
-    // Real markup, confirmed 2026-07-24 against a live detail page — the
-    // listing page itself never carries description prose (only title/
-    // days/place), so this needs its own detail-page fetch, same as
-    // openingTimeExtractor below (same CMS/template as uchile.cl root).
-    descriptionExtractor: {
-      pattern: /<div class="content__description"[^>]*>([\s\S]*?)<\/div>\s*<!--\/ description -->/,
-    },
-    // Real markup, confirmed 2026-07-24: the detail page's own address
-    // microdata (<address itemprop="address">...comuna appears at the
-    // end, e.g. "..., Santiago, Chile"...</address>) — fed through
-    // lib/locations.ts's extractComunaName to pull out just "Santiago",
-    // not the whole address text. A real aggregator (this source spans
-    // many different comunas), so unlike fixedLocation sources this
-    // still needs a per-event lookup — just no longer one Haiku has to
-    // infer from general knowledge of where a venue is.
-    locationExtractor: {
-      pattern: /itemprop="address">\(?([\s\S]*?)\)?<\/address>/,
-    },
-  },
-  {
     url: "https://uchile.cl/agenda/30dias/1",
-    note: 'Rolling 30-day agenda, Universidad de Chile\'s ROOT domain (not artes.uchile.cl — same underlying CMS/template, confirmed identical markup, but this feed aggregates exhibitions across faculties, e.g. Arquitectura y Urbanismo\'s Galería Micromedios, which artes.uchile.cl (Facultad de Artes only) never surfaces). Real production bug (found 2026-07-20): "Exhibición \'Alzar curva la mirada\'..." (Galería Micromedios, FAU) had sourceUrl=https://uchile.cl/agenda/exposiciones/10 — a listing page, not its own detail page — because this root domain had no dedicated entry yet, so it came in via regular per-comuna Tavily search instead of a direct fetch, and Tavily\'s plain-text extraction of a listing page drops per-event hrefs (same root cause as the arteinformado.com bug above). A dedicated extractor here fixes it the same way: each block\'s own <h4 class="mod__item-title"><a href="..."> is the correct per-event detail page, resolved against this page\'s own URL since the hrefs are relative (e.g. "/agenda/241838/exhibicion-alzar-curva-la-mirada-del-artista-francisco-belarmino").',
+    note: 'Rolling 30-day agenda, Universidad de Chile\'s ROOT domain — aggregates exhibitions across every faculty (e.g. Arquitectura y Urbanismo\'s Galería Micromedios), not just the Facultad de Artes. Real production bug (found 2026-07-20): "Exhibición \'Alzar curva la mirada\'..." (Galería Micromedios, FAU) had sourceUrl=https://uchile.cl/agenda/exposiciones/10 — a listing page, not its own detail page — because this root domain had no dedicated entry yet, so it came in via regular per-comuna Tavily search instead of a direct fetch, and Tavily\'s plain-text extraction of a listing page drops per-event hrefs (same root cause as the arteinformado.com bug above). A dedicated extractor here fixes it the same way: each block\'s own <h4 class="mod__item-title"><a href="..."> is the correct per-event detail page, resolved against this page\'s own URL since the hrefs are relative (e.g. "/agenda/241838/exhibicion-alzar-curva-la-mirada-del-artista-francisco-belarmino").\n\n**REMOVED 2026-10-01 the companion artes.uchile.cl/agenda source** (Facultad de Artes-only subset of this same feed/CMS) — measured against its own full insertion history: 13/15 of what it ever contributed were MAC exhibitions already covered directly by mac.uchile.cl (isPrimarySource, below), and the other 2 were either covered independently by THIS source (uchile.cl root, "La veta"/MAPA) or a single genuinely unique item (Auditorio Facultad de Artes). Meanwhile it was generating real waste every run (2026-09-30 measured: 17 content rejections + a chunk of 46 same-day cross-source duplicates, mostly re-reporting mac.uchile.cl\'s own exhibitions under a different URL before Haiku ever saw they already existed). uchile.cl root already a strict superset of its scope (it includes Facultad de Artes as one of the faculties it aggregates) — nothing lost, removing the one with near-zero unique yield.',
     lastReviewedAt: "2026-07-24",
-    // Real bug, found 2026-07-24 — see artes.uchile.cl's own comment above
-    // (identical issue, same CMS): "/6" was an arbitrary, undocumented
-    // page number, not page 1. Fixed to "/1" + additionalPages page 2.
+    // Real bug, found 2026-07-24: the trailing number is real pagination
+    // (confirmed live — links up to page 30+), not an arbitrary suffix.
+    // This was "/6" — no page 1, no justification for 6 anywhere in
+    // history — likely a leftover from whatever page a manual test
+    // happened to load originally. "/1" is the correct, current,
+    // non-arbitrary starting page; additionalPages: page 2 closes a real
+    // gap (one exhibition, "Materia sensible," only showed on page 2).
     additionalPages: ["https://uchile.cl/agenda/30dias/2"],
     extractor: {
       kind: "articleList",
