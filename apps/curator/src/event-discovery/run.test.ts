@@ -2,6 +2,8 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import type { RunSummary } from "../lib/notify.js";
 import type { BrightSourceFetchResult } from "./sources.js";
+import { findPreCurationDuplicate, buildSeenKeys, type ExistingEventInfo, type SeenKeys } from "./run.js";
+import type { BrightSourceItem } from "./extractors.js";
 
 // Integration test against local Supabase. Run `supabase start`, then export
 // SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY before running this suite.
@@ -2460,3 +2462,132 @@ test(
     }
   },
 );
+
+// findPreCurationDuplicate — pure, no DB. Real cases from 2026-09-30/10-01's
+// chilecultura.gob.cl investigation: a national aggregator re-reporting an
+// exhibition already inserted via that institution's own primary source.
+function existingEvent(overrides: Partial<ExistingEventInfo> = {}): ExistingEventInfo {
+  return {
+    id: "existing-id",
+    title: "Estéticas intuitivas",
+    placeName: "Centro Nacional de Arte Contemporáneo",
+    sourceUrl: "https://centronacionaldearte.cultura.gob.cl/bernardo-oyarzun/",
+    openingDatetime: null,
+    openingTimeConfirmed: false,
+    runStartDate: "2026-09-26",
+    runEndDate: "2026-11-22",
+    location: "Santiago",
+    ...overrides,
+  };
+}
+
+function brightSourceItem(overrides: Partial<BrightSourceItem> = {}): BrightSourceItem {
+  return {
+    title: "Estéticas intuitivas",
+    sourceUrl: "https://chilecultura.gob.cl/events/39955/",
+    imageUrl: null,
+    description: null,
+    locationHint: null,
+    rawDateText: "",
+    structuredStartDate: "2026-09-26",
+    structuredEndDate: "2026-11-22",
+    location: "Cerrillos",
+    placeName: "Centro Nacional de Arte Contemporáneo Cerrillos (CNAC)",
+    ...overrides,
+  };
+}
+
+test("findPreCurationDuplicate: real case 1 (CNAC, 2026-09-30) — exact title/dates, fuzzy place name match", () => {
+  const seen = buildSeenKeys([existingEvent()]);
+  const match = findPreCurationDuplicate(brightSourceItem(), seen);
+  assert.equal(match?.id, "existing-id");
+});
+
+test("findPreCurationDuplicate: real case 2 (MNBA, 2026-09-30) — exact title, exact place, exact 2-year date range", () => {
+  const seen = buildSeenKeys([
+    existingEvent({
+      id: "mnba-id",
+      title: "145 años: Historias de una Colección",
+      placeName: "Museo Nacional de Bellas Artes",
+      runStartDate: "2025-09-10",
+      runEndDate: "2027-09-26",
+    }),
+  ]);
+  const candidate = brightSourceItem({
+    title: "145 años: Historias de una Colección",
+    placeName: "Museo Nacional de Bellas Artes",
+    structuredStartDate: "2025-09-10",
+    structuredEndDate: "2027-09-26",
+  });
+  const match = findPreCurationDuplicate(candidate, seen);
+  assert.equal(match?.id, "mnba-id");
+});
+
+test("findPreCurationDuplicate: real case 3 (MAVI, 2026-09-30) — existing row has only openingDatetime (Instagram), candidate has a structured date range; anchorDay bridges the two shapes", () => {
+  const seen = buildSeenKeys([
+    existingEvent({
+      id: "mavi-id",
+      title: "Ejercicios de Empatía: Tramas de lo Vivo",
+      placeName: "MAVI UC",
+      openingDatetime: "2026-09-26T20:00:00Z",
+      runStartDate: null,
+      runEndDate: null,
+    }),
+  ]);
+  const candidate = brightSourceItem({
+    title: "Ejercicios de Empatía: Tramas de lo Vivo",
+    placeName: "Museo de Artes Visuales MAVI UC",
+    structuredStartDate: "2026-09-26",
+    structuredEndDate: "2026-10-26",
+  });
+  const match = findPreCurationDuplicate(candidate, seen);
+  assert.equal(match?.id, "mavi-id");
+});
+
+test("findPreCurationDuplicate: conservative fallback — missing location/placeName/dates never matches, even against an identical title", () => {
+  const seen = buildSeenKeys([existingEvent()]);
+  assert.equal(findPreCurationDuplicate(brightSourceItem({ location: null }), seen), undefined);
+  assert.equal(findPreCurationDuplicate(brightSourceItem({ placeName: null }), seen), undefined);
+  assert.equal(findPreCurationDuplicate(brightSourceItem({ structuredStartDate: null }), seen), undefined);
+  assert.equal(findPreCurationDuplicate(brightSourceItem({ structuredEndDate: null }), seen), undefined);
+});
+
+test("findPreCurationDuplicate: no false positive — a genuinely different exhibition at the same venue/dates (the MAC - Parque Forestal temporada shape) does not match", () => {
+  // Same real bug shape as insertCandidates' own sameVenueMatch guard:
+  // several distinct shows can share a venue's whole-season run dates.
+  const seen = buildSeenKeys([
+    existingEvent({
+      id: "nazca-id",
+      title: "Nazca/Sudamericana: Capítulo II",
+      placeName: "MAC - Parque Forestal",
+      runStartDate: "2026-07-11",
+      runEndDate: "2026-10-11",
+      location: "Santiago",
+    }),
+  ]);
+  const differentShow = brightSourceItem({
+    title: "Obras extraordinarias",
+    placeName: "MAC - Parque Forestal",
+    structuredStartDate: "2026-07-11",
+    structuredEndDate: "2026-10-11",
+    location: "Santiago",
+  });
+  assert.equal(findPreCurationDuplicate(differentShow, seen), undefined);
+});
+
+// Tier 1 (exact normalized-title match) is intentionally global, no
+// location/date qualifier — same property insertCandidates' own titleMatch
+// already has today; findPreCurationDuplicate reuses it as-is, not a new
+// risk. A near-but-different title at an unrelated venue/date is the real
+// "should never match" case for the location-aware tiers below it.
+test("findPreCurationDuplicate: no false positive — a differently-worded title at an unrelated venue/comuna/date", () => {
+  const seen = buildSeenKeys([existingEvent()]); // "Estéticas intuitivas", CNAC, Santiago
+  const unrelated = brightSourceItem({
+    title: "Colores del Sur: retrospectiva fotográfica",
+    placeName: "Galería Local de Otra Ciudad",
+    location: "Punta Arenas",
+    structuredStartDate: "2026-01-01",
+    structuredEndDate: "2026-02-01",
+  });
+  assert.equal(findPreCurationDuplicate(unrelated, seen), undefined);
+});
