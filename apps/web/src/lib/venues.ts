@@ -1,8 +1,8 @@
 import { unstable_cache } from "next/cache";
 import type { Database } from "@caldearte/shared-types";
 import { getSupabaseClient } from "./supabase-client";
-import { toEventRecord, type EventRecord, type EventRow } from "./events";
-import type { VenueData, VenueRecord } from "./venuePage";
+import { fetchApprovedEvents } from "./events";
+import { assembleVenueData, type VenueData, type VenueRecord } from "./venuePage";
 
 // Same nullable-view-type caveat as events.ts's EventRow: Postgres views
 // don't propagate NOT NULL, but id/name are genuinely not null on the real
@@ -12,43 +12,50 @@ type VenueRow = Omit<Database["public"]["Views"]["venues_public"]["Row"], "id" |
   name: string;
 };
 
-// Own cached read rather than a field on EventRecord: the home page ships
-// EventRecord[] to the browser, and a venue id per event would be dead
-// weight in that payload (the Fast Origin Transfer incidents, 2026-08-06
-// and 2026-08-27, are why payload size matters here). Reads go through
-// venues_public / events_public, never the base tables — see
-// supabase/migrations/20261002140000_add_venues_public_view.sql.
-async function fetchVenueDataFromDb(): Promise<VenueData> {
+interface VenueLinks {
+  venues: VenueRecord[];
+  venueIdByEventId: Record<string, string>;
+}
+
+// Only the small half is cached here: the venues themselves and which
+// event belongs to which venue (a few tens of kB). The events are NOT
+// fetched again — they come from fetchApprovedEvents's existing cache
+// entry (~750 kB; a venue-specific copy would double that for nothing,
+// and the home page ships EventRecord[] to the browser, so a venue id
+// per event is kept off EventRecord too: the Fast Origin Transfer
+// incidents of 2026-08-06 and 2026-08-27 are why payload size matters).
+// Reads go through venues_public / events_public, never the base tables —
+// see supabase/migrations/20261002140000_add_venues_public_view.sql.
+async function fetchVenueLinksFromDb(): Promise<VenueLinks> {
   const client = getSupabaseClient();
-  const [venuesRes, eventsRes, regionsRes] = await Promise.all([
+  const [venuesRes, linksRes] = await Promise.all([
     client.from("venues_public").select("*"),
-    client.from("events_public").select("*").not("venue_id", "is", null),
-    client.from("regions_public").select("id, name"),
+    client.from("events_public").select("id, venue_id").not("venue_id", "is", null),
   ]);
   if (venuesRes.error) throw new Error(`Failed to fetch venues: ${venuesRes.error.message}`);
-  if (eventsRes.error) throw new Error(`Failed to fetch venue events: ${eventsRes.error.message}`);
-  if (regionsRes.error) throw new Error(`Failed to fetch regions: ${regionsRes.error.message}`);
+  if (linksRes.error) throw new Error(`Failed to fetch venue links: ${linksRes.error.message}`);
 
-  const regionNameById = new Map((regionsRes.data ?? []).flatMap((r) => (r.id && r.name ? [[r.id, r.name] as const] : [])));
   const venues: VenueRecord[] = ((venuesRes.data ?? []) as VenueRow[]).map((v) => ({
     id: v.id,
     name: v.name,
     comuna: v.comuna,
     instagramHandle: v.instagram_handle,
   }));
-
-  const eventsByVenueId: Record<string, EventRecord[]> = {};
-  for (const row of (eventsRes.data ?? []) as EventRow[]) {
-    const venueId = row.venue_id;
-    if (!venueId) continue;
-    (eventsByVenueId[venueId] ??= []).push(toEventRecord(row, regionNameById));
+  const venueIdByEventId: Record<string, string> = {};
+  for (const row of linksRes.data ?? []) {
+    if (row.id && row.venue_id) venueIdByEventId[row.id] = row.venue_id;
   }
-  return { venues, eventsByVenueId };
+  return { venues, venueIdByEventId };
 }
 
 export const VENUES_CACHE_TAG = "venues-public";
 
-export const fetchVenueData = unstable_cache(fetchVenueDataFromDb, ["venues-and-their-events"], {
+const fetchVenueLinks = unstable_cache(fetchVenueLinksFromDb, ["venue-links"], {
   revalidate: 600,
   tags: [VENUES_CACHE_TAG],
 });
+
+export async function fetchVenueData(): Promise<VenueData> {
+  const [links, { events }] = await Promise.all([fetchVenueLinks(), fetchApprovedEvents()]);
+  return assembleVenueData(links.venues, links.venueIdByEventId, events);
+}

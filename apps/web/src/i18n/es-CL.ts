@@ -404,6 +404,15 @@ export const esCL = {
   venuePageCorrectionNote:
     "¿Hay un error en esta ficha, o prefieres que no aparezca? Escríbenos desde Contacto, más abajo, y la corregimos o la retiramos.",
 
+  // /artistas/[slug] — same page shape as /espacios/[slug] (components/
+  // CatalogEntityPage.tsx), so it reuses venuePageEventCount/CurrentLabel/
+  // PastLabel/InstagramLink for the parts that read the same.
+  artistPageNoCurrent: "Por ahora no hay muestras vigentes de este artista.",
+  artistPageMetaDescription: (name: string, n: number) =>
+    `Muestras de ${name} registradas en Caldearte: ${n} ${pluralize(n, "muestra", "muestras")}.`,
+  artistPageCorrectionNote:
+    "¿Hay un error en esta ficha, o prefieres que no aparezca? Escríbenos desde Contacto, más abajo, y la corregimos o la retiramos. Solo mostramos muestras que ya eran públicas.",
+
   cityStats: (inauguracionesCount: number, visitasGuiadasCount: number, exposCount: number) =>
     countsPhrase(inauguracionesCount, visitasGuiadasCount, exposCount, " · "),
 
