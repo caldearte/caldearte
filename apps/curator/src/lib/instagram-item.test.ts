@@ -209,6 +209,21 @@ test("isCaptionWorthCurating does not false-positive on 'taller' inside an other
   );
 });
 
+// Measured 2026-10-02 against the full Instagram history (45 days, 2,927
+// candidates): these categories never once appeared in a real inserted
+// event's title or reasoning, unlike "taller"/"concierto"/"conversatorio"
+// (left out of this filter on purpose — see instagram-item.ts's own doc
+// comment on OUT_OF_SCOPE_CATEGORY_PATTERN).
+test("isCaptionWorthCurating rejects categories measured to never co-occur with a real exhibition", () => {
+  assert.equal(isCaptionWorthCurating("Nuevo episodio de nuestro podcast sobre arte contemporáneo chileno, ya disponible en Spotify"), false);
+  assert.equal(isCaptionWorthCurating("Con profundo dolor comunicamos el obituario de nuestra querida colega y artista"), false);
+  assert.equal(isCaptionWorthCurating("Recordatorio: este domingo cierra nuestra temporada de talleres de verano para niños"), false);
+  assert.equal(isCaptionWorthCurating("Este viernes realizaremos un recital de piano a cargo de estudiantes del conservatorio"), false);
+  assert.equal(isCaptionWorthCurating("Lanzamiento discográfico del nuevo álbum de la banda, con invitados especiales"), false);
+  assert.equal(isCaptionWorthCurating("Función de títeres para toda la familia este sábado en el parque municipal"), false);
+  assert.equal(isCaptionWorthCurating("Jornada de salud pública con atención médica gratuita para la comunidad"), false);
+});
+
 // Real production loss, 2026-09-13: 196/645 fetched posts dropped as
 // "unexpected owner" — all collab posts where the registered cultural
 // center co-posted with its municipality and Apify reported the
