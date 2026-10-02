@@ -162,7 +162,28 @@ venues_public (view, 20261002140000_add_venues_public_view.sql — feeds the
     join key; `create or replace view` can only append) — checked against
     the live production definition first. A venue page is indexable only
     from 2 live events up (web `MIN_EVENTS_TO_INDEX`); below that it
-    renders `noindex` and stays out of the sitemap.
+    renders `noindex` and stays out of the sitemap. Since
+    20261002150000 it also excludes venues with `public_hidden_at` set.
+artists_public, event_artists_public (views,
+    20261002150000_add_artists_public_views.sql — feed /artistas/[slug]):
+    artists_public is id, name, instagram_handle for artists with at least
+    one live event. The handle is exposed ONLY when
+    `instagram_handle_source` is 'event' or 'manual'; a 'collab' handle
+    comes from a name-matching heuristic over a post's co-authors and is
+    never published (it could attribute someone else's profile to a
+    person — 19 of 63 handles at 2026-10-02). event_artists_public is the
+    (event_id, artist_id) join restricted to live events and visible
+    artists. An artist page is indexable with 2+ live events OR a
+    published handle (web `isArtistIndexable`); otherwise `noindex`, out
+    of the sitemap.
+public_hidden_at (same migration, on both `artists` and `venues`): the
+    takedown switch behind the "corregimos o retiramos la ficha" note on
+    every public page (Ley 21.719 applies from Dec 2026), and the way to
+    hide catalog rows that aren't really artists ("Exposición Regional
+    2026"). Set it and the page 404s and leaves the sitemap; the events
+    stay, the event page's venue link disappears, and the row keeps
+    feeding the private catalog. Clear it to bring the page back:
+    `update artists set public_hidden_at = now() where id = '…'`.
 
 events_public, regions_public (views, not tables — created in
     20260717050000_restrict_public_columns_via_views.sql)
