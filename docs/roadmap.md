@@ -532,6 +532,24 @@ building infra" discipline the rest of this project has followed.
   2026): reel entrevista Bernardo Oyarzún 7 seguidores, reel museo 16,
   carrusel MAC 1.
 
+  **Automation investigated and declined (2026-09-29).** The Graph
+  API's per-media `follows` insights metric — the automatable
+  equivalent of step 2's manual "Seguidores" click-through — works for
+  FEED/carousel posts but is explicitly rejected for Reels (`"The
+  Media Insights API does not support the follows metric for this
+  media product type"`, code 100, not a transient error; confirmed
+  against a real never-before-tested reel id, not just Meta's docs
+  table). Since reels are the account's best-converting content type
+  (see the first-run numbers above), a cron could only automate the
+  reach/likes/comments triage in step 1 — not the number that actually
+  matters — for real new-pipeline effort (reels aren't in
+  `instagram_posts` today; they're posted manually, outside the
+  automated pipeline). Not worth building yet on a small-follower
+  account. Keep the routine manual for the next 1–2 iterations per the
+  plan above; revisit only if Meta adds `follows` support for Reels
+  (cheap to recheck periodically) or reel volume grows enough that
+  manual triage becomes the bottleneck.
+
 - Needs a new piece: flyer-style image generation (card with image + title +
   date + artist) per event.
 - Instagram: Business/Creator account + Facebook Page + Meta developer app +
