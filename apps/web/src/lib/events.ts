@@ -43,7 +43,7 @@ export interface EventRecord extends EventDates {
 // supabase/migrations/20260713180000_retire_venues_and_event_crawler.sql,
 // sensitivity_tags defaults to '{}' and is declared not null,
 // opening_time_confirmed defaults to true and is declared not null).
-type EventRow = Omit<
+export type EventRow = Omit<
   Database["public"]["Views"]["events_public"]["Row"],
   "id" | "title" | "freeform_location" | "sensitivity_tags" | "opening_time_confirmed" | "event_type"
 > & {
@@ -63,7 +63,7 @@ type RegionRow = Omit<Database["public"]["Views"]["regions_public"]["Row"], "id"
   country: string;
 };
 
-function toEventRecord(row: EventRow, regionNameById: Map<string, string>): EventRecord {
+export function toEventRecord(row: EventRow, regionNameById: Map<string, string>): EventRecord {
   return {
     id: row.id,
     title: row.title,

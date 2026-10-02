@@ -389,6 +389,18 @@ export const esCL = {
   eventPagePrevAriaLabel: "Evento anterior",
   eventPageNextAriaLabel: "Siguiente evento",
 
+  // /espacios/[slug] — one page per venue of the catalog (2026-10-02, see
+  // app/espacios/[slug]/page.tsx). Only facts the catalog really holds.
+  venuePageCurrentLabel: "EN CARTELERA Y PRÓXIMAS",
+  venuePagePastLabel: "MUESTRAS ANTERIORES",
+  venuePageNoCurrent: "Por ahora no hay muestras vigentes en este espacio.",
+  venuePageEventCount: (n: number) => `${n} ${pluralize(n, "muestra registrada", "muestras registradas")} en Caldearte`,
+  venuePageInstagramLink: (handle: string) => `@${handle} en Instagram ↗`,
+  venuePageMetaDescription: (name: string, comuna: string | null, n: number) =>
+    `Muestras e inauguraciones en ${name}${comuna ? `, ${comuna}` : ""}: ${n} ${pluralize(n, "registrada", "registradas")} en Caldearte.`,
+  venuePageCorrectionNote:
+    "¿Hay un error en esta ficha, o prefieres que no aparezca? Escríbenos desde Contacto, más abajo, y la corregimos o la retiramos.",
+
   cityStats: (inauguracionesCount: number, visitasGuiadasCount: number, exposCount: number) =>
     countsPhrase(inauguracionesCount, visitasGuiadasCount, exposCount, " · "),
 
