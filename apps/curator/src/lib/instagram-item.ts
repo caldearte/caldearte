@@ -74,9 +74,28 @@ function extractQuotedTitle(caption: string): string | null {
 const MIN_CAPTION_LENGTH = 30;
 const BOOK_LAUNCH_PATTERN = /lanzamiento de (un )?libro|presentaci[oó]n de (la )?publicaci[oó]n|presentaci[oó]n de libro/i;
 
+// Pre-Haiku deterministic filter, added 2026-10-02 — measured against the
+// FULL Instagram history available (45 days, 2,927 candidates, every
+// run), not a sample: every category below had ZERO real inserted events
+// among the words it matches, in either title or curationReasoning.
+// Deliberately excludes "taller"/"concierto"/"conversatorio"/"teatro"/
+// "danza"/"circo"/"feria" — those DID cost real events in the same
+// measurement (22 of them, 10% of everything Instagram published in the
+// window: a real exhibition literally named "Materia Prima" from "Taller
+// Barros de Pomaire", a circus-arts creation-process showcase correctly
+// distinguished from a conventional circus show, etc.) — each one is a
+// word that genuinely appears inside valid exhibition captions as a side
+// detail or part of a venue's own name, same reasoning as
+// BOOK_LAUNCH_PATTERN staying narrow. "charla" is excluded too even
+// though it measured zero losses on its own: it's a close synonym of
+// "conversatorio", which didn't.
+const OUT_OF_SCOPE_CATEGORY_PATTERN =
+  /\bpodcast\b|\bobituario\b|\bcondolencias\b|\bt[ií]tere(s)?\b|\b[oó]pera\b|\bsalud p[uú]blica\b|\bfuneral(es)?\b|\bvelatorio\b|\bmisa\b|\brecordatorio\b|\brecital(es)?\b|\blanzamiento\b/i;
+
 export function isCaptionWorthCurating(caption: string | null): boolean {
   if (!caption || caption.trim().length < MIN_CAPTION_LENGTH) return false;
   if (BOOK_LAUNCH_PATTERN.test(caption)) return false;
+  if (OUT_OF_SCOPE_CATEGORY_PATTERN.test(caption)) return false;
   return true;
 }
 
