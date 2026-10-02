@@ -1,6 +1,6 @@
 import type { EventRecord } from "./events";
 import { MIN_EVENTS_TO_INDEX, groupEventsByEntity, splitCurrentAndPast } from "./catalogPage";
-import { findBySlug } from "./venueSlug";
+import { artistSlug, findBySlug } from "./venueSlug";
 
 // Pure half of the artist pages — artists.ts holds the cached fetch.
 
@@ -44,6 +44,36 @@ export function assembleArtistData(
 // handle), which is exactly why this isn't "index everything".
 export function isArtistIndexable(artist: ArtistRecord, totalEvents: number): boolean {
   return totalEvents >= MIN_EVENTS_TO_INDEX || artist.instagramHandle !== null;
+}
+
+export interface ArtistLink {
+  href: string;
+  name: string;
+}
+
+// An event credits at most this many artist links; a group show with ten
+// names would otherwise bury the event's own details under a column of
+// links. Alphabetical, so the choice is stable between renders.
+export const MAX_ARTIST_LINKS = 3;
+
+// Where an event page links to its artists' pages. Same rule as the venue
+// link (venuePage.ts's findVenueLinkForEvent): only an artist whose page
+// lists MORE than this event — a page showing just the show the visitor is
+// already on adds nothing — which is also always an indexable page
+// (MIN_EVENTS_TO_INDEX), so the site never links internally to a page it
+// tells Google to skip. An artist with one show and a published handle IS
+// indexable but deliberately not linked: all that page would add is their
+// Instagram. Found through the catalog's event↔artist links, never by
+// matching events.artist's free text (38 of those are lists of names).
+export function findArtistLinksForEvent(data: ArtistData, eventId: string): ArtistLink[] {
+  return data.artists
+    .filter((a) => {
+      const events = data.eventsByArtistId[a.id];
+      return events !== undefined && events.length >= MIN_EVENTS_TO_INDEX && events.some((e) => e.id === eventId);
+    })
+    .sort((a, b) => a.name.localeCompare(b.name, "es"))
+    .slice(0, MAX_ARTIST_LINKS)
+    .map((a) => ({ href: `/artistas/${artistSlug(a)}`, name: a.name }));
 }
 
 export interface ArtistPageData {

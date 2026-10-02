@@ -4,6 +4,8 @@ import { notFound } from "next/navigation";
 import { fetchApprovedEvents } from "@/lib/events";
 import { fetchVenueData } from "@/lib/venues";
 import { findVenueLinkForEvent, type VenueLink } from "@/lib/venuePage";
+import { fetchArtistData } from "@/lib/artists";
+import { findArtistLinksForEvent, type ArtistLink } from "@/lib/artistPage";
 import { truncateDescription, displayNameForCity, resolveAdminRegionName, filterByRegion, filterActiveInRange } from "@/lib/event-utils";
 import { buildRegionMetaByCityId, regionIdFromAdminRegionName } from "@/lib/cities";
 import { currentWeekInSantiago, todayInSantiago, isCurrentOrUpcoming } from "@/lib/date";
@@ -110,15 +112,17 @@ export default async function EventPage({ params }: { params: Promise<PageParams
   const event = events.find((e) => e.id === id);
   if (!event) notFound();
 
-  // The venue link is a nicety, never a reason for this page to fail: this
-  // is the site's highest-traffic page, and the catalog read can be briefly
-  // unavailable (e.g. right after a deploy that precedes its migration).
+  // The venue and artist links are niceties, never a reason for this page
+  // to fail: this is the site's highest-traffic page, and the catalog reads
+  // can be briefly unavailable (e.g. right after a deploy that precedes
+  // its migration). allSettled so one failing doesn't take the other down.
   let venueLink: VenueLink | null = null;
-  try {
-    venueLink = findVenueLinkForEvent(await fetchVenueData(), event.id);
-  } catch (err) {
-    console.error(`[eventos/${event.id}] venue link left out: ${(err as Error).message}`);
-  }
+  let artistLinks: ArtistLink[] = [];
+  const [venueData, artistData] = await Promise.allSettled([fetchVenueData(), fetchArtistData()]);
+  if (venueData.status === "fulfilled") venueLink = findVenueLinkForEvent(venueData.value, event.id);
+  else console.error(`[eventos/${event.id}] venue link left out: ${(venueData.reason as Error).message}`);
+  if (artistData.status === "fulfilled") artistLinks = findArtistLinksForEvent(artistData.value, event.id);
+  else console.error(`[eventos/${event.id}] artist links left out: ${(artistData.reason as Error).message}`);
 
   const domain = event.sourceUrl ? extractDomain(event.sourceUrl) : null;
   const metaByCityId = buildRegionMetaByCityId(regions);
@@ -149,7 +153,7 @@ export default async function EventPage({ params }: { params: Promise<PageParams
         <EventCityLink regionId={eventRegionId} cityName={eventCityName} />
       </div>
 
-      <EventDetailCard event={event} domain={domain} venueLink={venueLink} />
+      <EventDetailCard event={event} domain={domain} venueLink={venueLink} artistLinks={artistLinks} />
 
       <Link
         href="/"
