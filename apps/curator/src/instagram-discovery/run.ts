@@ -25,7 +25,7 @@ import { recordUsage, getConfigNumber, getCurrentMonthSpend } from "../lib/usage
 import { estimateCostUsd } from "../lib/pricing.js";
 import { enrichCandidates, type FetchLike as PageFetchLike } from "../lib/page-fetch.js";
 import { fetchInstagramPosts, RESULTS_LIMIT_PER_ACCOUNT, type ApifyInstagramPost } from "../lib/apify-instagram.js";
-import { toBrightSourceItem, isCaptionWorthCurating, resolveAccountForPost, dedupeItemsBySourceUrl } from "../lib/instagram-item.js";
+import { toBrightSourceItem, isCaptionWorthCurating, resolveAccountForPost, dedupeItemsBySourceUrl, matchExcludedCategory } from "../lib/instagram-item.js";
 import { INSTAGRAM_ACCOUNTS, type InstagramAccountConfig } from "../lib/instagram-accounts.js";
 import {
   loadInstagramFetchState,
@@ -45,6 +45,7 @@ import { applySafetyNet, SAFETY_NET_CHUNK_SIZE } from "../lib/safety-net.js";
 import { collabEdgesForPosts, recordInstagramCollabEdges } from "../lib/instagram-collab-edges.js";
 import { postStatsRows, recordInstagramPostStats } from "../lib/instagram-post-stats.js";
 import { syncCatalogSafely } from "../lib/catalog.js";
+import { getSupabaseClient } from "../lib/supabase-client.js";
 
 export interface InstagramRunDeps {
   messagesClient?: MessagesClient;
@@ -201,15 +202,56 @@ export async function run(deps: InstagramRunDeps = {}): Promise<void> {
   // outcome, not a cadence signal.
   const usernamesWithNewItems = new Set(newItems.map((item) => accountForItem.get(item)?.username).filter((u): u is string => u !== undefined));
 
+  // Fase 3 del plan de exclusión por cuenta×categoría (2026-10-02) — ver
+  // instagram-category-exclusions.ts para la evidencia detrás de cada
+  // entrada. Deliberadamente DESPUÉS de usernamesWithNewItems: una cuenta
+  // que publicó un "taller" nuevo sigue siendo una cuenta activa para
+  // efectos de cadencia, aunque ese post puntual no se mande a Haiku.
+  // Deja rastro auditable en rejected_candidates, mismo patrón que el
+  // prefiltro de fecha de bright sources (event-discovery/run.ts) — si
+  // alguna vez se nos escapa un evento real, queda un registro para
+  // revisar, no una caja negra.
+  const categoryFilteredItems: BrightSourceItem[] = [];
+  let categoryExcludedCount = 0;
+  for (const item of newItems) {
+    const account = accountForItem.get(item)?.username;
+    const excludedCategory = account ? matchExcludedCategory(account, item.description) : null;
+    if (!excludedCategory) {
+      categoryFilteredItems.push(item);
+      continue;
+    }
+    categoryExcludedCount += 1;
+    const { error } = await getSupabaseClient()
+      .from("rejected_candidates")
+      .upsert(
+        {
+          source_url: item.sourceUrl,
+          title: item.title,
+          reason: `[FILTRO DE CÓDIGO: cuenta "${account}" excluida para categoría "${excludedCategory}"; no se envió a Haiku]`,
+          created_at: now.toISOString(),
+          location: item.location,
+          pipeline: "instagram",
+          source_account: account ?? null,
+        },
+        { onConflict: "source_url" },
+      );
+    if (error) {
+      console.error(`[instagram-discovery] failed to record category-excluded candidate "${item.title}": ${error.message}`);
+    }
+  }
+  if (categoryExcludedCount > 0) {
+    console.log(`[instagram-discovery] ${categoryExcludedCount}/${newItems.length} post(s) excluded by account+category (cuenta medida como ruido puro en esa categoría), skipped before curation`);
+  }
+
   // Deterministic pre-Haiku filter (instagram-item.ts) — catches an
   // empty/near-empty caption or an unambiguous book-launch announcement
   // before spending an Anthropic call on something that's rejected every
   // time in practice (see instagram-item.ts's own doc comment for the
   // real rejection reasons that motivated these two specific patterns).
-  const curatableItems = newItems.filter((item) => isCaptionWorthCurating(item.description));
-  const filteredOut = newItems.length - curatableItems.length;
+  const curatableItems = categoryFilteredItems.filter((item) => isCaptionWorthCurating(item.description));
+  const filteredOut = categoryFilteredItems.length - curatableItems.length;
   if (filteredOut > 0) {
-    console.log(`[instagram-discovery] ${filteredOut}/${newItems.length} post(s) filtered out before curation (thin caption or book launch)`);
+    console.log(`[instagram-discovery] ${filteredOut}/${categoryFilteredItems.length} post(s) filtered out before curation (thin caption or book launch)`);
   }
 
   if (curatableItems.length > 0) {
