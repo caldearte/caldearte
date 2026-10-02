@@ -36,8 +36,11 @@ opinion on approvals". **Re-measured 2026-10-02 against real 30-day
 volume) — structurally unaffected by the same day's pre-Haiku filtering
 work, since the safety net only ever reviews candidates Haiku already
 approved (see region-discovery.md "Pre-Haiku candidate filtering").
-Bright sources keep the full shadow (one call per
-source, negligible). The earlier venue-based design (a separate "Event Crawler"
+The full MiniMax shadow on bright sources was
+**removed 2026-10-02** (it re-curated every candidate at ~$0.35 a run,
+~$3 a month, for a comparison nothing acted on); the safety net is
+being extended to review only the events about to be inserted, in both
+pipelines. The earlier venue-based design (a separate "Event Crawler"
 that revisited known venues, plus the `venues` table itself) has been
 retired — it was left disconnected after the pivot (nothing fed it new
 venues) and has been fully removed from the code and schema, not just

@@ -12,6 +12,12 @@
 // shadow model isn't worth adopting, both this file and the table can
 // simply be dropped.
 //
+// Status (2026-10-02): the full shadow on bright sources was removed — it
+// re-curated every candidate (~$0.35 a run, ~$3 a month) for a comparison
+// nothing acted on. What stays here is runShadowCuration, which the safety
+// net (safety-net.ts) uses to run MiniMax over the events about to be
+// inserted, in both pipelines.
+//
 // Model note (2026-09-10): started on the free `minimax/minimax-m3:free`
 // slug; OpenRouter retired that free tier on ~2026-09-09 ("This model is
 // unavailable for free... use minimax/minimax-m3 instead"), which silently
@@ -150,26 +156,6 @@ async function persistComparison(row: {
   } catch (err) {
     console.error(`[event-discovery][shadow-mode] failed to persist comparison: ${(err as Error).message}`);
   }
-}
-
-// Kicks the shadow call off NOW, before the real call is awaited, so the
-// two run concurrently instead of back to back — on the 2026-09-13
-// Instagram run the shadow pass alone added 37 minutes after Haiku's 17,
-// for a result that never affects production output. Returns a thunk
-// with runShadowCuration's `shadowFn` shape, so the call site stays the
-// same: start it, await the real call, then hand the thunk over. The
-// no-op catch matters: without it a shadow failure that lands while the
-// real call is still in flight is an unhandled rejection, which Node
-// turns into a process crash — the real pipeline would die because of
-// the experiment. The original promise still rejects for whoever awaits
-// it (runShadowCuration), which records the failure as its own outcome.
-export function startShadowCuration(
-  shadow: ShadowClient,
-  shadowFn: (client: MessagesClient) => Promise<CurateResult>,
-): () => Promise<CurateResult> {
-  const pending = shadowFn(shadow.client);
-  pending.catch(() => {});
-  return () => pending;
 }
 
 // Runs `shadowFn` (a curate()/curateBrightSourceItems() call against the
