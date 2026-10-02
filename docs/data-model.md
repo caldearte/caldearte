@@ -153,6 +153,17 @@ api_usage_log
   -- billed separately from tokens ($10/1,000 searches) and wasn't tracked
   -- at all before, so isOverBudget() was blind to roughly half of real spend.
 
+venues_public (view, 20261002140000_add_venues_public_view.sql — feeds the
+    public /espacios/[slug] pages): id, name, region_id, comuna,
+    instagram_handle, for venues with at least one live event (approved,
+    not removed) only. Deliberately excludes name_key, created_at and
+    every outreach column (follows_caldearte_at, newsletter_subscribed_at,
+    notes). The same migration appended `venue_id` to events_public (the
+    join key; `create or replace view` can only append) — checked against
+    the live production definition first. A venue page is indexable only
+    from 2 live events up (web `MIN_EVENTS_TO_INDEX`); below that it
+    renders `noindex` and stays out of the sitemap.
+
 events_public, regions_public (views, not tables — created in
     20260717050000_restrict_public_columns_via_views.sql)
   events_public: id, title, artist, description, freeform_location,
@@ -383,7 +394,9 @@ artists, venues, event_artists, outreach_contacts, view artist_history
   -- on Daniel's word, never by a pipeline — 5-10 DMs a day, never
   -- automated.
   -- Private: RLS on, no public policy, service_role only; the web app
-  -- reads none of it. `artist_history` (security_invoker) answers "what
+  -- reads the base tables not at all — since 2026-10-02 only through the
+  -- column-restricted `venues_public` view (see the views section above;
+  -- artists/outreach stay fully private). `artist_history` (security_invoker) answers "what
   -- has this artist shown, where and when": one row per artist × live
   -- event with venue, dates and the caldearte.com URL.
   -- Known limits: two spellings of one person ("José Soto" / "José

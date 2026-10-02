@@ -552,6 +552,13 @@ export type Database = {
             referencedRelation: "venues"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "events_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
       instagram_account_snapshots: {
@@ -848,6 +855,13 @@ export type Database = {
             columns: ["venue_id"]
             isOneToOne: false
             referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "outreach_contacts_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues_public"
             referencedColumns: ["id"]
           },
         ]
@@ -1248,6 +1262,7 @@ export type Database = {
           sensitivity_tags: string[] | null
           source_url: string | null
           title: string | null
+          venue_id: string | null
         }
         Insert: {
           address?: string | null
@@ -1266,6 +1281,7 @@ export type Database = {
           sensitivity_tags?: never
           source_url?: string | null
           title?: string | null
+          venue_id?: string | null
         }
         Update: {
           address?: string | null
@@ -1284,6 +1300,7 @@ export type Database = {
           sensitivity_tags?: never
           source_url?: string | null
           title?: string | null
+          venue_id?: string | null
         }
         Relationships: [
           {
@@ -1298,6 +1315,20 @@ export type Database = {
             columns: ["region_id"]
             isOneToOne: false
             referencedRelation: "regions_public"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "events_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "events_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues_public"
             referencedColumns: ["id"]
           },
         ]
@@ -1337,6 +1368,45 @@ export type Database = {
           population?: number | null
         }
         Relationships: []
+      }
+      venues_public: {
+        Row: {
+          comuna: string | null
+          id: string | null
+          instagram_handle: string | null
+          name: string | null
+          region_id: string | null
+        }
+        Insert: {
+          comuna?: string | null
+          id?: string | null
+          instagram_handle?: string | null
+          name?: string | null
+          region_id?: string | null
+        }
+        Update: {
+          comuna?: string | null
+          id?: string | null
+          instagram_handle?: string | null
+          name?: string | null
+          region_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "venues_region_id_fkey"
+            columns: ["region_id"]
+            isOneToOne: false
+            referencedRelation: "regions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "venues_region_id_fkey"
+            columns: ["region_id"]
+            isOneToOne: false
+            referencedRelation: "regions_public"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Functions: {
