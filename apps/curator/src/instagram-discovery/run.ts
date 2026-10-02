@@ -39,7 +39,7 @@ import { sendInstagramRunSummaryEmail, type InstagramRunSummary } from "../lib/n
 import { recordRunSummary } from "../lib/run-summary-store.js";
 import { curateBrightSourceItems, currentMonthLabel, EVENT_DISCOVERY_MODEL, type MessagesClient } from "../event-discovery/discover.js";
 import type { BrightSourceItem } from "../event-discovery/extractors.js";
-import { insertCandidates, loadAllRegions, loadExistingKeys, loadRecentlyRejectedSourceUrls, toCandidateSummary } from "../event-discovery/run.js";
+import { insertCandidates, loadAllRegions, loadExistingKeys, loadRecentlyRejectedSourceUrls, toCandidateSummary, wouldInsertAsNew } from "../event-discovery/run.js";
 import { createShadowClient } from "../lib/model-comparison.js";
 import { applySafetyNet, SAFETY_NET_CHUNK_SIZE } from "../lib/safety-net.js";
 import { collabEdgesForPosts, recordInstagramCollabEdges } from "../lib/instagram-collab-edges.js";
@@ -261,22 +261,31 @@ export async function run(deps: InstagramRunDeps = {}): Promise<void> {
     // venue), same per-item precedence curateBrightSourceItems already
     // gives a source-level `location` value.
     const { candidates, usage } = await curateBrightSourceItems(messagesClient, curatableItems, currentMonthLabel(now));
-    // Safety net on the approvals only (lib/safety-net.ts) —
-    // replaced the full parallel shadow on 2026-09-16: ~20 items a day
-    // instead of ~150, and a scope rejection from the second model is
-    // applied before insertion instead of just logged.
-    if (shadowClient) {
-      await applySafetyNet(shadowClient, candidates, curatableItems, (client, reviewItems) =>
-        curateBrightSourceItems(client, reviewItems, currentMonthLabel(now), { chunkSize: SAFETY_NET_CHUNK_SIZE }),
-      );
-    }
-
     await recordUsage({ purpose: "event_discovery", model: EVENT_DISCOVERY_MODEL, pipeline: "instagram", usage });
     summary.cost.anthropicUsd = estimateCostUsd(EVENT_DISCOVERY_MODEL, usage);
     summary.cost.totalUsd = summary.cost.anthropicUsd;
 
     const regions = await loadAllRegions();
     await enrichCandidates(candidates, pageFetchFn, now, regions);
+
+    // Safety net (lib/safety-net.ts), since 2026-09-16 (replaced the full
+    // parallel shadow): a scope rejection from the second model is applied
+    // before insertion instead of just logged. Since 2026-10-02 it reviews
+    // only the approvals that would really be INSERTED as new events
+    // (wouldInsertAsNew), not duplicates or expired ones that
+    // insertCandidates discards anyway — and it runs AFTER
+    // enrichCandidates, because enrichment can recover run dates, which
+    // changes both "still current?" and the duplicate match; deciding with
+    // the same data insertCandidates will use keeps the review set exact.
+    if (shadowClient) {
+      await applySafetyNet(
+        shadowClient,
+        candidates,
+        curatableItems,
+        (client, reviewItems) => curateBrightSourceItems(client, reviewItems, currentMonthLabel(now), { chunkSize: SAFETY_NET_CHUNK_SIZE }),
+        { pipeline: "instagram", shouldReview: (c) => wouldInsertAsNew(c, seenKeys, now) },
+      );
+    }
 
     const { insertedCount, outcomes } = await insertCandidates(candidates, regions, seenKeys, now, "instagram");
 

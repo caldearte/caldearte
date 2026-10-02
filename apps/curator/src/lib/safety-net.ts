@@ -25,13 +25,41 @@
 // model's rejectionAxis so the axis safety net still applies), which also
 // keeps the item out of curation on later runs. The comparison row goes
 // to shadow_curation_comparisons under its own label so /admin can keep
-// counting agreements; the bright-source pipeline keeps its full shadow
-// (one call per source, negligible) untouched.
+// counting agreements.
+//
+// 2026-10-02: extended to the web (bright-source) pipeline, and narrowed
+// in both: the net reviews only the approvals that would really be
+// INSERTED as new events (`shouldReview`, built on event-discovery/run.ts's
+// wouldInsertAsNew) — not duplicates or already-expired ones that
+// insertCandidates discards anyway. The full shadow on bright sources was
+// removed the same day (~$3 a month for a comparison nothing acted on).
 import type { CurateResult, EventCandidate, MessagesClient } from "../event-discovery/discover.js";
 import type { BrightSourceItem } from "../event-discovery/extractors.js";
 import { runShadowCuration, type ShadowClient } from "./model-comparison.js";
 
-export const SAFETY_NET_LABEL = "instagram_safety_net";
+export type SafetyNetPipeline = "instagram" | "bright_source";
+
+// Label under which each pipeline's review is recorded in
+// shadow_curation_comparisons, so /admin can keep counting them apart.
+export const SAFETY_NET_LABELS: Record<SafetyNetPipeline, string> = {
+  instagram: "instagram_safety_net",
+  bright_source: "bright_source_safety_net",
+};
+export const SAFETY_NET_LABEL = SAFETY_NET_LABELS.instagram;
+
+// The log prefix each pipeline's own modules already use.
+const LOG_PREFIX: Record<SafetyNetPipeline, string> = {
+  instagram: "[instagram-discovery]",
+  bright_source: "[event-discovery]",
+};
+
+export interface SafetyNetOptions {
+  pipeline: SafetyNetPipeline;
+  // Which of Haiku's approvals are worth a second opinion. Absent = all of
+  // them (the original behavior). Candidates it rejects keep Haiku's
+  // verdict untouched and are never shown to the second model.
+  shouldReview?: (candidate: EventCandidate) => boolean;
+}
 // See BrightSourceCurateOpts.chunkSize — bounds what one runaway chunk
 // of the second model costs in unreviewed approvals.
 export const SAFETY_NET_CHUNK_SIZE = 5;
@@ -67,21 +95,23 @@ export async function applySafetyNet(
   candidates: EventCandidate[],
   items: readonly BrightSourceItem[],
   curateFn: (client: MessagesClient, items: BrightSourceItem[]) => Promise<CurateResult>,
+  opts: SafetyNetOptions = { pipeline: "instagram" },
 ): Promise<number> {
-  const approved = candidates.filter((c) => c.status === "approved" && c.sourceUrl);
+  const prefix = `${LOG_PREFIX[opts.pipeline]}[safety-net]`;
+  const approved = candidates.filter((c) => c.status === "approved" && c.sourceUrl && (opts.shouldReview ? opts.shouldReview(c) : true));
   if (approved.length === 0) return 0;
   const approvedUrls = new Set(approved.map((c) => c.sourceUrl as string));
   const reviewItems = items.filter((item) => approvedUrls.has(item.sourceUrl));
   if (reviewItems.length === 0) return 0;
 
   let shadowCandidates: EventCandidate[] | null = null;
-  await runShadowCuration("instagram", SAFETY_NET_LABEL, shadow, approved, async (client) => {
+  await runShadowCuration(opts.pipeline, SAFETY_NET_LABELS[opts.pipeline], shadow, approved, async (client) => {
     const result = await curateFn(client, reviewItems);
     shadowCandidates = result.candidates;
     return result;
   });
   if (!shadowCandidates) {
-    console.log(`[instagram-discovery][safety-net] ${shadow.model} returned nothing for ${reviewItems.length} approved item(s) — keeping Haiku's verdicts`);
+    console.log(`${prefix} ${shadow.model} returned nothing for ${reviewItems.length} approved item(s) — keeping Haiku's verdicts`);
     return 0;
   }
 
@@ -90,13 +120,13 @@ export async function applySafetyNet(
   for (const veto of vetoes) {
     for (const c of candidates) {
       if (c.status !== "approved" || c.sourceUrl !== veto.sourceUrl) continue;
-      console.log(`[instagram-discovery][safety-net] veto: "${c.title}" — ${shadow.model}: ${veto.reasoning} (Haiku: ${c.curationReasoning})`);
+      console.log(`${prefix} veto: "${c.title}" — ${shadow.model}: ${veto.reasoning} (Haiku: ${c.curationReasoning})`);
       c.status = "rejected";
       c.curationReasoning = `[VETO red de seguridad ${shadow.model}] ${veto.reasoning} — Haiku había aprobado: ${c.curationReasoning}`;
       c.rejectionAxis = veto.rejectionAxis;
       vetoed += 1;
     }
   }
-  console.log(`[instagram-discovery][safety-net] ${reviewItems.length} approved item(s) reviewed by ${shadow.model}, ${vetoed} candidate(s) vetoed`);
+  console.log(`${prefix} ${reviewItems.length} approved item(s) reviewed by ${shadow.model}, ${vetoed} candidate(s) vetoed`);
   return vetoed;
 }

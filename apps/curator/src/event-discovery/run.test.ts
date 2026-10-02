@@ -1994,8 +1994,8 @@ test(
                   description: null,
                   locationHint: null,
                   rawDateText: "Del 1 al 31 de enero",
-                  structuredStartDate: "2027-01-01",
-                  structuredEndDate: "2027-01-31",
+                  structuredStartDate: "2027-09-01",
+                  structuredEndDate: "2027-09-30",
                 },
               ],
             },
@@ -2032,8 +2032,8 @@ test(
           description: null,
           locationHint: null,
           rawDateText: "Del 1 al 28 de febrero",
-          structuredStartDate: "2027-02-01",
-          structuredEndDate: "2027-02-28",
+          structuredStartDate: "2027-12-01",
+          structuredEndDate: "2027-12-31",
         };
         const source = { url: "https://fuente-estructurada.cl/agenda", note: "fuente estructurada", fixedLocation: { location: "Valparaíso", placeName: "Parque Cultural de Valparaíso" } };
 
@@ -2070,6 +2070,12 @@ test(
       // description, not a bare title/date/place with no prose at all.
       await t.test("an item with no description in the listing gets it recovered from the detail page BEFORE the Haiku block is built", async () => {
         await client.from("bright_source_fetch_state").delete().neq("url", "");
+        // A previous run of this very test leaves its item in
+        // rejected_candidates (the fake Haiku returns nothing, so the item
+        // is recorded as rejected), and the next run would then skip it as
+        // "already seen" before ever curating — clear it so the test is
+        // repeatable against the same local database.
+        await client.from("rejected_candidates").delete().eq("source_url", "https://www.museodeancud.gob.cl/cartelera/expo-sin-descripcion");
         let capturedBlock = "";
         const capturingMessagesClient = {
           messages: {
@@ -2096,8 +2102,8 @@ test(
                   description: null,
                   locationHint: null,
                   rawDateText: "Del 1 al 30 de abril",
-                  structuredStartDate: "2027-04-01",
-                  structuredEndDate: "2027-04-30",
+                  structuredStartDate: "2027-09-01",
+                  structuredEndDate: "2027-09-30",
                 },
               ],
             },
@@ -2106,6 +2112,98 @@ test(
         });
 
         assert.match(capturedBlock, /Descripción real recuperada antes de curar\./, "the block sent to Haiku includes the description recovered from the detail page, not just title/date/place");
+      });
+
+      // 2026-10-02: the MiniMax safety net on the web pipeline reviews only
+      // what would really be inserted, and its veto lands before insertion.
+      await t.test("the safety net reviews only events about to be inserted: it vetoes a new out-of-scope approval, and never sees a duplicate", async () => {
+        await client.from("bright_source_fetch_state").delete().neq("url", "");
+        const rowFor = (index: number, status: "approved" | "rejected", reasoning: string) => ({
+          index,
+          status,
+          artist: null,
+          runStartDate: null,
+          runEndDate: null,
+          openingDatetime: null,
+          openingTimeConfirmed: false,
+          location: null,
+          placeName: null,
+          mediumType: "tradicional",
+          sensitivityTags: [],
+          curationReasoning: reasoning,
+          rejectionAxis: null,
+        });
+        const source = { url: "https://fuente-estructurada.cl/agenda", note: "fuente estructurada", fixedLocation: { location: "Valparaíso", placeName: "Parque Cultural de Valparaíso" } };
+        const mkItem = (title: string, slug: string) => ({
+          title,
+          sourceUrl: `https://fuente-estructurada.cl/${slug}`,
+          imageUrl: null,
+          description: "Una muestra.",
+          locationHint: null,
+          rawDateText: "Del 1 al 30 de septiembre",
+          structuredStartDate: "2027-09-01",
+          structuredEndDate: "2027-09-30",
+        });
+        const haikuApprovesAll = (n: number) => ({
+          messages: {
+            create: async () => ({
+              content: [{ type: "text", text: fencedJson(Array.from({ length: n }, (_, i) => rowFor(i, "approved", "ok"))) }],
+              usage: { input_tokens: 20, output_tokens: 10 },
+            }),
+          },
+        });
+
+        // First run: two NEW events, MiniMax vetoes the first and approves the second.
+        let netCalls = 0;
+        let netBlock = "";
+        const safetyNetClient = {
+          model: "minimax/minimax-m3",
+          client: {
+            messages: {
+              create: async (params: { messages: Array<{ content: string }> }) => {
+                netCalls += 1;
+                netBlock = params.messages[0].content;
+                return {
+                  content: [{ type: "text", text: fencedJson([rowFor(0, "rejected", "Concierto, no arte visual."), rowFor(1, "approved", "ok")]) }],
+                  usage: { input_tokens: 30, output_tokens: 20 },
+                };
+              },
+            },
+          },
+        };
+        await run({
+          messagesClient: haikuApprovesAll(2),
+          safetyNetClient,
+          searchUnitFn: async () => ({ results: [], credits: 0 }),
+          fetchBrightSourcesFn: async () => [
+            { kind: "items", source, items: [mkItem("__test__ Concierto Disfrazado", "red-concierto"), mkItem("__test__ Pintura Real", "red-pintura")] },
+          ],
+          now: new Date(2027, 7, 14),
+        });
+        assert.equal(netCalls, 1, "both new events go to the safety net in a single chunk");
+        assert.match(netBlock, /Concierto Disfrazado/);
+        const { data: vetoedEvent } = await client.from("events").select("id").eq("title", "__test__ Concierto Disfrazado");
+        assert.equal(vetoedEvent?.length ?? 0, 0, "the vetoed approval is never inserted");
+        const { data: keptEvent } = await client.from("events").select("id").eq("title", "__test__ Pintura Real");
+        assert.equal(keptEvent?.length, 1, "the approval the second model also approved is inserted");
+        const { data: vetoRow } = await client.from("rejected_candidates").select("reason").eq("source_url", "https://fuente-estructurada.cl/red-concierto").maybeSingle();
+        assert.match(vetoRow?.reason ?? "", /^\[VETO red de seguridad minimax\/minimax-m3\] Concierto, no arte visual\./, "the veto is recorded like any other rejection");
+
+        // Second run: the same event again under a NEW url — a duplicate of
+        // what is stored. Haiku approves it, but the safety net must not see it.
+        await client.from("bright_source_fetch_state").delete().neq("url", "");
+        netCalls = 0;
+        await run({
+          messagesClient: haikuApprovesAll(1),
+          safetyNetClient,
+          searchUnitFn: async () => ({ results: [], credits: 0 }),
+          fetchBrightSourcesFn: async () => [{ kind: "items", source, items: [mkItem("__test__ Pintura Real", "red-pintura-otra-url")] }],
+          now: new Date(2027, 7, 15),
+        });
+        assert.equal(netCalls, 0, "a duplicate is dropped by insertCandidates anyway — paying MiniMax to review it would buy nothing");
+
+        await client.from("events").delete().like("title", "__test__ Pintura Real%");
+        await client.from("rejected_candidates").delete().like("source_url", "https://fuente-estructurada.cl/red-%");
       });
 
       await t.test("a rejected candidate with a real sourceUrl is upserted into rejected_candidates, without touching location", async () => {
@@ -2158,8 +2256,8 @@ test(
                     description: null,
                     locationHint: null,
                     rawDateText: "Del 1 al 28 de marzo",
-                    structuredStartDate: "2027-03-01",
-                    structuredEndDate: "2027-03-28",
+                    structuredStartDate: "2027-09-01",
+                    structuredEndDate: "2027-09-28",
                   },
                 ],
               },

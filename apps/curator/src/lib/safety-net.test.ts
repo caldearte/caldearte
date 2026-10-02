@@ -106,3 +106,48 @@ test("applySafetyNet keeps every approval when the second model's call fails", a
   assert.equal(vetoed, 0);
   assert.equal(candidates[0].status, "approved");
 });
+
+// 2026-10-02: the net reviews only what would really be inserted.
+test("applySafetyNet with shouldReview sends the second model ONLY the approvals it selects, and never vetoes the rest", async () => {
+  const candidates = [
+    candidate({ title: "Nueva", sourceUrl: "https://www.instagram.com/p/NEW/" }),
+    candidate({ title: "Ya guardada", sourceUrl: "https://www.instagram.com/p/DUP/" }),
+  ];
+  const items = [item("https://www.instagram.com/p/NEW/"), item("https://www.instagram.com/p/DUP/")];
+  let reviewed: string[] = [];
+  const curateFn = async (_client: unknown, reviewItems: BrightSourceItem[]): Promise<CurateResult> => {
+    reviewed = reviewItems.map((i) => i.sourceUrl);
+    return {
+      candidates: [candidate({ title: "Nueva", sourceUrl: "https://www.instagram.com/p/NEW/", status: "rejected", curationReasoning: "Concierto, no arte visual." })],
+      usage: { inputTokens: 0, outputTokens: 0 },
+    };
+  };
+  const vetoed = await applySafetyNet(
+    { client: {} as never, model: "test-model" },
+    candidates,
+    items,
+    curateFn,
+    { pipeline: "bright_source", shouldReview: (c) => c.title === "Nueva" },
+  );
+  assert.deepEqual(reviewed, ["https://www.instagram.com/p/NEW/"], "the duplicate never reaches the second model");
+  assert.equal(vetoed, 1);
+  assert.equal(candidates[0].status, "rejected");
+  assert.equal(candidates[1].status, "approved", "an approval the filter skipped keeps Haiku's verdict");
+});
+
+test("applySafetyNet makes no call at all when shouldReview selects nothing", async () => {
+  let called = false;
+  const curateFn = async (): Promise<CurateResult> => {
+    called = true;
+    return { candidates: [], usage: { inputTokens: 0, outputTokens: 0 } };
+  };
+  const vetoed = await applySafetyNet(
+    { client: {} as never, model: "test-model" },
+    [candidate({ title: "Ya guardada" })],
+    [item("https://www.instagram.com/p/AAA/")],
+    curateFn,
+    { pipeline: "instagram", shouldReview: () => false },
+  );
+  assert.equal(called, false);
+  assert.equal(vetoed, 0);
+});
