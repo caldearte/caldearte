@@ -5201,3 +5201,66 @@ reduction. One account flagged to revisit, not act on yet:
 `ccesantiago` (added 2026-09-24) already shows 21 posts/13 days — the
 highest volume of any zero-yield account — but hasn't had a fair chance
 yet; check it alongside the Phase 4 re-measurement above.
+
+## MiniMax: shadow off the web pipeline, safety net on what will really be inserted (2026-10-02)
+
+Trigger: the corrected cost forecast (above) found that the MiniMax shadow
+on bright sources — every candidate re-curated, one call per source run —
+had grown to ~$0.35 a run (~$3/month) once many web sources went live, for
+a comparison nothing acted on. The 2026-09-14 pilot had already concluded
+MiniMax would not become primary. Daniel's call: drop the shadow, and give
+the web pipeline the same *safety net* Instagram has had since 09-16 — but
+pointed only at what will really be inserted.
+
+**PR #618 — shadow removed.** `startShadowCuration` and its call sites in
+`event-discovery/run.ts` are gone. `shadow_curation_comparisons` rows with
+pipeline `bright_source` stop accumulating (history kept).
+
+**PR 2 — safety net, both pipelines, narrowed.**
+
+- `applySafetyNet` takes a pipeline (`instagram` | `bright_source`) and an
+  optional `shouldReview(candidate)` predicate. Comparison rows are labeled
+  `instagram_safety_net` / `bright_source_safety_net`, so /admin counts them
+  apart; log lines use each pipeline's own prefix.
+- `wouldInsertAsNew(candidate, seenKeys, now)` (event-discovery/run.ts) is
+  the predicate: Haiku approved it, it has a `sourceUrl`, it is current or
+  upcoming (`isCurrentOrUpcoming`), and none of `insertCandidates`' five
+  dedup tiers (title, sourceUrl, location+date, fuzzy, same-venue) matches
+  a stored event. The matching block was extracted verbatim from
+  `insertCandidates` into `findExistingMatch` — the predicate and the real
+  insert can't drift apart — and `findExistingMatch` is read-only.
+- Ordering matters: the net now runs AFTER `enrichCandidates` (which can
+  recover run dates and so change what is expired) and right before
+  `insertCandidates`, in both pipelines. Previously the Instagram net ran
+  before enrichment and reviewed everything Haiku approved, including
+  duplicates and already-expired events that `insertCandidates` threw away
+  a moment later — MiniMax calls that could not change any outcome.
+- Semantics are unchanged from 09-16: only scope rejections veto; the
+  `[FILTRO DE CÓDIGO` marker is not a veto; a MiniMax failure keeps
+  Haiku's verdict; an item with several candidates is vetoed only if
+  MiniMax approved none. A veto is recorded in `rejected_candidates` as
+  `[VETO red de seguridad <model>] …`, exactly as for Instagram.
+- Web scope: only bright sources that return structured **items** (the
+  `kind: "items"` path, which is where `curateBrightSourceItems` runs) get
+  the net. Sources processed as raw text blocks are not covered — they go
+  through a different curation call and none of today's high-volume sources
+  use it. If one does later, that is the gap to close.
+- Injectable for tests: `RunDeps.safetyNetClient` (default
+  `createShadowClient()`, `null` disables). `run.test.ts` has a wiring test
+  (a new item vetoed by a fake MiniMax is never inserted and leaves its
+  `rejected_candidates` row; a duplicate is never sent to the net) and
+  `would-insert-as-new.test.ts` covers the predicate.
+
+**Expected cost:** MiniMax was ~$4.4/month (IG net ~$1.35 + web shadow
+~$3.0); with the shadow gone and both nets reviewing only would-insert
+items it should settle around ~$1.3/month — lower on the IG side than
+before, since duplicates/expired approvals no longer go to MiniMax. To
+confirm with real data: the 10-16 verification task checks that no new
+`bright_source` shadow rows appear and compares MiniMax's `api_usage_log`
+spend per run.
+
+**Veto audit (Daniel's rule: no human in the loop, but we read them).**
+`rejected_candidates` rows whose reason starts `[VETO red de seguridad`
+are the only way to catch a wrongly vetoed real event — same lesson as the
+category-exclusion title audit. A one-time review of web+IG vetoes is
+scheduled for ~2026-10-11.

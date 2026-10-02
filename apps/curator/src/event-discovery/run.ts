@@ -58,6 +58,8 @@ import {
   type RawResult,
 } from "./discover.js";
 import { isObviouslyExpiredByDate, type BrightSourceItem } from "./extractors.js";
+import { createShadowClient, type ShadowClient } from "../lib/model-comparison.js";
+import { applySafetyNet, SAFETY_NET_CHUNK_SIZE } from "../lib/safety-net.js";
 import {
   detectNewBrightSources,
   fetchBrightSources,
@@ -707,6 +709,125 @@ async function softRemoveOnAxisConflict(
   }
 }
 
+export interface ExistingMatches {
+  titleMatch: ExistingEventInfo | undefined;
+  sourceUrlMatch: ExistingEventInfo | undefined;
+  locationDateMatch: ExistingEventInfo | undefined;
+  fuzzyMatch: ExistingEventInfo | undefined;
+  sameVenueMatch: ExistingEventInfo | undefined;
+  existingMatch: ExistingEventInfo | undefined;
+}
+
+// Which already-stored event (if any) a candidate duplicates, tier by tier.
+// Extracted VERBATIM from insertCandidates (2026-10-02) so the safety net
+// can ask "would this candidate end up as a brand-new event?" with the
+// exact same matching insertCandidates then applies — one source of truth,
+// not a second copy that could drift. Read-only: it never writes to `seen`.
+export function findExistingMatch(c: EventCandidate, seen: SeenKeys): ExistingMatches {
+  const titleKey = normalizeTitle(c.title);
+  const locDateKey = locationDateKey(c.location, c.placeName, c);
+  const locDateOnlyKey = locationDateOnlyKey(c.location, c);
+  const titleMatch = seen.titles.get(titleKey);
+  const sourceUrlMatch = c.sourceUrl !== null ? seen.sourceUrls.get(c.sourceUrl) : undefined;
+  const locationDateMatch = (seen.locationDates.get(locDateKey) ?? []).find((existing) =>
+    isLikelySameTitleIgnoringPlaceName(existing.title, c.title, c.placeName),
+  );
+  // isLikelySameTitleIgnoringPlaceName here too (2026-08-12, same MAC -
+  // Parque Forestal bug as locationDateMatch above) — this bucket's own
+  // placeNamesLikelySame check confirms the venues are alike separately,
+  // but without stripping placeName's words from the title comparison
+  // first, a source that bakes its venue name into every title (uchile.cl/
+  // artes.uchile.cl) still passes on the venue name alone.
+  const fuzzyMatch = (seen.titlesByLocationDateOnly.get(locDateOnlyKey) ?? []).find(
+    (existing) =>
+      isLikelySameTitleIgnoringPlaceName(existing.title, c.title, c.placeName) &&
+      placeNamesLikelySame(existing.placeName, c.placeName),
+  );
+  // Real gap found 2026-08-14 (factor__f, "BOTÁNICA"): two independently-
+  // worded Instagram captions about the same real opening, sharing only
+  // 3 of ~9 significant words each — not enough for isLikelySameTitle's
+  // 0.6 jaccard/overlap bar, so fuzzyMatch above missed it even though
+  // locDateOnlyKey already matched. When the venue name is an EXACT
+  // match (not just placeNamesLikelySame's looser "some shared word"),
+  // that's already strong independent evidence — only a single
+  // genuinely shared significant word is required here, see
+  // isLikelySameTitleWithoutRatio's own doc comment.
+  //
+  // Bucketed by placeName ALONE (titlesByPlaceName), not locDateOnlyKey
+  // — a second real gap found the same day (hifas.galeria, "Cartografía
+  // del Fuego"): when neither post states an explicit opening date,
+  // fillRunStartFromPublishedDate (discover.ts) backfills runStartDate
+  // from each POST'S OWN publish date, which genuinely differs post to
+  // post — putting the two candidates in DIFFERENT locDateOnlyKey
+  // buckets despite being the same real event with the same real
+  // runEndDate. Matching on runEndDate alone (when both sides have one)
+  // sidesteps that: it's the one date signal actually grounded in the
+  // source text here, not backfilled.
+  // KNOWN, UNFIXED gap found 2026-08-14 (mssachile, "América despierta"):
+  // an institution that posts several content-marketing "highlight" posts
+  // about individual rooms/artworks within ONE running exhibition — each
+  // captioned with genuinely disjoint vocabulary ("¿Conoces las obras...",
+  // "Te invitamos a conocer la sala...", "Últimos días para..." — sharing
+  // 0-1 significant words pairwise, since "exposición" itself is a
+  // GENERIC_TITLE_WORDS stopword) — produces 4 separate DB rows for the
+  // same real exhibition despite an identical placeName + exact
+  // runEndDate. Deliberately NOT fixed by dropping the title check for an
+  // exact runEndDate match: that would directly reopen the MAC - Parque
+  // Forestal regression this file already guards against (below,
+  // "Nazca/Sudamericana" vs "Obras extraordinarias" — two genuinely
+  // DIFFERENT exhibitions sharing a venue's season-wide dates, same
+  // shape: same placeName, same run dates, ~0 shared title words). The
+  // two real cases are structurally indistinguishable by word-overlap
+  // alone; telling them apart needs actually understanding the caption's
+  // content, not just its vocabulary — out of scope for a deterministic
+  // string comparator. Accepted as a bounded cost (a duplicate real
+  // listing is noise, not fabrication) rather than risking the
+  // regression; a moderator can merge duplicates via the admin "Quitar"
+  // action same as any other curation touch-up.
+  // Third date-agreement option added 2026-09-23 after 8 duplicates
+  // removed by hand in 12 days. Two of them (Sala de Obra's "Atlas
+  // visual de una mala imagen", Caja Crisol's "Ser, de lejos") had the
+  // SAME venue and the SAME opening instant, and still matched no tier:
+  // one source gave a full run range and the other only the opening, so
+  // runEndDate comparison fails on a null and locationDateOnlyKey
+  // compares a range against a single day. anchorDay reduces both
+  // shapes to the one day they actually agree on — the opening when
+  // there is one, the run start otherwise. Safe here only because this
+  // tier already demands an exact venue match AND a title match: the
+  // MAC - Parque Forestal shape (8 genuinely different shows opening the
+  // same minute in the same room) shares venue and day but no title
+  // words, and the regression test for it is in this file.
+  const sameVenueMatch = c.placeName
+    ? (seen.titlesByPlaceName.get(normalizeTitle(c.placeName)) ?? []).find(
+        (existing) =>
+          ((existing.runEndDate && c.runEndDate && existing.runEndDate === c.runEndDate) ||
+            locationDateOnlyKey(c.location, existing) === locDateOnlyKey ||
+            sameAnchorDay(existing, c)) &&
+          (isLikelySameTitleWithoutRatio(existing.title, c.title, c.placeName) ||
+            isTitleSubsetOfOther(existing.title, c.title, c.placeName)),
+      )
+    : undefined;
+  const existingMatch = titleMatch ?? sourceUrlMatch ?? locationDateMatch ?? fuzzyMatch ?? sameVenueMatch;
+  return { titleMatch, sourceUrlMatch, locationDateMatch, fuzzyMatch, sameVenueMatch, existingMatch };
+}
+
+// The set the MiniMax safety net reviews: approved candidates that would
+// really be INSERTED as new events — not the ones insertCandidates is
+// about to drop (already expired, or a duplicate of something stored) and
+// not in-place REPLACEMENTS of an event that is already live (replacing
+// one is not a scope risk). On a typical web run that is ~8 of ~184
+// candidates, and on Instagram ~9 of ~15 approvals: reviewing the rest
+// only paid for verdicts nothing could use. Deliberately approximate at
+// the edges: two candidates of the same run that duplicate EACH OTHER both
+// look "new" here (insertCandidates catches the second one), which costs a
+// review, never a wrong decision.
+export function wouldInsertAsNew(c: EventCandidate, seen: SeenKeys, now: Date): boolean {
+  if (c.status !== "approved" || !c.sourceUrl) return false;
+  if (!isCurrentOrUpcoming(c, now)) return false;
+  return findExistingMatch(c, seen).existingMatch === undefined;
+}
+
+
 // What actually happened to an individual candidate after curation decided
 // it — distinct from `status` (Haiku's own "is this real, in-scope art"
 // verdict), which is all the email report used to show. Real bug found via
@@ -892,89 +1013,8 @@ export async function insertCandidates(
     }
 
     const titleKey = normalizeTitle(c.title);
-    const locDateKey = locationDateKey(c.location, c.placeName, c);
     const locDateOnlyKey = locationDateOnlyKey(c.location, c);
-    const titleMatch = seen.titles.get(titleKey);
-    const sourceUrlMatch = c.sourceUrl !== null ? seen.sourceUrls.get(c.sourceUrl) : undefined;
-    const locationDateMatch = (seen.locationDates.get(locDateKey) ?? []).find((existing) =>
-      isLikelySameTitleIgnoringPlaceName(existing.title, c.title, c.placeName),
-    );
-    // isLikelySameTitleIgnoringPlaceName here too (2026-08-12, same MAC -
-    // Parque Forestal bug as locationDateMatch above) — this bucket's own
-    // placeNamesLikelySame check confirms the venues are alike separately,
-    // but without stripping placeName's words from the title comparison
-    // first, a source that bakes its venue name into every title (uchile.cl/
-    // artes.uchile.cl) still passes on the venue name alone.
-    const fuzzyMatch = (seen.titlesByLocationDateOnly.get(locDateOnlyKey) ?? []).find(
-      (existing) =>
-        isLikelySameTitleIgnoringPlaceName(existing.title, c.title, c.placeName) &&
-        placeNamesLikelySame(existing.placeName, c.placeName),
-    );
-    // Real gap found 2026-08-14 (factor__f, "BOTÁNICA"): two independently-
-    // worded Instagram captions about the same real opening, sharing only
-    // 3 of ~9 significant words each — not enough for isLikelySameTitle's
-    // 0.6 jaccard/overlap bar, so fuzzyMatch above missed it even though
-    // locDateOnlyKey already matched. When the venue name is an EXACT
-    // match (not just placeNamesLikelySame's looser "some shared word"),
-    // that's already strong independent evidence — only a single
-    // genuinely shared significant word is required here, see
-    // isLikelySameTitleWithoutRatio's own doc comment.
-    //
-    // Bucketed by placeName ALONE (titlesByPlaceName), not locDateOnlyKey
-    // — a second real gap found the same day (hifas.galeria, "Cartografía
-    // del Fuego"): when neither post states an explicit opening date,
-    // fillRunStartFromPublishedDate (discover.ts) backfills runStartDate
-    // from each POST'S OWN publish date, which genuinely differs post to
-    // post — putting the two candidates in DIFFERENT locDateOnlyKey
-    // buckets despite being the same real event with the same real
-    // runEndDate. Matching on runEndDate alone (when both sides have one)
-    // sidesteps that: it's the one date signal actually grounded in the
-    // source text here, not backfilled.
-    // KNOWN, UNFIXED gap found 2026-08-14 (mssachile, "América despierta"):
-    // an institution that posts several content-marketing "highlight" posts
-    // about individual rooms/artworks within ONE running exhibition — each
-    // captioned with genuinely disjoint vocabulary ("¿Conoces las obras...",
-    // "Te invitamos a conocer la sala...", "Últimos días para..." — sharing
-    // 0-1 significant words pairwise, since "exposición" itself is a
-    // GENERIC_TITLE_WORDS stopword) — produces 4 separate DB rows for the
-    // same real exhibition despite an identical placeName + exact
-    // runEndDate. Deliberately NOT fixed by dropping the title check for an
-    // exact runEndDate match: that would directly reopen the MAC - Parque
-    // Forestal regression this file already guards against (below,
-    // "Nazca/Sudamericana" vs "Obras extraordinarias" — two genuinely
-    // DIFFERENT exhibitions sharing a venue's season-wide dates, same
-    // shape: same placeName, same run dates, ~0 shared title words). The
-    // two real cases are structurally indistinguishable by word-overlap
-    // alone; telling them apart needs actually understanding the caption's
-    // content, not just its vocabulary — out of scope for a deterministic
-    // string comparator. Accepted as a bounded cost (a duplicate real
-    // listing is noise, not fabrication) rather than risking the
-    // regression; a moderator can merge duplicates via the admin "Quitar"
-    // action same as any other curation touch-up.
-    // Third date-agreement option added 2026-09-23 after 8 duplicates
-    // removed by hand in 12 days. Two of them (Sala de Obra's "Atlas
-    // visual de una mala imagen", Caja Crisol's "Ser, de lejos") had the
-    // SAME venue and the SAME opening instant, and still matched no tier:
-    // one source gave a full run range and the other only the opening, so
-    // runEndDate comparison fails on a null and locationDateOnlyKey
-    // compares a range against a single day. anchorDay reduces both
-    // shapes to the one day they actually agree on — the opening when
-    // there is one, the run start otherwise. Safe here only because this
-    // tier already demands an exact venue match AND a title match: the
-    // MAC - Parque Forestal shape (8 genuinely different shows opening the
-    // same minute in the same room) shares venue and day but no title
-    // words, and the regression test for it is in this file.
-    const sameVenueMatch = c.placeName
-      ? (seen.titlesByPlaceName.get(normalizeTitle(c.placeName)) ?? []).find(
-          (existing) =>
-            ((existing.runEndDate && c.runEndDate && existing.runEndDate === c.runEndDate) ||
-              locationDateOnlyKey(c.location, existing) === locDateOnlyKey ||
-              sameAnchorDay(existing, c)) &&
-            (isLikelySameTitleWithoutRatio(existing.title, c.title, c.placeName) ||
-              isTitleSubsetOfOther(existing.title, c.title, c.placeName)),
-        )
-      : undefined;
-    const existingMatch = titleMatch ?? sourceUrlMatch ?? locationDateMatch ?? fuzzyMatch ?? sameVenueMatch;
+    const { titleMatch, sourceUrlMatch, locationDateMatch, fuzzyMatch, sameVenueMatch, existingMatch } = findExistingMatch(c, seen);
 
     if (existingMatch && !shouldReplaceExisting(c, existingMatch)) {
       const reason = fuzzyMatch && !titleMatch && !sourceUrlMatch && !locationDateMatch
@@ -1291,6 +1331,10 @@ export interface RunDeps {
   rehostImageFn?: RehostImageFn;
   sendRunSummaryEmailFn?: typeof sendRunSummaryEmail;
   now?: Date;
+  // The MiniMax safety net's client (lib/safety-net.ts). Absent = built
+  // from OPENROUTER_API_KEY, which is also how it silently turns itself off
+  // when that secret isn't set; null forces it off (tests).
+  safetyNetClient?: ShadowClient | null;
   // Added 2026-07-23: a manual "just run bright sources" request kept
   // triggering a full run, which also picked up the next `weekly_batch_size`
   // due comunas — spending real Tavily/Haiku cost on a batch nobody asked
@@ -1339,6 +1383,7 @@ export async function run(deps: RunDeps = {}): Promise<void> {
   const pageFetchFn = deps.pageFetchFn ?? fetch;
   const rehostImageFn = deps.rehostImageFn ?? rehostImage;
   const client = getSupabaseClient();
+  const safetyNetClient = deps.safetyNetClient === undefined ? createShadowClient() : deps.safetyNetClient;
 
   await pruneOldRawSearchResults(now);
   await pruneExpiredEvents(now);
@@ -1507,6 +1552,9 @@ export async function run(deps: RunDeps = {}): Promise<void> {
       try {
         let candidates: EventCandidate[];
         let usage: DiscoverUsage;
+        // The extractor-item path only: the safety net re-curates specific
+        // ITEMS, which the raw-block path below has no way to select.
+        let reviewItems: BrightSourceItem[] | null = null;
         if (result.kind === "items") {
           // Pre-curation dedup — skip anything already approved (ever) or
           // rejected (within the rolling window) before it ever reaches
@@ -1575,6 +1623,7 @@ export async function run(deps: RunDeps = {}): Promise<void> {
           ({ candidates, usage } = await curateBrightSourceItems(messagesClient, freshItems, monthLabel, {
             fixedLocation: result.source.fixedLocation,
           }));
+          reviewItems = freshItems;
         } else {
           const block = buildBlock("Fuentes brillantes (no específicas a ninguna comuna)", [result.result]);
           ({ candidates, usage } = await curate(messagesClient, systemPrompt, block, { isBrightSource: true }));
@@ -1582,6 +1631,23 @@ export async function run(deps: RunDeps = {}): Promise<void> {
         await recordUsage({ purpose: "event_discovery", model: EVENT_DISCOVERY_MODEL, pipeline: "bright_source", usage });
         summary.cost.anthropicUsd += estimateCostUsd(EVENT_DISCOVERY_MODEL, usage);
         await enrichCandidates(candidates, pageFetchFn, now, regions);
+        // MiniMax safety net on the events about to be INSERTED as new
+        // (wouldInsertAsNew), after enrichment so the review set is decided
+        // with the same data insertCandidates uses — see
+        // instagram-discovery/run.ts for the same step. Never throws.
+        if (safetyNetClient && reviewItems) {
+          await applySafetyNet(
+            safetyNetClient,
+            candidates,
+            reviewItems,
+            (netClient, items) =>
+              curateBrightSourceItems(netClient, items, monthLabel, {
+                fixedLocation: result.source.fixedLocation,
+                chunkSize: SAFETY_NET_CHUNK_SIZE,
+              }),
+            { pipeline: "bright_source", shouldReview: (c) => wouldInsertAsNew(c, seenKeys, now) },
+          );
+        }
         allCandidates.push(...candidates);
         const { insertedCount, outcomes } = await insertCandidates(candidates, regions, seenKeys, now, "bright_source", rehostImageFn);
         summary.eventGroups.push({ label: sourceUrl, candidates: candidates.map((c) => toCandidateSummary(c, outcomes.get(c))) });
