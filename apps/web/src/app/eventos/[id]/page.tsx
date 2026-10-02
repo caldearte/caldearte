@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { fetchApprovedEvents } from "@/lib/events";
+import { fetchVenueData } from "@/lib/venues";
+import { findVenueLinkForEvent, type VenueLink } from "@/lib/venuePage";
 import { truncateDescription, displayNameForCity, resolveAdminRegionName, filterByRegion, filterActiveInRange } from "@/lib/event-utils";
 import { buildRegionMetaByCityId, regionIdFromAdminRegionName } from "@/lib/cities";
 import { currentWeekInSantiago, todayInSantiago, isCurrentOrUpcoming } from "@/lib/date";
@@ -108,6 +110,16 @@ export default async function EventPage({ params }: { params: Promise<PageParams
   const event = events.find((e) => e.id === id);
   if (!event) notFound();
 
+  // The venue link is a nicety, never a reason for this page to fail: this
+  // is the site's highest-traffic page, and the catalog read can be briefly
+  // unavailable (e.g. right after a deploy that precedes its migration).
+  let venueLink: VenueLink | null = null;
+  try {
+    venueLink = findVenueLinkForEvent(await fetchVenueData(), event.id);
+  } catch (err) {
+    console.error(`[eventos/${event.id}] venue link left out: ${(err as Error).message}`);
+  }
+
   const domain = event.sourceUrl ? extractDomain(event.sourceUrl) : null;
   const metaByCityId = buildRegionMetaByCityId(regions);
   const eventCityName = displayNameForCity(event);
@@ -137,7 +149,7 @@ export default async function EventPage({ params }: { params: Promise<PageParams
         <EventCityLink regionId={eventRegionId} cityName={eventCityName} />
       </div>
 
-      <EventDetailCard event={event} domain={domain} />
+      <EventDetailCard event={event} domain={domain} venueLink={venueLink} />
 
       <Link
         href="/"

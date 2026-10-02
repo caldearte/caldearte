@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { slugifyName, venueSlug, venueIdPrefixFromSlug } from "./venueSlug";
-import { buildVenuePageData, findVenueBySlug, MIN_EVENTS_TO_INDEX, type VenueRecord } from "./venuePage";
+import { buildVenuePageData, findVenueBySlug, findVenueLinkForEvent, MIN_EVENTS_TO_INDEX, type VenueRecord } from "./venuePage";
 import { buildVenueJsonLd, instagramProfileUrl } from "./venueJsonLd";
 import type { EventRecord } from "./events";
 
@@ -115,4 +115,21 @@ test("buildVenueJsonLd only states what the catalog holds: comuna as locality, I
 
 test("instagramProfileUrl percent-encodes the handle instead of trusting it", () => {
   assert.equal(instagramProfileUrl("a/b?c"), "https://www.instagram.com/a%2Fb%3Fc/");
+});
+
+test("findVenueLinkForEvent links an event to its venue's page when that page has more than this event on it", () => {
+  const data = { venues: [VENUE], eventsByVenueId: { [VENUE.id]: [event("a", "2026-10-01", "2026-10-30"), event("b", "2026-02-01", "2026-02-28")] } };
+  assert.deepEqual(findVenueLinkForEvent(data, "a"), { href: "/espacios/galeria-patricia-ready-3f9a1b2c", name: "Galería Patricia Ready" });
+  assert.deepEqual(findVenueLinkForEvent(data, "b"), { href: "/espacios/galeria-patricia-ready-3f9a1b2c", name: "Galería Patricia Ready" });
+});
+
+test("findVenueLinkForEvent does not link when the venue's page would only list this same event (noindex, nothing to add)", () => {
+  const data = { venues: [VENUE], eventsByVenueId: { [VENUE.id]: [event("only", "2026-10-01", "2026-10-30")] } };
+  assert.equal(findVenueLinkForEvent(data, "only"), null);
+});
+
+test("findVenueLinkForEvent returns null for an event with no venue in the catalog yet", () => {
+  const data = { venues: [VENUE], eventsByVenueId: { [VENUE.id]: [event("a", null, "2026-10-30"), event("b", null, "2026-10-30")] } };
+  assert.equal(findVenueLinkForEvent(data, "not-catalogued"), null);
+  assert.equal(findVenueLinkForEvent({ venues: [], eventsByVenueId: {} }, "a"), null);
 });

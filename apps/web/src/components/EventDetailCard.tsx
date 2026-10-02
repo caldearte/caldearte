@@ -16,6 +16,10 @@ import type { EventRecord } from "@/lib/events";
 interface EventDetailCardProps {
   event: EventRecord;
   domain: string | null;
+  // The venue's own page (/espacios/[slug]), when it has more than this
+  // event to show — decided server-side by lib/venuePage.ts's
+  // findVenueLinkForEvent, so this component stays presentational.
+  venueLink?: { href: string; name: string } | null;
   // "List mode" — only set when the visitor actually reached this event
   // from the home page's own city+week "Exposiciones actuales" list (see
   // app/eventos/[id]/page.tsx's membership check). Absent for a direct
@@ -83,7 +87,7 @@ function ActionButton({
 // Admin "Quitar" added 2026-08-06 (real user request, from mobile
 // testing) — this page's own ActionButton row, not a kebab item, since
 // this page never had a kebab to begin with.
-export default function EventDetailCard({ event, domain, listPosition }: EventDetailCardProps) {
+export default function EventDetailCard({ event, domain, venueLink, listPosition }: EventDetailCardProps) {
   const router = useRouter();
   // Same "hasn't happened yet" rule the home grid uses (splitInauguracionesYExpos)
   // — a past-but-still-running exhibition is an "expo", not an "inauguración",
@@ -182,6 +186,11 @@ export default function EventDetailCard({ event, domain, listPosition }: EventDe
           {dateLine && <p className="font-geist font-extrabold text-[14px] md:text-[16px] text-brand-magenta">{dateLine}</p>}
           <h1 className="font-fragment-mono leading-[1.1] text-[28px] md:text-[36px] text-text-primary">{event.title}</h1>
           <p className="font-geist text-[15px] md:text-[16px] text-text-muted">{venueLine}</p>
+          {venueLink && (
+            <Link href={venueLink.href} className="font-fragment-mono text-[13px] md:text-[14px] text-text-primary underline w-fit">
+              {esCL.eventPageVenueLink(venueLink.name)}
+            </Link>
+          )}
         </div>
 
         <div className="flex flex-wrap gap-[12px] items-center">
