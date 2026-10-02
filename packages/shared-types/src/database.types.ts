@@ -105,6 +105,7 @@ export type Database = {
           name_key: string
           newsletter_subscribed_at: string | null
           notes: string | null
+          public_hidden_at: string | null
         }
         Insert: {
           created_at?: string
@@ -116,6 +117,7 @@ export type Database = {
           name_key: string
           newsletter_subscribed_at?: string | null
           notes?: string | null
+          public_hidden_at?: string | null
         }
         Update: {
           created_at?: string
@@ -127,6 +129,7 @@ export type Database = {
           name_key?: string
           newsletter_subscribed_at?: string | null
           notes?: string | null
+          public_hidden_at?: string | null
         }
         Relationships: []
       }
@@ -350,6 +353,13 @@ export type Database = {
             columns: ["artist_id"]
             isOneToOne: false
             referencedRelation: "artists"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_artists_artist_id_fkey"
+            columns: ["artist_id"]
+            isOneToOne: false
+            referencedRelation: "artists_public"
             referencedColumns: ["id"]
           },
           {
@@ -830,6 +840,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "outreach_contacts_artist_id_fkey"
+            columns: ["artist_id"]
+            isOneToOne: false
+            referencedRelation: "artists_public"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "outreach_contacts_event_id_fkey"
             columns: ["event_id"]
             isOneToOne: false
@@ -1181,6 +1198,7 @@ export type Database = {
           name_key: string
           newsletter_subscribed_at: string | null
           notes: string | null
+          public_hidden_at: string | null
           region_id: string | null
         }
         Insert: {
@@ -1193,6 +1211,7 @@ export type Database = {
           name_key: string
           newsletter_subscribed_at?: string | null
           notes?: string | null
+          public_hidden_at?: string | null
           region_id?: string | null
         }
         Update: {
@@ -1205,6 +1224,7 @@ export type Database = {
           name_key?: string
           newsletter_subscribed_at?: string | null
           notes?: string | null
+          public_hidden_at?: string | null
           region_id?: string | null
         }
         Relationships: [
@@ -1243,6 +1263,74 @@ export type Database = {
           venue: string | null
         }
         Relationships: []
+      }
+      artists_public: {
+        Row: {
+          id: string | null
+          instagram_handle: string | null
+          name: string | null
+        }
+        Insert: {
+          id?: string | null
+          instagram_handle?: never
+          name?: string | null
+        }
+        Update: {
+          id?: string | null
+          instagram_handle?: never
+          name?: string | null
+        }
+        Relationships: []
+      }
+      event_artists_public: {
+        Row: {
+          artist_id: string | null
+          event_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_artists_artist_id_fkey"
+            columns: ["artist_id"]
+            isOneToOne: false
+            referencedRelation: "artist_history"
+            referencedColumns: ["artist_id"]
+          },
+          {
+            foreignKeyName: "event_artists_artist_id_fkey"
+            columns: ["artist_id"]
+            isOneToOne: false
+            referencedRelation: "artists"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_artists_artist_id_fkey"
+            columns: ["artist_id"]
+            isOneToOne: false
+            referencedRelation: "artists_public"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_artists_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "artist_history"
+            referencedColumns: ["event_id"]
+          },
+          {
+            foreignKeyName: "event_artists_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_artists_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events_public"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       events_public: {
         Row: {

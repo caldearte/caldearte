@@ -391,6 +391,12 @@ export const esCL = {
 
   // /espacios/[slug] — one page per venue of the catalog (2026-10-02, see
   // app/espacios/[slug]/page.tsx). Only facts the catalog really holds.
+  // Link on /eventos/[id] to the venue's own page, shown only when that page
+  // lists more than this event (lib/venuePage.ts's findVenueLinkForEvent).
+  eventPageVenueLink: (venueName: string) => `Más muestras en ${venueName} →`,
+  // Same, for each credited artist whose page has more than this event
+  // (lib/artistPage.ts's findArtistLinksForEvent).
+  eventPageArtistLink: (artistName: string) => `Más muestras de ${artistName} →`,
   venuePageCurrentLabel: "EN CARTELERA Y PRÓXIMAS",
   venuePagePastLabel: "MUESTRAS ANTERIORES",
   venuePageNoCurrent: "Por ahora no hay muestras vigentes en este espacio.",
@@ -400,6 +406,15 @@ export const esCL = {
     `Muestras e inauguraciones en ${name}${comuna ? `, ${comuna}` : ""}: ${n} ${pluralize(n, "registrada", "registradas")} en Caldearte.`,
   venuePageCorrectionNote:
     "¿Hay un error en esta ficha, o prefieres que no aparezca? Escríbenos desde Contacto, más abajo, y la corregimos o la retiramos.",
+
+  // /artistas/[slug] — same page shape as /espacios/[slug] (components/
+  // CatalogEntityPage.tsx), so it reuses venuePageEventCount/CurrentLabel/
+  // PastLabel/InstagramLink for the parts that read the same.
+  artistPageNoCurrent: "Por ahora no hay muestras vigentes de este artista.",
+  artistPageMetaDescription: (name: string, n: number) =>
+    `Muestras de ${name} registradas en Caldearte: ${n} ${pluralize(n, "muestra", "muestras")}.`,
+  artistPageCorrectionNote:
+    "¿Hay un error en esta ficha, o prefieres que no aparezca? Escríbenos desde Contacto, más abajo, y la corregimos o la retiramos. Solo mostramos muestras que ya eran públicas.",
 
   cityStats: (inauguracionesCount: number, visitasGuiadasCount: number, exposCount: number) =>
     countsPhrase(inauguracionesCount, visitasGuiadasCount, exposCount, " · "),
