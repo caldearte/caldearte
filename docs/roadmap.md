@@ -31,7 +31,12 @@ Instagram pipeline uses it as a safety net instead of a shadow:**
 only Haiku's approvals go to MiniMax, and a scope rejection from it
 vetoes the approval before insertion, automatically (Daniel: no human in
 the loop) — ~$1/month instead of ~$3, see region-discovery.md "Second
-opinion on approvals". Bright sources keep the full shadow (one call per
+opinion on approvals". **Re-measured 2026-10-02 against real 30-day
+`api_usage_log` data: ~$1.94/month** (grown with Instagram candidate
+volume) — structurally unaffected by the same day's pre-Haiku filtering
+work, since the safety net only ever reviews candidates Haiku already
+approved (see region-discovery.md "Pre-Haiku candidate filtering").
+Bright sources keep the full shadow (one call per
 source, negligible). The earlier venue-based design (a separate "Event Crawler"
 that revisited known venues, plus the `venues` table itself) has been
 retired — it was left disconnected after the pivot (nothing fed it new
