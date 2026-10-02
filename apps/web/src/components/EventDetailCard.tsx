@@ -12,6 +12,7 @@ import { useAdminToggleSensitive, ADMIN_SENSITIVE_TAG } from "@/lib/useAdminTogg
 import { dateOnlyFromIso, todayInSantiago } from "@/lib/date";
 import { esCL } from "@/i18n/es-CL";
 import type { EventRecord } from "@/lib/events";
+import type { ArtistLink } from "@/lib/artistPage";
 
 interface EventDetailCardProps {
   event: EventRecord;
@@ -20,6 +21,9 @@ interface EventDetailCardProps {
   // event to show — decided server-side by lib/venuePage.ts's
   // findVenueLinkForEvent, so this component stays presentational.
   venueLink?: { href: string; name: string } | null;
+  // Pages of the artists credited on this event, only those with more than
+  // this event to show (lib/artistPage.ts's findArtistLinksForEvent).
+  artistLinks?: ArtistLink[];
   // "List mode" — only set when the visitor actually reached this event
   // from the home page's own city+week "Exposiciones actuales" list (see
   // app/eventos/[id]/page.tsx's membership check). Absent for a direct
@@ -87,7 +91,7 @@ function ActionButton({
 // Admin "Quitar" added 2026-08-06 (real user request, from mobile
 // testing) — this page's own ActionButton row, not a kebab item, since
 // this page never had a kebab to begin with.
-export default function EventDetailCard({ event, domain, venueLink, listPosition }: EventDetailCardProps) {
+export default function EventDetailCard({ event, domain, venueLink, artistLinks, listPosition }: EventDetailCardProps) {
   const router = useRouter();
   // Same "hasn't happened yet" rule the home grid uses (splitInauguracionesYExpos)
   // — a past-but-still-running exhibition is an "expo", not an "inauguración",
@@ -191,6 +195,11 @@ export default function EventDetailCard({ event, domain, venueLink, listPosition
               {esCL.eventPageVenueLink(venueLink.name)}
             </Link>
           )}
+          {artistLinks?.map((link) => (
+            <Link key={link.href} href={link.href} className="font-fragment-mono text-[13px] md:text-[14px] text-text-primary underline w-fit">
+              {esCL.eventPageArtistLink(link.name)}
+            </Link>
+          ))}
         </div>
 
         <div className="flex flex-wrap gap-[12px] items-center">

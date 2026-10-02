@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { artistSlug, entitySlug, findBySlug, venueSlug } from "./venueSlug";
-import { assembleArtistData, buildArtistPageData, findArtistBySlug, isArtistIndexable, type ArtistRecord } from "./artistPage";
+import { assembleArtistData, buildArtistPageData, findArtistBySlug, findArtistLinksForEvent, isArtistIndexable, MAX_ARTIST_LINKS, type ArtistRecord } from "./artistPage";
 import { assembleVenueData, type VenueRecord } from "./venuePage";
 import { groupEventsByEntity, splitCurrentAndPast } from "./catalogPage";
 import { buildArtistJsonLd } from "./artistJsonLd";
@@ -94,4 +94,32 @@ test("buildArtistJsonLd is a bare Person: name, url, and the Instagram profile o
   const url = "https://www.caldearte.com/artistas/agata-m-basaez-9d8c7b6a";
   assert.deepEqual(buildArtistJsonLd(ARTIST, url), { "@context": "https://schema.org", "@type": "Person", name: "Ágata M. Basáez", url });
   assert.deepEqual(buildArtistJsonLd(WITH_HANDLE, url).sameAs, ["https://www.instagram.com/pablo_lehmann/"]);
+});
+
+test("findArtistLinksForEvent links only the artists whose page lists more than this event, alphabetically, capped", () => {
+  const mk = (n: string, id: string): ArtistRecord => ({ id: `${id}0000-0000-4000-8000-000000000000`, name: n, instagramHandle: null });
+  const ana = mk("Ana", "aaaaaaaa"), beto = mk("Beto", "bbbbbbbb"), carla = mk("Carla", "cccccccc"), dani = mk("Dani", "dddddddd"), solo = mk("Solo", "eeeeeeee");
+  const group = event("group", "2026-10-01", "2026-10-30");
+  const other = event("other", "2026-02-01", "2026-02-28");
+  const data = {
+    artists: [dani, carla, beto, ana, solo],
+    eventsByArtistId: {
+      [ana.id]: [group, other],
+      [beto.id]: [group, other],
+      [carla.id]: [group, other],
+      [dani.id]: [group, other],
+      [solo.id]: [group],
+    },
+  };
+  const links = findArtistLinksForEvent(data, "group");
+  assert.deepEqual(links.map((l) => l.name), ["Ana", "Beto", "Carla"], "alphabetical, capped at MAX_ARTIST_LINKS, and 'Solo' (one show) not linked");
+  assert.equal(links[0].href, "/artistas/ana-aaaaaaaa");
+  assert.equal(MAX_ARTIST_LINKS, 3);
+});
+
+test("findArtistLinksForEvent returns nothing for an event with no catalogued artist, or whose artists have no other show", () => {
+  const data = { artists: [ARTIST], eventsByArtistId: { [ARTIST.id]: [event("only", null, "2026-10-30")] } };
+  assert.deepEqual(findArtistLinksForEvent(data, "only"), []);
+  assert.deepEqual(findArtistLinksForEvent(data, "unknown"), []);
+  assert.deepEqual(findArtistLinksForEvent({ artists: [], eventsByArtistId: {} }, "only"), []);
 });

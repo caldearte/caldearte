@@ -394,6 +394,9 @@ export const esCL = {
   // Link on /eventos/[id] to the venue's own page, shown only when that page
   // lists more than this event (lib/venuePage.ts's findVenueLinkForEvent).
   eventPageVenueLink: (venueName: string) => `Más muestras en ${venueName} →`,
+  // Same, for each credited artist whose page has more than this event
+  // (lib/artistPage.ts's findArtistLinksForEvent).
+  eventPageArtistLink: (artistName: string) => `Más muestras de ${artistName} →`,
   venuePageCurrentLabel: "EN CARTELERA Y PRÓXIMAS",
   venuePagePastLabel: "MUESTRAS ANTERIORES",
   venuePageNoCurrent: "Por ahora no hay muestras vigentes en este espacio.",
