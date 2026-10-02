@@ -17,7 +17,8 @@
     "security-audit": "node --import tsx src/security-audit-index.ts",
     "poc-tavily": "node --env-file=../../.env --import tsx scripts/poc-tavily-discover.ts",
     "query-variant-test": "node --env-file=../../.env --import tsx scripts/query-variant-test.ts",
-    "compare-models": "node --env-file=../../.env --import tsx scripts/compare-haiku-qwen.ts"
+    "compare-models": "node --env-file=../../.env --import tsx scripts/compare-haiku-qwen.ts",
+    "measure-account-category-exclusions": "node --env-file=../../.env --import tsx scripts/measure-account-category-exclusions.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.111.0",
