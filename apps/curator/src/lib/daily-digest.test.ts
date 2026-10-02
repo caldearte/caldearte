@@ -91,7 +91,7 @@ test("buildDailyDigestBody lists every pipeline that ran today with its own coun
 
   const body = buildDailyDigestBody(summary);
   assert.match(body, /Instagram/);
-  assert.match(body, /2 candidatos · 1 aprobados · 1 rechazados/);
+  assert.match(body, /2 candidatos · 1 rechazados · 1 aprobados/);
   assert.match(body, /COSTO/);
   assert.match(body, /\$15\.00/, "monthly budget ceiling must appear");
   assert.match(body, /DETALLE POR EVENTO/);
@@ -136,7 +136,7 @@ test("buildDailyDigestHtmlBody renders a row per pipeline and includes the per-e
   assert.match(html, /Muestra real/);
   assert.match(html, /Insertados/);
   assert.match(html, /<td[^>]*font-weight:600;">1<\/td>/, "the per-source row must show how many candidates were actually inserted");
-  assert.match(buildDailyDigestBody(summary), /1 aprobados · 0 rechazados · 1 insertados/);
+  assert.match(buildDailyDigestBody(summary), /0 rechazados · 1 aprobados · 1 insertados/);
   assert.doesNotMatch(html, /<script/i);
 });
 

@@ -132,7 +132,7 @@ export function buildDailyDigestBody(summary: DailyDigestSummary): string {
   for (const run of summary.runs) {
     lines.push(
       `-- ${ENTRYPOINT_LABEL[run.entrypoint]} (${run.startedAt.toISOString()}) --`,
-      `  ${run.candidates.total} candidatos · ${run.candidates.approvedByCuration} aprobados · ${run.candidates.rejectedByCuration} rechazados · ${insertedCount(run)} insertados · costo corrida ${fmtUsd(run.costUsd)}`,
+      `  ${run.candidates.total} candidatos · ${run.candidates.rejectedByCuration} rechazados · ${run.candidates.approvedByCuration} aprobados · ${insertedCount(run)} insertados · costo corrida ${fmtUsd(run.costUsd)}`,
     );
     if (run.fetchError) {
       lines.push(`  ⚠️ BLOQUEADO — no se revisó ninguna cuenta/fuente: ${run.fetchError}`);
@@ -157,8 +157,8 @@ export function buildDailyDigestHtmlBody(summary: DailyDigestSummary): string {
       (run) => `<tr>
         <td style="padding:4px 12px 4px 0;">${escapeHtml(ENTRYPOINT_LABEL[run.entrypoint])}</td>
         <td style="padding:4px 12px 4px 0;text-align:right;">${run.candidates.total}</td>
-        <td style="padding:4px 12px 4px 0;text-align:right;">${run.candidates.approvedByCuration}</td>
         <td style="padding:4px 12px 4px 0;text-align:right;">${run.candidates.rejectedByCuration}</td>
+        <td style="padding:4px 12px 4px 0;text-align:right;">${run.candidates.approvedByCuration}</td>
         <td style="padding:4px 12px 4px 0;text-align:right;font-weight:600;">${insertedCount(run)}</td>
         <td style="padding:4px 0;text-align:right;">${fmtUsd(run.costUsd)}</td>
       </tr>${
@@ -191,8 +191,8 @@ export function buildDailyDigestHtmlBody(summary: DailyDigestSummary): string {
         <tr style="text-align:left;color:#888;">
           <th style="padding:4px 12px 4px 0;">Fuente</th>
           <th style="padding:4px 12px 4px 0;text-align:right;">Candidatos</th>
-          <th style="padding:4px 12px 4px 0;text-align:right;">Aprobados</th>
           <th style="padding:4px 12px 4px 0;text-align:right;">Rechazados</th>
+          <th style="padding:4px 12px 4px 0;text-align:right;">Aprobados</th>
           <th style="padding:4px 12px 4px 0;text-align:right;">Insertados</th>
           <th style="padding:4px 0;text-align:right;">Costo</th>
         </tr>
