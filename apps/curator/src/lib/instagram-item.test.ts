@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { toBrightSourceItem, isCaptionWorthCurating, resolveAccountForPost, dedupeItemsBySourceUrl } from "./instagram-item.js";
+import { toBrightSourceItem, isCaptionWorthCurating, resolveAccountForPost, dedupeItemsBySourceUrl, matchExcludedCategory } from "./instagram-item.js";
 import type { ApifyInstagramPost } from "./apify-instagram.js";
 import type { InstagramAccountConfig } from "./instagram-accounts.js";
 
@@ -214,6 +214,45 @@ test("isCaptionWorthCurating does not false-positive on 'taller' inside an other
 // event's title or reasoning, unlike "taller"/"concierto"/"conversatorio"
 // (left out of this filter on purpose — see instagram-item.ts's own doc
 // comment on OUT_OF_SCOPE_CATEGORY_PATTERN).
+// Fase 3 del plan de exclusión por cuenta×categoría — instagram-category-
+// exclusions.ts es la fuente de verdad de qué pares excluir; estos tests
+// usan entradas reales de esa lista a propósito, para que una edición
+// futura de la lista (agregar/sacar una cuenta) se note aquí si rompe la
+// semántica esperada.
+test("matchExcludedCategory returns the matched category for an account measured to be pure noise in it", () => {
+  // culturarecoleta/concierto: 9 rechazos, 0 eventos reales (ver instagram-category-exclusions.ts)
+  assert.equal(
+    matchExcludedCategory("culturarecoleta", "Este viernes gran concierto gratuito en la plaza central"),
+    "concierto",
+  );
+});
+
+test("matchExcludedCategory returns null for an account not in the exclusion list at all", () => {
+  assert.equal(matchExcludedCategory("una_cuenta_cualquiera", "Este viernes gran concierto gratuito en la plaza"), null);
+});
+
+test("matchExcludedCategory returns null when the account IS in the list but the caption doesn't mention any of ITS excluded categories", () => {
+  // culturarecoleta solo está excluida para "concierto", no para "taller"
+  assert.equal(matchExcludedCategory("culturarecoleta", "Inauguración de la exposición de pintura este sábado"), null);
+});
+
+test("matchExcludedCategory is scoped per account+category, never blanket by account — culturallascondes produjo un evento real de 'taller' pero es puro ruido en 'concierto'", () => {
+  assert.equal(
+    matchExcludedCategory("culturallascondes", "Este sábado realizaremos un taller de cerámica para toda la familia"),
+    null,
+    "culturallascondes nunca debe excluirse para 'taller' — produjo un evento real en esa categoría",
+  );
+  assert.equal(
+    matchExcludedCategory("culturallascondes", "Este viernes concierto gratuito de música folclórica"),
+    "concierto",
+    "la misma cuenta SÍ está excluida para 'concierto', categoría distinta",
+  );
+});
+
+test("matchExcludedCategory returns null for a null caption", () => {
+  assert.equal(matchExcludedCategory("culturarecoleta", null), null);
+});
+
 test("isCaptionWorthCurating rejects categories measured to never co-occur with a real exhibition", () => {
   assert.equal(isCaptionWorthCurating("Nuevo episodio de nuestro podcast sobre arte contemporáneo chileno, ya disponible en Spotify"), false);
   assert.equal(isCaptionWorthCurating("Con profundo dolor comunicamos el obituario de nuestra querida colega y artista"), false);

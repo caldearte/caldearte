@@ -6,6 +6,7 @@ import { truncateSafely, type BrightSourceItem } from "../event-discovery/extrac
 import { isVideoCoverFrameUrl, type ApifyInstagramPost } from "./apify-instagram.js";
 import type { InstagramAccountConfig } from "./instagram-accounts.js";
 import { toPlainLatin } from "./plain-text.js";
+import { CATEGORY_EXCLUSIONS } from "./instagram-category-exclusions.js";
 
 const TITLE_MAX_LENGTH = 120;
 
@@ -97,6 +98,39 @@ export function isCaptionWorthCurating(caption: string | null): boolean {
   if (BOOK_LAUNCH_PATTERN.test(caption)) return false;
   if (OUT_OF_SCOPE_CATEGORY_PATTERN.test(caption)) return false;
   return true;
+}
+
+// Fase 3 del plan de exclusión por cuenta×categoría (2026-10-02) —
+// instagram-category-exclusions.ts documents the evidence behind each
+// entry. Built as account -> categories (not category -> accounts)
+// because the lookup at curation time is always "does THIS account have
+// any excluded category", once per item.
+const EXCLUDED_CATEGORIES_BY_ACCOUNT: ReadonlyMap<string, readonly string[]> = (() => {
+  const map = new Map<string, string[]>();
+  for (const { account, category } of CATEGORY_EXCLUSIONS) {
+    const categories = map.get(account);
+    if (categories) categories.push(category);
+    else map.set(account, [category]);
+  }
+  return map;
+})();
+
+// Returns the matched category (for the audit trail) when this specific
+// account is excluded for a category the caption mentions, or null
+// otherwise. Deliberately per-account, not a blind keyword filter like
+// OUT_OF_SCOPE_CATEGORY_PATTERN above — see instagram-category-
+// exclusions.ts's own doc comment: a category word like "taller" or
+// "concierto" is only safe to filter for the SPECIFIC accounts measured
+// to have zero real events in that category, never universally (the same
+// word appears inside genuine exhibition captions often enough that a
+// blind filter would cost real events — see OUT_OF_SCOPE_CATEGORY_PATTERN's
+// own doc comment for the measured numbers).
+export function matchExcludedCategory(account: string, caption: string | null): string | null {
+  if (!caption) return null;
+  const categories = EXCLUDED_CATEGORIES_BY_ACCOUNT.get(account);
+  if (!categories) return null;
+  const lower = caption.toLowerCase();
+  return categories.find((category) => lower.includes(category)) ?? null;
 }
 
 export function toBrightSourceItem(post: ApifyInstagramPost, account: InstagramAccountConfig): BrightSourceItem {
