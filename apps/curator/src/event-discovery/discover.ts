@@ -837,10 +837,13 @@ export async function curate(
   block: string,
   opts: { isBrightSource?: boolean } = {},
 ): Promise<CurateResult> {
-  // cache_control is currently a no-op (the prompt is under Haiku's
-  // 2048-token minimum cacheable prefix — measured for real, both cache
-  // counters come back 0) but costs nothing and starts working
-  // automatically if the prompt ever grows past the threshold.
+  // cache_control was a no-op when added (prompt under Haiku's 2048-token
+  // minimum cacheable prefix) but the prompt has since grown past that
+  // threshold (axis policy, institutional exclusion, anti-reencuadre rules
+  // accreted over several PRs) — confirmed 2026-10-02 via real
+  // api_usage_log data, nonzero cache_creation/cache_read_input_tokens on
+  // both bright_source and instagram, ~2:1 read:write. No code change
+  // needed — it just started working once the prompt crossed the line.
   const response = await client.messages.create({
     model: MODEL,
     max_tokens: 16000,

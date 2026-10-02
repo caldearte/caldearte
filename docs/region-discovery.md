@@ -4947,9 +4947,15 @@ one-line SQL update, no redeploy required.
   paying to re-curate the same aggregator's content N times, one per unit,
   which was the original (wasteful, and inconsistent — see above) design.
 - **Prompt caching** — implemented on Event Discovery's system prompt via
-  `cache_control`, currently a no-op (prompt is under Haiku's 2048-token
-  minimum cacheable prefix — see above). Not worth padding the prompt
-  artificially just to cross that threshold.
+  `cache_control`. ~~Currently a no-op~~ **Corrected 2026-10-02**: this was
+  true when written but the prompt has grown well past Haiku's 2048-token
+  minimum cacheable prefix since (axis policy, institutional exclusion,
+  anti-reencuadre rules accreted over several PRs) — confirmed via real
+  `api_usage_log` data that `instagram` and `bright_source` both show
+  nonzero `cache_creation_input_tokens`/`cache_read_input_tokens` (~2:1
+  read:write ratio). Caching is live and already reflected in the real
+  costs below; no code change was needed, it started working on its own
+  once the prompt crossed the threshold.
 
 **Deferred: the Batch API** (50% discount on tokens only — doesn't apply to
 Tavily's separate billing, and adds real complexity, submit-then-poll
@@ -5021,3 +5027,177 @@ enough for MiniMax on a 10-post chunk — the 2026-09-16 run; how much
 in-batch dedup ("duplicado del ítem [N]") is lost with 10-post chunks,
 showing up as more `duplicate_skipped` downstream — the week's run
 summaries.
+
+## Pre-Haiku candidate filtering: category exclusion, and why Apify is the hard one (2026-10-02)
+
+Trigger: a real 30-day `api_usage_log` pull showed Haiku+MiniMax at ~$9/mo,
+touching the informal $10/mo ceiling Daniel tracks personally (separate
+from `monthly_budget_usd`'s $50 hard cap above — this is a tighter,
+self-imposed target). Everything below reduces Haiku's candidate volume;
+none of it touches Apify, which turned out to be a structurally different
+problem (see its own subsection).
+
+### Web pipeline: three prefilters (PRs #603-605, 2026-10-01)
+
+- `isObviouslyExpiredByDate` (extractors.ts) — skips a bright-source item
+  before `curateBrightSourceItems` when its own `structuredEndDate` or
+  `rawDateText` ("MES AAAA", 3-month grace window) is obviously past.
+  Measured trigger: 41 candidates from galeriametropolitana.org (a 2005-2026
+  historical archive, month+year only) and 9 from galeriahifas.cl, approved
+  by Haiku on content grounds and only then discarded by
+  `isCurrentOrUpcoming` — a real Haiku call spent on content already known
+  stale.
+- `findPreCurationDuplicate` (run.ts) — reuses `insertCandidates`' own 4
+  matching tiers (title/locationDate/fuzzy/sameVenue) BEFORE curation,
+  narrowly scoped to items with trusted structured `location`+`placeName`+
+  full date range (never `locationHint`, which is a hint for Haiku to
+  confirm, not a fact). Measured trigger: chilecultura.gob.cl (national
+  aggregator) re-reporting an exhibition already sourced from the
+  institution's own primary source (MNBA, CNAC, MAVI) under a different URL
+  every run it stays open — 12 of one day's 46 cross-source
+  `duplicate_skipped` outcomes.
+- Removed `artes.uchile.cl` as a registered source — measured 2026-09-30:
+  13 of its 15 historical insertions were MAC exhibitions `mac.uchile.cl`
+  already reports directly (it only "won the race" some weeks on timing),
+  1 more independently found by `uchile.cl` root, leaving ~1 genuinely
+  unique event in its whole history against real, measured noise (17
+  content rejections + a chunk of the 46 cross-source duplicates above).
+  `uchile.cl` root is a real superset of its scope — no coverage lost.
+
+Both prefilters follow the same posture as every other deterministic
+pre-Haiku check in this file: never invent a verdict, only skip what's
+already decidable from data the extractor/dedup index already has: a
+missed opportunity costs one Haiku call; a false positive here would
+silently drop a real, distinct event, which this dedup system has never
+risked.
+
+### Instagram: blind category filter (PR #608) vs. account-scoped exclusion (PRs #609-611)
+
+Measured against the FULL available Instagram history (45 days, 2,927
+candidates): 85.7% of all IG candidates are rejected outright, overwhelmingly
+generic out-of-scope content (talleres, conciertos, charlas, podcasts,
+obituarios) from institutional accounts that post everything, not just art
+— not axis violations, not ambiguous scope calls.
+
+**Tried and measured, NOT shipped as a blind filter:** excluding
+taller/concierto/charla/conversatorio/teatro/danza/circo/feria by keyword
+across all accounts would have avoided 902 Haiku calls (37% of all IG
+rejections) but cost **22 of 215 real inserted events (10.2% of everything
+Instagram published in the window)** — e.g. a real exhibition literally
+named "Materia Prima" from "Taller Barros de Pomaire", a circus-arts
+creation-process showcase Haiku correctly distinguished from a conventional
+circus show. Daniel's call: not worth it, the words genuinely co-occur with
+real exhibitions too often. Rejected outright for the same reason:
+`BOOK_LAUNCH_PATTERN`'s own doc comment (`instagram-item.ts`) already noted
+"taller"/"concierto" are too risky to keyword-filter blind.
+
+**Shipped instead — `OUT_OF_SCOPE_CATEGORY_PATTERN`** (PR #608,
+`instagram-item.ts`): podcast, obituario/condolencias/funeral/velatorio/
+misa, títere, ópera, salud pública, recordatorio, recital, lanzamiento —
+measured ZERO real inserted events matching any of these across the full
+45-day history, unlike the categories above. Same "rejected every time in
+practice" bar as `BOOK_LAUNCH_PATTERN`, not a new one.
+
+**Shipped second — account×category exclusion** (PRs #609-611): the
+missing piece wasn't the word, it was the account. Cross-referencing
+rejections/insertions by `source_account` (via `instagram_source_post_stats`,
+live since 2026-09-19) showed the same risky categories above are 100%
+noise for ~70 of ~75 accounts that trigger them at all — only a handful
+mix noise with real yield. Three phases, each independently reviewable:
+
+1. **`scripts/measure-account-category-exclusions.ts`** — reusable,
+   read-only report, cross-references `discovery_run_summaries` against
+   `instagram_source_post_stats`. Defaults to local Supabase like every
+   other script in `scripts/`; production credentials are supplied by
+   hand, never committed.
+2. **`apps/curator/src/lib/instagram-category-exclusions.ts`** — 133
+   static (account, category) pairs, each requiring >=2 measured
+   rejections AND zero real insertions ever for that exact pair. Narrower
+   than "account," not blanket: `culturallascondes` is excluded for
+   concierto/charla/conversatorio but explicitly NEVER for taller, where
+   it produced a real event. `taller_99` was excluded from the list
+   despite passing the mechanical threshold (3 rejections, 0 real in the
+   window) — a real, known engraving workshop, human judgment call over
+   a small sample.
+3. **`matchExcludedCategory`** (`instagram-item.ts`), wired into
+   `instagram-discovery/run.ts` right after the already-seen filter, before
+   `isCaptionWorthCurating`. Deliberately AFTER `usernamesWithNewItems` is
+   computed — a filtered post still counts as "the account is active" for
+   adaptive-cadence purposes. Every filtered candidate is upserted into
+   `rejected_candidates` with an explicit `[FILTRO DE CÓDIGO: cuenta "X"
+   excluida para categoría "Y"]` reason — an audit trail, not a black box,
+   same posture as the web prefilters above.
+
+**Phase 4 (re-measurement):** scheduled as a one-time Claude Code task,
+fires 2026-11-02 — checks the 133 pairs for regressions (a real insertion
+would mean removing that pair immediately) and proposes new candidates from
+accounts that have since accumulated enough clean history. Never
+auto-applies; same human-review posture as adding a bright source.
+
+**Projected impact (linear estimate from real 30-day cost-per-candidate,
+not yet confirmed against a real bill):** ~910 Instagram candidates/month
+avoided combined (both mechanisms) → Haiku ~$7.06/mo → ~$5.13/mo projected.
+**MiniMax is NOT expected to move** — `applySafetyNet` only reviews
+candidates Haiku already APPROVED, and every filter above was specifically
+measured to remove only candidates Haiku would have REJECTED anyway; the
+set of approvals, and therefore MiniMax's ~20 items/day workload, is
+unchanged by construction. A second one-time task (2026-10-16) checks this
+projection and MiniMax's real stability against actual `api_usage_log`
+data.
+
+### MiniMax's own reasoning budget already has a cap — left alone
+
+`SHADOW_REASONING_BUDGET_TOKENS` (`model-comparison.ts`, default 4000
+tokens) already bounds MiniMax's thinking phase on both the shadow-pilot
+and safety-net paths (both go through `createShadowClient`) — added
+2026-09-13 after an uncapped run ate the whole `max_tokens` ceiling on 8 of
+22 chunks. Not currently overridden in either GitHub Actions workflow, so
+production runs on the code default. Considered lowering it further
+(2026-10-02) and explicitly declined: `recordUsage` sums output across
+every chunk in a run, so the real reasoning-vs-JSON split isn't visible in
+`api_usage_log` alone, and — more importantly — this is the one mechanism
+that exists specifically to catch Haiku's own real mistakes (Falun Gong
+×2, circus ×2, Sewell, among others, all named in `safety-net.ts`'s own
+doc comment). A cost lever that makes the safety net think less is a
+quality/safety tradeoff, not a free optimization — left at 4000 pending a
+deliberate, measured decision, not a default-driven one.
+
+### Apify: why the easy pruning is already gone
+
+Apify's `instagram-post-scraper` has no per-run/per-profile charge, purely
+$0.0017/post fetched (confirmed in its own actor pricing, not inferred) —
+so unlike Haiku, nothing upstream of the fetch (today's filters, cadence)
+touches this cost at all. The only lever is fetching fewer posts, which
+means either a lower `resultsLimit` (measured 2026-09-28, Daniel declined)
+or removing accounts outright.
+
+Checked two hypotheses for a safe prune (2026-10-02), both came up short:
+
+- **High-volume accounts with sporadic real yield** (culturaprovidencia 41
+  posts/13d, centroculturalquillota 38, teatromunicipalchillanoficial 36)
+  — their real events (4 of the 6 checked) aren't duplicated by any other
+  registered source (chilecultura.gob.cl independently covers SOME of
+  Teatro Municipal de Chillán's other exhibitions, but not these specific
+  ones). Removing all three would have saved ~$0.52/month against 4 lost
+  real, unique events. Not worth it.
+- **Confirmed zero-yield accounts** — cross-referencing all 156 active
+  accounts against `events.source_account`'s full history (since
+  2026-08-06) found 39 with literally zero real events ever; filtering out
+  ones too new to judge fairly (added after 2026-09-11, same fairness bar
+  as the 2026-09-28 pruning) leaves 32 confirmed. Combined, they generate
+  only ~155 posts/month (~$0.26-0.30/month) — smaller than the hypothesis
+  above, because the structural pattern is the opposite of what a
+  "high-volume junk" prune needs: the top 25 accounts by volume (43% of all
+  fetched posts) are almost all accounts that have produced a real event at
+  least once. High posting volume correlates with being an active
+  institution that occasionally holds a real exhibition, not with being
+  noise.
+
+**Conclusion:** no pruning move currently on the table reduces Apify
+spend meaningfully without losing real, unique coverage. The remaining
+options are the ones already on record — a lower `resultsLimit` (declined)
+or the $19/month paid plan as the cost of continued registry growth, not a
+reduction. One account flagged to revisit, not act on yet:
+`ccesantiago` (added 2026-09-24) already shows 21 posts/13 days — the
+highest volume of any zero-yield account — but hasn't had a fair chance
+yet; check it alongside the Phase 4 re-measurement above.
