@@ -46,10 +46,10 @@ test("parsePublicImageUrl: public IPs and 172.x outside the private block still 
   assert.ok(parsePublicImageUrl("https://172.32.0.1/a.jpg"));
 });
 
-test("parsePublicImageUrl: allowLocal only opens localhost, only when asked", () => {
-  assert.ok(parsePublicImageUrl("http://localhost:3000/icon", { allowLocal: true }));
+test("parsePublicImageUrl: localhost is refused in every form, dev included", () => {
   assert.equal(parsePublicImageUrl("http://localhost:3000/icon"), null);
-  assert.equal(parsePublicImageUrl("http://10.0.0.5/a.jpg", { allowLocal: true }), null);
+  assert.equal(parsePublicImageUrl("https://localhost:3000/icon"), null);
+  assert.equal(parsePublicImageUrl("https://app.localhost/a.jpg"), null);
 });
 
 test("checkFlyerParamLengths: real-sized values pass, oversized ones are named", () => {

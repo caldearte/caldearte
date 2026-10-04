@@ -72,13 +72,14 @@ function isPrivateIPv6(host: string): boolean {
 }
 
 /**
- * Parses and vets an event-photo URL before the server fetches it. Only
- * https to a public-looking hostname; `allowLocal` (dev only) also lets
- * http://localhost through so the route stays testable locally.
- * A literal-hostname check, not a DNS-resolution one — enough to stop the
- * obvious internal targets (metadata endpoint, localhost, RFC 1918).
+ * Parses and vets an event-photo URL before the server fetches it: only
+ * https to a public-looking hostname. A literal-hostname check, not a
+ * DNS-resolution one — enough to stop the obvious internal targets
+ * (metadata endpoint, localhost, RFC 1918). The route also requires the URL
+ * to be the image of a published event (see route.tsx), so this mostly
+ * guards redirects and any odd value that ever lands in the database.
  */
-export function parsePublicImageUrl(raw: string, { allowLocal = false } = {}): URL | null {
+export function parsePublicImageUrl(raw: string): URL | null {
   let url: URL;
   try {
     url = new URL(raw);
@@ -86,12 +87,10 @@ export function parsePublicImageUrl(raw: string, { allowLocal = false } = {}): U
     return null;
   }
   const host = url.hostname.toLowerCase();
-  const isLocalHost = host === "localhost" || host === "127.0.0.1" || host === "[::1]";
-  if (allowLocal && isLocalHost && (url.protocol === "http:" || url.protocol === "https:")) return url;
   if (url.protocol !== "https:") return null;
   if (url.username || url.password) return null;
   if (
-    isLocalHost ||
+    host === "localhost" ||
     host.endsWith(".localhost") ||
     host.endsWith(".local") ||
     host.endsWith(".internal") ||
@@ -110,11 +109,8 @@ export function parsePublicImageUrl(raw: string, { allowLocal = false } = {}): U
  * following at most MAX_REDIRECTS hops and re-vetting each one, with a
  * timeout and a size cap.
  */
-export async function fetchFlyerPhoto(
-  raw: string,
-  { allowLocal = false } = {},
-): Promise<{ buffer: Buffer; contentType: string }> {
-  let current = parsePublicImageUrl(raw, { allowLocal });
+export async function fetchFlyerPhoto(raw: string): Promise<{ buffer: Buffer; contentType: string }> {
+  let current = parsePublicImageUrl(raw);
   if (!current) throw new Error("Event photo URL is not an allowed public https URL");
 
   for (let hop = 0; hop <= MAX_REDIRECTS; hop++) {
@@ -127,7 +123,7 @@ export async function fetchFlyerPhoto(
     if (res.status >= 300 && res.status < 400) {
       const location = res.headers.get("location");
       if (!location) throw new Error(`Event photo redirect (${res.status}) without a Location header`);
-      const next = parsePublicImageUrl(new URL(location, current).toString(), { allowLocal });
+      const next = parsePublicImageUrl(new URL(location, current).toString());
       if (!next) throw new Error("Event photo redirected to a non-public URL");
       current = next;
       continue;

@@ -11,17 +11,20 @@ import { FLYER_HEIGHT, FLYER_WIDTH, FlyerImage, type FlyerEventInput, type Flyer
 // escape hatch back to the old template, not the other way around.
 import { FlyerImageV2 } from "@/lib/social/flyer-v2";
 import { checkFlyerParamLengths, fetchFlyerPhoto, parsePublicImageUrl } from "@/lib/social/flyerRequest";
-
-// Dev only: lets a local test use http://localhost:3000/... as the photo.
-const ALLOW_LOCAL_PHOTO = process.env.NODE_ENV !== "production";
+import { getSupabaseClient } from "@/lib/supabase-client";
 
 // Called by the automated Instagram-publishing cron over HTTP
 // (apps/curator/src/social-publish/run.ts) and by the manual "Compartir"
 // carousel feature (apps/web/src/lib/social/shareInauguracionesCarousel.ts)
 // — deliberately a plain query-param GET rather than fetching the event by
 // id itself: both callers already have the full event record from their
-// own Supabase query, so this route stays a pure renderer (title/date-line
-// formatting only) instead of a second place that talks to the DB.
+// own Supabase query, so the text fields are rendered as passed.
+//
+// The one exception, since 2026-10-04: the photo. The route is public and
+// downloads the photo server-side, so a raw `imageUrl` param would let
+// anyone make the server fetch any URL (CodeQL js/request-forgery). It now
+// only downloads a URL that is the image of a published event, read back
+// from events_public, which both real callers always pass anyway.
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
 
@@ -38,8 +41,18 @@ export async function GET(request: Request) {
   if (!title || !region || !imageUrl) {
     return new Response("Missing required params: title, region, imageUrl", { status: 400 });
   }
-  if (!parsePublicImageUrl(imageUrl, { allowLocal: ALLOW_LOCAL_PHOTO })) {
+  if (!parsePublicImageUrl(imageUrl)) {
     return new Response("'imageUrl' must be a public https URL", { status: 400 });
+  }
+  const { data: published, error: lookupError } = await getSupabaseClient()
+    .from("events_public")
+    .select("image_url")
+    .eq("image_url", imageUrl)
+    .limit(1);
+  if (lookupError) return new Response("Could not verify 'imageUrl'", { status: 503 });
+  const publishedImageUrl = published?.[0]?.image_url;
+  if (!publishedImageUrl) {
+    return new Response("'imageUrl' is not the image of a published event", { status: 400 });
   }
 
   const input: FlyerEventInput = {
@@ -82,9 +95,8 @@ export async function GET(request: Request) {
     // negotiation entirely, regardless of what any other CDN might do.
     // fetchFlyerPhoto (flyerRequest.ts) keeps that Accept header and adds a
     // timeout, a size cap and per-hop vetting of redirects (2026-10-04).
-    const { buffer: photoBuffer, contentType: photoContentType } = await fetchFlyerPhoto(imageUrl, {
-      allowLocal: ALLOW_LOCAL_PHOTO,
-    });
+    // It gets the URL read back from the database, never the raw param.
+    const { buffer: photoBuffer, contentType: photoContentType } = await fetchFlyerPhoto(publishedImageUrl);
     const photoDataUri = `data:${photoContentType};base64,${photoBuffer.toString("base64")}`;
 
     const useV2 = searchParams.get("v") !== "1";
