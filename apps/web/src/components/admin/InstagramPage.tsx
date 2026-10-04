@@ -93,7 +93,7 @@ export default function InstagramPage({
       <section>
         <h2 className="font-fragment-mono uppercase text-[18px] text-text-primary mb-4">Rendimiento por tipo de post</h2>
         <p className="font-geist text-[14px] text-text-primary/70 mb-4">
-          Promedio por post, no total — compara si "Inauguración" (el único tipo que se repite en la semana) rinde peor por post
+          Promedio por post, no total — compara si &ldquo;Inauguración&rdquo; (el único tipo que se repite en la semana) rinde peor por post
           que los otros dos, que nunca se repiten.
         </p>
         <InstagramTypeComparisonTable posts={instagramPosts} />
