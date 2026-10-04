@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { Resend } from "resend";
 import { clientIp, isWithinRateLimit } from "@/lib/rate-limit";
+import { isValidEmail } from "@/lib/email";
 import { curateSubmissionText, curateSubmissionImage, type SubmissionInput, type CurationDecision } from "@/lib/curate-submission";
 import { parseLocalDatetimeToUtcIso } from "@/lib/santiagoTime";
 
@@ -19,7 +20,6 @@ const NOTIFY_RECIPIENT = "daniel@probablespa.cl";
 const RATE_LIMIT_MAX = 3;
 const RATE_LIMIT_WINDOW_SECONDS = 3600;
 
-const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const ALLOWED_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
 const MAX_IMAGE_BYTES = 4 * 1024 * 1024; // client already compresses to ~1600px/JPEG-80; this is a server-side ceiling, not the target size
 
@@ -138,7 +138,7 @@ export async function POST(request: Request) {
     !openingDatetimeUtc ||
     !runEndDate ||
     !submitterName ||
-    !EMAIL_PATTERN.test(submitterEmail) ||
+    !isValidEmail(submitterEmail) ||
     images.length !== 1
   ) {
     return NextResponse.json({ status: "invalid" }, { status: 400 });

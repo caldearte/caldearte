@@ -2,8 +2,8 @@ import { NextResponse } from "next/server";
 import { Resend } from "resend";
 import { getSupabaseClient } from "@/lib/supabase-client";
 import { clientIp, isWithinRateLimit } from "@/lib/rate-limit";
+import { isValidEmail } from "@/lib/email";
 
-const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 // Two separate limits: per-IP catches a script hammering this endpoint;
 // per-email specifically stops this route being used to email-bomb a
 // third party's inbox with repeated "confirm your subscription" emails
@@ -78,7 +78,7 @@ export async function POST(request: Request) {
   const email = payload.email?.trim() ?? "";
   const adminRegionName = payload.adminRegionName?.trim() ?? "";
 
-  if (!EMAIL_PATTERN.test(email) || adminRegionName.length === 0) {
+  if (!isValidEmail(email) || adminRegionName.length === 0) {
     return NextResponse.json({ error: "invalid_payload" }, { status: 400 });
   }
 
