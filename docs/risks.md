@@ -58,6 +58,15 @@
    vulnerabilities (`pnpm audit`), emailing a summary either way so a
    missing email is itself a signal. Not a full replacement for GitHub's
    own native secret scanning/Dependabot alerts, which are free for
-   public repos but still **disabled on this repo as of 2026-08-23** —
-   that's a repo Settings > Code security toggle, not something
-   automatable from inside the repo itself.
+   public repos but were still **disabled on this repo as of 2026-08-23**.
+   **Hardened 2026-10-04** (after deciding to keep the repo public): secret
+   scanning **with push protection**, Dependabot alerts and security
+   updates, private vulnerability reporting (see `SECURITY.md`), CodeQL
+   default setup, and a `main` ruleset that blocks force-pushes and branch
+   deletion are all on. The same pass found a critical Next.js RCE
+   (GHSA-vcvr-r3jv-pc5j, `next/og` ImageResponse) that hit the public
+   `/api/social/flyer` route directly; it had been open 4 days before the
+   weekly audit would have run. Fixed in PR #621, with input limits for that
+   route added on top in PR #623. Still not covered: secret-scanning
+   non-provider patterns and validity checks (paid features even on public
+   repos).
