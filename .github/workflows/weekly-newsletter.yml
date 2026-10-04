@@ -27,6 +27,9 @@ on:
     # congestion, real 26-51min delays observed 2026-08-23).
     - cron: "27 10 * * 0" # Every Sunday, ~10:27 UTC — 1h after google-alerts-bright-source.yml, the last step in the discovery chain
 
+permissions:
+  contents: read
+
 jobs:
   send-newsletter:
     runs-on: ubuntu-latest

@@ -31,6 +31,9 @@ on:
     # congestion, real 26-51min delays observed 2026-08-23).
     - cron: "22 9 * * 0" # Every Sunday, ~09:22 UTC — 1h after Instagram
 
+permissions:
+  contents: read
+
 jobs:
   discover-google-alerts:
     runs-on: ubuntu-latest

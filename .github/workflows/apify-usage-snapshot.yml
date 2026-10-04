@@ -16,6 +16,9 @@ on:
     # Sunday cron, since this one runs every day including Sunday.
     - cron: "33 9 * * *" # Daily, ~09:33 UTC
 
+permissions:
+  contents: read
+
 jobs:
   record-apify-usage:
     runs-on: ubuntu-latest

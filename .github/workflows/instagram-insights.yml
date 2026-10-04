@@ -18,6 +18,9 @@ on:
   schedule:
     - cron: "45 20 * * 1"
 
+permissions:
+  contents: read
+
 jobs:
   record-instagram-insights:
     runs-on: ubuntu-latest

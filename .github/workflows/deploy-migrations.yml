@@ -11,6 +11,9 @@ concurrency:
   group: supabase-deploy-migrations
   cancel-in-progress: false
 
+permissions:
+  contents: read
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
