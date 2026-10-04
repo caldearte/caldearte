@@ -1,0 +1,70 @@
+name: CI
+
+# Runs on every PR to main (and on main itself), so "merge if CI passes"
+# (CLAUDE.md) means more than Vercel's build: the unit tests of every
+# workspace, the web app's lint, and a real typecheck. Added 2026-10-04 —
+# until then the ~840 tests only ever ran locally.
+#
+# Public repo: standard GitHub-hosted runners are free and unmetered, so
+# this doesn't touch the Actions budget the cron jobs rely on.
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Tests (all workspaces)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Unit tests
+        run: pnpm -r test
+
+  web:
+    name: Web lint + typecheck
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm --filter @caldearte/web lint
+
+      # `next typegen` writes the route types tsconfig expects under .next/
+      # without a full build (which Vercel already does on every PR).
+      - name: Typecheck
+        working-directory: apps/web
+        run: |
+          pnpm exec next typegen
+          pnpm exec tsc --noEmit
