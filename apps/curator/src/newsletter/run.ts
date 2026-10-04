@@ -60,10 +60,26 @@ function weekBoundsInSantiago(now: Date): { start: string; end: string } {
   return { start: fmt(monday), end: fmt(sunday) };
 }
 
-function isRunningOn(event: EventRow, dateStr: string): boolean {
-  if (event.run_start_date && event.run_start_date > dateStr) return false;
-  if (event.run_end_date && event.run_end_date < dateStr) return false;
-  return true;
+// Mirrors apps/web/src/lib/date.ts's anchorDateOnly/activeRange — the
+// site's own definition of "showing this week" (its home page keeps an
+// event when this range overlaps the current Mon-Sun week), so every
+// count this digest prints matches what a reader sees after clicking
+// through. A missing run_end_date means a one-day event on its anchor
+// date, NOT "still running." Real bug found 2026-10-04: this used to be
+// isRunningOn(event, week.end), which treated a missing run_start_date/
+// run_end_date as always running — and since approved events are kept
+// forever, every exhibition with no known closing date stayed "active"
+// indefinitely. The nationwide count only ever grew (41 on 2026-08-09,
+// 218 on 2026-10-04) while the site showed ~105 for that same week.
+function activeRange(event: EventRow): { start: string; end: string } | null {
+  const anchor = event.opening_datetime?.slice(0, 10) ?? event.run_start_date ?? event.run_end_date;
+  if (!anchor) return null;
+  return { start: event.run_start_date ?? anchor, end: event.run_end_date ?? anchor };
+}
+
+function isActiveInWeek(event: EventRow, week: { start: string; end: string }): boolean {
+  const range = activeRange(event);
+  return range !== null && range.start <= week.end && week.start <= range.end;
 }
 
 function isDatedInWeek(event: EventRow, week: { start: string; end: string }): boolean {
@@ -123,12 +139,10 @@ export function buildDigestSections(
   const inRegion = events.filter((e) => e.adminRegionName === adminRegionName);
   // visita_guiada events are excluded from the general "running this
   // week"/"expos para visitar" pool below — a guided-tour instance isn't
-  // itself "the exhibition, available to visit any time," and (unlike an
-  // inauguración) it usually has no run_start_date/run_end_date of its
-  // own, so isRunningOn's null-means-always-running default would
-  // otherwise leak it into "Expos para visitar." It gets its own section
-  // instead, built from `inRegion` directly, below.
-  const runningThisWeek = inRegion.filter((e) => e.event_type !== "visita_guiada" && isRunningOn(e, week.end));
+  // itself "the exhibition, available to visit any time," so it would
+  // otherwise leak into "Expos para visitar" on its own date. It gets its
+  // own section instead, built from `inRegion` directly, below.
+  const runningThisWeek = inRegion.filter((e) => e.event_type !== "visita_guiada" && isActiveInWeek(e, week));
 
   const openings = runningThisWeek.filter((e) => isOpeningInWeek(e, week));
   const openingIds = new Set(openings.map((e) => e.id));
@@ -155,7 +169,7 @@ export function buildDigestSections(
   // random per-subscriber reshuffle would let that shared text describe
   // shows a given subscriber's own cards don't even include.
   const otherRegionsAll = events
-    .filter((e) => e.adminRegionName !== adminRegionName && isRunningOn(e, week.end))
+    .filter((e) => e.adminRegionName !== adminRegionName && isActiveInWeek(e, week))
     .sort((a, b) => (a.run_end_date ?? "9999-12-31").localeCompare(b.run_end_date ?? "9999-12-31"));
   const otherRegionsSample = otherRegionsAll.slice(0, OTHER_REGIONS_CAP);
 
@@ -169,8 +183,9 @@ export function buildDigestSections(
 
   // Total across the whole country, not just the sample shown in "En
   // otras regiones" — the reader-facing count next to that section's
-  // "explore everything" link.
-  const nationwideActiveCount = events.filter((e) => isRunningOn(e, week.end)).length;
+  // "explore everything" link. Same pool as regionTotalThisWeek, just
+  // nationwide: visitas guiadas aren't exposiciones, so they don't count.
+  const nationwideActiveCount = events.filter((e) => e.event_type !== "visita_guiada" && isActiveInWeek(e, week)).length;
   const regionTotalThisWeek = openings.length + alsoVisitAll.length;
 
   const sections: DigestSection[] = [];

@@ -48,6 +48,14 @@ function makeEvent(overrides: Partial<EventWithRegion> = {}): EventWithRegion {
   };
 }
 
+// An exhibition that started before WEEK and closes on `end` — the
+// realistic "Expos para visitar" shape. Both dates matter: under the
+// site's activeRange rule (mirrored in run.ts), an event with ONLY a
+// run_end_date is a one-day event on that date, not a run up to it.
+function runningUntil(end: string): Partial<EventWithRegion> {
+  return { run_start_date: "2026-07-15", run_end_date: end };
+}
+
 test("buildDigestSections: an event opening inside the week goes in 'Inauguraciones de esta semana', not also elsewhere", () => {
   const event = makeEvent({ opening_datetime: "2026-08-05T20:00:00.000Z", created_at: "2026-07-01T00:00:00.000Z" });
   const { sections } = buildDigestSections([event], REGION_A, WEEK);
@@ -58,7 +66,7 @@ test("buildDigestSections: an event opening inside the week goes in 'Inauguracio
 });
 
 test("buildDigestSections: 'Inauguraciones de esta semana' still renders with an explicit emptyMessage when there are none this week — not silently omitted", () => {
-  const event = makeEvent({ run_end_date: "2026-08-20" }); // lands in "Expos para visitar", not an opening
+  const event = makeEvent(runningUntil("2026-08-20")); // lands in "Expos para visitar", not an opening
   const { sections } = buildDigestSections([event], REGION_A, WEEK);
   const inauguraciones = sections.find((s) => s.label === "Inauguraciones de esta semana");
   assert.ok(inauguraciones);
@@ -100,9 +108,8 @@ test("buildDigestSections: a visita_guiada event goes in its own 'Visitas guiada
   const visitas = sections.find((s) => s.label === "Visitas guiadas de esta semana");
   assert.equal(visitas?.events.length, 1);
   assert.equal(visitas?.events[0].id, event.id);
-  // Never leaks into "Expos para visitar" either — it has no run range
-  // of its own, isRunningOn's null-means-always-running default would
-  // otherwise catch it there.
+  // Never leaks into "Expos para visitar" either, even though its own
+  // date falls inside the week.
   assert.equal(sections.find((s) => s.label === "Expos para visitar esta semana")?.events.length, 0);
 });
 
@@ -118,10 +125,10 @@ test("buildDigestSections: 'Visitas guiadas de esta semana' is compact and alway
 
 test("buildDigestSections: 'Expos para visitar esta semana' is compact — full count, no card cap, always a 'ver' link naming the región's TRUE total when there's at least one (changed 2026-09-27, demoted from primary full-card section)", () => {
   const events = [
-    makeEvent({ run_end_date: "2026-08-20" }),
-    makeEvent({ run_end_date: "2026-08-10" }),
-    makeEvent({ run_end_date: "2026-09-01" }),
-    makeEvent({ run_end_date: "2026-08-12" }),
+    makeEvent(runningUntil("2026-08-20")),
+    makeEvent(runningUntil("2026-08-10")),
+    makeEvent(runningUntil("2026-09-01")),
+    makeEvent(runningUntil("2026-08-12")),
   ];
   const { sections } = buildDigestSections(events, REGION_A, WEEK);
   const paraVisitar = sections.find((s) => s.label === "Expos para visitar esta semana");
@@ -136,10 +143,10 @@ test("buildDigestSections: 'Expos para visitar esta semana' still diversified-by
   const events = [
     // Comuna A has 8 closing-soon events — a flat soonest-first cut would
     // fill the whole cap with just this one comuna.
-    ...Array.from({ length: 8 }, (_, i) => makeEvent({ comunaName: "Comuna A", run_end_date: `2026-08-${10 + i}` })),
-    makeEvent({ comunaName: "Comuna B", run_end_date: "2026-08-25" }),
-    makeEvent({ comunaName: "Comuna C", run_end_date: "2026-08-26" }),
-    makeEvent({ comunaName: "Comuna D", run_end_date: "2026-08-27" }),
+    ...Array.from({ length: 8 }, (_, i) => makeEvent({ comunaName: "Comuna A", ...runningUntil(`2026-08-${10 + i}`) })),
+    makeEvent({ comunaName: "Comuna B", ...runningUntil("2026-08-25") }),
+    makeEvent({ comunaName: "Comuna C", ...runningUntil("2026-08-26") }),
+    makeEvent({ comunaName: "Comuna D", ...runningUntil("2026-08-27") }),
   ];
   const { sections } = buildDigestSections(events, REGION_A, WEEK);
   const paraVisitar = sections.find((s) => s.label === "Expos para visitar esta semana");
@@ -152,7 +159,7 @@ test("buildDigestSections: 'Expos para visitar esta semana' still diversified-by
 test("buildDigestSections: 'Expos para visitar esta semana' names the región's TRUE total (including openings/new, not just the para-visitar pool) in its moreLink, past what used to be the 10-card cap", () => {
   const events = [
     makeEvent({ opening_datetime: "2026-08-05T20:00:00.000Z" }), // +1 opening
-    ...Array.from({ length: 14 }, (_, i) => makeEvent({ run_end_date: `2026-08-${10 + i}` })), // 14 para-visitar
+    ...Array.from({ length: 14 }, (_, i) => makeEvent(runningUntil(`2026-08-${10 + i}`))), // 14 para-visitar
   ];
   const { sections, regionTotalThisWeek } = buildDigestSections(events, REGION_A, WEEK);
   assert.equal(regionTotalThisWeek, 15);
@@ -163,18 +170,54 @@ test("buildDigestSections: 'Expos para visitar esta semana' names the región's 
   assert.equal(paraVisitar.moreLink?.url, "https://www.caldearte.com");
 });
 
-test("buildDigestSections: an event that already closed before the week's end is excluded entirely — a región with truly nothing anywhere yields zero sections", () => {
-  const event = makeEvent({ run_end_date: "2026-07-20" });
+test("buildDigestSections: an event that closed before the week started is excluded entirely — a región with truly nothing anywhere yields zero sections", () => {
+  const event = makeEvent({ run_start_date: "2026-07-01", run_end_date: "2026-07-20" });
   const { sections } = buildDigestSections([event], REGION_A, WEEK);
   assert.equal(sections.length, 0);
 });
 
+test("buildDigestSections: an exhibition with no known closing date that opened weeks ago is NOT counted as running — real bug found 2026-10-04: a missing run_end_date used to mean 'always running', so the nationwide count only ever grew (218 in the email vs ~105 on the site for the same week)", () => {
+  const stale = makeEvent({ opening_datetime: "2026-07-02T19:00:00.000Z" });
+  const staleElsewhere = makeEvent({ adminRegionName: REGION_B, opening_datetime: "2026-07-02T19:00:00.000Z" });
+  const running = makeEvent({ adminRegionName: REGION_B, ...runningUntil("2026-08-20") });
+  const { sections, regionTotalThisWeek } = buildDigestSections([stale, staleElsewhere, running], REGION_A, WEEK);
+  assert.equal(regionTotalThisWeek, 0);
+  assert.equal(sections.find((s) => s.label === "Expos para visitar esta semana")?.events.length, 0);
+  const otras = sections.find((s) => s.label === "En otras regiones");
+  assert.deepEqual(otras?.events.map((e) => e.id), [running.id]);
+  assert.equal(otras?.moreLink?.label, "Si deseas puedes explorar las 1 exposiciones activas esta semana a lo largo de Chile");
+});
+
+test("buildDigestSections: an exhibition with no known closing date that opens THIS week still counts — a one-day event on its anchor date, same as the site's activeRange", () => {
+  const event = makeEvent({ opening_datetime: "2026-08-05T20:00:00.000Z" });
+  const { sections, regionTotalThisWeek } = buildDigestSections([event], REGION_A, WEEK);
+  assert.equal(regionTotalThisWeek, 1);
+  assert.equal(sections.find((s) => s.label === "Inauguraciones de esta semana")?.events.length, 1);
+});
+
+test("buildDigestSections: an exhibition closing mid-week still counts as visitable this week — 'this week' is the whole Mon-Sun window, same as the site, not just its last day", () => {
+  const event = makeEvent(runningUntil("2026-08-05")); // closes Wednesday of WEEK
+  const { sections } = buildDigestSections([event], REGION_A, WEEK);
+  assert.deepEqual(sections.find((s) => s.label === "Expos para visitar esta semana")?.events.map((e) => e.id), [event.id]);
+});
+
+test("buildDigestSections: the nationwide 'exposiciones activas' count leaves out visitas guiadas, same as the región's own count — they aren't exposiciones", () => {
+  const events = [
+    makeEvent({ adminRegionName: REGION_B, ...runningUntil("2026-08-20") }),
+    makeEvent({ adminRegionName: REGION_B, ...runningUntil("2026-08-20") }),
+    makeEvent({ adminRegionName: REGION_B, opening_datetime: "2026-08-06T15:00:00.000Z", event_type: "visita_guiada" }),
+  ];
+  const { sections } = buildDigestSections(events, REGION_A, WEEK);
+  const otras = sections.find((s) => s.label === "En otras regiones");
+  assert.equal(otras?.moreLink?.label, "Si deseas puedes explorar las 2 exposiciones activas esta semana a lo largo de Chile");
+});
+
 test("buildDigestSections: an event in a different región appears only in 'En otras regiones', sampled up to 10, with an always-present nationwide explore link", () => {
   const events = [
-    makeEvent({ adminRegionName: REGION_B }),
-    makeEvent({ adminRegionName: REGION_B }),
-    makeEvent({ adminRegionName: REGION_B }),
-    makeEvent({ adminRegionName: REGION_B }),
+    makeEvent({ adminRegionName: REGION_B, ...runningUntil("2026-08-20") }),
+    makeEvent({ adminRegionName: REGION_B, ...runningUntil("2026-08-20") }),
+    makeEvent({ adminRegionName: REGION_B, ...runningUntil("2026-08-20") }),
+    makeEvent({ adminRegionName: REGION_B, ...runningUntil("2026-08-20") }),
   ];
   const { sections } = buildDigestSections(events, REGION_A, WEEK);
   const otras = sections.find((s) => s.label === "En otras regiones");
@@ -185,7 +228,7 @@ test("buildDigestSections: an event in a different región appears only in 'En o
 });
 
 test("buildDigestSections: 'En otras regiones' samples at most 10 even with more available — bumped 5 -> 10, 2026-08-08 user request", () => {
-  const events = Array.from({ length: 14 }, () => makeEvent({ adminRegionName: REGION_B }));
+  const events = Array.from({ length: 14 }, () => makeEvent({ adminRegionName: REGION_B, ...runningUntil("2026-08-20") }));
   const { sections } = buildDigestSections(events, REGION_A, WEEK);
   const otras = sections.find((s) => s.label === "En otras regiones");
   assert.equal(otras?.events.length, 10);
@@ -193,9 +236,9 @@ test("buildDigestSections: 'En otras regiones' samples at most 10 even with more
 
 test("buildDigestSections: 'En otras regiones' is sorted soonest-closing-first and deterministic — no longer randomized (2026-08-08), since it now also feeds a shared per-región AI intro that must agree with whichever cards are actually shown", () => {
   const events = [
-    makeEvent({ adminRegionName: REGION_B, run_end_date: "2026-09-01" }),
-    makeEvent({ adminRegionName: REGION_B, run_end_date: "2026-08-10" }),
-    makeEvent({ adminRegionName: REGION_B, run_end_date: "2026-08-20" }),
+    makeEvent({ adminRegionName: REGION_B, ...runningUntil("2026-09-01") }),
+    makeEvent({ adminRegionName: REGION_B, ...runningUntil("2026-08-10") }),
+    makeEvent({ adminRegionName: REGION_B, ...runningUntil("2026-08-20") }),
   ];
   const runTwice = () => buildDigestSections(events, REGION_A, WEEK).sections.find((s) => s.label === "En otras regiones")!.events.map((e) => e.id);
   const first = runTwice();
