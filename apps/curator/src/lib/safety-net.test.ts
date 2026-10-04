@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import type { CurateResult, EventCandidate } from "../event-discovery/discover.js";
 import type { BrightSourceItem } from "../event-discovery/extractors.js";
-import { applySafetyNet, safetyNetVetoes } from "./safety-net.js";
+import { applySafetyNet, isSameEvent, safetyNetVetoes } from "./safety-net.js";
 
 function candidate(overrides: Partial<EventCandidate>): EventCandidate {
   return {
@@ -38,7 +38,7 @@ test("safetyNetVetoes flags an approval the second model rejected on scope", () 
   const real = [candidate({ title: "Los archivos de Gabriela" })];
   const shadow = [candidate({ title: "Los archivos de Gabriela", status: "rejected", curationReasoning: "Muestra documental/patrimonial, no arte visual." })];
   assert.deepEqual(safetyNetVetoes(real, shadow), [
-    { sourceUrl: "https://www.instagram.com/p/AAA/", reasoning: "Muestra documental/patrimonial, no arte visual.", rejectionAxis: null },
+    { sourceUrl: "https://www.instagram.com/p/AAA/", title: "Los archivos de Gabriela", reasoning: "Muestra documental/patrimonial, no arte visual.", rejectionAxis: null },
   ]);
 });
 
@@ -150,4 +150,46 @@ test("applySafetyNet makes no call at all when shouldReview selects nothing", as
   );
   assert.equal(called, false);
   assert.equal(vetoed, 0);
+});
+
+// Real case 2026-10-03: a weekly roundup post listed a theater piece in
+// Santiago and the XII Bienal de Valparaíso. Haiku approved the Bienal; the
+// second model returned only the theater piece, rejected. The per-URL veto
+// removed the Bienal on a verdict about a different event.
+test("safetyNetVetoes does not veto an approval because the second model rejected a DIFFERENT event from the same post", () => {
+  const real = [candidate({ title: "XII Bienal Internacional de Artes de Valparaíso", location: "Valparaíso", runStartDate: "2026-10-02", runEndDate: "2027-02-28" })];
+  const shadow = [candidate({ title: "Yo no tengo dónde estar", location: "Santiago", runStartDate: "2026-10-01", runEndDate: "2026-10-10", status: "rejected", curationReasoning: "Pieza de teatro, fuera de alcance." })];
+  const logs: string[] = [];
+  assert.deepEqual(safetyNetVetoes(real, shadow, (m) => logs.push(m)), []);
+  assert.equal(logs.length, 1);
+  assert.match(logs[0], /Bienal Internacional/);
+  assert.match(logs[0], /Yo no tengo dónde estar/);
+});
+
+test("isSameEvent: a shared title wins; a conflicting city or conflicting dates mean different events; missing data never blocks", () => {
+  const base = candidate({ title: "Registro Nacional de Espera", location: "Santiago", runStartDate: "2026-09-20", runEndDate: "2026-10-20" });
+  // Different title wording, same city/dates — the common case for a real veto.
+  assert.equal(isSameEvent(base, candidate({ title: "Banco de Horas", location: "Santiago, Chile", runStartDate: "2026-09-20", runEndDate: "2026-10-20" })), true);
+  // Title in common beats a city disagreement (the models read the venue differently).
+  assert.equal(isSameEvent(base, candidate({ title: "Registro Nacional Espera", location: "Providencia" })), true);
+  assert.equal(isSameEvent(base, candidate({ title: "Otra cosa", location: "Valparaíso" })), false);
+  assert.equal(isSameEvent(base, candidate({ title: "Otra cosa", location: "Santiago", runEndDate: "2026-12-01" })), false);
+  // The second model left location and dates empty: nothing proves it's another event.
+  assert.equal(isSameEvent(base, candidate({ title: "Otra cosa", location: null as unknown as string, runStartDate: null, runEndDate: null })), true);
+});
+
+test("applySafetyNet vetoes only the candidate the rejection is about when a post carries several approved events", async () => {
+  const url = "https://www.instagram.com/p/ROUNDUP/";
+  const candidates = [
+    candidate({ title: "Concierto de cámara", location: "Santiago", sourceUrl: url }),
+    candidate({ title: "XII Bienal de Valparaíso", location: "Valparaíso", sourceUrl: url }),
+  ];
+  const curateFn = async (): Promise<CurateResult> => ({
+    candidates: [candidate({ title: "Concierto de cámara", location: "Santiago", sourceUrl: url, status: "rejected", curationReasoning: "Concierto, no arte visual." })],
+    usage: { inputTokens: 0, outputTokens: 0 },
+  });
+  const vetoed = await applySafetyNet({ client: {} as never, model: "test-model" }, candidates, [item(url)], curateFn);
+  assert.equal(vetoed, 1);
+  assert.equal(candidates[0].status, "rejected");
+  assert.equal(candidates[1].status, "approved", "the event the second model never judged keeps Haiku's verdict");
 });
