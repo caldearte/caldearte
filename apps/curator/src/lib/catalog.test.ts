@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { catalogKey, handleMatchesName, splitArtistNames, venueKey } from "./catalog.js";
+import { catalogKey, handleMatchesName, isInstagramUrl, splitArtistNames, venueKey } from "./catalog.js";
 
 test("catalogKey strips accents, case and punctuation", () => {
   assert.equal(catalogKey("Tomás Núñez San Martín"), "tomas nunez san martin");
@@ -57,4 +57,14 @@ test("handleMatchesName needs every meaningful word of the name in the handle", 
   assert.equal(handleMatchesName("extension_universidad", "Inés Molina"), false);
   // One word is not enough to claim an identity.
   assert.equal(handleMatchesName("camila_arte", "Camila"), false);
+});
+
+test("isInstagramUrl matches the real host, not the substring (CodeQL, 2026-10-04)", () => {
+  assert.equal(isInstagramUrl("https://www.instagram.com/p/abc123/"), true);
+  assert.equal(isInstagramUrl("https://instagram.com/p/abc123/"), true);
+  assert.equal(isInstagramUrl("https://notinstagram.com/p/abc123/"), false);
+  assert.equal(isInstagramUrl("https://instagram.com.example.cl/p/1"), false);
+  assert.equal(isInstagramUrl("https://example.cl/?next=instagram.com"), false);
+  assert.equal(isInstagramUrl("not a url"), false);
+  assert.equal(isInstagramUrl(null), false);
 });

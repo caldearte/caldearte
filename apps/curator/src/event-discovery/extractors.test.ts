@@ -1,6 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
+  decodeHtmlEntities,
   extractArticleList,
   extractDateRange,
   extractImgTags,
@@ -1304,4 +1305,12 @@ test("extractDateRange (rancaguacultura.cl-style): reads runStartDate/runEndDate
     '"startDate":"2026-09-08T10:00:00-03:00","endDate":"2026-09-30T17:30:00-03:00",' +
     '"location":{"@type":"Place","name":"Espacio Cultural La Merced","address":{"@type":"PostalAddress","streetAddress":"Estado 339","addressRegion":"Rancagua","addressCountry":"Chile"}}}]</script>';
   assert.deepEqual(extractDateRange(html, config), { runStartDate: "2026-09-08", runEndDate: "2026-09-30" });
+});
+
+test("decodeHtmlEntities peels exactly one layer per call (CodeQL js/double-escaping, 2026-10-04)", () => {
+  assert.equal(decodeHtmlEntities("&lt;b&gt;Artes&lt;/b&gt; &amp; m&aacute;s"), "<b>Artes</b> & más");
+  assert.equal(decodeHtmlEntities("&amp;quot;"), "&quot;", "a double-escaped quote keeps its second layer");
+  assert.equal(decodeHtmlEntities("&amp;nbsp;"), "&nbsp;");
+  assert.equal(decodeHtmlEntities(decodeHtmlEntities("&amp;nbsp;")), " ", "two calls, two layers (what google-alerts.ts does)");
+  assert.equal(decodeHtmlEntities("a?x=1&amp;oh=2&amp;oe=3"), "a?x=1&oh=2&oe=3", "Instagram CDN signature params still decode");
 });

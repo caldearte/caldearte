@@ -27,9 +27,17 @@ export function deriveImageSource(sourceUrl: string | null): ImageSource {
   const hostname = extractDomain(sourceUrl);
   if (hostname === null) return { kind: "web", domain: null };
 
-  if (hostname.includes("instagram.com")) return { kind: "instagram", domain: null };
-  if (hostname.includes("facebook.com")) return { kind: "facebook", domain: null };
+  if (isHostOrSubdomain(hostname, "instagram.com")) return { kind: "instagram", domain: null };
+  if (isHostOrSubdomain(hostname, "facebook.com")) return { kind: "facebook", domain: null };
   return { kind: "web", domain: hostname };
+}
+
+// Exact host or a real subdomain of it (m.facebook.com), never a substring
+// match: "notinstagram.com" or "instagram.com.example.cl" contain the text
+// but aren't Instagram (CodeQL js/incomplete-url-substring-sanitization).
+function isHostOrSubdomain(hostname: string, domain: string): boolean {
+  const host = hostname.toLowerCase();
+  return host === domain || host.endsWith(`.${domain}`);
 }
 
 export type CardImage =

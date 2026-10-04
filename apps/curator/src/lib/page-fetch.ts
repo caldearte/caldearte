@@ -69,12 +69,14 @@ export function isSocialMediaUrl(url: string): boolean {
 // Only the handful of entities that can plausibly appear inside a URL are
 // covered — this is not a general-purpose HTML entity decoder.
 function decodeHtmlEntities(text: string): string {
+  // &amp; goes last: decoding it first would turn "&amp;quot;" into '"' in
+  // a single call — two layers at once (CodeQL js/double-escaping).
   return text
-    .replace(/&amp;/g, "&")
     .replace(/&quot;/g, '"')
     .replace(/&#0?39;/g, "'")
     .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">");
+    .replace(/&gt;/g, ">")
+    .replace(/&amp;/g, "&");
 }
 
 // property/content order varies in the wild — match both.
