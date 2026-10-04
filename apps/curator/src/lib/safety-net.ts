@@ -19,7 +19,9 @@
 //     failed call) keeps Haiku's verdict. The second model's failure
 //     never removes anything.
 //   - an item with several approved candidates (additionalEvents) is
-//     vetoed only if the second model approved NONE of them.
+//     vetoed only if the second model approved NONE of them, and a veto
+//     applies only to the candidate its rejection is actually about
+//     (isSameEvent) — a post can carry several events.
 // The veto is recorded the same way any rejection is (rejected_candidates
 // with the reasoning, prefixed so it's recognisable, and the second
 // model's rejectionAxis so the axis safety net still applies), which also
@@ -36,6 +38,8 @@
 import type { CurateResult, EventCandidate, MessagesClient } from "../event-discovery/discover.js";
 import type { BrightSourceItem } from "../event-discovery/extractors.js";
 import { runShadowCuration, type ShadowClient } from "./model-comparison.js";
+import { normalizeTitle } from "./event-filters.js";
+import { stripAccents } from "./locations.js";
 
 export type SafetyNetPipeline = "instagram" | "bright_source";
 
@@ -67,22 +71,73 @@ const CODE_FILTER_MARKER = "[FILTRO DE CÓDIGO";
 
 export interface SafetyNetVeto {
   sourceUrl: string;
+  // Haiku's candidate being vetoed. A post can carry several events
+  // (a "recomendaciones de la semana" roundup, a festival programme), so a
+  // veto is per candidate, not per URL.
+  title: string;
   reasoning: string;
   rejectionAxis: EventCandidate["rejectionAxis"];
 }
 
-// Pure: which of Haiku's approved source URLs the second model rejected
-// on scope. Exported for tests.
-export function safetyNetVetoes(realCandidates: readonly EventCandidate[], shadowCandidates: readonly EventCandidate[]): SafetyNetVeto[] {
-  const approvedUrls = new Set(realCandidates.filter((c) => c.status === "approved" && c.sourceUrl).map((c) => c.sourceUrl as string));
+// The second model re-extracts events from the same post, so its rejection
+// of "an event at this URL" is only a veto of Haiku's approval if it is
+// about the SAME event. Real case, 2026-10-03: a weekly roundup post listed
+// a theater piece in Santiago and the XII Bienal de Valparaíso; Haiku
+// approved the Bienal, the second model returned only the theater piece
+// (rejected, correctly) — and the old per-URL rule vetoed the Bienal on
+// the strength of a verdict about a different event. Same event unless
+// there is positive evidence it isn't: a title in common wins; otherwise
+// a conflicting city or conflicting run dates (both sides filled in) mean
+// two different events. Missing data never blocks a veto — that would only
+// let more out-of-scope approvals through.
+function sameFirstSegment(a: string | null | undefined, b: string | null | undefined): boolean | null {
+  const key = (v: string | null | undefined) => stripAccents((v ?? "").toLowerCase()).split(",")[0].trim();
+  const ka = key(a);
+  const kb = key(b);
+  if (!ka || !kb) return null;
+  return ka === kb;
+}
+
+function titlesOverlap(a: string, b: string): boolean {
+  const na = normalizeTitle(a);
+  const nb = normalizeTitle(b);
+  if (!na || !nb) return false;
+  if (na === nb || na.includes(nb) || nb.includes(na)) return true;
+  const tokensA = new Set(na.split(" ").filter((t) => t.length >= 4));
+  return nb.split(" ").some((t) => t.length >= 4 && tokensA.has(t));
+}
+
+export function isSameEvent(haiku: EventCandidate, shadow: EventCandidate): boolean {
+  if (titlesOverlap(haiku.title, shadow.title)) return true;
+  if (sameFirstSegment(haiku.location, shadow.location) === false) return false;
+  for (const field of ["runStartDate", "runEndDate"] as const) {
+    if (haiku[field] && shadow[field] && haiku[field] !== shadow[field]) return false;
+  }
+  return true;
+}
+
+// Pure: which of Haiku's approved candidates the second model rejected on
+// scope. `log` (optional) reports the rejections it refused to apply.
+// Exported for tests.
+export function safetyNetVetoes(
+  realCandidates: readonly EventCandidate[],
+  shadowCandidates: readonly EventCandidate[],
+  log: (message: string) => void = () => {},
+): SafetyNetVeto[] {
   const vetoes: SafetyNetVeto[] = [];
-  for (const sourceUrl of approvedUrls) {
-    const shadowForUrl = shadowCandidates.filter((c) => c.sourceUrl === sourceUrl);
+  for (const real of realCandidates) {
+    if (real.status !== "approved" || !real.sourceUrl) continue;
+    const shadowForUrl = shadowCandidates.filter((c) => c.sourceUrl === real.sourceUrl);
     if (shadowForUrl.length === 0) continue;
     if (shadowForUrl.some((c) => c.status === "approved")) continue;
-    const scopeRejection = shadowForUrl.find((c) => !c.curationReasoning.includes(CODE_FILTER_MARKER));
-    if (!scopeRejection) continue;
-    vetoes.push({ sourceUrl, reasoning: scopeRejection.curationReasoning, rejectionAxis: scopeRejection.rejectionAxis });
+    const scopeRejections = shadowForUrl.filter((c) => !c.curationReasoning.includes(CODE_FILTER_MARKER));
+    if (scopeRejections.length === 0) continue;
+    const scopeRejection = scopeRejections.find((c) => isSameEvent(real, c));
+    if (!scopeRejection) {
+      log(`not vetoing "${real.title}": the second model only rejected other event(s) from the same post (${scopeRejections.map((c) => `"${c.title}"`).join(", ")}) — keeping Haiku's verdict`);
+      continue;
+    }
+    vetoes.push({ sourceUrl: real.sourceUrl, title: real.title, reasoning: scopeRejection.curationReasoning, rejectionAxis: scopeRejection.rejectionAxis });
   }
   return vetoes;
 }
@@ -115,11 +170,11 @@ export async function applySafetyNet(
     return 0;
   }
 
-  const vetoes = safetyNetVetoes(candidates, shadowCandidates);
+  const vetoes = safetyNetVetoes(candidates, shadowCandidates, (message) => console.log(`${prefix} ${message}`));
   let vetoed = 0;
   for (const veto of vetoes) {
     for (const c of candidates) {
-      if (c.status !== "approved" || c.sourceUrl !== veto.sourceUrl) continue;
+      if (c.status !== "approved" || c.sourceUrl !== veto.sourceUrl || c.title !== veto.title) continue;
       console.log(`${prefix} veto: "${c.title}" — ${shadow.model}: ${veto.reasoning} (Haiku: ${c.curationReasoning})`);
       c.status = "rejected";
       c.curationReasoning = `[VETO red de seguridad ${shadow.model}] ${veto.reasoning} — Haiku había aprobado: ${c.curationReasoning}`;

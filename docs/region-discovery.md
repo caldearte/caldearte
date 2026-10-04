@@ -5264,3 +5264,61 @@ spend per run.
 are the only way to catch a wrongly vetoed real event — same lesson as the
 category-exclusion title audit. A one-time review of web+IG vetoes is
 scheduled for ~2026-10-11.
+
+### First live run of the narrowed safety net: Saturday 2026-10-03
+
+First Instagram run after #618/#619 (cron 13:27Z, merged the night before).
+What the numbers said: 94 posts fetched from 60 accounts → 21 filtered by
+account×category → 72 candidates to Haiku, **$0.138** (Thursday $0.242
+unfiltered, Friday $0.175); per fetched post that is ~$0.0015 against
+~$0.0019 before the filters. MiniMax **$0.012** against $0.032 Friday and
+$0.084 Thursday: of 18 Haiku approvals 12 were already stored and 1
+expired, so the net reviewed 5 posts (6 candidates, ~7k input tokens)
+instead of everything. Total LLM for the day $0.15 vs $0.33 on Thursday.
+3 events inserted (Cuarto Oscuro, Donde el Afecto Ocurre, Habitar las
+Huellas), 2 vetoed.
+
+Reading the 2 vetoes and the 21 filtered titles against the real posts
+(Chrome) found three things:
+
+- **A real false veto, caused by the veto rule, not by MiniMax.** The
+  `antennaorg` "Viernes de Antenna Recomienda" roundup lists a Santiago
+  theater piece and "XII Bienal Internacional de Artes de Valparaíso"
+  (until Feb 2027). Haiku approved the Bienal; the second model returned
+  only the theater piece, rejected as a function — correct — and the
+  per-URL rule ("nothing approved at this URL → veto every Haiku approval
+  at it") removed the Bienal on a verdict about a different event.
+  Existing since 09-16; the first of 52 IG vetoes with a title/reason
+  mismatch. Fixed: a veto now applies per candidate and only when the
+  rejection is about the same event (`isSameEvent`): a title in common
+  wins; otherwise a conflicting city or conflicting run dates (both sides
+  filled in) mean different events and Haiku's approval stands. Missing
+  data never blocks a veto — a strict title match would have silently
+  dropped 8 of the 52 historical vetoes (the models often title the same
+  event differently: "Registro Nacional de Espera" vs "Banco de Horas"),
+  all of them scope-correct. Rejected rows carry a location 100% of the
+  time (1,267/1,267 Haiku rejections since 09-20), which is what makes the
+  city check usable. The Bienal itself is still not on the site (not in
+  `events`); `biav_valpo` is a registered source, so a later run may pick
+  it up, otherwise it is a manual add — note the account's own registry
+  note says the poster reads "XIII" while Antenna's roundup says "XII".
+- **`taller_99` "Grabados Antigrabados": a defensible veto.** The post is
+  the recap of a workshop held in Biblioteca Nacional "en el marco de la
+  exposición" (open until Oct 9); Haiku approved the exhibition off a
+  workshop recap with no dates, MiniMax rejected "the workshop, not the
+  exhibition". A real exhibition with days left, but a thin source —
+  left as is.
+- **A real exhibition was filtered by account×category and no one lost
+  anything only because another source had it.** `ccesantiago` "Nueva
+  exposición en la Galería de la Memoria" — the inauguration of "Llevaban
+  un mundo nuevo en el corazón" at the Museo de la Memoria (until
+  2027-03-28) — was excluded for category *conversatorio* because the
+  caption closes with "…y un conversatorio el 6 de octubre". The event is
+  on the site already (web source), so nothing was lost, but it is the
+  residual risk named on 10-02 happening: a real exhibition post that
+  mentions a secondary talk. Of the 42 titles filtered on 10-02/10-03,
+  exactly 1 contained "exposición/inauguración/muestra" (2.4%). Not
+  changed — the title audit scheduled for 2026-11-02 should count these
+  across the full month before deciding whether a title-keyword rescue
+  ("exposición" in the title overrides the category exclusion) is worth
+  the extra Haiku calls.
