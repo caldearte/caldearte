@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
 import { Resend } from "resend";
 import { clientIp, isWithinRateLimit } from "@/lib/rate-limit";
+import { isValidEmail } from "@/lib/email";
 
 const CONTACT_RECIPIENT = "daniel@probablespa.cl";
-const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 // 5 messages/hour/IP — generous for a real visitor, tight enough to stop
 // a script from flooding the inbox. See docs on check_rate_limit.
 const RATE_LIMIT_MAX = 5;
@@ -42,7 +42,7 @@ export async function POST(request: Request) {
   const email = payload.email?.trim() ?? "";
   const message = payload.message?.trim() ?? "";
 
-  if (!EMAIL_PATTERN.test(email) || message.length === 0) {
+  if (!isValidEmail(email) || message.length === 0) {
     return NextResponse.json({ error: "invalid_payload" }, { status: 400 });
   }
 
