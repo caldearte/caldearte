@@ -105,8 +105,25 @@ export async function fetchHtmlPageFallback(pageUrl: string, fetchImpl: MinimalF
   // crash, found via mugupla's emoji-dense Instagram captions; the same
   // risk applies here to any page whose text happens to have an emoji
   // straddling the 4000-char cut).
-  const text = truncateSafely(collapseWhitespace(html.replace(/<script[\s\S]*?<\/script>/gi, "").replace(/<style[\s\S]*?<\/style>/gi, "")), 4000);
+  const text = truncateSafely(collapseWhitespace(stripScriptAndStyle(html)), 4000);
   return { content: text, images };
+}
+
+// Drops <script>/<style> blocks before the page text goes to Haiku. The
+// result is plain text for the model, never rendered as HTML, so this is
+// about noise, not XSS — but the old one-pass `<\/script>` regex missed
+// closing tags like `</script >` and could leave a block behind when tags
+// were nested (CodeQL js/bad-tag-filter, js/incomplete-multi-character-
+// sanitization). Repeat until nothing changes.
+export function stripScriptAndStyle(html: string): string {
+  let current = html;
+  for (;;) {
+    const next = current
+      .replace(/<script\b[\s\S]*?<\/script[^>]*>/gi, "")
+      .replace(/<style\b[\s\S]*?<\/style[^>]*>/gi, "");
+    if (next === current) return current;
+    current = next;
+  }
 }
 
 async function fetchHtmlSource(source: BrightSource): Promise<BrightSourceFetchResult> {

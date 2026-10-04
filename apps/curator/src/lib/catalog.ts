@@ -113,6 +113,19 @@ function cleanHandle(handle: string): string {
   return handle.trim().replace(/^@/, "").toLowerCase();
 }
 
+// An Instagram post URL by its real hostname, not a substring match
+// ("instagram.com" also appears in "notinstagram.com" or a query string —
+// CodeQL js/incomplete-url-substring-sanitization).
+export function isInstagramUrl(url: string | null): url is string {
+  if (!url) return false;
+  try {
+    const host = new URL(url).hostname.toLowerCase();
+    return host === "instagram.com" || host.endsWith(".instagram.com");
+  } catch {
+    return false;
+  }
+}
+
 // Registered Instagram accounts that are one fixed place, by normalized
 // place name — so a venue gets the handle of our own source for it.
 function registryHandlesByPlace(): Map<string, string> {
@@ -248,7 +261,7 @@ export async function syncCatalog(client: Client = getSupabaseClient()): Promise
     if (error) throw new Error(`loading unsynced events: ${error.message}`);
     if (events.length === 0) return result;
 
-    const postUrls = events.map((e) => e.source_url).filter((u): u is string => Boolean(u?.includes("instagram.com")));
+    const postUrls = events.map((e) => e.source_url).filter(isInstagramUrl);
     const coauthorsByPost = new Map<string, string[]>();
     if (postUrls.length > 0) {
       const { data: edges, error: edgeError } = await client.from("instagram_collab_edges").select("post_url, handle").in("post_url", postUrls);

@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { detectNewBrightSources, fetchBrightSources, isCompleteEvent, mergeBrightSources, type BrightSource } from "./sources.js";
+import { detectNewBrightSources, fetchBrightSources, isCompleteEvent, mergeBrightSources, stripScriptAndStyle, type BrightSource } from "./sources.js";
 import { KNOWN_SOURCES } from "../lib/known-sources.js";
 import type { ArticleListConfig } from "./extractors.js";
 import type { EventCandidate } from "./discover.js";
@@ -679,4 +679,12 @@ test("detectNewBrightSources domain-matches consistently with knownSourceDomain 
   ];
   const detected = detectNewBrightSources(candidates, NOW, ["www.arteinformado.com"]);
   assert.equal(detected.length, 0, "already-known www.-prefixed domain must not be re-detected as new");
+});
+
+test("stripScriptAndStyle drops script/style blocks, including odd closing tags and nesting (CodeQL, 2026-10-04)", () => {
+  assert.equal(stripScriptAndStyle("a<script>x()</script>b<style>.c{}</style>c"), "abc");
+  assert.equal(stripScriptAndStyle("a<SCRIPT type='x'>x()</script >b"), "ab", "case-insensitive, space before >");
+  assert.equal(stripScriptAndStyle("a<script>x()</script foo='bar'>b"), "ab", "attributes on the closing tag");
+  assert.equal(stripScriptAndStyle("a<scr<script>x</script>ipt>y()</script>b"), "ab", "nested pieces that reassemble after one pass");
+  assert.equal(stripScriptAndStyle("<p>Inauguración 18:00</p>"), "<p>Inauguración 18:00</p>", "ordinary markup is left for collapseWhitespace");
 });

@@ -178,12 +178,15 @@ export function decodeHtmlEntities(text: string): string {
   return text
     .replace(/&#x([0-9A-Fa-f]+);/g, (_, hex: string) => String.fromCodePoint(parseInt(hex, 16)))
     .replace(/&#(\d+);/g, (_, dec: string) => String.fromCodePoint(parseInt(dec, 10)))
-    .replace(/&amp;/g, "&")
     .replace(/&quot;/g, '"')
     .replace(/&#0?39;/g, "'")
     .replace(/&lt;/g, "<")
     .replace(/&gt;/g, ">")
-    .replace(/&(\w+);/g, (full, name: string) => NAMED_ENTITIES[name] ?? full);
+    .replace(/&(\w+);/g, (full, name: string) => NAMED_ENTITIES[name] ?? full)
+    // Last, so each call peels exactly one layer: decoding &amp; first made
+    // "&amp;quot;" or "&amp;nbsp;" collapse two layers in one call (CodeQL
+    // js/double-escaping). Callers that need two layers already call twice.
+    .replace(/&amp;/g, "&");
 }
 
 export function extractImgTags(html: string): Array<{ url: string; description: string | null }> {

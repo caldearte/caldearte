@@ -89,3 +89,9 @@ test("resolveCardImage: still falls back to the placeholder for a raw social CDN
     process.env.NEXT_PUBLIC_SUPABASE_URL = original;
   }
 });
+
+test("deriveImageSource matches real hosts and subdomains, not lookalikes (CodeQL, 2026-10-04)", () => {
+  assert.deepEqual(deriveImageSource("https://m.facebook.com/events/1"), { kind: "facebook", domain: null });
+  assert.deepEqual(deriveImageSource("https://notinstagram.com/p/1"), { kind: "web", domain: "notinstagram.com" });
+  assert.deepEqual(deriveImageSource("https://instagram.com.example.cl/p/1"), { kind: "web", domain: "instagram.com.example.cl" });
+});
