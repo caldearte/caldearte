@@ -10,6 +10,10 @@ import { FLYER_HEIGHT, FLYER_WIDTH, FlyerImage, type FlyerEventInput, type Flyer
 // actually switches their real output — `?v=1` is kept as an explicit
 // escape hatch back to the old template, not the other way around.
 import { FlyerImageV2 } from "@/lib/social/flyer-v2";
+import { checkFlyerParamLengths, fetchFlyerPhoto, parsePublicImageUrl } from "@/lib/social/flyerRequest";
+
+// Dev only: lets a local test use http://localhost:3000/... as the photo.
+const ALLOW_LOCAL_PHOTO = process.env.NODE_ENV !== "production";
 
 // Called by the automated Instagram-publishing cron over HTTP
 // (apps/curator/src/social-publish/run.ts) and by the manual "Compartir"
@@ -21,6 +25,9 @@ import { FlyerImageV2 } from "@/lib/social/flyer-v2";
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
 
+  const lengthError = checkFlyerParamLengths(searchParams);
+  if (lengthError) return new Response(lengthError, { status: 400 });
+
   const type = searchParams.get("type") as FlyerType | null;
   if (type !== "inauguracion" && type !== "visita_guiada") {
     return new Response("Invalid or missing 'type' (inauguracion | visita_guiada)", { status: 400 });
@@ -30,6 +37,9 @@ export async function GET(request: Request) {
   const imageUrl = searchParams.get("imageUrl");
   if (!title || !region || !imageUrl) {
     return new Response("Missing required params: title, region, imageUrl", { status: 400 });
+  }
+  if (!parsePublicImageUrl(imageUrl, { allowLocal: ALLOW_LOCAL_PHOTO })) {
+    return new Response("'imageUrl' must be a public https URL", { status: 400 });
   }
 
   const input: FlyerEventInput = {
@@ -70,13 +80,11 @@ export async function GET(request: Request) {
     // ".jpg" — exactly what Satori's own internal fetch apparently sends.
     // Requesting only jpeg/png/gif ourselves sidesteps that CDN's format
     // negotiation entirely, regardless of what any other CDN might do.
-    const photoRes = await fetch(imageUrl, { headers: { Accept: "image/jpeg,image/png,image/gif" } });
-    if (!photoRes.ok) throw new Error(`Failed to fetch event photo (${photoRes.status}): ${imageUrl}`);
-    const photoContentType = photoRes.headers.get("content-type") ?? "image/jpeg";
-    if (!photoContentType.startsWith("image/") || photoContentType.includes("webp")) {
-      throw new Error(`Event photo resolved to an unsupported content-type (${photoContentType}): ${imageUrl}`);
-    }
-    const photoBuffer = Buffer.from(await photoRes.arrayBuffer());
+    // fetchFlyerPhoto (flyerRequest.ts) keeps that Accept header and adds a
+    // timeout, a size cap and per-hop vetting of redirects (2026-10-04).
+    const { buffer: photoBuffer, contentType: photoContentType } = await fetchFlyerPhoto(imageUrl, {
+      allowLocal: ALLOW_LOCAL_PHOTO,
+    });
     const photoDataUri = `data:${photoContentType};base64,${photoBuffer.toString("base64")}`;
 
     const useV2 = searchParams.get("v") !== "1";
