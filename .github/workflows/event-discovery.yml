@@ -78,6 +78,13 @@ on:
     - cron: "7 6 * * 0" # every Sunday, ~06:07 UTC — bright sources only
     - cron: "7 6 * * 3" # every Wednesday, ~06:07 UTC — bright sources only, feeds that day's own "no te la pierdas" post
 
+permissions:
+  contents: read
+  # flagBudgetExceeded (apps/curator/src/lib/notify.ts) opens a GitHub issue
+  # when the monthly AI budget ceiling is hit. The repo default token is
+  # read-only, so without this that alert would fail the day it fires.
+  issues: write
+
 jobs:
   discover:
     runs-on: ubuntu-latest

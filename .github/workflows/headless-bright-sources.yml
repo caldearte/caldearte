@@ -21,6 +21,9 @@ on:
     - cron: "12 7 * * 0" # Every Sunday, ~07:12 UTC — 1h after the main run (moved from Monday 2026-08-23, see event-discovery.yml)
     - cron: "12 7 * * 3" # Every Wednesday, ~07:12 UTC — 1h after the main run's own Wednesday cron, added 2026-08-24 (see event-discovery.yml)
 
+permissions:
+  contents: read
+
 jobs:
   discover-headless:
     runs-on: ubuntu-latest

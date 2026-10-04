@@ -66,6 +66,9 @@ on:
     # Instagram" — this keeps that true).
     - cron: "17 8 * * 1-6" # Every Monday through Saturday, ~08:17 UTC
 
+permissions:
+  contents: read
+
 jobs:
   discover-instagram:
     runs-on: ubuntu-latest
