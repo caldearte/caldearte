@@ -52,6 +52,8 @@ const EXCLUDED_PATH_SEGMENTS = [
   "/dist/",
   "/.next/",
   "apps/curator/src/security-audit/scan.test.ts",
+  // Same story (2026-10-06): its fixtures are fake addresses on purpose.
+  "apps/web/src/lib/email.test.ts",
 ];
 
 export function scanForSecrets(files: ScannedFile[]): SecretFinding[] {

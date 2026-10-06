@@ -9,7 +9,7 @@
 // and the cost stays linear. The 254-character cap is the practical maximum
 // length of an email address and bounds the work regardless.
 //
-// Same deliberately loose shape as before (something@label.label…): this
+// Same deliberately loose shape as before (text, an at-sign, dotted labels): this
 // filters typos and garbage, it doesn't try to validate RFC 5322.
 
 const EMAIL_SHAPE = /^[^\s@]+@[^\s@.]+(?:\.[^\s@.]+)+$/;
