@@ -130,15 +130,36 @@ export interface RegionMeta {
 // No client argument — always the same anon
 // singleton (getSupabaseClient()), keeping this cacheable without needing
 // to serialize a client object into the cache key.
+// PostgREST caps every response at max_rows (1000) and truncates in
+// silence: a plain select("*") over events_public would, once the calendar
+// passes 1000 live events (~2026-11 at today's growth; 493 on 2026-10-07),
+// quietly drop the rest from the home page, event pages and sitemap. Pages
+// through the view ordered by id (unique) so no row repeats or is skipped.
+const EVENTS_PAGE_SIZE = 1000;
+
+async function fetchAllEventRows(client: ReturnType<typeof getSupabaseClient>): Promise<EventRow[]> {
+  const rows: EventRow[] = [];
+  for (let from = 0; ; from += EVENTS_PAGE_SIZE) {
+    const { data, error } = await client
+      .from("events_public")
+      .select("*")
+      .order("id")
+      .range(from, from + EVENTS_PAGE_SIZE - 1);
+    if (error) {
+      throw new Error(`Failed to fetch events: ${error.message}`);
+    }
+    const page = (data ?? []) as EventRow[];
+    rows.push(...page);
+    if (page.length < EVENTS_PAGE_SIZE) return rows;
+  }
+}
+
 async function fetchApprovedEventsFromDb(): Promise<{ events: EventRecord[]; regions: RegionMeta[] }> {
   const client = getSupabaseClient();
-  const [eventsRes, regionsRes] = await Promise.all([
-    client.from("events_public").select("*"),
+  const [eventRows, regionsRes] = await Promise.all([
+    fetchAllEventRows(client),
     client.from("regions_public").select("*"),
   ]);
-  if (eventsRes.error) {
-    throw new Error(`Failed to fetch events: ${eventsRes.error.message}`);
-  }
   if (regionsRes.error) {
     throw new Error(`Failed to fetch regions: ${regionsRes.error.message}`);
   }
@@ -156,7 +177,6 @@ async function fetchApprovedEventsFromDb(): Promise<{ events: EventRecord[]; reg
     lat: r.lat,
     lng: r.lng,
   }));
-  const eventRows = (eventsRes.data ?? []) as EventRow[];
   return { events: eventRows.map((row) => toEventRecord(row, regionNameById)), regions };
 }
 
