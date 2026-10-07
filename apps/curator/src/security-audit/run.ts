@@ -8,10 +8,9 @@
 //
 // GitHub's own secret scanning + Dependabot alerts are free for public
 // repos but are a security SETTING (Settings -> Code security) — not
-// something this script can enable on its own. Both are currently
-// disabled on this repo (checked 2026-08-23); this script queries them
-// best-effort and notes in the email if either is off, as a nudge to
-// enable them.
+// something this script can enable on its own. This script queries
+// them best-effort; with the default GITHUB_TOKEN the read is usually
+// denied, so the email says "couldn't determine" rather than guessing.
 import { execSync } from "node:child_process";
 import { readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
@@ -89,17 +88,17 @@ async function checkGitHubSecurityFeatures(): Promise<GitHubSecurityFeatureStatu
   const headers = { Authorization: `Bearer ${token}`, Accept: "application/vnd.github+json" };
 
   const secretScanning = await fetch(`https://api.github.com/repos/${repo}/secret-scanning/alerts?state=open`, { headers });
-  if (secretScanning.status === 404) {
-    result.secretScanningEnabled = false;
-  } else if (secretScanning.ok) {
+  // 403/404 are ambiguous here: the workflow's GITHUB_TOKEN can't read
+  // these alerts even when the feature is on (Dependabot reported "off"
+  // while enabled, 2026-10-06), so only a successful read counts as a
+  // known state; anything else stays null ("couldn't determine").
+  if (secretScanning.ok) {
     result.secretScanningEnabled = true;
     result.openSecretScanningAlerts = ((await secretScanning.json()) as unknown[]).length;
   }
 
   const dependabot = await fetch(`https://api.github.com/repos/${repo}/dependabot/alerts?state=open`, { headers });
-  if (dependabot.status === 403 || dependabot.status === 404) {
-    result.dependabotAlertsEnabled = false;
-  } else if (dependabot.ok) {
+  if (dependabot.ok) {
     result.dependabotAlertsEnabled = true;
     result.openDependabotAlerts = ((await dependabot.json()) as unknown[]).length;
   }
