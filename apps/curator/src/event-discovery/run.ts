@@ -1056,6 +1056,34 @@ export async function insertCandidates(
               : "";
       console.log(`[event-discovery] skipping duplicate: "${c.title}"${reason}`);
       outcomes.set(c, "duplicate_skipped");
+      // Without a record, a candidate Haiku approves but insertCandidates
+      // drops as a cross-source duplicate was re-fetched, re-curated and
+      // re-dropped every run (measured 2026-10-07: ~20 of 86 candidates in a
+      // web run, ~$0.05). Recorded under DUPLICATE_SKIP_MARKER so
+      // loadRecentlyRejectedSourceUrls excludes it for DUPLICATE_SKIP_WINDOW_MS
+      // only — shorter than a rejection's 90 days because, unlike a
+      // rejection, this one stops being true when the original is removed.
+      // Instagram never re-fetches old posts, so it isn't recorded there.
+      // No region_id/anchor_date: this is not a verdict about the event, and
+      // the axis-conflict check (rejected_candidates by region + date) must
+      // not mistake it for one.
+      if (c.sourceUrl && pipeline !== "instagram") {
+        const { error: duplicateError } = await client.from("rejected_candidates").upsert(
+          {
+            source_url: c.sourceUrl,
+            title: c.title,
+            reason: `${DUPLICATE_SKIP_MARKER}: ya en el calendario como "${existingMatch.title}" (${existingMatch.id}); no se vuelve a curar por 14 días] ${c.curationReasoning}`,
+            created_at: now.toISOString(),
+            location: c.location,
+            pipeline,
+            source_account: c.sourceAccount,
+          },
+          { onConflict: "source_url" },
+        );
+        if (duplicateError) {
+          console.error(`[event-discovery] failed to record skipped duplicate "${c.title}": ${duplicateError.message}`);
+        }
+      }
       continue;
     }
 
@@ -1284,18 +1312,42 @@ async function pruneOldRejectedCandidates(now: Date): Promise<void> {
 // (never touches location — that's the field whose null-ness caused the
 // 2026-07-22 crash that got rejected-candidate storage removed from
 // `events` in the first place).
+// Rows recorded for a skipped cross-source duplicate (insertCandidates) start
+// with this marker and only count for the shorter window below.
+export const DUPLICATE_SKIP_MARKER = "[DUPLICADO";
+export const DUPLICATE_SKIP_WINDOW_MS = 14 * 24 * 60 * 60 * 1000;
+
 export async function loadRecentlyRejectedSourceUrls(now: Date): Promise<Set<string>> {
   const cutoff = new Date(now.getTime() - REJECTED_CANDIDATE_WINDOW_MS).toISOString();
+  const duplicateCutoff = new Date(now.getTime() - DUPLICATE_SKIP_WINDOW_MS).toISOString();
   const client = getSupabaseClient();
-  let rows: Array<{ source_url: string }>;
+  let rejected: Array<{ source_url: string }>;
+  let duplicates: Array<{ source_url: string }>;
   try {
-    rows = await fetchAllRows((from, to) =>
-      client.from("rejected_candidates").select("source_url").gte("created_at", cutoff).order("id").range(from, to),
-    );
+    [rejected, duplicates] = await Promise.all([
+      fetchAllRows((from, to) =>
+        client
+          .from("rejected_candidates")
+          .select("source_url")
+          .gte("created_at", cutoff)
+          .not("reason", "like", `${DUPLICATE_SKIP_MARKER}%`)
+          .order("id")
+          .range(from, to),
+      ),
+      fetchAllRows((from, to) =>
+        client
+          .from("rejected_candidates")
+          .select("source_url")
+          .gte("created_at", duplicateCutoff)
+          .like("reason", `${DUPLICATE_SKIP_MARKER}%`)
+          .order("id")
+          .range(from, to),
+      ),
+    ]);
   } catch (error) {
     throw new Error(`Failed to load rejected_candidates: ${error instanceof Error ? error.message : String(error)}`);
   }
-  return new Set(rows.map((row) => row.source_url));
+  return new Set([...rejected, ...duplicates].map((row) => row.source_url));
 }
 
 // Logs EVERY raw Tavily hit for a unit (before filterKnownExclusions, so

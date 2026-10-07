@@ -5322,3 +5322,38 @@ Reading the 2 vetoes and the 21 filtered titles against the real posts
   across the full month before deciding whether a title-keyword rescue
   ("exposición" in the title overrides the category exclusion) is worth
   the extra Haiku calls.
+
+## Oct 4-7 reviews: first web runs with prefilters + net, and the 1000-row cap (2026-10-07)
+
+**Web run, Sunday 10-04 vs Tuesday 09-30:** 70 candidates vs 184, expired 59→6, cross-source duplicates 46→18; Haiku $0.193 vs $0.449; MiniMax net 4 calls
+$0.012 vs the old shadow's $0.349 → $0.205 vs $0.798 per run (−74%). The net vetoed 3 of 6 reviewed candidates: Foro de las Artes (month-long multidisciplinary
+festival) and Expo Hojalata (community fair) were correct; "10 años resistiendo memoria" (Parque Cultural de Valparaíso) was a real textile/memory exhibition vetoed
+for "no verifiable content" because the park's wp-json feed carried `extracto_corto: "jjkjkj"`. An unverifiable description is not an out-of-scope call, but the 90-day
+rejection window kept it from being re-curated before the show ended, so it was added by hand. Measured rarity: that is the only gibberish description in the bright
+sources' history; "texto insuficiente"-type rejections are ~2% of web rejections, and 3 of 107 web events have descriptions under 25 characters — no extractor change.
+
+**Veto rule fix (PR #620).** A roundup post listed a Santiago theater piece and the XII Bienal de Valparaíso; the second model returned only the theater piece
+(rejected) and the per-URL rule vetoed Haiku's approval of the Bienal. Vetoes are now per candidate and apply only when the rejection is about the same event
+(`isSameEvent`: shared title wins; otherwise a conflicting city or dates mean different events; missing data never blocks a veto).
+
+**The 1000-row cap (PRs #633, #634).** PostgREST truncates every response at `max_rows = 1000` without an error. `loadRecentlyRejectedSourceUrls` read
+`rejected_candidates` (3,703 rows in the window) with a plain select, so ~73% of rejected URLs — the newest ones — were never excluded before curation. The table
+crossed 1,000 rows around 2026-09-13; the cost showed from 09-23 (web volume had quadrupled): re-rejected candidates cost ≈ $0.14 a run on 09-23/27/30, $0.055 on 10-04
+and $0.092 on 10-07 (≈ $0.58 over five runs), and Expo Hojalata / Foro de las Artes were judged by Haiku and by MiniMax twice. It was not visible earlier because the
+per-run cost jump on 09-20 had a real cause (many web sources went live) and the forecast baseline absorbed it; only comparing which URLs repeat between consecutive
+runs shows it. Fix: `lib/fetch-all.ts` `fetchAllRows` (range paging, ordered by id) on `loadRecentlyRejectedSourceUrls`, `loadExistingKeys` (events passes 1,000 around
+November — a truncated load would have silently disabled every dedup tier) and the two region conflict checks; web `fetchApprovedEventsFromDb` pages `events_public` the
+same way (493 live events, ~+10/day). Instagram was not affected in practice (it only fetches new posts). **Still latent:** `unstable_cache`'s 2 MB entry limit
+(events payload ~751 kB at 493 events → ~1,300 events), newsletter/social-publish `events` selects, and the `api_usage_log` monthly selects (≤334 rows/month).
+
+**Cross-source duplicates are now remembered for 14 days.** Of the repeated candidates in a web run, ~20 of 86 were approved by Haiku and then dropped by
+`insertCandidates` as duplicates of an event already on the calendar; with no record they were re-fetched, re-curated and re-dropped every run (~$0.05). They are now
+written to `rejected_candidates` with reason `[DUPLICADO: ya en el calendario como "<título>" (<id>); no se vuelve a curar por 14 días] …` (no region/anchor date, so the
+axis-conflict check can't mistake them for a verdict; not for Instagram, which never re-fetches old posts) and `loadRecentlyRejectedSourceUrls` excludes them for
+`DUPLICATE_SKIP_WINDOW_MS` (14 days) instead of a rejection's 90 — shorter because this one stops being true if the original is removed.
+
+**Duplicates on the site.** ~4% of events inserted since August are duplicates. Shapes that defeat the dedup tiers: venue-name variants (also three `venue_id`s for one
+place), one side without run dates (news article, reopening post), titles with a subtitle/series prefix, the account's own name used as the place. A report-only detector
+(same city + same exact run range + 1 distinctive token / same place + same end date + 1 token / ≥2 distinctive tokens, excluding guided visits) runs as block 5 of the
+Monday task; its first pass found "La veta" (3 copies) and MAM Chiloé, both removed. Next step, after 2-3 weeks of measured precision: a deterministic prefilter plus a
+MiniMax adjudication at the safety-net step, piloted on Google Alerts (the source with the worst duplicate/exclusion rate: 3 of 9 inserted needed manual removal).

@@ -2237,6 +2237,60 @@ test(
         }
       });
 
+      // 2026-10-07: a cross-source duplicate is remembered for 14 days (not
+      // the 90 of a rejection) so it isn't re-curated every run.
+      await t.test("a skipped duplicate is recorded for 14 days, never for Instagram, and its row doesn't look like a verdict", async () => {
+        const { insertCandidates, loadExistingKeys, loadAllRegions, loadRecentlyRejectedSourceUrls } = await import("./run.js");
+        const title = "__test__ Duplicada Registrada";
+        const urls = ["https://fuente-a.cl/__test__/dup-web", "https://fuente-b.cl/__test__/dup-ig", "https://fuente-c.cl/__test__/dup-vieja", "https://fuente-d.cl/__test__/rechazo-viejo"];
+        const cleanup = async () => {
+          await client.from("events").delete().eq("title", title);
+          await client.from("rejected_candidates").delete().in("source_url", urls);
+        };
+        await cleanup();
+        const base = {
+          description: null, artist: null, openingDatetime: null, openingTimeConfirmed: false, mediumType: "tradicional" as const,
+          sensitivityTags: [], curationReasoning: "ok", imageUrl: null, status: "approved" as const, location: "Santiago",
+          dateQuote: null, locationQuote: null, runStartDateQuote: null, runEndDateQuote: null,
+          title, placeName: "Galería Duplicada", runStartDate: "2027-08-01", runEndDate: "2027-09-30",
+        };
+        try {
+          await client.from("events").insert({
+            title, freeform_location: "Santiago", place_name: "Galería Duplicada", run_start_date: "2027-08-01", run_end_date: "2027-09-30",
+            opening_time_confirmed: false, medium_type: "tradicional", sensitivity_tags: [], source: "discovered",
+            source_url: "https://fuente-original.cl/__test__/original", curation_status: "approved", curation_reasoning: "seed",
+          });
+          const regions = await loadAllRegions();
+          const now = new Date(2027, 7, 10);
+          const web = { ...base, sourceUrl: urls[0] };
+          const ig = { ...base, sourceUrl: urls[1] };
+          const { outcomes } = await insertCandidates([web], regions, await loadExistingKeys(), now, "bright_source");
+          assert.equal(outcomes.get(web), "duplicate_skipped");
+          await insertCandidates([ig], regions, await loadExistingKeys(), now, "instagram");
+
+          const { data: rows } = await client.from("rejected_candidates").select("source_url, reason, region_id, anchor_date").in("source_url", urls);
+          const webRow = rows?.find((r) => r.source_url === urls[0]);
+          assert.ok(webRow, "the web duplicate is recorded");
+          assert.match(webRow.reason, /^\[DUPLICADO: ya en el calendario como ".*"/);
+          assert.equal(webRow.region_id, null, "no region/date: it must not feed the axis-conflict check");
+          assert.equal(webRow.anchor_date, null);
+          assert.equal(rows?.some((r) => r.source_url === urls[1]), false, "Instagram duplicates are not recorded");
+
+          // Window: a 20-day-old duplicate row no longer excludes; a 20-day-old REAL rejection still does.
+          const old = new Date(2027, 7, 10 - 20).toISOString();
+          await client.from("rejected_candidates").insert([
+            { source_url: urls[2], title: "__test__ vieja", reason: "[DUPLICADO: ya en el calendario como \"x\" (id); no se vuelve a curar por 14 días] ok", location: "Santiago", created_at: old },
+            { source_url: urls[3], title: "__test__ rechazo", reason: "Fuera de alcance.", location: "Santiago", created_at: old },
+          ]);
+          const excluded = await loadRecentlyRejectedSourceUrls(new Date(2027, 7, 11));
+          assert.equal(excluded.has(urls[0]), true, "fresh duplicate excluded");
+          assert.equal(excluded.has(urls[2]), false, "duplicate older than 14 days is re-evaluated");
+          assert.equal(excluded.has(urls[3]), true, "an ordinary rejection keeps its 90 days");
+        } finally {
+          await cleanup();
+        }
+      });
+
       await t.test("a rejected candidate with a real sourceUrl is upserted into rejected_candidates, without touching location", async () => {
         await client.from("bright_source_fetch_state").delete().neq("url", "");
         const newlyRejectedUrl = "https://fuente-estructurada.cl/expo-recien-rechazada";
