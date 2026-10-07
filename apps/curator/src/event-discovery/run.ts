@@ -20,6 +20,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import type { Tables } from "@caldearte/shared-types";
 import { getSupabaseClient } from "../lib/supabase-client.js";
+import { fetchAllRows } from "../lib/fetch-all.js";
 import { recordUsage, getConfigNumber, getCurrentMonthSpend } from "../lib/usage-tracking.js";
 import type { Pipeline } from "../lib/pipeline.js";
 import { classifyOutOfScope } from "../lib/out-of-scope-classifier.js";
@@ -394,16 +395,33 @@ export async function loadExistingKeys(): Promise<SeenKeys> {
   // 'approved' (a rejected submission is never persisted — see the API
   // route), same invariant 'discovered' rows already rely on here, so no
   // extra status filter is needed.
-  const { data, error } = await getSupabaseClient()
-    .from("events")
-    .select("id, title, source_url, freeform_location, place_name, opening_datetime, opening_time_confirmed, run_start_date, run_end_date")
-    .in("source", ["discovered", "submitted"]);
-
-  if (error) {
-    throw new Error(`Failed to load existing discovered events: ${error.message}`);
+  const client = getSupabaseClient();
+  let rows: Array<{
+    id: string;
+    title: string;
+    source_url: string | null;
+    freeform_location: string;
+    place_name: string | null;
+    opening_datetime: string | null;
+    opening_time_confirmed: boolean;
+    run_start_date: string | null;
+    run_end_date: string | null;
+  }>;
+  try {
+    // Paged: this table passes PostgREST's 1000-row cap around 2026-11, and a
+    // truncated load silently disables every dedup tier for the missing rows.
+    rows = await fetchAllRows((from, to) =>
+      client
+        .from("events")
+        .select("id, title, source_url, freeform_location, place_name, opening_datetime, opening_time_confirmed, run_start_date, run_end_date")
+        .in("source", ["discovered", "submitted"])
+        .order("id")
+        .range(from, to),
+    );
+  } catch (error) {
+    throw new Error(`Failed to load existing discovered events: ${error instanceof Error ? error.message : String(error)}`);
   }
 
-  const rows = data ?? [];
   const toInfo = (row: (typeof rows)[number]): ExistingEventInfo => ({
     id: row.id,
     title: row.title,
@@ -613,18 +631,23 @@ async function findConflictingApprovedEvent(
 ): Promise<ConflictMatch | null> {
   if (!regionId || !anchorDate) return null;
 
-  const { data, error } = await client
-    .from("events")
-    .select("id, title, place_name, source_url, curation_reasoning, opening_datetime, run_start_date, run_end_date")
-    .eq("curation_status", "approved")
-    .eq("region_id", regionId);
-
-  if (error) {
-    console.error(`[event-discovery] conflict check (approved events) failed: ${error.message}`);
+  let data;
+  try {
+    data = await fetchAllRows((from, to) =>
+      client
+        .from("events")
+        .select("id, title, place_name, source_url, curation_reasoning, opening_datetime, run_start_date, run_end_date")
+        .eq("curation_status", "approved")
+        .eq("region_id", regionId)
+        .order("id")
+        .range(from, to),
+    );
+  } catch (error) {
+    console.error(`[event-discovery] conflict check (approved events) failed: ${error instanceof Error ? error.message : String(error)}`);
     return null;
   }
 
-  for (const row of data ?? []) {
+  for (const row of data) {
     if (!row.source_url || row.source_url === candidate.sourceUrl) continue;
     const rowAnchor = anchorDateOf({ openingDatetime: row.opening_datetime, runStartDate: row.run_start_date, runEndDate: row.run_end_date });
     if (!rowAnchor || !isWithinAnchorWindow(anchorDate, rowAnchor)) continue;
@@ -651,18 +674,23 @@ async function findConflictingRejectedCandidate(
 ): Promise<ConflictMatch | null> {
   if (!regionId || !anchorDate) return null;
 
-  const { data, error } = await client
-    .from("rejected_candidates")
-    .select("id, title, source_url, reason, anchor_date, rejection_axis")
-    .eq("region_id", regionId)
-    .not("anchor_date", "is", null);
-
-  if (error) {
-    console.error(`[event-discovery] conflict check (rejected candidates) failed: ${error.message}`);
+  let data;
+  try {
+    data = await fetchAllRows((from, to) =>
+      client
+        .from("rejected_candidates")
+        .select("id, title, source_url, reason, anchor_date, rejection_axis")
+        .eq("region_id", regionId)
+        .not("anchor_date", "is", null)
+        .order("id")
+        .range(from, to),
+    );
+  } catch (error) {
+    console.error(`[event-discovery] conflict check (rejected candidates) failed: ${error instanceof Error ? error.message : String(error)}`);
     return null;
   }
 
-  for (const row of data ?? []) {
+  for (const row of data) {
     if (row.source_url === candidate.sourceUrl) continue;
     if (!row.anchor_date || !isWithinAnchorWindow(anchorDate, row.anchor_date)) continue;
     if (!isLikelySameTitle(row.title, candidate.title)) continue;
@@ -1258,14 +1286,16 @@ async function pruneOldRejectedCandidates(now: Date): Promise<void> {
 // `events` in the first place).
 export async function loadRecentlyRejectedSourceUrls(now: Date): Promise<Set<string>> {
   const cutoff = new Date(now.getTime() - REJECTED_CANDIDATE_WINDOW_MS).toISOString();
-  const { data, error } = await getSupabaseClient()
-    .from("rejected_candidates")
-    .select("source_url")
-    .gte("created_at", cutoff);
-  if (error) {
-    throw new Error(`Failed to load rejected_candidates: ${error.message}`);
+  const client = getSupabaseClient();
+  let rows: Array<{ source_url: string }>;
+  try {
+    rows = await fetchAllRows((from, to) =>
+      client.from("rejected_candidates").select("source_url").gte("created_at", cutoff).order("id").range(from, to),
+    );
+  } catch (error) {
+    throw new Error(`Failed to load rejected_candidates: ${error instanceof Error ? error.message : String(error)}`);
   }
-  return new Set((data ?? []).map((row) => row.source_url));
+  return new Set(rows.map((row) => row.source_url));
 }
 
 // Logs EVERY raw Tavily hit for a unit (before filterKnownExclusions, so

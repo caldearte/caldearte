@@ -2206,6 +2206,37 @@ test(
         await client.from("rejected_candidates").delete().like("source_url", "https://fuente-estructurada.cl/red-%");
       });
 
+      // 2026-10-07: PostgREST silently caps a plain select at 1000 rows;
+      // rejected_candidates had 3,700 in its window, so ~73% of rejected
+      // URLs were never excluded before curation. The newest rows are the
+      // ones a plain select drops, which is exactly the set that matters.
+      await t.test("loadRecentlyRejectedSourceUrls returns every URL in the window, past PostgREST's 1000-row cap", async () => {
+        const { loadRecentlyRejectedSourceUrls } = await import("./run.js");
+        const prefix = "https://test-paginacion.cl/";
+        await client.from("rejected_candidates").delete().like("source_url", `${prefix}%`);
+        const { count } = await client.from("rejected_candidates").select("id", { count: "exact", head: true });
+        // Enough rows that the table is past the cap whatever else it holds.
+        const needed = Math.max(0, 1100 - (count ?? 0)) + 5;
+        const rows = Array.from({ length: needed }, (_, i) => ({
+          source_url: `${prefix}${i}`,
+          title: `__test__ paginación ${i}`,
+          reason: "Fuera de alcance.",
+          location: "Santiago",
+          created_at: new Date(2027, 7, 10).toISOString(),
+        }));
+        try {
+          for (let i = 0; i < rows.length; i += 500) {
+            const { error } = await client.from("rejected_candidates").insert(rows.slice(i, i + 500));
+            assert.equal(error, null);
+          }
+          const urls = await loadRecentlyRejectedSourceUrls(new Date(2027, 7, 11));
+          const found = rows.filter((r) => urls.has(r.source_url)).length;
+          assert.equal(found, rows.length, "every inserted URL is in the set, including the newest ones");
+        } finally {
+          await client.from("rejected_candidates").delete().like("source_url", `${prefix}%`);
+        }
+      });
+
       await t.test("a rejected candidate with a real sourceUrl is upserted into rejected_candidates, without touching location", async () => {
         await client.from("bright_source_fetch_state").delete().neq("url", "");
         const newlyRejectedUrl = "https://fuente-estructurada.cl/expo-recien-rechazada";
