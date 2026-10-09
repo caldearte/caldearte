@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { waitUntilContainerReady, publishInstagramCarousel, createCarouselItem, publishCarousel, type InstagramClientConfig } from "./instagram.js";
+import { waitUntilContainerReady, publishInstagramCarousel, createCarouselItem, publishCarousel, fetchRetryingConnectErrors, type InstagramClientConfig } from "./instagram.js";
 
 const CONFIG: InstagramClientConfig = { igBusinessAccountId: "17841432827710890", accessToken: "IGAAtest" };
 
@@ -159,4 +159,49 @@ test("publishInstagramCarousel waits for the container to be ready before callin
   assert.equal(publishedId, "published-media-id");
   assert.equal(statusCalls, 2);
   assert.equal(calledPaths.at(-1), `/v21.0/${CONFIG.igBusinessAccountId}/media_publish`);
+});
+
+// The exact error shape from the 2026-10-09 failed run: undici wraps Node's
+// dual-stack connect failure (IPv4 ETIMEDOUT + IPv6 ENETUNREACH).
+function connectTimeoutError(): TypeError {
+  const err = new TypeError("fetch failed");
+  (err as TypeError & { cause: unknown }).cause = Object.assign(new AggregateError([], ""), {
+    code: "ETIMEDOUT",
+    errors: [Object.assign(new Error("connect ETIMEDOUT"), { code: "ETIMEDOUT" }), Object.assign(new Error("connect ENETUNREACH"), { code: "ENETUNREACH" })],
+  });
+  return err;
+}
+
+test("createCarouselItem retries a connect-phase timeout instead of failing the run — real bug found 2026-10-09: one ETIMEDOUT to graph.instagram.com killed the scheduled carousel", async () => {
+  let calls = 0;
+  const stub = (async () => {
+    calls++;
+    if (calls < 3) throw connectTimeoutError();
+    return jsonResponse({ id: "creation-1" });
+  }) as typeof fetch;
+  const id = await withStubFetch(stub, () => createCarouselItem(CONFIG, "https://example.com/1.jpg", 0));
+  assert.equal(id, "creation-1");
+  assert.equal(calls, 3);
+});
+
+test("fetchRetryingConnectErrors gives up after 3 attempts of a persistent connect failure", async () => {
+  let calls = 0;
+  const stub = (async () => {
+    calls++;
+    throw connectTimeoutError();
+  }) as typeof fetch;
+  await assert.rejects(() => withStubFetch(stub, () => fetchRetryingConnectErrors(new URL("https://example.com"), { method: "POST" }, 0)), /fetch failed/);
+  assert.equal(calls, 3);
+});
+
+test("fetchRetryingConnectErrors does NOT retry ECONNRESET — the request may already have reached Instagram, and re-POSTing could publish twice", async () => {
+  let calls = 0;
+  const stub = (async () => {
+    calls++;
+    const err = new TypeError("fetch failed");
+    (err as TypeError & { cause: unknown }).cause = Object.assign(new Error("read ECONNRESET"), { code: "ECONNRESET" });
+    throw err;
+  }) as typeof fetch;
+  await assert.rejects(() => withStubFetch(stub, () => fetchRetryingConnectErrors(new URL("https://example.com"), { method: "POST" }, 0)), /fetch failed/);
+  assert.equal(calls, 1);
 });
