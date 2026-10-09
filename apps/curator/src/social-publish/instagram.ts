@@ -19,11 +19,47 @@ export interface InstagramClientConfig {
   accessToken: string;
 }
 
-async function graphPost(path: string, params: Record<string, string>): Promise<{ id: string }> {
+const NETWORK_RETRY_ATTEMPTS = 3;
+const NETWORK_RETRY_DELAY_MS = 5000;
+
+// Errno codes where the TCP connection was never established, so the
+// request provably never reached Instagram and re-sending it can't
+// double-act. Deliberately excludes ECONNRESET / UND_ERR_SOCKET /
+// response timeouts: those can happen AFTER the request was sent, and
+// retrying a POST there could e.g. publish the carousel twice.
+const CONNECT_PHASE_ERROR_CODES = new Set(["ETIMEDOUT", "ENETUNREACH", "ECONNREFUSED", "EHOSTUNREACH", "ENOTFOUND", "EAI_AGAIN"]);
+
+function isConnectPhaseError(err: unknown): boolean {
+  if (!(err instanceof Error)) return false;
+  const cause = (err as Error & { cause?: { code?: string; errors?: { code?: string }[] } }).cause;
+  if (!cause) return false;
+  // Node's happy-eyeballs connect (IPv4 + IPv6) wraps both attempts in an
+  // AggregateError with the per-address errors in `errors`.
+  const codes = cause.errors?.length ? cause.errors.map((e) => e.code) : [cause.code];
+  return codes.length > 0 && codes.every((c) => c !== undefined && CONNECT_PHASE_ERROR_CODES.has(c));
+}
+
+// Real bug found 2026-10-09: the Friday scheduled run died on a single
+// `connect ETIMEDOUT` to graph.instagram.com (GitHub runner <-> Meta
+// network blip, nothing wrong with the carousel); the next run, minutes
+// later, connected fine. Retries only connect-phase failures — see
+// CONNECT_PHASE_ERROR_CODES for why that makes it safe for POSTs.
+export async function fetchRetryingConnectErrors(url: URL, init?: RequestInit, retryDelayMs = NETWORK_RETRY_DELAY_MS): Promise<Response> {
+  for (let attempt = 1; ; attempt++) {
+    try {
+      return await fetch(url, init);
+    } catch (err) {
+      if (!isConnectPhaseError(err) || attempt === NETWORK_RETRY_ATTEMPTS) throw err;
+      await sleep(retryDelayMs);
+    }
+  }
+}
+
+async function graphPost(path: string, params: Record<string, string>, networkRetryDelayMs = NETWORK_RETRY_DELAY_MS): Promise<{ id: string }> {
   const url = new URL(`${GRAPH_API_BASE}/${path}`);
   for (const [key, value] of Object.entries(params)) url.searchParams.set(key, value);
 
-  const res = await fetch(url, { method: "POST" });
+  const res = await fetchRetryingConnectErrors(url, { method: "POST" }, networkRetryDelayMs);
   const body = await res.json();
   if (!res.ok) {
     throw new Error(`Instagram Graph API error on POST ${path}: ${JSON.stringify(body)}`);
@@ -72,7 +108,7 @@ export async function createCarouselItem(
         image_url: imageUrl,
         is_carousel_item: "true",
         access_token: config.accessToken,
-      });
+      }, retryDelayMs);
       return id;
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
@@ -185,7 +221,7 @@ export async function waitUntilContainerReady(
     const url = new URL(`${GRAPH_API_BASE}/${containerCreationId}`);
     url.searchParams.set("fields", "status_code");
     url.searchParams.set("access_token", config.accessToken);
-    const res = await fetch(url);
+    const res = await fetchRetryingConnectErrors(url);
     const body = await res.json();
     if (!res.ok) throw new Error(`Instagram Graph API error checking container status: ${JSON.stringify(body)}`);
     if (body.status_code === "FINISHED") return;
