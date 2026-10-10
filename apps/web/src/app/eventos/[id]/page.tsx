@@ -61,6 +61,11 @@ export async function generateMetadata({ params }: { params: Promise<PageParams>
   return {
     title,
     description,
+    // Resolved against layout.tsx's metadataBase (www). Without it Google
+    // saw `/eventos/<id>?semana=…` as a duplicate of `/eventos/<id>` and
+    // chose the canonical itself — Search Console's "Duplicate without
+    // user-selected canonical" (31 pages, 2026-10-10).
+    alternates: { canonical: `/eventos/${id}` },
     openGraph: {
       title,
       description,

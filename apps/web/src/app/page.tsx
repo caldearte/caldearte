@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import type { Metadata } from "next";
 import { EMPTY_COOKIE_READER } from "@/lib/cityPickerContext";
 import { computeHomeViewModel } from "@/lib/homeViewModel";
 import CalendarView from "@/components/CalendarView";
@@ -40,6 +41,15 @@ import HomeClient from "@/components/HomeClient";
 // briefly sees the more-filtered default before their own looser
 // preference loads in.
 export const revalidate = 600;
+
+// Here and not in layout.tsx: layout metadata is inherited by every route
+// without its own `alternates`, so a canonical "/" there would point
+// /privacidad, /curatoria, etc. at the home page. The `?semana=` /
+// `?suscribir=` variants render this same server HTML (personalization is
+// client-side, see above), so they all canonicalize to "/".
+export const metadata: Metadata = {
+  alternates: { canonical: "/" },
+};
 
 export default async function HomePage() {
   const computed = await computeHomeViewModel({ cookieStore: EMPTY_COOKIE_READER, headerStore: new Headers() });

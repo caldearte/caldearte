@@ -444,6 +444,17 @@ this also gives AI answer engines that ground on schema.org markup a
 structured, unambiguous source instead of having to infer date/place
 from prose.
 
+**Canonical URLs (2026-10-10):** Search Console's page-indexing report
+listed 31 pages as "Duplicate without user-selected canonical" — the
+`?semana=` / `?suscribir=` variants of `/` and `/eventos/[id]` (the other
+indexing buckets — noindex'd retired events, 404s of the removed
+`/expos-anteriores`, apex/http redirects, `/api/` blocked by robots.txt —
+are intentional or expected). `/` and `/eventos/[id]` now declare
+`alternates.canonical` (resolved against layout.tsx's `metadataBase`, www),
+as `/artistas` and `/espacios` already did. The home's lives in `page.tsx`,
+not the layout, because layout metadata is inherited by every route that
+doesn't set its own `alternates`.
+
 ## Mobile performance/accessibility audit (2026-08-17/18)
 
 A real Lighthouse report the user ran locally (mobile: Performance 76,
