@@ -51,6 +51,13 @@ function countsPhrase(
 export const esCL = {
   appName: "CALDEARTE",
   appDescription: "Calendario de inauguraciones de arte en Chile.",
+  // Home-only <title>/<meta description> (2026-10-10). Written for what
+  // people actually type into Google ("exposiciones de arte santiago",
+  // "... esta semana"); the brand-only title/description above stay the
+  // site-wide default for every other route.
+  homeMetaTitle: "Exposiciones de arte en Santiago esta semana | Caldearte",
+  homeMetaDescription:
+    "Calendario gratuito de exposiciones e inauguraciones de arte en Santiago y regiones: galerías, museos, centros culturales y espacios independientes.",
   // Rediseño 2.0.0 — wordmark de dos líneas ("CALDE" / "ARTE.") tal como
   // está en Figma, distinto del appName de una sola línea usado en
   // metadata/otros lugares.
