@@ -39,3 +39,11 @@ test("emptyWithNextEvent takes a suffix parameter, so one function serves both t
     "No hay nada que mostrar esta semana en Santiago. La próxima es el 14 jul — Muestra X.",
   );
 });
+
+test("home meta title/description name what people search for and stay within the lengths Google shows", () => {
+  assert.match(esCL.homeMetaTitle, /exposiciones/i);
+  assert.match(esCL.homeMetaTitle, /Santiago/);
+  assert.ok(esCL.homeMetaTitle.length <= 60, `title is ${esCL.homeMetaTitle.length} chars`);
+  assert.match(esCL.homeMetaDescription, /exposiciones/i);
+  assert.ok(esCL.homeMetaDescription.length <= 160, `description is ${esCL.homeMetaDescription.length} chars`);
+});

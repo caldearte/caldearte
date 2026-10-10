@@ -455,6 +455,19 @@ as `/artistas` and `/espacios` already did. The home's lives in `page.tsx`,
 not the layout, because layout metadata is inherited by every route that
 doesn't set its own `alternates`.
 
+**Home title/description (2026-10-10):** a manual check of Google Chile
+(first page, 8 generic queries like "exposiciones de arte santiago" and
+"... esta semana") showed Caldearte on none of them — arteinformado.com,
+the big museums/centers and Instagram hold them — while the brand query
+ranks first. The home's title/description were brand-only ("Calendario de
+inauguraciones de arte en Chile."), naming neither "exposiciones" nor
+"Santiago". `page.tsx` now sets its own (`esCL.homeMetaTitle` /
+`homeMetaDescription`), restating `openGraph`/`twitter` in full because
+Next.js merges metadata shallowly. This is the necessary condition, not a
+ranking promise; the H1 (the wordmark in `Header.tsx`) is unchanged. Next
+lever, if worth it: indexable per-region/per-week routes — needs its own
+plan (ISR cost, what gets indexed).
+
 ## Mobile performance/accessibility audit (2026-08-17/18)
 
 A real Lighthouse report the user ran locally (mobile: Performance 76,

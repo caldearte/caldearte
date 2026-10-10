@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import type { Metadata } from "next";
+import { esCL } from "@/i18n/es-CL";
 import { EMPTY_COOKIE_READER } from "@/lib/cityPickerContext";
 import { computeHomeViewModel } from "@/lib/homeViewModel";
 import CalendarView from "@/components/CalendarView";
@@ -47,8 +48,28 @@ export const revalidate = 600;
 // /privacidad, /curatoria, etc. at the home page. The `?semana=` /
 // `?suscribir=` variants render this same server HTML (personalization is
 // client-side, see above), so they all canonicalize to "/".
+//
+// The same applies to the title/description: they target the searches
+// people actually make ("exposiciones de arte santiago", "...esta semana")
+// instead of the brand-only site default. Next.js merges metadata
+// SHALLOWLY, so openGraph/twitter below replace layout.tsx's whole objects
+// and must restate siteName/locale/type/card.
 export const metadata: Metadata = {
+  title: { absolute: esCL.homeMetaTitle },
+  description: esCL.homeMetaDescription,
   alternates: { canonical: "/" },
+  openGraph: {
+    title: esCL.homeMetaTitle,
+    description: esCL.homeMetaDescription,
+    siteName: "Caldearte",
+    locale: "es_CL",
+    type: "website",
+  },
+  twitter: {
+    card: "summary",
+    title: esCL.homeMetaTitle,
+    description: esCL.homeMetaDescription,
+  },
 };
 
 export default async function HomePage() {
