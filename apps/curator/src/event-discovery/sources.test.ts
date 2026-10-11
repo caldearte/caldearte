@@ -688,3 +688,124 @@ test("stripScriptAndStyle drops script/style blocks, including odd closing tags 
   assert.equal(stripScriptAndStyle("a<scr<script>x</script>ipt>y()</script>b"), "ab", "nested pieces that reassemble after one pass");
   assert.equal(stripScriptAndStyle("<p>Inauguración 18:00</p>"), "<p>Inauguración 18:00</p>", "ordinary markup is left for collapseWhitespace");
 });
+
+// --- safa.cl (2026-10-11): two JSON calls, programme then batch detail ----
+
+type SafaStub = (url: string) => Promise<{ ok: boolean; status: number; json(): Promise<unknown> }>;
+
+async function withSafaStub<T>(stub: SafaStub, run: () => Promise<T>): Promise<T> {
+  const original = globalThis.fetch;
+  globalThis.fetch = ((input: string | URL) => stub(String(input))) as typeof fetch;
+  try {
+    return await run();
+  } finally {
+    globalThis.fetch = original;
+  }
+}
+
+function safaOk(body: unknown): ReturnType<SafaStub> {
+  return Promise.resolve({ ok: true, status: 200, json: async () => body });
+}
+
+const safaDetail = (id: number, tipo = "Exposición") => ({
+  id,
+  title: `Muestra ${id}`,
+  description: "Una muestra.",
+  photo_url: null,
+  espacio: "Galería Hifas",
+  espacio_id: 55,
+  direccion: "Libertad 304",
+  direccion_confidencial: false,
+  comuna: "Santiago",
+  tipos: [tipo],
+  fechas: [{ date: "2026-10-06", label: "06/10/2026 10:00 – 18:00" }],
+});
+
+test("fetchBrightSources against the real KNOWN_SOURCES config for safa.cl: reads the programme, requests details only for exhibition-shaped activities, returns structured items", async () => {
+  const safa = KNOWN_SOURCES.find((s) => s.url.includes("safa.cl"));
+  assert.ok(safa?.extractor?.kind === "safaAgendaApi");
+  const requested: string[] = [];
+  const results = await withSafaStub(
+    (url) => {
+      requested.push(url);
+      if (url.endsWith("/programa/agenda.json")) {
+        return safaOk({
+          eventsFilterMeta: {
+            "10": { tipos: ["Exposición"] },
+            "11": { tipos: ["Taller"] },
+            "12": { tipos: ["Inauguración"] },
+          },
+        });
+      }
+      return safaOk({ events: { "10": safaDetail(10), "12": safaDetail(12, "Inauguración") } });
+    },
+    () => fetchBrightSources([safa]),
+  );
+  assert.equal(results.length, 1);
+  assert.equal(results[0].kind, "items");
+  if (results[0].kind !== "items") return;
+  assert.deepEqual(results[0].items.map((i) => i.sourceUrl).sort(), [
+    "https://www.safa.cl/programa/espacio/55?evento=10&edicion=2026",
+    "https://www.safa.cl/programa/espacio/55?evento=12&edicion=2026",
+  ]);
+  assert.equal(requested.length, 2);
+  assert.match(requested[1], /\/programa\/eventos\/detalle\?ids=10,12$/);
+});
+
+test("fetchBrightSources for safa.cl requests details in chunks of 40 ids", async () => {
+  const safa = KNOWN_SOURCES.find((s) => s.url.includes("safa.cl"));
+  assert.ok(safa);
+  const meta: Record<string, { tipos: string[] }> = {};
+  for (let id = 1; id <= 85; id++) meta[String(id)] = { tipos: ["Exposición"] };
+  const detailCalls: string[] = [];
+  const results = await withSafaStub(
+    (url) => {
+      if (url.endsWith("/programa/agenda.json")) return safaOk({ eventsFilterMeta: meta });
+      detailCalls.push(url);
+      const ids = url.split("ids=")[1].split(",");
+      return safaOk({ events: Object.fromEntries(ids.map((id) => [id, safaDetail(Number(id))])) });
+    },
+    () => fetchBrightSources([safa]),
+  );
+  assert.equal(detailCalls.length, 3);
+  assert.equal(results[0].kind === "items" ? results[0].items.length : -1, 85);
+});
+
+test("fetchBrightSources for safa.cl keeps the other chunks' activities when one detail request fails", async () => {
+  const safa = KNOWN_SOURCES.find((s) => s.url.includes("safa.cl"));
+  assert.ok(safa);
+  const meta: Record<string, { tipos: string[] }> = {};
+  for (let id = 1; id <= 50; id++) meta[String(id)] = { tipos: ["Exposición"] };
+  let call = 0;
+  const results = await withSafaStub(
+    (url) => {
+      if (url.endsWith("/programa/agenda.json")) return safaOk({ eventsFilterMeta: meta });
+      call++;
+      if (call === 1) return Promise.resolve({ ok: false, status: 500, json: async () => ({}) });
+      const ids = url.split("ids=")[1].split(",");
+      return safaOk({ events: Object.fromEntries(ids.map((id) => [id, safaDetail(Number(id))])) });
+    },
+    () => fetchBrightSources([safa]),
+  );
+  assert.equal(results[0].kind === "items" ? results[0].items.length : -1, 10);
+});
+
+test("fetchBrightSources for safa.cl drops the source (logged, not thrown) when the programme has an unexpected shape or every detail request fails", async () => {
+  const safa = KNOWN_SOURCES.find((s) => s.url.includes("safa.cl"));
+  assert.ok(safa);
+  assert.deepEqual(await withSafaStub(() => safaOk({ nope: true }), () => fetchBrightSources([safa])), []);
+  assert.deepEqual(
+    await withSafaStub(
+      (url) => (url.endsWith("/programa/agenda.json") ? safaOk({ eventsFilterMeta: { "1": { tipos: ["Exposición"] } } }) : Promise.resolve({ ok: false, status: 503, json: async () => ({}) })),
+      () => fetchBrightSources([safa]),
+    ),
+    [],
+  );
+});
+
+test("fetchBrightSources for safa.cl returns zero items, not a failure, when the programme is valid but empty (between editions)", async () => {
+  const safa = KNOWN_SOURCES.find((s) => s.url.includes("safa.cl"));
+  assert.ok(safa);
+  const results = await withSafaStub(() => safaOk({ eventsFilterMeta: {} }), () => fetchBrightSources([safa]));
+  assert.equal(results[0].kind === "items" ? results[0].items.length : -1, 0);
+});

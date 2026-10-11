@@ -11,6 +11,9 @@
 // - "wordpressRestApi": a WordPress REST endpoint returning structured
 //   JSON, fields named per-site (Parque Cultural Valparaíso's meta.*
 //   fields aren't a WordPress standard, just this site's own naming).
+// - "safaAgendaApi": safa.cl's festival agenda (a Laravel app whose agenda
+//   page renders client-side from two public JSON endpoints) — see the
+//   section at the bottom of this file.
 //
 // sources.ts's fetchHtmlSource/fetchJsonApiSource dispatch to these when a
 // source has a matching config, falling back to sources.ts's own
@@ -93,6 +96,20 @@ export interface BrightSourceItem {
   // undefined for every source shape except Instagram
   // (lib/instagram-item.ts sets it to account.username).
   sourceAccount?: string | null;
+  // Real street address of this item's venue, when the source states one
+  // per item (safa.cl's `direccion`) — the per-item counterpart of
+  // `fixedLocation.address`/`defaultLocation.address`, used only for the
+  // Google Maps directions link (see KnownSource.fixedLocation's doc
+  // comment). Optional, undefined for every other source shape.
+  address?: string | null;
+  // The source's own EXACT inauguración, "YYYY-MM-DDTHH:mm" Chile-local
+  // (same format Haiku reports openingDatetime in), when it labels one
+  // explicitly with a real start hour (safa.cl's "Inauguración" activity
+  // type). discover.ts's mergeBrightSourceCandidate uses it as-is, with
+  // openingTimeConfirmed true, over whatever Haiku reports — same
+  // "deterministic fields never touch Haiku" posture as the structured
+  // run dates above. Optional, undefined for every other source shape.
+  structuredOpeningDatetime?: string | null;
 }
 
 // Entities decoded AFTER tags are stripped, never before — decoding
@@ -633,4 +650,207 @@ export function extractWordpressItems(items: unknown[], config: WordpressRestCon
   });
 }
 
-export type ExtractorConfig = ArticleListConfig | WordpressRestConfig;
+export type ExtractorConfig = ArticleListConfig | WordpressRestConfig | SafaAgendaConfig;
+
+// --- safaAgendaApi: safa.cl's festival agenda ---------------------------
+//
+// Santiago Festival de las Artes (SAFA, first edition 6-11 Oct 2026: 150+
+// spaces, 800+ activities). Its /programa/agenda page is an empty shell
+// filled in client-side from two public, unauthenticated JSON endpoints
+// (found 2026-10-11 via the page's own programme-agenda.js; robots.txt
+// allows everything), so a plain fetch is enough — no headless browser:
+//
+// 1. `/programa/agenda.json` — the whole programme, one row per
+//    (activity, day) slot, plus `eventsFilterMeta`: activity id -> its
+//    `tipos` and its days. Thin: no description, no address.
+// 2. `/programa/eventos/detalle?ids=1,2,...` (batch; 40 ids per call
+//    verified) — per activity: description, photo, venue (`espacio`,
+//    `direccion`, `comuna`) and `fechas`, each with its real hour label.
+//
+// What SAFA calls an "event" is an ACTIVITY of any kind (exposición,
+// inauguración, visita mediada, taller, charla, música, cine...). Only the
+// two exhibition-shaped tipos are kept (config.includeTipos): measured on
+// the 2026-10-11 snapshot, 127 of 243 activities, and every dropped one
+// was a guided visit, workshop, talk, screening or open-studio encounter
+// — out of scope by the format test (docs/overview.md). Same posture as
+// every other prefilter here: not a scope decision (Haiku still judges
+// the rest), just not paying to ask about the obviously-out-of-scope.
+//
+// Dates are the festival's own, NOT the exhibition's: none of the 102
+// "Exposición" descriptions states a real run, so structured start/end are
+// the first/last day SAFA lists the activity open — the honest reading of
+// "open to the public during SAFA". An "Inauguración" activity's first
+// listed day+hour is the opening (structuredOpeningDatetime).
+//
+// There is no public per-activity page (clicking a card only opens a
+// modal), so sourceUrl is the venue's public /programa/espacio/<id> page,
+// which lists its activities, plus `?evento=<id>&edicion=<year>` — unique
+// per activity, which matters because rejected_candidates is keyed by
+// source_url (a bare venue URL would let one rejection block every other
+// activity at the same space) — and the year keeps a future edition that
+// reuses ids from colliding with this one's.
+export interface SafaAgendaConfig {
+  kind: "safaAgendaApi";
+  detailUrl: string; // batch endpoint, e.g. "https://www.safa.cl/programa/eventos/detalle"
+  venuePageBaseUrl: string; // e.g. "https://www.safa.cl/programa/espacio"
+  includeTipos: string[]; // keep an activity when ANY of its tipos is listed
+}
+
+// Max ids per detail request (40 verified on the live endpoint).
+export const SAFA_DETAIL_CHUNK_SIZE = 40;
+
+export interface SafaFecha {
+  date?: string; // YYYY-MM-DD
+  label?: string; // "08/10/2026 19:30 – 22:00"
+}
+
+export interface SafaEventDetail {
+  id?: number;
+  title?: string;
+  description?: string;
+  photo_url?: string | null;
+  espacio?: string;
+  espacio_id?: number;
+  direccion?: string | null;
+  direccion_confidencial?: boolean;
+  comuna?: string | null;
+  tipos?: string[];
+  fechas?: SafaFecha[];
+}
+
+// Ids (as strings, the JSON keys) of the activities worth fetching details
+// for. Null when the payload doesn't have the expected shape — the caller
+// treats that as a source failure rather than "no events".
+export function selectSafaEventIds(agenda: unknown, config: SafaAgendaConfig): string[] | null {
+  const meta = (agenda as { eventsFilterMeta?: unknown } | null)?.eventsFilterMeta;
+  if (!meta || typeof meta !== "object" || Array.isArray(meta)) return null;
+  const ids: string[] = [];
+  for (const [id, row] of Object.entries(meta as Record<string, { tipos?: unknown }>)) {
+    const tipos = Array.isArray(row?.tipos) ? row.tipos : [];
+    if (tipos.some((tipo) => typeof tipo === "string" && config.includeTipos.includes(tipo))) ids.push(id);
+  }
+  return ids;
+}
+
+// Descriptions are free text typed by the venues; a contact email can sit
+// in one (seen once on the 2026-10-11 snapshot, in an activity this
+// config filters out anyway). Never carried into the calendar.
+const EMAIL_REGEX = /[\w.+-]+@[\w-]+(?:\.[\w-]+)+/g;
+
+function cleanSafaDescription(raw: string | undefined): string | null {
+  if (!raw) return null;
+  const cleaned = raw
+    .replace(/\r\n?/g, "\n")
+    .replace(EMAIL_REGEX, "")
+    .replace(/[ \t]+/g, " ")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+  return cleaned ? truncateSafely(cleaned, 1500) : null;
+}
+
+const SAFA_LABEL_START_TIME = /(\d{1,2}):(\d{2})/;
+
+interface SafaDay {
+  date: string;
+  startTime: string | null; // "HH:MM", null when the label has none
+  label: string;
+}
+
+function parseSafaDays(fechas: SafaFecha[] | undefined): SafaDay[] {
+  const days: SafaDay[] = [];
+  for (const fecha of fechas ?? []) {
+    if (!fecha.date || !/^\d{4}-\d{2}-\d{2}$/.test(fecha.date)) continue;
+    const label = (fecha.label ?? "").trim();
+    // The label repeats the date ("08/10/2026 19:30 – 22:00"), so the
+    // first HH:MM in it is the start hour.
+    const time = label.match(SAFA_LABEL_START_TIME);
+    days.push({ date: fecha.date, startTime: time ? `${time[1].padStart(2, "0")}:${time[2]}` : null, label });
+  }
+  return days.sort((a, b) => a.date.localeCompare(b.date));
+}
+
+function normalizeSafaTitle(title: string): string {
+  return title.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, " ").trim();
+}
+
+interface SafaItemDraft {
+  item: BrightSourceItem;
+  venueKey: string; // espacio_id + normalized title, for the merge below
+  hasOpening: boolean;
+}
+
+export function extractSafaItems(details: Record<string, SafaEventDetail>, config: SafaAgendaConfig, fallbackUrl: string): BrightSourceItem[] {
+  const drafts: SafaItemDraft[] = [];
+
+  for (const [id, event] of Object.entries(details)) {
+    const title = event.title?.trim();
+    if (!title) continue;
+    const tipos = event.tipos ?? [];
+    if (!tipos.some((tipo) => config.includeTipos.includes(tipo))) continue;
+    // A private studio address is the one thing this site marks as not
+    // for publication — an activity at one is skipped whole.
+    if (event.direccion_confidencial) continue;
+    const days = parseSafaDays(event.fechas);
+    if (days.length === 0) continue;
+
+    const first = days[0];
+    const last = days[days.length - 1];
+    const isInauguracion = tipos.includes("Inauguración");
+    // 00:00 is the all-day placeholder ("00:00 – 23:59"), not an hour a
+    // ceremony starts at.
+    const hasOpening = isInauguracion && first.startTime !== null && first.startTime !== "00:00";
+
+    const comuna = event.comuna?.trim() || null;
+    const direccion = event.direccion?.replace(/\s+/g, " ").trim() || null;
+    const venuePage = event.espacio_id !== undefined ? `${config.venuePageBaseUrl}/${encodeURIComponent(String(event.espacio_id))}` : fallbackUrl;
+
+    drafts.push({
+      venueKey: `${event.espacio_id ?? ""}|${normalizeSafaTitle(title)}`,
+      hasOpening,
+      item: {
+        title,
+        sourceUrl: `${venuePage}?evento=${encodeURIComponent(id)}&edicion=${first.date.slice(0, 4)}`,
+        imageUrl: event.photo_url || null,
+        description: cleanSafaDescription(event.description),
+        locationHint: null,
+        rawDateText: `Abierto durante SAFA: ${days.map((day) => day.label || day.date).join("; ")}`,
+        structuredStartDate: first.date,
+        structuredEndDate: last.date,
+        structuredOpeningDatetime: hasOpening ? `${first.date}T${first.startTime}` : null,
+        location: comuna,
+        placeName: event.espacio?.trim() || null,
+        address: direccion ? (comuna ? `${direccion}, ${comuna}` : direccion) : null,
+      },
+    });
+  }
+
+  // The same exhibition is often listed twice at one space — once as an
+  // "Exposición" (its open days) and once as an "Inauguración" (its
+  // opening night) — 14 of 26 inauguraciones on the 2026-10-11 snapshot
+  // had an identically-titled Exposición. One item per exhibition: the
+  // first-seen item stays, absorbing the other's opening and day span.
+  const merged: SafaItemDraft[] = [];
+  const byKey = new Map<string, SafaItemDraft>();
+  for (const draft of drafts) {
+    const existing = byKey.get(draft.venueKey);
+    if (!existing) {
+      byKey.set(draft.venueKey, draft);
+      merged.push(draft);
+      continue;
+    }
+    // Two different opening nights under one title are two events.
+    if (existing.hasOpening && draft.hasOpening) {
+      merged.push(draft);
+      continue;
+    }
+    const a = existing.item;
+    const b = draft.item;
+    a.structuredStartDate = [a.structuredStartDate, b.structuredStartDate].filter((d): d is string => d !== null).sort()[0] ?? null;
+    a.structuredEndDate = [a.structuredEndDate, b.structuredEndDate].filter((d): d is string => d !== null).sort().reverse()[0] ?? null;
+    a.structuredOpeningDatetime = a.structuredOpeningDatetime ?? b.structuredOpeningDatetime ?? null;
+    a.description = (a.description?.length ?? 0) >= (b.description?.length ?? 0) ? a.description : b.description;
+    a.imageUrl = a.imageUrl ?? b.imageUrl;
+    existing.hasOpening = existing.hasOpening || draft.hasOpening;
+  }
+  return merged.map((draft) => draft.item);
+}

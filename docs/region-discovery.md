@@ -5357,3 +5357,46 @@ place), one side without run dates (news article, reopening post), titles with a
 (same city + same exact run range + 1 distinctive token / same place + same end date + 1 token / ≥2 distinctive tokens, excluding guided visits) runs as block 5 of the
 Monday task; its first pass found "La veta" (3 copies) and MAM Chiloé, both removed. Next step, after 2-3 weeks of measured precision: a deterministic prefilter plus a
 MiniMax adjudication at the safety-net step, piloted on Google Alerts (the source with the worst duplicate/exclusion rate: 3 of 9 inserted needed manual removal).
+
+## safa.cl as a bright source: festival agenda via two public JSON endpoints (2026-10-11)
+
+**Trigger.** SAFA (Santiago Festival de las Artes, 6-11 Oct 2026, 150+ spaces, 800+ activities) was almost entirely absent from the calendar: Camila flagged the
+missing Taller Infante opening, and Daniel loaded it and Taller Navarrete by hand. SAFA had been skipped on 2026-09-13 because it was unclear whether a whole festival
+counts as an event; the answer is not to ask: the festival is never an event itself, each of its exhibitions/openings is, judged like any other.
+
+**Feasibility: a plain `fetch` is enough, no headless.** `/programa/agenda` is an empty shell filled by `programme-agenda.js` from two public JSON endpoints
+(`robots.txt` allows everything): `/programa/agenda.json` (the whole programme: one row per activity-day, plus `eventsFilterMeta` = activity id → `tipos`, days) and
+`/programa/eventos/detalle?ids=…` (batch, 40 ids per call verified; per activity: description, photo, `espacio`, `direccion`, `comuna`, and `fechas` with real hour
+labels). 243 activities on the 2026-10-11 snapshot, all with description and photo; a full fetch is 1 + 7 requests, ~5 s. No per-activity public page exists (the card
+click opens a modal), so `sourceUrl` is the venue's public `/programa/espacio/<id>` page plus `?evento=<id>&edicion=<year>`, unique per activity because
+`rejected_candidates` is keyed by `source_url` (a bare venue URL would let one rejection block every other activity at that space) and the year protects against a
+future edition reusing ids. `/programa/espacio/<id>` lists the venue's activities, so the link lands somewhere that shows the event.
+
+**Scope prefilter, before Haiku (extractor config `includeTipos`).** SAFA's "events" are activities of any kind. Counted on the snapshot: Exposición 102, Inauguración
+27 (one activity has both) → 127 kept; Visita Mediada 46, Encuentro con el artista 29 (talks and open studios), Taller 22, Conversatorio 9, Charla/Cine/Música/
+Performance 9 → 116 dropped. Every dropped title was read: guided visits, workshops, talks, screenings, book launches, open-studio days. Not a scope decision (Haiku
+still judges the rest); it only avoids paying to ask about the obviously out-of-scope format. 12 Exposición/Inauguración pairs with the same title at the same space
+are merged into one item (the Inauguración's opening + the widest day span) → **115 items**, ≈ 23k input tokens, ≈ $0.10 for a whole edition with real Haiku pricing
+(estimate; not run with Haiku — no spend, no production run). Items already on the calendar through the venue's own source are dropped by the existing cross-source
+pre-filter before Haiku, so the real cost is lower.
+
+**Dates — the honest limit.** None of the 102 Exposición descriptions states the exhibition's real run, so `structuredStartDate/EndDate` are the first/last day SAFA
+lists the activity open: the festival window, not necessarily the show's closing. A show that continues after 11 Oct will read as ended on the 11th if SAFA is its
+only source. SAFA counts as an aggregator for `shouldReplaceExisting` (no `fixedLocation`), so the venue's own site/Instagram wins ties. An Inauguración activity's
+first listed day + start hour (≠ the 00:00 all-day placeholder) becomes `BrightSourceItem.structuredOpeningDatetime`: new optional field, used by
+`mergeBrightSourceCandidate` over whatever Haiku reads, with `openingTimeConfirmed = true`. Verified live: Taller Infante → opening 2026-10-08 19:30, Providencia,
+José Manuel Infante 1428; Taller Navarrete → 2026-10-08 19:00. `BrightSourceItem.address` (new, optional) carries the per-item street address for the Maps link,
+same role as `fixedLocation.address` for single-venue sources.
+
+**Privacy.** Activities flagged `direccion_confidencial` are skipped; email addresses in descriptions are stripped (one was seen, in an activity the prefilter drops
+anyway); the endpoints carry no other contact data and nothing personal is stored in the repo.
+
+**Between editions.** Past-dated items are discarded for free by `isObviouslyExpiredByDate` (and recorded in `rejected_candidates` once), so the weekly fetch costs
+nothing until a new edition publishes. When the next edition is announced: re-check the URL, `tipos` vocabulary and whether run dates are stated.
+
+**Venues.** Not imported. `venues` is derived exclusively from approved events (`lib/catalog.ts`), there is no import path for bare venues, and adding one would be a
+hack. Rough overlap on the snapshot: of ~83 distinct spaces among the 115 items, roughly half were already in `venues`; the rest (e.g. Taller Infante, Taller Navarrete,
+Galería Cripta, Galería Madre, Galería QUQU, Palacio Pereira, Centro Cultural Montecarmelo) will enter the catalog when their events are approved.
+
+**Tests.** `extractors.test.ts` (tipos selection, mapping, email stripping, opening vs. all-day placeholder, skips, merge rules, expiry), `sources.test.ts`
+(dispatch against the real config, 40-id chunking, partial chunk failure, malformed/empty programme), `discover.test.ts` (opening override, address, prompt line).

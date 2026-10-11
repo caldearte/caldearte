@@ -1012,6 +1012,9 @@ export function buildBrightSourceBlock(items: BrightSourceItem[]): string {
         item.defaultLocation
           ? `Ubicación por defecto de esta cuenta: ${item.defaultLocation.placeName}, ${item.defaultLocation.location} (repórtala tal cual salvo que el texto de este ítem indique explícitamente una comuna/ciudad distinta).`
           : null,
+        item.structuredOpeningDatetime
+          ? `Inauguración ya confirmada por la fuente: ${item.structuredOpeningDatetime.replace("T", " ")} (hora de Chile; el código ya la tiene, no hace falta reportarla).`
+          : null,
         item.locationHint ? `Lugar mencionado en la fuente: ${item.locationHint}` : null,
         item.description ? `Descripción: ${item.description}` : null,
       ].filter((l): l is string => l !== null);
@@ -1251,7 +1254,13 @@ function mergeBrightSourceCandidate(
   row: BrightSourceCurationEventFields,
   fixedLocation: { location: string; placeName: string; address?: string } | undefined,
 ): EventCandidate {
-  const openingDatetime = row.openingDatetime ? parseLocalDatetimeToUtcIso(row.openingDatetime) : null;
+  // The source's own exact inauguración (extractors.ts's
+  // structuredOpeningDatetime) beats whatever Haiku read, and is by
+  // definition time-confirmed — it carries a real start hour or it
+  // wouldn't have been set.
+  const structuredOpening = item.structuredOpeningDatetime ? parseLocalDatetimeToUtcIso(item.structuredOpeningDatetime) : null;
+  const openingDatetime = structuredOpening ?? (row.openingDatetime ? parseLocalDatetimeToUtcIso(row.openingDatetime) : null);
+  const openingTimeConfirmed = structuredOpening ? true : openingDatetime ? row.openingTimeConfirmed : false;
   const title = row.title ?? item.title;
   // Same fallback-when-missing posture as title above: preserves exactly
   // the pre-eventType behavior (any confirmed instance date read as
@@ -1280,7 +1289,7 @@ function mergeBrightSourceCandidate(
       runStartDate: item.structuredStartDate ?? row.runStartDate,
       runEndDate: item.structuredEndDate ?? row.runEndDate,
       openingDatetime,
-      openingTimeConfirmed: openingDatetime ? row.openingTimeConfirmed : false,
+      openingTimeConfirmed,
       mediumType: row.mediumType,
       sensitivityTags: row.sensitivityTags,
       rejectionAxis: row.rejectionAxis,
@@ -1314,7 +1323,7 @@ function mergeBrightSourceCandidate(
     runStartDate: item.structuredStartDate ?? row.runStartDate,
     runEndDate: item.structuredEndDate ?? row.runEndDate,
     openingDatetime,
-    openingTimeConfirmed: openingDatetime ? row.openingTimeConfirmed : false,
+    openingTimeConfirmed,
     mediumType: row.mediumType,
     sensitivityTags: row.sensitivityTags,
     rejectionAxis: row.rejectionAxis,
@@ -1325,7 +1334,7 @@ function mergeBrightSourceCandidate(
     status: row.status,
     location: defaultConflictsWithExtraction ? row.location! : (item.defaultLocation?.location ?? item.location ?? row.location ?? ""),
     placeName: defaultConflictsWithExtraction ? row.placeName : (item.defaultLocation?.placeName ?? item.placeName ?? row.placeName ?? null),
-    address: defaultConflictsWithExtraction ? null : (item.defaultLocation?.address ?? null),
+    address: defaultConflictsWithExtraction ? null : (item.address ?? item.defaultLocation?.address ?? null),
     sourceUrl: item.sourceUrl,
     sourceAccount: item.sourceAccount ?? null,
     artistInstagramHandle: row.artistInstagramHandle,

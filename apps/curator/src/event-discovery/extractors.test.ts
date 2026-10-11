@@ -5,12 +5,16 @@ import {
   extractArticleList,
   extractDateRange,
   extractImgTags,
+  extractSafaItems,
   extractWordpressItems,
   filterKnownSourceImages,
   isObviouslyExpiredByDate,
+  selectSafaEventIds,
   truncateSafely,
   type ArticleListConfig,
   type DateRangeConfig,
+  type SafaAgendaConfig,
+  type SafaEventDetail,
   type WordpressRestConfig,
 } from "./extractors.js";
 
@@ -1313,4 +1317,145 @@ test("decodeHtmlEntities peels exactly one layer per call (CodeQL js/double-esca
   assert.equal(decodeHtmlEntities("&amp;nbsp;"), "&nbsp;");
   assert.equal(decodeHtmlEntities(decodeHtmlEntities("&amp;nbsp;")), " ", "two calls, two layers (what google-alerts.ts does)");
   assert.equal(decodeHtmlEntities("a?x=1&amp;oh=2&amp;oe=3"), "a?x=1&oh=2&oe=3", "Instagram CDN signature params still decode");
+});
+
+// --- safaAgendaApi (safa.cl, 2026-10-11) ----------------------------------
+// Fixtures follow the real JSON shapes captured from safa.cl's
+// /programa/agenda.json and /programa/eventos/detalle on 2026-10-11
+// (trimmed; texts shortened).
+
+const safaConfig: SafaAgendaConfig = {
+  kind: "safaAgendaApi",
+  detailUrl: "https://www.safa.cl/programa/eventos/detalle",
+  venuePageBaseUrl: "https://www.safa.cl/programa/espacio",
+  includeTipos: ["Exposición", "Inauguración"],
+};
+
+const safaAgenda = {
+  eventsFilterMeta: {
+    "44": { circuito_id: 12, tipos: ["Exposición"], dates: ["2026-10-06"] },
+    "113": { circuito_id: 5, tipos: ["Inauguración"], dates: ["2026-10-08"] },
+    "200": { circuito_id: 5, tipos: ["Visita Mediada"], dates: ["2026-10-08"] },
+    "201": { circuito_id: 5, tipos: ["Taller"], dates: ["2026-10-08"] },
+    "202": { circuito_id: 5, tipos: ["Charla", "Exposición"], dates: ["2026-10-08"] },
+  },
+};
+
+test("selectSafaEventIds keeps an activity when ANY of its tipos is included, and drops visits/workshops/talks", () => {
+  assert.deepEqual(selectSafaEventIds(safaAgenda, safaConfig), ["44", "113", "202"]);
+});
+
+test("selectSafaEventIds returns null (not []) when the payload has no eventsFilterMeta, so a changed site is a failure and not 'no events'", () => {
+  assert.equal(selectSafaEventIds({}, safaConfig), null);
+  assert.equal(selectSafaEventIds(null, safaConfig), null);
+  assert.equal(selectSafaEventIds({ eventsFilterMeta: [] }, safaConfig), null);
+});
+
+const expoDetail: SafaEventDetail = {
+  id: 44,
+  title: '"Formas de Sostener" Cocó Santibáñez',
+  description: "Una exposición que explora el pelo.\r\n\r\n\r\n\r\nContacto: galeria@ejemplo.cl para más info.",
+  photo_url: "https://archivos.safa.cl/eventos/destacadas/expo.png",
+  espacio: "Galería Hifas",
+  espacio_id: 55,
+  direccion: "Libertad  304",
+  direccion_confidencial: false,
+  comuna: "Santiago",
+  tipos: ["Exposición"],
+  fechas: [
+    { date: "2026-10-07", label: "07/10/2026 00:00 – 23:59" },
+    { date: "2026-10-06", label: "06/10/2026 00:00 – 23:59" },
+    { date: "2026-10-11", label: "11/10/2026 00:00 – 23:59" },
+  ],
+};
+
+const inauguracionDetail: SafaEventDetail = {
+  id: 113,
+  title: "Exposición Taller Infante",
+  description: "Taller Infante abre las puertas de su nueva muestra con una inauguración abierta al público.",
+  photo_url: "https://archivos.safa.cl/eventos/destacadas/infante.jpg",
+  espacio: "Taller Infante",
+  espacio_id: 74,
+  direccion: "José Manuel Infante 1428",
+  direccion_confidencial: false,
+  comuna: "Providencia",
+  tipos: ["Inauguración"],
+  fechas: [
+    { date: "2026-10-08", label: "08/10/2026 19:30 – 22:00" },
+    { date: "2026-10-09", label: "09/10/2026 16:00 – 20:00" },
+  ],
+};
+
+test("extractSafaItems maps an Exposición to a structured item: first/last listed day as the run, venue+comuna+address per item, per-activity sourceUrl", () => {
+  const [item] = extractSafaItems({ "44": expoDetail }, safaConfig, "https://www.safa.cl/programa/agenda.json");
+  assert.equal(item.title, '"Formas de Sostener" Cocó Santibáñez');
+  assert.equal(item.sourceUrl, "https://www.safa.cl/programa/espacio/55?evento=44&edicion=2026");
+  assert.equal(item.imageUrl, "https://archivos.safa.cl/eventos/destacadas/expo.png");
+  assert.equal(item.structuredStartDate, "2026-10-06");
+  assert.equal(item.structuredEndDate, "2026-10-11");
+  assert.equal(item.structuredOpeningDatetime, null);
+  assert.equal(item.location, "Santiago");
+  assert.equal(item.placeName, "Galería Hifas");
+  assert.equal(item.address, "Libertad 304, Santiago");
+});
+
+test("extractSafaItems strips contact emails and collapses the CRLF blank-line runs out of descriptions", () => {
+  const [item] = extractSafaItems({ "44": expoDetail }, safaConfig, "https://www.safa.cl/programa/agenda.json");
+  assert.ok(item.description);
+  assert.equal(item.description.includes("@"), false);
+  assert.equal(item.description.includes("\r"), false);
+  assert.equal(item.description.includes("\n\n\n"), false);
+});
+
+test("extractSafaItems turns an Inauguración's first listed day + start hour into a deterministic opening", () => {
+  const [item] = extractSafaItems({ "113": inauguracionDetail }, safaConfig, "x");
+  assert.equal(item.structuredOpeningDatetime, "2026-10-08T19:30");
+  assert.equal(item.structuredStartDate, "2026-10-08");
+  assert.equal(item.structuredEndDate, "2026-10-09");
+});
+
+test("extractSafaItems does NOT invent an opening from the all-day 00:00 placeholder", () => {
+  const allDay = { ...inauguracionDetail, fechas: [{ date: "2026-10-08", label: "08/10/2026 00:00 – 23:59" }] };
+  const [item] = extractSafaItems({ "113": allDay }, safaConfig, "x");
+  assert.equal(item.structuredOpeningDatetime, null);
+});
+
+test("extractSafaItems skips activities outside includeTipos, without dates, without title, or at a confidential address", () => {
+  const items = extractSafaItems(
+    {
+      "1": { ...expoDetail, id: 1, tipos: ["Taller"] },
+      "2": { ...expoDetail, id: 2, fechas: [] },
+      "3": { ...expoDetail, id: 3, title: "  " },
+      "4": { ...expoDetail, id: 4, direccion_confidencial: true },
+      "5": { ...expoDetail, id: 5, title: "Otra muestra real" },
+    },
+    safaConfig,
+    "x",
+  );
+  assert.deepEqual(items.map((i) => i.title), ["Otra muestra real"]);
+});
+
+test("extractSafaItems merges the Exposición and the Inauguración of the same exhibition at the same space into ONE item, keeping the opening and the widest day span", () => {
+  const expo: SafaEventDetail = { ...inauguracionDetail, id: 100, tipos: ["Exposición"], title: "Exposición  Taller Infante!", fechas: [{ date: "2026-10-06", label: "06/10/2026 10:00 – 18:00" }, { date: "2026-10-11", label: "11/10/2026 10:00 – 18:00" }] };
+  const inauguracion: SafaEventDetail = { ...inauguracionDetail, id: 113 };
+  const items = extractSafaItems({ "100": expo, "113": inauguracion }, safaConfig, "x");
+  assert.equal(items.length, 1);
+  assert.equal(items[0].sourceUrl, "https://www.safa.cl/programa/espacio/74?evento=100&edicion=2026");
+  assert.equal(items[0].structuredOpeningDatetime, "2026-10-08T19:30");
+  assert.equal(items[0].structuredStartDate, "2026-10-06");
+  assert.equal(items[0].structuredEndDate, "2026-10-11");
+});
+
+test("extractSafaItems does not merge same-titled activities at DIFFERENT spaces, nor two different opening nights under one title", () => {
+  const elsewhere: SafaEventDetail = { ...inauguracionDetail, id: 114, espacio_id: 75, tipos: ["Exposición"] };
+  assert.equal(extractSafaItems({ "113": inauguracionDetail, "114": elsewhere }, safaConfig, "x").length, 2);
+
+  const secondNight: SafaEventDetail = { ...inauguracionDetail, id: 115, fechas: [{ date: "2026-10-10", label: "10/10/2026 18:00 – 20:00" }] };
+  assert.equal(extractSafaItems({ "113": inauguracionDetail, "115": secondNight }, safaConfig, "x").length, 2);
+});
+
+test("extractSafaItems lets an already-expired SAFA item be dropped for free by isObviouslyExpiredByDate once the festival is over", () => {
+  const [item] = extractSafaItems({ "44": expoDetail }, safaConfig, "x");
+  assert.equal(isObviouslyExpiredByDate(item, new Date("2026-10-12T12:00:00Z")), true);
+  assert.equal(isObviouslyExpiredByDate(item, new Date("2026-10-08T12:00:00Z")), false);
 });
