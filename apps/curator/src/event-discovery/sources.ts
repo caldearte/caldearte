@@ -25,7 +25,11 @@ import { type EventCandidate, type ImageCandidate, type RawResult } from "./disc
 import {
   extractArticleList,
   extractImgTags,
+  extractSafaItems,
   extractWordpressItems,
+  selectSafaEventIds,
+  SAFA_DETAIL_CHUNK_SIZE,
+  type SafaEventDetail,
   filterKnownSourceImages,
   collapseWhitespace,
   truncateSafely,
@@ -187,6 +191,47 @@ async function fetchJsonApiSource(source: BrightSource): Promise<BrightSourceFet
   return { kind: "items", source, items: extractWordpressItems(items, source.extractor, source.url) };
 }
 
+// safa.cl: two public JSON calls instead of one page (see extractors.ts's
+// safaAgendaApi section): the programme for the list of activities, then
+// the batch detail endpoint for the ones worth curating.
+async function fetchSafaSource(source: BrightSource): Promise<BrightSourceFetchResult> {
+  const config = source.extractor;
+  if (config?.kind !== "safaAgendaApi") {
+    throw new Error(`safa source ${source.url} has no safaAgendaApi extractor configured`);
+  }
+  const headers = { Accept: "application/json" };
+
+  const agendaRes = await fetch(source.url, { headers });
+  if (!agendaRes.ok) {
+    throw new Error(`safa source ${source.url} responded ${agendaRes.status}`);
+  }
+  const ids = selectSafaEventIds(await agendaRes.json(), config);
+  if (ids === null) {
+    throw new Error(`safa source ${source.url} response has no eventsFilterMeta (site changed shape?)`);
+  }
+
+  const details: Record<string, SafaEventDetail> = {};
+  let failedChunks = 0;
+  for (let i = 0; i < ids.length; i += SAFA_DETAIL_CHUNK_SIZE) {
+    const chunk = ids.slice(i, i + SAFA_DETAIL_CHUNK_SIZE);
+    try {
+      const res = await fetch(`${config.detailUrl}?ids=${chunk.map(encodeURIComponent).join(",")}`, { headers });
+      if (!res.ok) throw new Error(`responded ${res.status}`);
+      const body = (await res.json()) as { events?: Record<string, SafaEventDetail> };
+      Object.assign(details, body.events ?? {});
+    } catch (err) {
+      // Losing one chunk shouldn't drop the other chunks' activities.
+      failedChunks++;
+      console.error(`[event-discovery] safa detail chunk failed for ${source.url}: ${(err as Error).message}`);
+    }
+  }
+  if (ids.length > 0 && failedChunks > 0 && Object.keys(details).length === 0) {
+    throw new Error(`safa source ${source.url}: every detail request failed`);
+  }
+
+  return { kind: "items", source, items: extractSafaItems(details, config, source.url) };
+}
+
 // Merge hand-curated + detected, deduped by domain (hand-curated wins —
 // guards against a domain being both hand-added and previously
 // auto-detected, which would otherwise fetch it twice).
@@ -221,6 +266,10 @@ export async function fetchBrightSources(sources: BrightSource[]): Promise<Brigh
   const out: BrightSourceFetchResult[] = [];
   for (const source of sources) {
     try {
+      if (source.extractor?.kind === "safaAgendaApi") {
+        out.push(await fetchSafaSource(source));
+        continue;
+      }
       const isJsonApi = source.type === "json-api" || source.extractor?.kind === "wordpressRestApi";
       out.push(isJsonApi ? await fetchJsonApiSource(source) : await fetchHtmlSource(source));
     } catch (err) {

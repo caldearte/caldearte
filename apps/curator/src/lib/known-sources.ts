@@ -1009,6 +1009,18 @@ export const KNOWN_SOURCES: KnownSource[] = [
       pattern: /"addressRegion":"([^"]+)"/,
     },
   },
+  {
+    url: "https://www.safa.cl/programa/agenda.json",
+    note:
+      "SAFA — Santiago Festival de las Artes (safa.cl), primera edición 6-11 oct 2026: 150+ espacios, 800+ actividades en Santiago, Providencia, Vitacura, Las Condes, Lo Barnechea y Ñuñoa. Agregador de otros espacios, NO un espacio propio (sin fixedLocation; comuna y venue por actividad). Agregado 2026-10-11, DESPUÉS de la edición, tras perder la inauguración de Taller Infante (aviso de Camila): casi todo SAFA no estaba en la base. La página /programa/agenda se arma en el cliente desde dos JSON públicos (robots.txt abierto, fetch plano alcanza, sin headless): este /programa/agenda.json (programa completo + tipos por actividad) y /programa/eventos/detalle?ids=... (descripción, foto, espacio, dirección, comuna y horas reales por día; 40 ids por llamada). Filtra por tipo ANTES de Haiku: solo Exposición e Inauguración (127 de 243 actividades en la edición 2026); las 116 descartadas eran visitas mediadas, talleres, charlas, conversatorios, música, cine y encuentros/taller abierto — fuera de alcance por la regla del formato. LÍMITE CONOCIDO: ninguna de las 102 descripciones de Exposición declara el rango real de la muestra, así que runStart/runEnd son el primer/último día en que SAFA la lista abierta (la ventana del festival), no necesariamente su cierre real; una muestra que sigue después de SAFA figurará terminada el 11-oct si esta es la única fuente (las fuentes del propio espacio, fixedLocation, ganan los empates — esta cuenta como agregadora). Una actividad Inauguración con hora de inicio real (≠00:00) da openingDatetime determinístico (el primer día listado); la Exposición y la Inauguración del mismo espacio con título idéntico se fusionan en un ítem (14 de 26 en 2026). Sin página pública por actividad (el click solo abre un modal): sourceUrl = ficha pública del espacio + ?evento=<id>&edicion=<año> (única por actividad: rejected_candidates se indexa por source_url; el año evita colisión si la próxima edición reutiliza ids). Actividades con dirección_confidencial se saltan. Emails de contacto en descripciones se borran. Fuera de edición el endpoint puede quedar vacío o con la edición pasada: los ítems con fecha pasada se descartan gratis antes de Haiku (isObviouslyExpiredByDate), así que fetch semanal sin costo hasta que publiquen la siguiente — revisar el URL y los tipos cuando anuncien la edición 2027.",
+    lastReviewedAt: "2026-10-11",
+    extractor: {
+      kind: "safaAgendaApi",
+      detailUrl: "https://www.safa.cl/programa/eventos/detalle",
+      venuePageBaseUrl: "https://www.safa.cl/programa/espacio",
+      includeTipos: ["Exposición", "Inauguración"],
+    },
+  },
 ];
 
 export function knownSourceDomain(url: string): string {

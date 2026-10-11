@@ -1047,6 +1047,48 @@ test("buildBrightSourceSystemPrompt warns Haiku not to treat its own confidence 
 // thanked it publicly on their own. curateBrightSourceItems now also
 // extracts the artist's own Instagram handle when the source caption
 // @-mentions them, so social-publish/run.ts can tag them too.
+test("buildBrightSourceBlock tells Haiku an inauguración is already confirmed when structuredOpeningDatetime is set, and says nothing otherwise", () => {
+  const withOpening = buildBrightSourceBlock([{ ...baseBrightItem, structuredOpeningDatetime: "2026-10-08T19:30" }]);
+  assert.match(withOpening, /Inauguración ya confirmada por la fuente: 2026-10-08 19:30/);
+  assert.equal(buildBrightSourceBlock([baseBrightItem]).includes("Inauguración ya confirmada"), false);
+});
+
+test("curateBrightSourceItems: the source's structuredOpeningDatetime wins over Haiku's, is time-confirmed, and the item's own address reaches the candidate (safa.cl)", async () => {
+  const item: BrightSourceItem = {
+    ...baseBrightItem,
+    structuredStartDate: "2026-10-08",
+    structuredEndDate: "2026-10-11",
+    structuredOpeningDatetime: "2026-10-08T19:30",
+    location: "Providencia",
+    placeName: "Taller Infante",
+    address: "José Manuel Infante 1428, Providencia",
+  };
+  const client = stubBrightClient([
+    {
+      index: 0,
+      status: "approved",
+      eventType: "inauguracion",
+      artist: null,
+      artistInstagramHandle: null,
+      runStartDate: null,
+      runEndDate: null,
+      openingDatetime: "2026-10-09T12:00", // Haiku disagrees; the source's own value must win
+      openingTimeConfirmed: false,
+      location: null,
+      placeName: null,
+      mediumType: "tradicional",
+      sensitivityTags: [],
+      curationReasoning: "ok",
+    },
+  ]);
+  const { candidates } = await curateBrightSourceItems(client, [item], "octubre 2026", {});
+  assert.equal(candidates[0].openingDatetime, "2026-10-08T22:30:00.000Z"); // 19:30 Chile (UTC-3 in October)
+  assert.equal(candidates[0].openingTimeConfirmed, true);
+  assert.equal(candidates[0].address, "José Manuel Infante 1428, Providencia");
+  assert.equal(candidates[0].location, "Providencia");
+  assert.equal(candidates[0].placeName, "Taller Infante");
+});
+
 test("curateBrightSourceItems normalizes artistInstagramHandle — strips a leading @, trims, both fixedLocation and non-fixedLocation branches", async () => {
   const items: BrightSourceItem[] = [baseBrightItem, { ...baseBrightItem, title: "Otra" }];
   const client = stubBrightClient([
