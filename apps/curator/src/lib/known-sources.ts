@@ -1021,6 +1021,25 @@ export const KNOWN_SOURCES: KnownSource[] = [
       includeTipos: ["Exposición", "Inauguración"],
     },
   },
+  {
+    url: "https://gam.cl/es/que-hacer-en-gam/artesvisuales/",
+    note:
+      "Centro Cultural Gabriela Mistral (GAM), Av. Libertador Bernardo O'Higgins 227, Santiago — evaluada 2026-10-12 con la lista de espacios de SAFA (grupo de espacios ya en venues sin fuente propia); implementada por pedido de Daniel el mismo día. Centro cultural multidisciplinario, pero su sección \"Artes Visuales y Mediales\" es una página HTML renderizada en servidor (sin API ni JS) con un bloque por muestra (`box-cat`): título, rango de fechas y enlace a su ficha (/artesvisuales/<slug>/); el fetch normal alcanza. Al evaluar traía 6: La Veta (25 Jun al 25 Oct 2026), COCÚN (14 al 25 Oct), Del León a la Bestia, 100 años de animación en Chile (19 al 31 Oct, Ma a Sá 10 a 18 h), Exposición Salvataje (20 Oct al 30 Dic), SUBREALISTAS (27 al 31 Oct, con un concierto el 30) y Mundo Pepo (12 Nov al 27 Dic); ninguna de las 5 próximas estaba en events (GAM tenía 6 eventos por Instagram de terceros, arteinformado y chilecultura). La sección mezcla artes visuales con medios, animación y música: Haiku juzga el alcance (COCÚN, la animación y SUBREALISTAS pueden quedar fuera). Formatos de fecha vistos: \"D al D Mon YYYY\" y \"D Mon al D Mon YYYY\" (mes y año de inicio omitidos cuando coinciden con los del fin; extractDateRange los hereda, incluido el cruce de año nuevo), con el horario a continuación en el mismo bloque. La listing no trae prosa: la descripción se recupera de la ficha de cada muestra (`div.description`) antes de curar. Sin openingTimeExtractor: las fichas mencionan la inauguración solo a veces y con frases distintas (ej. \"se inaugurará el jueves 25 de junio a las 19 horas\"). La imagen del listado es una miniatura recortada (`fill-450x397`) puesta como background-image. fixedLocation Santiago.",
+    lastReviewedAt: "2026-10-12",
+    extractor: {
+      kind: "articleList",
+      blockRegex: /<div class="box-cat side-box-stickers">([\s\S]*?)<div class="overlay"><\/div>/g,
+      titleLinkRegex: /<a href="([^"]+)"[^>]*>[\s\S]*?<div class="title[^"]*">\s*<p>([\s\S]*?)<\/p>/,
+      daysRegex: /<div class="date[^"]*">([\s\S]*?)<\/div>/,
+      dateRangeExtractor: {
+        pattern: /(?<startDay>\d{1,2})(?:\s+(?<startMonth>[A-Za-z]{3})[a-z]*)?(?:\s+(?<startYear>\d{4}))?\s+al\s+(?<endDay>\d{1,2})\s+(?<endMonth>[A-Za-z]{3})[a-z]*\s+(?<endYear>\d{4})/,
+      },
+    },
+    descriptionExtractor: {
+      pattern: /<div class="description[^"]*">([\s\S]*?)<\/div>/,
+    },
+    fixedLocation: { location: "Santiago", placeName: "Centro Cultural Gabriela Mistral (GAM)", address: "Av. Libertador Bernardo O'Higgins 227, Santiago" },
+  },
 ];
 
 export function knownSourceDomain(url: string): string {

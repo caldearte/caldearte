@@ -5400,3 +5400,17 @@ Galería Cripta, Galería Madre, Galería QUQU, Palacio Pereira, Centro Cultural
 
 **Tests.** `extractors.test.ts` (tipos selection, mapping, email stripping, opening vs. all-day placeholder, skips, merge rules, expiry), `sources.test.ts`
 (dispatch against the real config, 40-id chunking, partial chunk failure, malformed/empty programme), `discover.test.ts` (opening override, address, prompt line).
+
+## gam.cl as a bright source: server-rendered cards, and extractDateRange inherits the start's month/year (2026-10-12)
+
+**Why.** Group B of the SAFA venue radar (spaces already in `venues` without their own source) asked whether a source of its own would catch what other channels miss. For the Centro Cultural Gabriela Mistral the answer was yes: GAM had 6 events on the calendar (Instagram of third parties, arteinformado, chilecultura), and none of the 5 upcoming shows on its own site (COCÚN, *Del León a la Bestia, 100 años de animación en Chile*, *Exposición Salvataje*, SUBREALISTAS, *Mundo Pepo*) was in `events`.
+
+**What.** `https://gam.cl/es/que-hacer-en-gam/artesvisuales/` is plain server-rendered HTML — a `box-cat side-box-stickers` block per show with title, date range and a link to its `/artesvisuales/<slug>/` page — so it is an ordinary `articleList` config, no new extractor kind. The listing carries no prose; a `descriptionExtractor` (`div.description` on the detail page) recovers it before curation. Thumbnails are CSS `background-image` on the card link, which `extractImgTags` already handled (cclm.cl). `fixedLocation` Santiago + address; venue's own site, so it wins dedup ties against aggregators.
+
+**The one code change.** GAM abbreviates ranges: `14 al 25 Oct 2026` (start month and year omitted), `25 Jun al 25 Oct 2026` (start year omitted), followed by a schedule in the same block (`19 al 31 Oct 2026 Ma a Sá — 10 a 18 h`; `27 al 31 Oct 2026 Concierto 30 Oct Vi — 19 h`). `extractDateRange` now falls back to the end's month for a missing `startMonth` and to the end's year for a missing start year, and subtracts a year when an *inherited* start year would put the start after the end (`20 Dic al 10 Ene 2027`). An explicit start year is never altered. Before this, a range with an omitted start month or year returned null for every source; no existing config relied on that.
+
+**Measured live (2026-10-12).** 6 items, all dates parsed, all images and descriptions recovered; nothing expired. The mix is not all visual art (a media installation, an animation retrospective, a poetry/music encounter): Haiku judges scope, nothing is filtered by code.
+
+**Known risk.** *La Veta* (MAPA's show at GAM, 25 Jun–25 Oct) is already on the calendar under the MAPA venue, and two other copies — from chilecultura (`Sala MAPA GAM`) and artes.uchile.cl — were soft-removed as duplicates on 2026-10-05. `loadExistingKeys` reads rows regardless of `removed_at`, so the GAM copy should be recognised against those, but that dedup is exactly what failed twice for this show; watch the first run for a fourth copy.
+
+**Tests.** `extractors.test.ts` (inherited month/year, first range only, New-Year crossing, explicit start year untouched), `sources.test.ts` (real-config fixture of three cards: title, URL, dates, relative background-image, kept schedule text; description recovery from a detail page; not an aggregator).

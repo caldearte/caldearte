@@ -809,3 +809,87 @@ test("fetchBrightSources for safa.cl returns zero items, not a failure, when the
   const results = await withSafaStub(() => safaOk({ eventsFilterMeta: {} }), () => fetchBrightSources([safa]));
   assert.equal(results[0].kind === "items" ? results[0].items.length : -1, 0);
 });
+
+// --- gam.cl (2026-10-12): articleList over server-rendered "box-cat" cards ---
+
+const gamHtml = `
+<div class="row m-0 justify-content-center">
+<div class="col-xl-3 mb-4">
+    <div class="box-cat side-box-stickers">
+            <a href="https://gam.cl/es/que-hacer-en-gam/artesvisuales/la-veta/" class="text-center" style="background-image: url('/media/images/PORTADAMAPA.2e16d0ba.fill-450x397.png')">
+        <div class="row m-0 mh-sticker">
+            <div class="col-12">
+                <div class="type pt-3 px-5"><p></p></div>
+                <div class="title px-5"><p>La Veta</p></div>
+                <div class="date px-5"><p><p data-block-key="ljncy"><b>25 Jun al 25 Oct 2026</b></p></p></div>
+            </div>
+        </div>
+        <div class="overlay"></div>
+        </a>
+    </div>
+</div>
+<div class="col-xl-3 mb-4">
+    <div class="box-cat side-box-stickers">
+            <a href="https://gam.cl/es/que-hacer-en-gam/artesvisuales/cocun/" class="text-center" style="background-image: url('/media/images/20261006_172754.jpg.ad7ad0c4.fill-450x397.jpg')">
+        <div class="row m-0 mh-sticker">
+            <div class="col-12">
+                <div class="title px-5"><p>COCÚN</p></div>
+                <div class="date px-5"><p><p data-block-key="rx2pu"><b>14 al 25 Oct 2026</b><br/></p></p></div>
+            </div>
+        </div>
+        <div class="overlay"></div>
+        </a>
+    </div>
+</div>
+<div class="col-xl-3 mb-4">
+    <div class="box-cat side-box-stickers">
+            <a href="https://gam.cl/es/que-hacer-en-gam/artesvisuales/subrealistas/" class="text-center" style="background-image: url('/media/images/PortadaSubrealistas.2e16d0ba.fill-450x397.png')">
+        <div class="row m-0 mh-sticker">
+            <div class="col-12">
+                <div class="title px-5"><p>SUBREALISTAS</p></div>
+                <div class="date px-5"><p><p data-block-key="x"><b>27 al 31 Oct 2026</b><br/>Concierto 30 Oct Vi — 19 h<br/></p></p></div>
+            </div>
+        </div>
+        <div class="overlay"></div>
+        </a>
+    </div>
+</div>
+</div>`;
+
+test("fetchBrightSources against the real KNOWN_SOURCES config for gam.cl extracts one structured item per card: title, per-muestra URL, date range with inherited month/year, and the background-image thumbnail (regression check against production config, added 2026-10-12)", async () => {
+  const gam = KNOWN_SOURCES.find((s) => s.url.includes("gam.cl"));
+  assert.ok(gam?.extractor?.kind === "articleList");
+
+  const results = await withStubFetch(() => textResponse(gamHtml), () => fetchBrightSources([gam]));
+
+  assert.equal(results.length, 1);
+  assert.equal(results[0].kind, "items");
+  if (results[0].kind !== "items") throw new Error("unreachable");
+  const items = results[0].items;
+  assert.deepEqual(items.map((i) => i.title), ["La Veta", "COCÚN", "SUBREALISTAS"]);
+  assert.deepEqual(items.map((i) => i.sourceUrl), [
+    "https://gam.cl/es/que-hacer-en-gam/artesvisuales/la-veta/",
+    "https://gam.cl/es/que-hacer-en-gam/artesvisuales/cocun/",
+    "https://gam.cl/es/que-hacer-en-gam/artesvisuales/subrealistas/",
+  ]);
+  assert.deepEqual(items.map((i) => [i.structuredStartDate, i.structuredEndDate]), [
+    ["2026-06-25", "2026-10-25"],
+    ["2026-10-14", "2026-10-25"],
+    ["2026-10-27", "2026-10-31"],
+  ]);
+  assert.equal(items[0].imageUrl, "https://gam.cl/media/images/PORTADAMAPA.2e16d0ba.fill-450x397.png", "relative background-image resolved against the page origin");
+  assert.equal(items[2].rawDateText, "27 al 31 Oct 2026 Concierto 30 Oct Vi — 19 h", "schedule text kept for Haiku (the concert date) while the run comes from the first range");
+});
+
+test("gam.cl config recovers a description from each muestra's own detail page (div.description), and isAggregatorSource treats it as the venue's own site (fixedLocation)", async () => {
+  const gam = KNOWN_SOURCES.find((s) => s.url.includes("gam.cl"));
+  assert.ok(gam?.descriptionExtractor);
+  assert.deepEqual(gam.fixedLocation?.location, "Santiago");
+  const detail = `<div class="description  px-lg-5 px-md-4 px-3">
+              <p data-block-key="4vpvb">Una muestra del Museo de Arte Popular Americano que explora la cer&aacute;mica como territorio de memoria.</p>
+            </div>`;
+  const { extractDescription } = await import("../lib/description-extract.js");
+  assert.equal(extractDescription(detail, gam.descriptionExtractor), "Una muestra del Museo de Arte Popular Americano que explora la cerámica como territorio de memoria.");
+  const { isAggregatorSource } = await import("../lib/known-sources.js");
+  assert.equal(isAggregatorSource("https://gam.cl/es/que-hacer-en-gam/artesvisuales/cocun/"), false);
+});
