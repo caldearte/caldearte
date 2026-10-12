@@ -2805,6 +2805,46 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
   //
   // Paseo de Esculturas La Pastora: NO — paseo permanente, sin cuenta ni
   // agenda.
+  {
+    username: "taller__leon",
+    note:
+      "Evaluada 2026-10-12 vía la lista de espacios de SAFA (grupo de " +
+      "talleres); agregada por Daniel el mismo día. Taller León — " +
+      "\"espacio de artistas y creadores\", Seminario 531, Providencia; " +
+      "61 publicaciones, 1,7 mil seguidores, ~1 exposición cada 3 meses y " +
+      "volumen mínimo (costo casi cero). Captions con fecha, hora y " +
+      "dirección (\"Exposición Colectiva en Taller León … Seminario 531, " +
+      "Providencia, 7 al 11 de octubre, 15 a 21 h\"; \"Este viernes 3 de " +
+      "julio a las 18:30 inauguramos 'Lo dado / La duda'\"). Parte de lo " +
+      "que anuncia llega como colaboración (posts coautoría de otras " +
+      "cuentas, que el pipeline ya trata). Evaluada por Chrome, no por " +
+      "Apify. fixedLocation.",
+    addedAt: "2026-10-12",
+    fixedLocation: { location: "Providencia", placeName: "Taller León", address: "Seminario 531, Providencia, Santiago" },
+  },
+  // Evaluadas 2026-10-12 con la lista de espacios de SAFA (grupo de
+  // talleres y espacios de artistas, 14 en total), por Chrome. Solo Taller
+  // León se agregó. Los demás, en una línea cada uno:
+  //
+  // taller_infante (Taller Infante, J.M. Infante 1428, Providencia):
+  // marginal, NO — 1.455 posts pero los propios son pocos y espaciados, y
+  // el de SAFA dice "talleres abiertos" sin día ni hora; una cuenta así
+  // no habría captado la inauguración del 8-oct (la hora salía en la
+  // ficha de SAFA). Mejor la fuente SAFA o carga a mano.
+  // taller_navarrete: marginal, NO — destacado "Exposiciones" pero casi
+  // todo el grid son posts de terceros; mismo problema de fechas.
+  // casa12taller: NO — producción audiovisual (series y documentales).
+  // catabauer (Espacio OP): NO — perfil personal de la artista Catalina
+  // Bauer (tutorías, venta de obra).
+  // suecia100: NO — talleres abiertos y feria, 40 posts.
+  // oficinasmeteoro: NO — lugar de trabajo de un equipo, sin programa de
+  // muestras.
+  // marcelayaconi (Taller 2830): NO — perfil de una artista individual.
+  // angamostudio: NO — inactivo desde dic-2024.
+  // taller.pedro: NO — 1 publicación.
+  // talleres_origen: NO — 36 posts, casi todo SAFA y talleres abiertos.
+  // tallertamarugo: NO — comunidad de artistas, sin muestras con fechas.
+  // Taller La Pecera y Taller Ex Fábrica Caffarena: NO — sin cuenta.
   // El resto de la lista la aporta Daniel — una decisión editorial, igual
   // que cada fuente brillante nueva se evaluó una por una. Confirmar
   // pública y activa antes de agregar cada cuenta.
