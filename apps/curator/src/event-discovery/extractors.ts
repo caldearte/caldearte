@@ -363,10 +363,20 @@ export function extractDateRange(html: string, config: DateRangeConfig): { runSt
     return { runStartDate: g.dayIso, runEndDate: g.dayIso };
   }
 
-  const startMonth = resolveMonthGroup(g.startMonth);
   const endMonth = resolveMonthGroup(g.endMonth);
-  const runStartDate = buildDateString(g.startDay, startMonth, g.startYear ?? g.year);
+  // Two shapes real sources abbreviate (gam.cl, 2026-10-12): the start's
+  // month is omitted when both dates share it ("14 al 25 Oct 2026"), and
+  // its year when both share that too ("25 Jun al 25 Oct 2026"). The
+  // end's own month/year stand in for the missing ones.
+  const startMonth = resolveMonthGroup(g.startMonth) ?? endMonth;
+  const explicitStartYear = g.startYear ?? g.year;
   const runEndDate = buildDateString(g.endDay, endMonth, g.endYear ?? g.year);
+  let runStartDate = buildDateString(g.startDay, startMonth, explicitStartYear ?? g.endYear);
+  // A range that crosses New Year ("20 Dic al 10 Ene 2027") would
+  // otherwise start AFTER it ends once the start year is inherited.
+  if (runStartDate && runEndDate && !explicitStartYear && g.endYear && runStartDate > runEndDate) {
+    runStartDate = buildDateString(g.startDay, startMonth, String(Number(g.endYear) - 1));
+  }
   return runStartDate && runEndDate ? { runStartDate, runEndDate } : null;
 }
 

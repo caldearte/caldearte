@@ -1459,3 +1459,31 @@ test("extractSafaItems lets an already-expired SAFA item be dropped for free by 
   assert.equal(isObviouslyExpiredByDate(item, new Date("2026-10-12T12:00:00Z")), true);
   assert.equal(isObviouslyExpiredByDate(item, new Date("2026-10-08T12:00:00Z")), false);
 });
+
+// --- extractDateRange: start month/year inherited from the end (gam.cl, 2026-10-12) ---
+// Real shapes from gam.cl's "Artes Visuales y Mediales" cards: when both
+// dates share a month (or a month AND a year) the start omits it.
+const gamDatePattern: DateRangeConfig = {
+  pattern: /(?<startDay>\d{1,2})(?:\s+(?<startMonth>[A-Za-z]{3})[a-z]*)?(?:\s+(?<startYear>\d{4}))?\s+al\s+(?<endDay>\d{1,2})\s+(?<endMonth>[A-Za-z]{3})[a-z]*\s+(?<endYear>\d{4})/,
+};
+
+test("extractDateRange inherits the start's month AND year from the end when both are omitted (\"14 al 25 Oct 2026\")", () => {
+  assert.deepEqual(extractDateRange("<b>14 al 25 Oct 2026</b><br/>", gamDatePattern), { runStartDate: "2026-10-14", runEndDate: "2026-10-25" });
+});
+
+test("extractDateRange inherits only the year when the start states its own month (\"25 Jun al 25 Oct 2026\")", () => {
+  assert.deepEqual(extractDateRange("<b>25 Jun al 25 Oct 2026</b>", gamDatePattern), { runStartDate: "2026-06-25", runEndDate: "2026-10-25" });
+});
+
+test("extractDateRange reads the first range and ignores the schedule that follows it in the same block", () => {
+  assert.deepEqual(extractDateRange("<b>27 al 31 Oct 2026</b><br/>Concierto 30 Oct Vi — 19 h", gamDatePattern), { runStartDate: "2026-10-27", runEndDate: "2026-10-31" });
+});
+
+test("extractDateRange does not start a New-Year-crossing range after its own end when the start year is inherited (\"20 Dic al 10 Ene 2027\")", () => {
+  assert.deepEqual(extractDateRange("20 Dic al 10 Ene 2027", gamDatePattern), { runStartDate: "2026-12-20", runEndDate: "2027-01-10" });
+});
+
+test("extractDateRange keeps an EXPLICIT start year even when it makes the range look inverted — only inherited years are corrected", () => {
+  const r = extractDateRange("20 Dic 2027 al 10 Ene 2027", gamDatePattern);
+  assert.equal(r?.runStartDate, "2027-12-20");
+});
