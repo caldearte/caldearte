@@ -2768,6 +2768,43 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
   //
   // Metro Franklin y Bio Bío: NO — obras en estaciones de metro, sin
   // cuenta ni agenda.
+  {
+    username: "galponindependencia",
+    note:
+      "Evaluada 2026-10-11 vía la lista de espacios de SAFA; agregada por " +
+      "Daniel el 2026-10-12. Galpón Independencia — \"artes visuales: " +
+      "proyecto para crear, colaborar y hacer circular el arte, la música, " +
+      "la cultura y el encuentro social\", Padre Las Casas 2469, " +
+      "Independencia, Santiago; 261 publicaciones, 9,9 mil seguidores. " +
+      "Programa real (exposiciones por convocatoria abierta, residencias " +
+      "de 3 meses, muestras de talleres) con anuncios de fecha, hora y " +
+      "dirección completas (\"Toda obra es un órgano externo — Sábado 10 " +
+      "de octubre · 12:00 hrs, Padre Las Casas 2469\"; intervenciones " +
+      "en el jardín por SAFA). SIN fixedLocation a propósito: también " +
+      "publica su participación en otros lugares (FFAST en la Sala 7 de " +
+      "NIDO Lucía, Feria Aparte) y con fixedLocation esos posts quedarían " +
+      "ubicados en Independencia; Haiku infiere la ubicación del texto. " +
+      "Ruido: balances y agradecimientos de ferias. Independencia casi no " +
+      "tenía cobertura propia. Evaluada por Chrome, no por Apify.",
+    addedAt: "2026-10-12",
+  },
+  // Evaluadas 2026-10-11 con la lista de espacios de SAFA (última tanda
+  // del grupo A1), por Chrome. Solo Galpón Independencia se agregó:
+  //
+  // stgomuseos (Museo Palacio Cousiño; cuenta de los museos municipales de
+  // Santiago: Casa Colorada, Cousiño, Posada del Corregidor): NO — historia
+  // de piezas y edificios coloniales, efemérides y días patrimoniales;
+  // patrimonio, no exposiciones de artes visuales (política del
+  // 2026-09-15).
+  //
+  // culturanunoa (Sala de Arte Casa de la Cultura de Ñuñoa): NO — ya
+  // removida el 2026-09-28 (ver arriba); sin evidencia nueva.
+  //
+  // taller.elcastillito (Taller El Castillito): NO — taller de artistas,
+  // 16 posts, "agendar visita por DM"; sin programa de muestras.
+  //
+  // Paseo de Esculturas La Pastora: NO — paseo permanente, sin cuenta ni
+  // agenda.
   // El resto de la lista la aporta Daniel — una decisión editorial, igual
   // que cada fuente brillante nueva se evaluó una por una. Confirmar
   // pública y activa antes de agregar cada cuenta.
