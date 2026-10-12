@@ -2665,6 +2665,67 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
   //
   // gronefot_gronemeyer_nyrar (Taller Gronefot): NO — servicio de
   // impresión de obra (Canson Infinity), no un espacio expositivo.
+  {
+    username: "criptagaleria",
+    note:
+      "Evaluada 2026-10-11 vía la lista de espacios de SAFA; agregada por " +
+      "Daniel el mismo día. Galería Cripta — \"espacio para el arte " +
+      "contemporáneo dentro de @centroperdido\", 191 publicaciones, 4,8 " +
+      "mil seguidores, ~1 muestra cada 1-2 meses (sus destacados son una " +
+      "fecha por exposición). Está en un \"ciclo itinerante\": la segunda " +
+      "exposición (\"Todo cae por su propio peso\", María Ignacia " +
+      "Valdebenito y Aylen Ayala, curaduría de Agustina Margotta) se hizo " +
+      "en Territorio CEA, Esmeralda 636. Anuncios con el formato ideal " +
+      "(\"10 de octubre, 18:00 hrs, Esmeralda 636\"). SIN fixedLocation a " +
+      "propósito: la ubicación cambia por muestra y Haiku la infiere del " +
+      "texto (mismo patrón que cce_arvis_uach). Ruido: stand en Feria " +
+      "Aparte, agradecimientos y recaps. Su web (galeriacripta.cl) no " +
+      "respondía al evaluar. Evaluada por Chrome, no por Apify.",
+    addedAt: "2026-10-11",
+  },
+  {
+    username: "mahara_and_co",
+    note:
+      "Evaluada 2026-10-11 vía la lista de espacios de SAFA; agregada por " +
+      "Daniel el mismo día. Mahara+Co — \"Contemporary art gallery, Miami " +
+      "· Santiago\", 883 publicaciones, 7 mil seguidores. Abrió espacio " +
+      "nuevo en Santiago (José Manuel Infante 1428, Providencia — la misma " +
+      "dirección que Taller Infante) con la muestra de Augusta Lecaros " +
+      "(\"Escondida llora alguien hoy por la frustración de su deseo\", " +
+      "curaduría de Guad Creche; inauguración jueves 8 de octubre 18:00-" +
+      "21:00, en cartel hasta el 14 de noviembre). Captions bilingües con " +
+      "fecha, hora y dirección. OJO con el costo: casi la mitad de los " +
+      "posts recientes son de la sede de Miami (Pablo Matute, \"LOAD " +
+      "BEARING\", 1294 NW 29th St) y ferias internacionales; el filtro de " +
+      "ubicación los rechaza, pero cada uno gasta una llamada a Haiku. " +
+      "SIN fixedLocation (dos sedes en dos países). Su web (mahara-co.com, " +
+      "Cargo) no sirve como fuente: los enlaces de la portada no " +
+      "corresponden a cada muestra y la lista de exhibiciones no trae " +
+      "fechas. Evaluada por Chrome, no por Apify.",
+    addedAt: "2026-10-11",
+  },
+  // Evaluadas 2026-10-11 con la lista de espacios de SAFA (tercera
+  // tanda del grupo A1), por Chrome. Solo Cripta y Mahara+Co se agregaron:
+  //
+  // galeria_madre (Galería Madre, Juan de Valiente 3681, Vitacura): NO
+  // por ahora. 430 posts, 10,7 mil seguidores, muestras reales (Javier
+  // Toro Blum, "Amanecer en ambos horizontes", inaugurada el 3-sep, ~1
+  // cada 2 meses) pero los captions no traen fechas: el anuncio de agosto
+  // es un texto curatorial sin fecha y el de septiembre un agradecimiento.
+  // Las fechas parecen ir solo en la imagen; enforceDateCompleteness
+  // rechazaría casi todo. Su web está "en construcción". Revisar si
+  // cambian el formato de los captions.
+  //
+  // aiep.bellavista (Sala de Arte AIEP): NO — es la cuenta de toda la
+  // sede educativa (admisión, financiamiento, bienestar); la sala tiene
+  // solo su web (cultura.aiep.cl/sala-de-arte, WordPress) con muy pocas
+  // muestras al año (junio 2026, febrero 2026).
+  //
+  // rota_cine (Rota Cine): NO — cortometrajes; cine fuera de alcance.
+  //
+  // espacioartekasaamarilla (Espacio Arte Kasa Amarilla, Barrio Yungay):
+  // NO — candombe a la rueda, ruedas de tango, música, sesiones de
+  // dibujo y bandas; densidad baja de artes visuales.
   // El resto de la lista la aporta Daniel — una decisión editorial, igual
   // que cada fuente brillante nueva se evaluó una por una. Confirmar
   // pública y activa antes de agregar cada cuenta.
