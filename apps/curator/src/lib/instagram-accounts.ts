@@ -2612,6 +2612,59 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
   //
   // museovioletaparra y museodelsonido: se mantiene el rechazo previo
   // (disciplina: mediaciones/colecciones/libros y música/Bienal M++).
+  {
+    username: "azulpetroleo.galeria",
+    note:
+      "Evaluada 2026-10-11 vía la lista de espacios de SAFA; agregada por " +
+      "Daniel el mismo día. Galería Azul Petróleo, Máximo Jeria 487, " +
+      "Ñuñoa (Metro Chile-España) — galería de arte contemporáneo, 51 " +
+      "publicaciones, 1,5 mil seguidores, poco volumen y densidad alta. " +
+      "Anuncios con el formato que el pipeline lee bien (\"Donde termina " +
+      "el cuerpo, con obras de Aida Al-hussein, Raúl de la Sotta y Taina " +
+      "Villalobos, curaduría de Danae Díaz — Jueves 08 de Octubre, 17:00-" +
+      "19:30 hrs, Máximo Jeria 487, Ñuñoa\"; \"Últimas fechas para visitar " +
+      "OMINOSO de David Ortiz…\"). Ojo: también publica su participación " +
+      "en ferias de arte (stand \"PIEL\" en Feria Aparte, Ex Cervecería " +
+      "Ebner, 3-4 oct) — no es una exposición propia, Haiku debe tratarla " +
+      "según la política. Existe una cuenta hermana más antigua, " +
+      "espacioazulpetroleo, no evaluada. Ñuñoa tenía muy pocos eventos " +
+      "propios en el calendario. Evaluada por Chrome, no por Apify. " +
+      "fixedLocation.",
+    addedAt: "2026-10-11",
+    fixedLocation: { location: "Ñuñoa", placeName: "Galería Azul Petróleo", address: "Máximo Jeria 487, Ñuñoa, Santiago" },
+  },
+  // Evaluadas 2026-10-11 con la lista de espacios de SAFA (segunda
+  // tanda del grupo A1), por Chrome. Solo Azul Petróleo se agregó:
+  //
+  // galeria_magnetica (Galería Magnética, Taller Cajón, Tegualda 1462,
+  // Providencia): NO por ahora. Solo expone (36 posts, 700 seguidores, ~1
+  // muestra al mes) pero sus captions son recaps sin fechas ("Ayer se
+  // inauguró…", "Ayer finalizó…"), que enforceDateCompleteness
+  // rechazaría. Su web (tallercajon.cl/galeria_magnetica) trae el rango
+  // exacto (03/09/2026 — 22/09/2026) y detalle por muestra, renderizado en
+  // servidor, pero muestra una sola exposición a la vez y iba ~3 semanas
+  // atrasada (seguía mostrando la que terminó el 22-sep). Si se quiere
+  // cubrir Barrio Italia, mejor fuente web (articleList) que Instagram.
+  //
+  // taller_cajon: NO — sobre todo talleres y tienda; lo expositivo está
+  // en galeria_magnetica.
+  //
+  // ffast.cl (FFAST, Festival de Arte Santiago): NO como cuenta fija —
+  // festival bienal puntual (6.ª edición, 2-18 oct 2026), contenido de
+  // edición; sus sedes (NIDO Lucía, MUT, Barco Galería) son otros espacios.
+  //
+  // palacio_pereira (Palacio Pereira, centro de extensión estatal): NO
+  // por ahora — 1 muestra de arte en cartelera (AURATÁN, Valentina
+  // Maldonado, desde el 20 de agosto) y otra patrimonial (100 años del
+  // Consejo de Monumentos Nacionales, fuera por política). Su web
+  // (palaciopereira.cl/actuales) es texto libre sin API REST (401).
+  //
+  // galeriaququ (Galería QUQU, Lo Barnechea): NO — captions mínimos sin
+  // fechas ("Exposición 'Vestigios y Vasijas', catálogo disponible"),
+  // mezclados con cómics, deco, regalos y talleres.
+  //
+  // gronefot_gronemeyer_nyrar (Taller Gronefot): NO — servicio de
+  // impresión de obra (Canson Infinity), no un espacio expositivo.
   // El resto de la lista la aporta Daniel — una decisión editorial, igual
   // que cada fuente brillante nueva se evaluó una por una. Confirmar
   // pública y activa antes de agregar cada cuenta.
