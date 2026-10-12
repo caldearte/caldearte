@@ -2845,6 +2845,61 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
   // talleres_origen: NO — 36 posts, casi todo SAFA y talleres abiertos.
   // tallertamarugo: NO — comunidad de artistas, sin muestras con fechas.
   // Taller La Pecera y Taller Ex Fábrica Caffarena: NO — sin cuenta.
+  {
+    username: "saladearteccu",
+    note:
+      "Evaluada 2026-10-12 vía la lista de espacios de SAFA (grupo de " +
+      "espacios ya en venues sin fuente propia); agregada por Daniel el " +
+      "mismo día. Sala de Arte CCU (\"CCU en el Arte\"), Av. Vitacura " +
+      "2680, Las Condes — 1.212 publicaciones, 14,6 mil seguidores, " +
+      "destacados Retratarse, Colección CCU, Como en casa, Beca CCU + " +
+      "URRA, Derivas, Formas, Humedales. Exposiciones propias y " +
+      "colaboraciones con anuncios de día y hora (\"Hilando Ausencia\" de " +
+      "Marcela Acuña; \"Convergentes\", 7.ª edición; \"Lo cotidiano al " +
+      "descubierto\"; \"La Febril Mirada\", sábado 26 de septiembre, " +
+      "12:00; coproducciones con Galería UCT). Hasta ahora solo la captaban " +
+      "cuentas ajenas al mencionarla (4 eventos en events vía g5noticias e " +
+      "Instagram de terceros). Su web, ccuenelarte.cl, tiene /eventos/" +
+      "<slug>/ pero no un listado extraíble (/exposiciones/ da 404). " +
+      "Evaluada por Chrome, no por Apify. fixedLocation.",
+    addedAt: "2026-10-12",
+    fixedLocation: { location: "Las Condes", placeName: "Sala de Arte CCU", address: "Av. Vitacura 2680, Las Condes, Santiago" },
+  },
+  // Evaluadas 2026-10-12 con la lista de espacios de SAFA (grupo B:
+  // espacios ya en venues sin fuente propia). Solo Sala de Arte CCU se
+  // agregó por Instagram; GAM se resolvió como fuente web
+  // (lib/known-sources.ts). Lo Matta Cultural ya es fuente (arriba) y El
+  // Tranque / corporacionculturallb ya está removida (2026-09-28).
+  //
+  // museorallisantiago (Museo Ralli Santiago, Vitacura): marginal, NO por
+  // ahora — 20 mil seguidores, 1.831 posts, muestras en alcance (Lorena
+  // Córdova "Cuerpo Archivo", Paula Ceroni, Luis Zárate) pero los
+  // captions no traen fechas ("Así se vivió la inauguración…", "¡Últimas
+  // semanas de Luis Zárate!"; solo el horario del museo) y la web
+  // (museoralli.cl, Joomla) tiene "Exposiciones anteriores" y noticias
+  // con recaps, sin listado actual. Hoy solo arteinformado lo cubre
+  // (2 eventos): la mayor brecha del grupo, sin canal con fechas.
+  //
+  // museodelamemoria (MMDH): marginal, NO por ahora — 485 mil
+  // seguidores, 5.024 posts, publicación diaria: muestras temporales
+  // reales ("Hilos de solidaridad en el exilio") entre noticias,
+  // efemérides, cine y teatro; mmdh.cl/exposiciones necesita JavaScript.
+  //
+  // extensionculturaluc (Extensión Cultural UC, Alameda y Oriente):
+  // marginal, NO por ahora — salas Huidobro/Gandarillas/Galería de Arte
+  // pero también cine, ciclos (ej. "Francesco, una trilogía
+  // cinematográfica": eje religioso) y promoción; extension.uc.cl da 403
+  // a un fetch normal. Falta evaluar @galeriadearteuc.
+  //
+  // mut.cl (MUT, Mercado Urbano Tobalaba): NO — mercado y comida; las
+  // "exposiciones" son de moda y lifestyle.
+  //
+  // mercadogrisgaleria (Mercado Gris, Isidora Goyenechea 3185): NO por
+  // ahora — poco volumen; la muestra de SAFA dice "abierta de lunes a
+  // viernes de 11:00 a 19:00", sin fechas.
+  //
+  // elenablanco953 (Taller Elena Blanco): NO — 16 posts, jornadas de
+  // puertas abiertas.
   // El resto de la lista la aporta Daniel — una decisión editorial, igual
   // que cada fuente brillante nueva se evaluó una por una. Confirmar
   // pública y activa antes de agregar cada cuenta.
