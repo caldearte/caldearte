@@ -2564,6 +2564,54 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
     addedAt: "2026-09-24",
     fixedLocation: { location: "Santiago", placeName: "Centro Cultural de España en Chile", address: "Av. Providencia 927, Santiago" },
   },
+  {
+    username: "casa.foto.cl",
+    note:
+      "Evaluada 2026-10-11 vía la lista de espacios de SAFA (primera " +
+      "edición, 6-11 oct 2026); agregada por Daniel el mismo día. Casa " +
+      "Foto, Santo Domingo 2430-B, Barrio Yungay, Santiago — espacio de " +
+      "fotografía (exposiciones, taller de grabado, clases, arriendos), " +
+      "8,2 mil seguidores, 783 publicaciones, martes a viernes 17:00-" +
+      "20:30. Sin web propia (su bio enlaza a su ficha de SAFA), así que " +
+      "Instagram es el único canal. Los anuncios de exposición traen el " +
+      "formato ideal para el pipeline: \"Inauguración Exposición: 3 " +
+      "Fotógrafos en Barrio Yungay — Fecha: Sábado 10 de Octubre, Hora: " +
+      "19:00 hrs, Exponen: …, Lugar: Casa Foto\". Ojo con el ruido: de " +
+      "~12 posts recientes solo 2-3 eran de exposición; el resto son " +
+      "clases de tango, taller de grabado en tote bag, caminatas de " +
+      "sábado y saludos — formatos que Haiku debe rechazar. Existe una " +
+      "cuenta hermana, grabado.casafoto (taller de grabado), no " +
+      "evaluada. Evaluada por Chrome, no por Apify. fixedLocation.",
+    addedAt: "2026-10-11",
+    fixedLocation: { location: "Santiago", placeName: "Casa Foto", address: "Santo Domingo 2430-B, Santiago" },
+  },
+  // Evaluadas 2026-10-11 con la lista de espacios de SAFA (los 6
+  // primeros del grupo A1), por Chrome. Solo Casa Foto se agregó:
+  //
+  // cmontecarmelo (Centro Cultural Montecarmelo, municipal de Providencia,
+  // 39,6 mil seguidores, ~1 post/día): NO agregada, caso límite. Hace
+  // exposiciones reales ("Espera", "Luz como materia", "Materia y
+  // memoria") y tiene destacado "Exposiciones", pero en ~10 posts
+  // recientes ninguno era un anuncio prospectivo de apertura (talleres,
+  // ferias, concierto, convocatoria, aviso de feriado, recap de cierre).
+  // Sin web con agenda (solo Linktree con formularios). Mismo patrón que
+  // ccmvaldivia/ccaho__ (municipal mixta, que sí se agregaron) pero con
+  // volumen diario; si Daniel prefiere cobertura por sobre costo, es
+  // candidata razonable.
+  //
+  // opendark.cl (Opendark Light & Life): NO — tienda de iluminación; el
+  // arte apareció solo por SAFA (instalación de Isa Plos en su tienda).
+  //
+  // ateliernonima / espacio330 (misma dirección, Maipú 330, Barrio
+  // Yungay): NO por ahora. a.nónima es una galería real (24 posts, 419
+  // seguidores, "Desde agosto hasta octubre… once grabados de Mono
+  // González") pero ~1 exposición cada 2-3 meses y fechas por mes sin
+  // día, que enforceDateCompleteness probablemente rechace; espacio330
+  // es sobre todo café, barrio y horarios. Revisar si publican una
+  // segunda muestra.
+  //
+  // museovioletaparra y museodelsonido: se mantiene el rechazo previo
+  // (disciplina: mediaciones/colecciones/libros y música/Bienal M++).
   // El resto de la lista la aporta Daniel — una decisión editorial, igual
   // que cada fuente brillante nueva se evaluó una por una. Confirmar
   // pública y activa antes de agregar cada cuenta.
