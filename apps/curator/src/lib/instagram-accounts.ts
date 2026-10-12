@@ -2726,6 +2726,48 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
   // espacioartekasaamarilla (Espacio Arte Kasa Amarilla, Barrio Yungay):
   // NO — candombe a la rueda, ruedas de tango, música, sesiones de
   // dibujo y bandas; densidad baja de artes visuales.
+  {
+    username: "solar.galeria",
+    note:
+      "Evaluada 2026-10-11 vía la lista de espacios de SAFA; agregada por " +
+      "Daniel el mismo día. Galería Solar — \"centro cultural de barrio en " +
+      "Santiago de Chile\", Av. Providencia 1060, local 5, Providencia; " +
+      "153 publicaciones, 7,8 mil seguidores, ~1 muestra cada 2 meses " +
+      "(\"Medio Conteiner\" de Hugo Leonello, texto de Macarena Bravo " +
+      "Cox; las muestras de julio). Anuncios con día, hora y dirección " +
+      "(\"Inauguración viernes 25 a las 19hrs … Av Providencia 1060 local " +
+      "5\"). OJO: el caption da el día de la semana y el número pero no " +
+      "el mes (el post era del 24 de septiembre) — riesgo de fecha para " +
+      "el pipeline. También tiene una página en cargocollective.com/" +
+      "solargaleria, no evaluada. Evaluada por Chrome, no por Apify. " +
+      "fixedLocation.",
+    addedAt: "2026-10-11",
+    fixedLocation: { location: "Providencia", placeName: "Galería Solar", address: "Av. Providencia 1060, local 5, Providencia, Santiago" },
+  },
+  // Evaluadas 2026-10-11 con la lista de espacios de SAFA (cuarta tanda
+  // del grupo A1), por Chrome. Solo Galería Solar se agregó:
+  //
+  // instituto_tele_arte (Instituto Tele Arte, Serrano 686, Santiago
+  // Centro): NO por ahora, VIGILAR. Proyecto independiente con historial
+  // real de muestras (480 posts, 10,3 mil seguidores, destacados con una
+  // muestra cada uno) pero en pausa: el post del 2-oct anuncia la
+  // reapertura con un nuevo grupo de artistas ("Pronto les tendremos más
+  // información"); lo reciente es una feria de arte impreso. Agregar
+  // (fixedLocation Santiago, Serrano 686) cuando anuncien fecha.
+  //
+  // local.arte.contemporaneo (LOCAL Arte Contemporáneo, Av. Italia 1129,
+  // Providencia; la ficha de SAFA traía el enlace mal escrito y una web
+  // abandonada): NO — pocos posts propios (28-sep, 11-jun, 20-may; el
+  // resto son etiquetas de terceros) y el único anuncio reciente
+  // ("Pronto — Liminal Cabaret") sin fechas y de formato dudoso.
+  //
+  // espaciomixta (Espacio Mixta, Barrio Yungay): NO — galería de arte
+  // callejero y tienda colectiva de artistas, sin programa de muestras.
+  //
+  // interdesignchile (Interdesign): NO — showroom de muebles y diseño.
+  //
+  // Metro Franklin y Bio Bío: NO — obras en estaciones de metro, sin
+  // cuenta ni agenda.
   // El resto de la lista la aporta Daniel — una decisión editorial, igual
   // que cada fuente brillante nueva se evaluó una por una. Confirmar
   // pública y activa antes de agregar cada cuenta.
