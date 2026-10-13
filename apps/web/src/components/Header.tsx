@@ -56,14 +56,16 @@ export default function Header({ onOpenSearch, onOpenMenu }: HeaderProps) {
         <div className="max-w-[1280px] mx-auto h-[84px] md:h-[104px] flex items-center justify-between px-[20px] md:px-[61px]">
           {/* The two-line "CALDE / ARTE." wordmark (Daniel, 2026-10-12),
               same as the old hero's and the footer's, at top-bar size. */}
-          <Link href="/" aria-label={esCL.appName} className="flex items-end gap-[12px] min-w-0">
-            <span className="font-lato font-black leading-none text-brand-magenta text-[32px] md:text-[40px]">
-              <span className="block">{esCL.wordmarkLine1}</span>
-              <span className="block">{esCL.wordmarkLine2}</span>
-            </span>
-            <span className="font-geist text-[13px] md:text-[14px] text-text-secondary truncate pb-[2px]">{esCL.home.topBarLabel}</span>
+          <Link href="/" aria-label={esCL.appName} className="shrink-0 font-lato font-black leading-none text-brand-magenta text-[32px] md:text-[40px]">
+            <span className="block">{esCL.wordmarkLine1}</span>
+            <span className="block">{esCL.wordmarkLine2}</span>
           </Link>
-          <div className="flex items-center gap-[16px] shrink-0">
+          {/* "calendario de arte" sits with the icons, right-aligned and
+              centered on them (Daniel, 2026-10-12); on a narrow phone it
+              may wrap to two right-aligned lines rather than crowd the
+              logo. */}
+          <div className="flex items-center gap-[16px] min-w-0">
+            <span className="min-w-0 text-right font-geist text-[13px] md:text-[14px] leading-tight text-text-secondary">{esCL.home.topBarLabel}</span>
             <AdminLink />
             <SearchButton onClick={onOpenSearch} />
             <MenuButton onClick={onOpenMenu} />
