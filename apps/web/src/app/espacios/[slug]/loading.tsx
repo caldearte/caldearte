@@ -3,7 +3,7 @@
 // and looks like nothing happened. Rough shape only.
 export default function VenuePageLoading() {
   return (
-    <main className="min-h-screen w-full bg-surface-sage px-[20px] py-8 md:px-[61px] max-w-[1280px] mx-auto animate-pulse">
+    <main className="min-h-screen w-full bg-surface-sage px-[18px] py-8 md:px-[40px] xl:px-[80px] max-w-[1600px] mx-auto animate-pulse">
       <div className="mb-[40px] md:mb-[60px] h-[48px]" aria-hidden="true" />
       <div className="flex flex-col gap-[12px] md:gap-[16px]">
         <div className="h-[14px] w-[120px] bg-stone-300/60 rounded-sm" />

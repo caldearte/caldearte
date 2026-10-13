@@ -383,7 +383,8 @@ export const esCL = {
   // comment) — a fixed, non-personalized sample of other current
   // exposiciones in the SAME región as this event, deterministic so the
   // page can stay cache-eligible.
-  eventPageMoreExposLabel: "TAMBIÉN EN CARTELERA",
+  eventPageMoreExposLabel: "También en cartelera",
+  eventPageMoreAgendaLabel: "También esta semana",
   eventPageSourceLabel: (domain: string) => `Fuente: ${domain}`,
   eventPageSourceLink: "Ver publicación original ↗",
   eventPageAttributionNote: (domain: string) =>
@@ -406,6 +407,8 @@ export const esCL = {
   eventPageArtistLink: (artistName: string) => `Más muestras de ${artistName} →`,
   venuePageCurrentLabel: "EN CARTELERA Y PRÓXIMAS",
   venuePagePastLabel: "MUESTRAS ANTERIORES",
+  catalogPageUpcomingLabel: "Próximas inauguraciones y visitas",
+  catalogPageRunningLabel: "En cartelera",
   venuePageNoCurrent: "Por ahora no hay muestras vigentes en este espacio.",
   venuePageEventCount: (n: number) => `${n} ${pluralize(n, "muestra registrada", "muestras registradas")} en Caldearte`,
   venuePageInstagramLink: (handle: string) => `@${handle} en Instagram ↗`,
@@ -447,6 +450,53 @@ export const esCL = {
     reveal: "Ver contenido",
   },
 
+  // Home layout of 2026-10-12: the week's inauguraciones + visitas
+  // guiadas as flyer-style cards, then the cartelera; regions always
+  // one click away in the h1's own dropdown (RegionDropdown) instead of
+  // behind the old location button + full-screen panel.
+  home: {
+    tagline: "EL ARTE MÁS CERCA",
+    // The sticky bar's left label swaps to the section scrolling under it.
+    stickyCuratoria: "CURATORÍA",
+    // Top bar section links (desktop).
+    sectionNavAriaLabel: "Secciones",
+    navDestacado: "Destacado",
+    navCuratoria: "Curatoría",
+    navUltimosDias: "Últimos días",
+    navCartelera: "Cartelera",
+    navGuiaSemanal: "Boletín",
+    stickyUltimosDias: "ÚLTIMOS DÍAS",
+    stickyAunEnCartelera: "AÚN EN CARTELERA",
+    weekRegionJoiner: "en",
+    weekDropdownAriaLabel: (weekLabel: string) => `${weekLabel} — cambiar semana`,
+    weekListAriaLabel: "Elegir semana",
+    prevMonthAriaLabel: "Mes anterior",
+    nextMonthAriaLabel: "Mes siguiente",
+    backToCurrentWeek: "Volver a esta semana",
+    regionDropdownAriaLabel: (regionName: string) => `${regionName} — cambiar región`,
+    agendaTitle: "Inauguraciones y visitas guiadas",
+    agendaEmpty: (regionName: string) => `Esta semana no hay inauguraciones ni visitas guiadas en ${regionName}.`,
+    addToCalendar: "Agregar al calendario",
+    agendaPastDay: (n: number) => `Ya pasó · ver ${n === 1 ? "1 evento" : `${n} eventos`}`,
+    typeInauguracion: "Inauguración",
+    typeVisitaGuiada: "Visita guiada",
+    hourToConfirm: "hora por confirmar",
+    carteleraTitle: "Exposiciones en cartelera",
+    ultimosDias: "Últimos días",
+    restTitle: "Aún en cartelera",
+    allComunas: "Todas",
+    seeAll: (n: number) => `Ver las ${n} exposiciones`,
+    seeLess: "Ver menos",
+    seeAllClosing: (n: number) => `Ver las ${n} que cierran esta semana`,
+    regionsNavAriaLabel: "Elegir región",
+    useMyLocation: "Usar mi ubicación",
+    locating: "Ubicando…",
+    searchRegionPlaceholder: "Buscar región o comuna",
+    searchRegionNoResults: (q: string) => `Ninguna región o comuna coincide con “${q}”.`,
+    quietRegionTitle: "Sin actividad esta semana",
+    agendaDotTitle: (n: number) => `${n} ${n === 1 ? "inauguración o visita" : "inauguraciones o visitas"} esta semana`,
+  },
+
   footer: {
     tagline:
       "Calendario de arte curado por inteligencia humana potenciada por IA",
@@ -454,6 +504,8 @@ export const esCL = {
     contacto: "Contacto",
     privacidad: "Privacidad",
     agregaExpo: "Agrega tu expo",
+    curatoria: "Curatoría",
+    wordmarkTagline: "EL ARTE MÁS CERCA",
   },
 
   privacidad: {
@@ -501,9 +553,14 @@ export const esCL = {
     // magenta span with a space in it — no visible difference, simpler
     // code).
     sectionHeadlinePlainStart: "RECIBE NUESTRA ",
-    sectionHeadlineHighlight: "GUIA DE ARTE",
-    sectionHeadlinePlainEnd: " CADA SEMANA.",
+    sectionHeadlineHighlight: "GUÍA SEMANAL",
+    sectionHeadlinePlainEnd: "",
     sectionEmailPlaceholder: "Pon tu mail aquí",
+    emailLabel: "Tu correo",
+    emailPlaceholder: "tunombre@correo.cl",
+    regionLabel: "Tu región",
+    invalidEmail: "Escribe un correo válido.",
+    noRegion: "Elige tu región.",
     sectionSubmit: "¡LA QUIERO!",
     sectionCaption: "¡No te pierdas ninguna inauguración!",
     confirmar: {
@@ -641,6 +698,44 @@ export const esCL = {
     rateLimitedPrefix: "Un momento",
     error: "Algo falló de nuestro lado. Intenta de nuevo en unos minutos.",
     scopeNote: "Este formulario es solo para exposiciones con inauguración — para todo lo demás, escríbenos por el ",
+    // Step-by-step form (2026-10-13): each step's headline, split around
+    // its magenta word like the newsletter's.
+    steps: [
+      { start: "¿QUÉ ", highlight: "EXPONES", end: "?" },
+      { start: "¿DÓNDE Y ", highlight: "CUÁNDO", end: "?" },
+      { start: "¿CÓMO ", highlight: "SE VE", end: "?" },
+      { start: "¿QUIÉN LA ", highlight: "ENVÍA", end: "?" },
+    ],
+    stepOf: (n: number, total: number) => `PASO ${n} DE ${total}`,
+    next: "SIGUIENTE",
+    back: "← Atrás",
+    submitStep: "ENVIAR",
+    tryAgain: "Intentar de nuevo",
+    errorTitle: "ALGO FALLÓ",
+    compressing: "Preparando imagen...",
+    comunaNotInList: "Elige una comuna de la lista.",
+    noArtist: "Agrega al menos un artista.",
+    noImage: "Elige una imagen de la expo.",
+    // Field placeholders, hints and per-field errors (2026-10-13 form pass).
+    titlePlaceholder: "Ej: Paisajes del sur",
+    artistPlaceholder: "Escribe un nombre y presiona Enter",
+    addArtistButton: "Agregar",
+    removeArtist: (name: string) => `Quitar ${name}`,
+    galleryPlaceholder: "Ej: Galería Metropolitana",
+    comunaSearchPlaceholder: "Escribe para buscar tu comuna",
+    comunaNoResults: "No encontramos esa comuna.",
+    openingDateLabel: "Día de la inauguración",
+    openingTimeLabel: "Hora",
+    openingTimePlaceholder: "Elige la hora",
+    runEndLabel: "¿Hasta cuándo?",
+    imageDrop: "Toca para elegir una imagen o arrástrala aquí",
+    imageHint: "JPG, PNG o WebP. Así se verá en la tarjeta del sitio.",
+    descriptionPlaceholder: "Cuéntanos de la muestra en un par de líneas",
+    namePlaceholder: "Tu nombre",
+    emailPlaceholder: "tunombre@correo.cl",
+    required: "Falta este dato.",
+    invalidEmail: "Escribe un correo válido.",
+    endBeforeStart: "Debe ser el mismo día de la inauguración o después.",
   },
 };
 

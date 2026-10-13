@@ -11,6 +11,8 @@ export default function CuratoriaBanner() {
   return (
     <Link
       href="/curatoria"
+      // Where the top bar's "Curatoría" link lands (scrollToHomeSection).
+      data-landing
       className="w-full md:w-[838px] mt-16 flex items-end md:items-end gap-[14px] md:gap-[172px]  bg-[rgba(199,212,217,0.62)] rounded-[20px] md:rounded-[30px] px-5 md:px-[62px] py-8 md:py-10"
     >
       <h2 className="font-lato font-black leading-none text-brand-magenta text-[40px] md:text-[96px] shrink-0">

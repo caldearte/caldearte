@@ -7,8 +7,9 @@
 // searchEvents. events.ts keeps the DB-fetching surface
 // (fetchApprovedEvents) and stays server-only; this file is safe for any
 // client component to import.
-import { cityIdFromRegionName, deriveCityId, OTHER_CITY, matchesQuery } from "./cities";
-import { activeRange, anchorDateOnly, dateOnlyFromIso, isCurrentOrUpcoming, rangesOverlap } from "./date";
+import { cityIdFromRegionName, deriveCityId, OTHER_CITY, matchesQuery, regionIdFromAdminRegionName } from "./cities";
+import { deriveComuna } from "./comuna";
+import { activeRange, anchorDateOnly, dateOnlyFromIso, isCurrentOrUpcoming, rangesOverlap, santiagoDateOfIso } from "./date";
 import type { EventRecord, RegionMeta } from "./events";
 
 // Prefers the curator's own region match (exact, resolved at write time)
@@ -45,6 +46,18 @@ export function cityNamesFromEvents(events: EventRecord[]): Record<string, strin
     if (!(id in names)) names[id] = displayNameForCity(e);
   }
   return names;
+}
+
+// The comuna shown next to a venue — moved here from useEventCardActions
+// (2026-10-12) so the home's cartelera can also group/filter by it.
+// deriveComuna's narrow Gran Santiago text-match is the more SPECIFIC
+// signal when it finds one (e.g. picks out "Vitacura" from a venue
+// address even when the curator's own broader region_id match landed on
+// just "Santiago") — falls back to the curator-resolved comuna
+// (displayNameForCity, event.regionName) otherwise, so a card always has
+// some comuna to show.
+export function eventComuna(event: EventRecord): string {
+  return deriveComuna(event.freeformLocation, event.placeName) ?? displayNameForCity(event);
 }
 
 export function filterFamilyMode(events: EventRecord[], familyModeOn: boolean): EventRecord[] {
@@ -186,6 +199,60 @@ export interface CityCounts {
   inauguraciones: number;
   visitasGuiadas: number;
   exposActuales: number;
+}
+
+// Splits a list for the same two card styles the home uses (2026-10-12),
+// wherever events are listed outside it (the ficha's "también…" sections,
+// venue and artist pages): `agenda` = inauguraciones and visitas guiadas
+// whose date is today or later, soonest first (AgendaCard); `cartelera` =
+// everything else, soonest-closing first (ExpoTile), same order as the
+// home's cartelera.
+export function splitAgendaAndCartelera(events: EventRecord[], todayStr: string): { agenda: EventRecord[]; cartelera: EventRecord[] } {
+  const isAgenda = (e: EventRecord) =>
+    (e.eventType === "inauguracion" || e.eventType === "visita_guiada") && e.openingDatetime !== null && santiagoDateOfIso(e.openingDatetime) >= todayStr;
+  const agenda = events.filter(isAgenda).sort((a, b) => a.openingDatetime!.localeCompare(b.openingDatetime!));
+  const cartelera = sortByRunEndAsc(events.filter((e) => !isAgenda(e)));
+  return { agenda, cartelera };
+}
+
+export interface RegionActivity {
+  agenda: number; // inauguraciones + visitas guiadas dated inside the window
+  total: number; // distinct events across the agenda and the cartelera
+}
+
+// Per-región counts for the home's region nav (2026-10-12). Distinct
+// events, unlike countByCity's overlap-counted tallies: an inauguración
+// that is also a running exhibition counts once, so the number next to a
+// región matches what that región's page actually lists. Same window and
+// same split as the sections themselves; ignores the Hoy/Vigentes
+// filters, like countByCity.
+export function activityByRegion(
+  activeInRange: EventRecord[],
+  start: string,
+  end: string,
+  metaByCityId: Map<string, RegionMeta>,
+  // On the current week, exhibitions that already closed (before this
+  // date) don't count — the cartelera doesn't list them either.
+  closedBefore?: string,
+): Record<string, RegionActivity> {
+  const byRegion = new Map<string, EventRecord[]>();
+  for (const e of activeInRange) {
+    const adminRegionName = resolveAdminRegionName(e, metaByCityId);
+    if (!adminRegionName) continue;
+    const regionId = regionIdFromAdminRegionName(adminRegionName);
+    const bucket = byRegion.get(regionId);
+    if (bucket) bucket.push(e);
+    else byRegion.set(regionId, [e]);
+  }
+  const result: Record<string, RegionActivity> = {};
+  for (const [regionId, events] of byRegion) {
+    const { inauguraciones, visitasGuiadas, exposActuales } = splitInauguracionesYExpos(events, start, end);
+    const running = closedBefore ? exposActuales.filter((e) => e.runEndDate! >= closedBefore) : exposActuales;
+    const ids = new Set([...inauguraciones, ...visitasGuiadas, ...running].map((e) => e.id));
+    if (ids.size === 0) continue;
+    result[regionId] = { agenda: inauguraciones.length + visitasGuiadas.length, total: ids.size };
+  }
+  return result;
 }
 
 // Per-city counts for the "Arte en todas partes" carousel — run over the

@@ -8,12 +8,14 @@ import {
   filterUpcomingInauguraciones,
   filterUpcomingVisitasGuiadas,
   findNextEvent,
+  activityByRegion,
   type CityCounts,
+  type RegionActivity,
 } from "@/lib/event-utils";
 import { buildRegionMetaByCityId, adminRegionNameByRegionId } from "@/lib/cities";
 import { resolveCityPickerContext, type CookieReader } from "@/lib/cityPickerContext";
-import { todayInSantiago, currentWeekInSantiago, weekBoundsInSantiago, addWeeks, weekNumberSince, isCurrentOrUpcoming } from "@/lib/date";
-import { FAMILY_MODE_COOKIE, TODAY_FILTER_COOKIE, VIGENTES_FILTER_COOKIE, GEO_CONSENT_COOKIE } from "@/lib/cookies";
+import { todayInSantiago, currentWeekInSantiago, weekBoundsInSantiago, isCurrentOrUpcoming } from "@/lib/date";
+import { FAMILY_MODE_COOKIE, TODAY_FILTER_COOKIE, VIGENTES_FILTER_COOKIE } from "@/lib/cookies";
 import type { NewsletterStatus } from "@/components/NewsletterStatusModal";
 
 const NEWSLETTER_STATUSES: NewsletterStatus[] = ["confirmed", "already_confirmed", "unsubscribed", "already_unsubscribed", "invalid", "error"];
@@ -29,7 +31,6 @@ export interface HomeViewModel {
   cityId: string;
   actualCityId: string | null;
   hasPreciseLocation: boolean;
-  showGeoConsentPrompt: boolean;
   cityNames: Record<string, string>;
   familyMode: boolean;
   todayFilterOn: boolean;
@@ -37,19 +38,11 @@ export interface HomeViewModel {
   today: string;
   rangeStart: string;
   rangeEnd: string;
-  weekNumber: number;
-  prevWeekHref: string;
-  nextWeekHref: string;
   cityCounts: Record<string, CityCounts>;
-  // Chile-wide totals for the SAME week + Hoy/Vigentes filter state as
-  // inauguraciones/exposActuales above — the "de X" comparison next to
-  // the región's own count in Header's ring indicators. Deliberately NOT
-  // cityCounts' own full-week (filter-unaffected) totals summed — that
-  // would compare a filtered región count against an unfiltered national
-  // one, an apples-to-oranges ratio.
-  chileInauguracionesCount: number;
-  chileVisitasGuiadasCount: number;
-  chileExposActualesCount: number;
+  // Distinct events per región for the región dropdown (RegionDropdown.tsx) —
+  // same window as the sections, ignores Hoy/Vigentes. A región with
+  // nothing this week has no entry.
+  regionActivity: Record<string, RegionActivity>;
   cityThumbnails: Record<string, EventRecord[]>;
   searchableEvents: EventRecord[];
   nextEvent: EventRecord | null;
@@ -88,9 +81,6 @@ export async function computeHomeViewModel({
   const today = todayInSantiago();
 
   const { start: rangeStart, end: rangeEnd } = /^\d{4}-\d{2}-\d{2}$/.test(semana ?? "") ? weekBoundsInSantiago(semana!) : currentWeekInSantiago();
-  const weekNumber = weekNumberSince(rangeStart);
-  const prevWeekHref = `/?semana=${addWeeks(rangeStart, -1)}`;
-  const nextWeekHref = `/?semana=${addWeeks(rangeStart, 1)}`;
 
   const { events: allEvents, regions } = await fetchApprovedEvents();
   const visible = filterFamilyMode(allEvents, familyMode);
@@ -106,8 +96,6 @@ export async function computeHomeViewModel({
     familyMode,
   });
 
-  const showGeoConsentPrompt = cookieStore.get(GEO_CONSENT_COOKIE) === undefined;
-
   const metaByCityId = buildRegionMetaByCityId(regions);
   const adminRegionName = adminRegionNameByRegionId(regions).get(regionId) ?? regionId;
 
@@ -118,19 +106,13 @@ export async function computeHomeViewModel({
   const exposActualesForCity = todayFilterOn ? filterActiveInRange(split.exposActuales, today, today) : split.exposActuales;
   const inauguraciones = vigentesFilterOn ? filterUpcomingInauguraciones(inauguracionesForCity, today) : inauguracionesForCity;
   const visitasGuiadas = vigentesFilterOn ? filterUpcomingVisitasGuiadas(visitasGuiadasForCity, today) : visitasGuiadasForCity;
-  const exposActuales = exposActualesForCity;
+  // On the current week, an exhibition that closed earlier this week isn't
+  // "en cartelera" anymore — same day-level rule as the venue and artist
+  // pages (lib/catalogPage.ts). Other weeks keep the whole week's list.
+  const isCurrentWeek = rangeStart === currentWeekInSantiago().start;
+  const exposActuales = isCurrentWeek ? exposActualesForCity.filter((e) => e.runEndDate! >= today) : exposActualesForCity;
 
-  // Same split + same Hoy/Vigentes filter chain as the región's own
-  // inauguraciones/visitasGuiadas/exposActuales above, just over the
-  // unfiltered-by-región activeInRange set — the Chile-wide "de X"
-  // comparison count.
-  const chileSplit = splitInauguracionesYExpos(activeInRange, rangeStart, rangeEnd);
-  const chileInauguracionesForFilter = todayFilterOn ? filterActiveInRange(chileSplit.inauguraciones, today, today) : chileSplit.inauguraciones;
-  const chileVisitasGuiadasForFilter = todayFilterOn ? filterActiveInRange(chileSplit.visitasGuiadas, today, today) : chileSplit.visitasGuiadas;
-  const chileExposActualesForFilter = todayFilterOn ? filterActiveInRange(chileSplit.exposActuales, today, today) : chileSplit.exposActuales;
-  const chileInauguracionesCount = (vigentesFilterOn ? filterUpcomingInauguraciones(chileInauguracionesForFilter, today) : chileInauguracionesForFilter).length;
-  const chileVisitasGuiadasCount = (vigentesFilterOn ? filterUpcomingVisitasGuiadas(chileVisitasGuiadasForFilter, today) : chileVisitasGuiadasForFilter).length;
-  const chileExposActualesCount = chileExposActualesForFilter.length;
+  const regionActivity = activityByRegion(activeInRange, rangeStart, rangeEnd, metaByCityId, isCurrentWeek ? today : undefined);
 
   const nextEvent = findNextEvent(filterByRegion(visible, adminRegionName, metaByCityId), today, rangeEnd);
 
@@ -142,7 +124,6 @@ export async function computeHomeViewModel({
     cityId,
     actualCityId,
     hasPreciseLocation,
-    showGeoConsentPrompt,
     cityNames,
     familyMode,
     todayFilterOn,
@@ -150,13 +131,8 @@ export async function computeHomeViewModel({
     today,
     rangeStart,
     rangeEnd,
-    weekNumber,
-    prevWeekHref,
-    nextWeekHref,
     cityCounts,
-    chileInauguracionesCount,
-    chileVisitasGuiadasCount,
-    chileExposActualesCount,
+    regionActivity,
     cityThumbnails,
     searchableEvents,
     nextEvent,

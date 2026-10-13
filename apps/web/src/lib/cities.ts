@@ -61,6 +61,24 @@ export function matchesQuery(text: string, query: string): boolean {
   return normalize(text).includes(normalize(query));
 }
 
+// How well a comuna matches what was typed in a comuna search box, lower
+// is better, null = no match (2026-10-13): exact name, then name starting
+// with it, then a word in the name starting with it ("alemana" → Villa
+// Alemana), then anywhere in the name, and last a match on its región's
+// name only. Typing "santiago" must put the comuna Santiago first, not
+// bury it under every comuna of Región Metropolitana de Santiago.
+export function rankComunaMatch(name: string, adminRegionName: string | null, query: string): number | null {
+  const n = normalize(name);
+  const q = normalize(query);
+  if (!q) return null;
+  if (n === q) return 0;
+  if (n.startsWith(q)) return 1;
+  if (n.split(/[\s-]+/).some((word) => word.startsWith(q))) return 2;
+  if (n.includes(q)) return 3;
+  if (adminRegionName !== null && normalize(adminRegionName).includes(q)) return 4;
+  return null;
+}
+
 // A stable, deterministic id for any comuna/city name — spaces and
 // punctuation become hyphens, e.g. "Puerto Varas" -> "puerto-varas",
 // "Cabo de Hornos" -> "cabo-de-hornos".
@@ -332,6 +350,29 @@ export function allAdminRegions(regions: RegionMeta[]): AdminRegion[] {
 // filterByRegion/resolveAdminRegionName actually compare against.
 export function adminRegionNameByRegionId(regions: RegionMeta[]): Map<string, string> {
   return new Map(allAdminRegions(regions).map((r) => [regionIdFromAdminRegionName(r.adminRegionName), r.adminRegionName]));
+}
+
+// The región dropdown's search box (2026-10-12): which regions match a
+// query, by the región's own name or by any of its comunas' names — all
+// 346 seeded comunas, not just the ones with events this week, so "Villa
+// Alemana" still finds Valparaíso. Accent/case-insensitive (matchesQuery).
+// Value: the matching comuna names, to show why a región matched; empty
+// when the región's own name matched.
+export function searchRegions(regions: RegionMeta[], query: string): Map<string, string[]> {
+  const q = query.trim();
+  const result = new Map<string, string[]>();
+  if (!q) return result;
+  for (const r of allAdminRegions(regions)) {
+    if (matchesQuery(r.adminRegionName, q)) result.set(regionIdFromAdminRegionName(r.adminRegionName), []);
+  }
+  for (const r of regions) {
+    if (r.adminRegionName === null || !matchesQuery(r.name, q)) continue;
+    const id = regionIdFromAdminRegionName(r.adminRegionName);
+    const comunas = result.get(id);
+    if (comunas === undefined) result.set(id, [r.name]);
+    else if (comunas.length > 0 && !comunas.includes(r.name)) comunas.push(r.name);
+  }
+  return result;
 }
 
 // Per-región badge counts for the picker — sums each región's own

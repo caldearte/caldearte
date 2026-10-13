@@ -428,6 +428,67 @@ sage surface so the visitor-facing ask (subscribe) and the venue-facing
 ask (submit) read as two distinct blocks back to back. Static server
 component, no state, so the home's caching posture above is untouched.
 
+**Home layout, 2026-10-12** (once Instagram passed 200 followers and the
+site had to convert the visits it got): the first event used to appear
+~1.4 screens down on a phone (geo-consent banner, two-line 96px
+wordmark, location button, count rings) and the content sat in three
+paged sliders ("1/15" for Santiago's exposiciones on mobile). Now, in
+order: a fixed top bar with the "CALDE / ARTE." wordmark, search and menu
+(`Header` — on desktop, lg+, also centered links to the home's parts:
+Destacado · Curatoría · Últimos días · Cartelera · Boletín, the one being
+read in magenta); "EL ARTE MÁS CERCA" on the left (swapping to "CURATORÍA" /
+"ÚLTIMOS DÍAS" / "AÚN EN CARTELERA" once those parts — marked
+`data-sticky-section` — reach the bar; `useHomeSection` decides it for both
+the label and the links) and
+the h1 "[Esta semana ⌄] en [Santiago ⌄]" on the right, each word a
+gray-bordered box (`WeekHeading` — stacked on a phone, tagline hidden
+once stuck; sticky under the top bar since the whole page is that
+week + región's data, tighter once scrolled, sliding away on scroll-down
+only from the venue section on; any change scrolls back to the top), both words
+dropdowns built on `HeadingDropdown` (full screen width under the h1 on a
+phone; while open the page behind is frozen and dimmed, the panel scrolls
+on its own, and a tap outside only closes it): the week (`WeekDropdown` — a month
+calendar where each row is a whole Monday-to-Sunday week, from SEMANA N°1
+to two months ahead, each row a real `?semana=` link; the h1 names it
+"Esta semana / Semana pasada / Próxima semana / Semana del 28 de
+septiembre"; replaces the chevrons and "SEMANA N°X") and the región (`RegionDropdown` — a search
+box on top that filters the same list by región or any of the 346
+comunas, always listing the región (`searchRegions`: "villa alemana" →
+Valparaíso); regions north to south with their count, the ones with
+nothing this week dimmed at the end, "Usar mi ubicación" at the bottom,
+replacing the yellow `GeoConsentBanner`; a row of 16 chips was tried
+first and was too much chrome); the week's inauguraciones and visitas guiadas merged
+into one agenda grouped by day, Monday to Sunday, of cards in the
+Instagram flyer's look (`AgendaSection` — a clean 4:5 photo first, then
+one tag under it, not over it: the artist line, the "Inauguración: …" /
+"Visita guiada: …" title line, the magenta "COMUNA · HORA" pill with the
+venue beside it, and full-width stacked "Cómo llegar" / "Agregar al
+calendario" buttons — the card's link is an overlay so those can be links
+of their own; one continuous grid Monday to
+Sunday, the day's name over its first card and an invisible copy over
+the rest, so no column is left empty and photos in a row line up; on the
+current week, past days fold to one line in place; text rules shared with `flyer-v2.tsx` through
+`lib/social/flyerText.ts`); the unchanged `CuratoriaBanner`; the
+cartelera (`CarteleraSection` — "Últimos días" first, then a grid with
+comuna chips and "Ver las N" instead of pages); then this section's
+`EspaciosSection` and `NewsletterSection` side by side from lg up,
+touching, same height and type scale — the venue ask and the visitor ask
+as two faces of one coin (the newsletter's composition scaled down).
+The same two card styles are used wherever events are listed outside
+the home — the ficha's "También esta semana" / "También en cartelera" and
+the venue and artist pages — split by `splitAgendaAndCartelera`
+(upcoming inauguraciones and visitas guiadas → `AgendaCard`, the rest →
+`ExpoTile` — the same photo-then-white-tag build a size smaller: artist,
+magenta title, magenta "HASTA…" pill, venue). On the current week an exhibition that already closed is
+left out of the cartelera and the counts (day-level, same rule as
+`lib/catalogPage.ts`); `isCurrentOrUpcoming`'s month grain still decides
+what's in range elsewhere.
+Per-región counts come from `activityByRegion` (distinct events, so an
+opening that is also a running show counts once), computed in the same
+`computeHomeViewModel` as everything else — still no cookies in the
+cached render. `showGeoConsentPrompt` and the Chile-wide ring counts were
+removed from the view model with the components that used them.
+
 ## SEO: structured data
 
 **Added 2026-08-08** (a Search Console coverage audit found zero

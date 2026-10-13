@@ -18,6 +18,15 @@ import {
   addWeeks,
   weekNumberSince,
   fmtUntilDate,
+  fmtAgendaDay,
+  monthWeekStarts,
+  fmtMonthYear,
+  fmtWeekLabel,
+  fmtAgendaPillHour,
+  fmtAgendaPillDay,
+  fmtUntilPill,
+  santiagoDateOfIso,
+  fmtWeekRangeShort,
   isClosingSoon,
 } from "./date";
 
@@ -245,4 +254,66 @@ test("isClosingSoon: no runEndDate at all is never closing soon", () => {
 test("isClosingSoon: boundary stays the same calendar week end from any day within it", () => {
   assert.equal(isClosingSoon("2026-08-09", "2026-08-07"), true);
   assert.equal(isClosingSoon("2026-08-09", "2026-08-09"), true);
+});
+
+test("fmtAgendaDay: hoy, mañana, then weekday + day", () => {
+  assert.equal(fmtAgendaDay("2026-10-14", "2026-10-14"), "Hoy");
+  assert.equal(fmtAgendaDay("2026-10-15", "2026-10-14"), "Mañana");
+  assert.equal(fmtAgendaDay("2026-10-17", "2026-10-14"), "Sábado 17");
+  assert.equal(fmtAgendaDay("2026-10-12", "2026-10-14"), "Lunes 12");
+  // Month boundary for "mañana"
+  assert.equal(fmtAgendaDay("2026-11-01", "2026-10-31"), "Mañana");
+});
+
+test("fmtWeekRangeShort: same month and across months", () => {
+  assert.equal(fmtWeekRangeShort("2026-10-12", "2026-10-18"), "12–18 oct");
+  assert.equal(fmtWeekRangeShort("2026-10-26", "2026-11-01"), "26 oct – 1 nov");
+});
+
+test("santiagoDateOfIso: a 21:30 opening in Santiago stays on its own day", () => {
+  assert.equal(santiagoDateOfIso("2026-10-18T00:30:00+00:00"), "2026-10-17");
+  assert.equal(santiagoDateOfIso("2026-10-17T20:00:00+00:00"), "2026-10-17");
+  assert.equal(santiagoDateOfIso("2026-10-17"), "2026-10-17");
+});
+
+test("fmtAgendaPillHour: Santiago hour, or HORA POR CONF.", () => {
+  assert.equal(fmtAgendaPillHour("2026-10-14T19:00:00+00:00", true), "16 HR");
+  assert.equal(fmtAgendaPillHour("2026-10-14T22:30:00+00:00", true), "19:30 HR");
+  assert.equal(fmtAgendaPillHour("2026-10-17T03:00:00+00:00", false), "HORA POR CONF.");
+});
+
+test("fmtWeekLabel: relative names around the current week, dated otherwise", () => {
+  assert.equal(fmtWeekLabel("2026-10-12", "2026-10-12"), "Esta semana");
+  assert.equal(fmtWeekLabel("2026-10-05", "2026-10-12"), "Semana pasada");
+  assert.equal(fmtWeekLabel("2026-10-19", "2026-10-12"), "Próxima semana");
+  assert.equal(fmtWeekLabel("2026-09-28", "2026-10-12"), "Semana del 28 de septiembre");
+});
+
+
+test("monthWeekStarts: Monday-to-Sunday rows touching the month", () => {
+  // October 2026 starts on a Thursday and ends on a Saturday.
+  assert.deepEqual(monthWeekStarts(2026, 9), ["2026-09-28", "2026-10-05", "2026-10-12", "2026-10-19", "2026-10-26"]);
+  // February 2027 starts on a Monday: no leading row from January.
+  assert.deepEqual(monthWeekStarts(2027, 1), ["2027-02-01", "2027-02-08", "2027-02-15", "2027-02-22"]);
+  // December rows can't run into the next year's months.
+  assert.equal(monthWeekStarts(2026, 11).at(-1), "2026-12-28");
+});
+
+test("fmtMonthYear", () => {
+  assert.equal(fmtMonthYear(2026, 9), "octubre 2026");
+});
+
+test("fmtAgendaPillDay: HOY, MAÑANA, else weekday + day + month", () => {
+  assert.equal(fmtAgendaPillDay("2026-10-13T22:00:00+00:00", "2026-10-13"), "HOY");
+  assert.equal(fmtAgendaPillDay("2026-10-14T19:00:00+00:00", "2026-10-13"), "MAÑANA");
+  assert.equal(fmtAgendaPillDay("2026-10-15T22:00:00+00:00", "2026-10-13"), "JUE 15 OCT");
+  // 21:30 in Santiago is already the next day in UTC.
+  assert.equal(fmtAgendaPillDay("2026-10-18T00:30:00+00:00", "2026-10-13"), "SÁB 17 OCT");
+});
+
+test("fmtUntilPill: HASTA HOY / MAÑANA / date, year only when later", () => {
+  assert.equal(fmtUntilPill("2026-10-13", "2026-10-13"), "HASTA HOY");
+  assert.equal(fmtUntilPill("2026-10-14", "2026-10-13"), "HASTA MAÑANA");
+  assert.equal(fmtUntilPill("2026-10-31", "2026-10-13"), "HASTA EL 31 OCT");
+  assert.equal(fmtUntilPill("2027-01-24", "2026-10-13"), "HASTA EL 24 ENE '27");
 });

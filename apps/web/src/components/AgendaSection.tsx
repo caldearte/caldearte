@@ -1,0 +1,208 @@
+"use client";
+
+import { useState } from "react";
+import Link from "next/link";
+import { esCL } from "@/i18n/es-CL";
+import { fmtAgendaDay, fmtAgendaPillDay, fmtAgendaPillHour, santiagoDateOfIso, todayInSantiago } from "@/lib/date";
+import { eventComuna } from "@/lib/event-utils";
+import { useEventCardActions } from "@/lib/useEventCardActions";
+import type { EventRecord } from "@/lib/events";
+import { resolveArtistDisplay, titleWithTypePrefix } from "@/lib/social/flyerText";
+import { CalendarGlyph, DirectionsGlyph } from "./CardActionIcons";
+import CardImage from "./CardImage";
+
+interface AgendaSectionProps {
+  inauguraciones: EventRecord[];
+  visitasGuiadas: EventRecord[];
+  regionName: string;
+  today: string;
+  // Days already past only fold away when looking at the real current
+  // week — any other week shows every day open.
+  isCurrentWeek: boolean;
+}
+
+// The week's inauguraciones and visitas guiadas (2026-10-12) — the most
+// highlighted thing on the home, so each one is a big card in the same
+// look as the Instagram flyer (flyer-v2.tsx): a clean 4:5 photo with the
+// flyer's pills and tags under it (AgendaCard). Ordered by day,
+// Monday to Sunday — visitors plan by day, not by event type, so both
+// types share one list (same reason the Instagram carousel merged them on
+// 2026-08-31). On the current week, days already past stay in their place
+// but folded to one line, so a Sunday visitor isn't scrolling past six
+// days that are over.
+export default function AgendaSection({ inauguraciones, visitasGuiadas, regionName, today, isCurrentWeek }: AgendaSectionProps) {
+  const groups = groupByDay([...inauguraciones, ...visitasGuiadas].filter((e) => e.openingDatetime !== null));
+  // Past days of the current week start folded; these are the ones the
+  // visitor has opened.
+  const [openedPast, setOpenedPast] = useState<Set<string>>(() => new Set());
+  // The first card of the first day still to come loads its photo first.
+  const priorityId = groups.find((g) => !isCurrentWeek || g.date >= today)?.events[0]?.id;
+
+  return (
+    // No visible section title (Daniel, 2026-10-12): the h1 already says
+    // which week and where, and the cards' own "Inauguración: …" tags say
+    // what they are. The name stays for screen readers.
+    <section aria-label={esCL.home.agendaTitle} className="mt-[24px]">
+      {groups.length === 0 && <p className="font-geist text-[15px] text-text-primary">{esCL.home.agendaEmpty(regionName)}</p>}
+
+      {/* One continuous grid, Monday to Sunday (Daniel, 2026-10-13): cards
+          flow into the next free column, so a day that doesn't fit in what
+          a row has left no longer drops whole to the next row and leaves a
+          hole. The day's name sits over its first card; its other cards get
+          an invisible copy of the heading (from sm up) so photos in a row
+          still line up. A day can now wrap across rows — each card's pill
+          also names its day. */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-x-[16px] md:gap-x-[20px] gap-y-[36px] md:gap-y-[56px]">
+        {groups.flatMap((g) => {
+          const heading = fmtAgendaDay(g.date, today);
+          const past = isCurrentWeek && g.date < today;
+          if (past && !openedPast.has(g.date)) {
+            return [
+              <button
+                key={g.date}
+                type="button"
+                aria-expanded={false}
+                onClick={() => setOpenedPast((prev) => new Set(prev).add(g.date))}
+                className="col-span-full w-full flex items-baseline justify-between gap-3 border-b border-text-primary/15 pb-[8px] text-left cursor-pointer"
+              >
+                <span className="font-lato font-black text-[22px] md:text-[26px] text-text-secondary">{heading}</span>
+                <span className="font-fragment-mono text-[13px] text-text-secondary underline">{esCL.home.agendaPastDay(g.events.length)}</span>
+              </button>,
+            ];
+          }
+          return g.events.map((e, i) => {
+            return (
+              <div key={e.id} className={past ? "opacity-70" : ""}>
+                {i === 0 ? (
+                  <h3 className={DAY_HEADING}>{heading}</h3>
+                ) : (
+                  <div aria-hidden="true" className={`${DAY_HEADING} invisible hidden sm:block`}>
+                    {heading}
+                  </div>
+                )}
+                <AgendaCard event={e} priority={e.id === priorityId} />
+              </div>
+            );
+          });
+        })}
+      </div>
+    </section>
+  );
+}
+
+const DAY_HEADING = "font-lato font-black text-[22px] md:text-[26px] leading-tight text-text-primary mb-[16px]";
+
+interface DayGroup {
+  date: string; // YYYY-MM-DD, Chilean calendar date
+  events: EventRecord[];
+}
+
+// Chronological, so days come out Monday to Sunday.
+function groupByDay(events: EventRecord[]): DayGroup[] {
+  const sorted = [...events].sort((a, b) => a.openingDatetime!.localeCompare(b.openingDatetime!));
+  const groups: DayGroup[] = [];
+  for (const e of sorted) {
+    const date = santiagoDateOfIso(e.openingDatetime!);
+    const last = groups[groups.length - 1];
+    if (last && last.date === date) last.events.push(e);
+    else groups.push({ date, events: [e] });
+  }
+  return groups;
+}
+
+// The agenda's card grid, for lists outside the home (the ficha, venue and
+// artist pages) — same columns as a day block here. Events must have an
+// openingDatetime (see splitAgendaAndCartelera).
+export function AgendaGrid({ events }: { events: EventRecord[] }) {
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-x-[16px] md:gap-x-[20px] gap-y-[32px]">
+      {events.map((e) => (
+        <AgendaCard key={e.id} event={e} />
+      ))}
+    </div>
+  );
+}
+
+// The flyer's pieces, under the photo instead of on it (Daniel,
+// 2026-10-12: overlays suit Instagram, on the site the image should stay
+// clean): a clean 4:5 photo, then one tag with the artist line, the
+// "Inauguración: …" / "Visita guiada: …" title line, the magenta
+// "COMUNA · DÍA · HORA" pill, the venue on its own line, and the "Cómo llegar" /
+// "Agregar al calendario" buttons — white here, since the page itself is
+// the flyer's sage. The tag spans the card's width (for the buttons);
+// long text wraps, balanced, like the flyer's.
+export function AgendaCard({ event, priority = false }: { event: EventRecord; priority?: boolean }) {
+  const type = event.eventType === "visita_guiada" ? "visita_guiada" : "inauguracion";
+  const title = titleWithTypePrefix(event.title, type);
+  const artist = resolveArtistDisplay(event.artist);
+  const venue = event.placeName ?? event.freeformLocation;
+  const comuna = eventComuna(event);
+  // "inauguracion" variant for both types: a visita guiada is just as much
+  // a dated, timed thing to put in a calendar.
+  const { mapsHref, calendarHref } = useEventCardActions(event, "inauguracion", true);
+  // While a sensitive photo is still blurred, the photo sits above the
+  // card's link so its "Ver contenido" button gets the tap; once revealed
+  // it drops back and the photo opens the ficha like the rest of the card.
+  const [revealed, setRevealed] = useState(false);
+  const photoBlocksLink = event.sensitivityTags.length > 0 && !revealed;
+  const button =
+    "relative z-10 w-full h-[44px] flex items-center justify-center gap-[10px] border border-text-primary bg-surface-white font-fragment-mono text-[13px] text-text-primary hover:bg-surface-sage";
+
+  return (
+    <div className="group relative flex flex-col gap-[12px]">
+      {/* Whole-card link as an overlay, not a wrapper — the action buttons
+          below are links of their own, and a link can't nest inside
+          another. They sit above it (z-10) and take their own clicks. */}
+      <Link href={`/eventos/${event.id}`} aria-label={esCL.eventCardAriaLabel(event.title)} className="absolute inset-0 z-[1]" />
+
+      {/* Photo first, so photos side by side always start on the same
+          line; the info tag follows at its own natural height. */}
+      <div className={`relative w-full aspect-[4/5] overflow-hidden bg-stone-800 ${photoBlocksLink ? "z-[2]" : ""}`}>
+        <div className="absolute inset-0 transition-transform duration-300 group-hover:scale-[1.02]">
+          <CardImage
+            imageUrl={event.imageUrl}
+            sourceUrl={event.sourceUrl}
+            sensitivityTags={event.sensitivityTags}
+            priority={priority}
+            alt={event.title}
+            onReveal={() => setRevealed(true)}
+          />
+        </div>
+      </div>
+
+      <div className="w-full flex flex-col gap-[6px] rounded-[22px] bg-surface-white px-[16px] pt-[10px] pb-[16px]">
+        {artist && (
+          <span className="font-geist font-semibold text-[11px] leading-[1.25] tracking-[1px] uppercase text-text-secondary [text-wrap:balance]">{artist}</span>
+        )}
+        <span className="font-lato font-black text-[17px] leading-[1.3] tracking-[0.3px] uppercase text-brand-magenta [text-wrap:balance] group-hover:underline">{title}</span>
+        {/* rounded-[14px], not rounded-full: on the 3-column tablet grid
+            (~200px cards) "COMUNA · DÍA · HORA" wraps to two lines, and a
+            pill shape would bulge; balanced so the lines come out even. */}
+        <span className="w-fit mt-[4px] rounded-[14px] bg-brand-magenta px-[10px] py-[4px] font-lato font-black text-[12px] leading-[1.35] uppercase tracking-[0.3px] text-white [text-wrap:balance]">
+          {comuna} · {fmtAgendaPillDay(event.openingDatetime!, todayInSantiago())} · {fmtAgendaPillHour(event.openingDatetime!, event.openingTimeConfirmed)}
+        </span>
+        {venue && <span className="font-geist font-semibold text-[11px] leading-[1.25] tracking-[1px] uppercase text-text-secondary">{venue}</span>}
+
+        {/* Full-width and stacked (Daniel, 2026-10-12: "Cómo llegar" is
+            the one he always uses) — big, easy targets on a phone. Same
+            look as the ficha's action buttons. */}
+        {(mapsHref || calendarHref) && (
+          <div className="flex flex-col gap-[8px] mt-[10px]">
+            {mapsHref && (
+              <a href={mapsHref} target="_blank" rel="noopener noreferrer" className={button}>
+                <DirectionsGlyph color="#3d373d" />
+                {esCL.cardMenuDirections}
+              </a>
+            )}
+            {calendarHref && (
+              <a href={calendarHref} target="_blank" rel="noopener noreferrer" className={button}>
+                <CalendarGlyph color="#3d373d" />
+                {esCL.home.addToCalendar}
+              </a>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}

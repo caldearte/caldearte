@@ -6,6 +6,7 @@ const MONTHS = [
   "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre",
 ];
 const MONTHS_SHORT = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
+const WEEKDAYS = ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"];
 
 // "YYYY-MM-DD" -> local Date at midnight (never UTC — avoids off-by-one-day
 // bugs from timezone conversion).
@@ -160,7 +161,7 @@ export function currentWeekInSantiago(): { start: string; end: string } {
 // mockup ("SEMANA N°1" = 27 de julio – 02 de agosto). Sequential counter
 // from here, not the ISO calendar week number — this is an editorial
 // "issue number," not a calendar concept.
-const WEEK_ONE_MONDAY = "2026-07-27";
+export const WEEK_ONE_MONDAY = "2026-07-27";
 
 // Shifts a Monday date string by `weeks` (positive = later, negative =
 // earlier), returning the new Monday — used for prev/next week
@@ -194,6 +195,104 @@ export function fmtWeekHeader(weekStart: string, weekEnd: string): string {
     return `${s.getDate()} al ${e.getDate()} de ${MONTHS[s.getMonth()].toUpperCase()}`;
   }
   return `${s.getDate()} de ${MONTHS[s.getMonth()].toUpperCase()} al ${e.getDate()} de ${MONTHS[e.getMonth()].toUpperCase()}`;
+}
+
+// Calendar date in Chile for a timestamptz (or a plain date, returned
+// as-is). An opening at 21:00 Santiago time is already the next day in
+// UTC, so slicing the ISO string (dateOnlyFromIso) would file it under
+// the wrong day in the agenda.
+export function santiagoDateOfIso(isoOrDate: string): string {
+  if (/^\d{4}-\d{2}-\d{2}$/.test(isoOrDate)) return isoOrDate;
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "America/Santiago" }).format(new Date(isoOrDate));
+}
+
+// Day on an agenda card's pill (2026-10-12) — on the home too, under its
+// day heading, so a card reads complete on its own: "HOY", "MAÑANA" or
+// "JUE 15 OCT", the Instagram flyer's style, Chilean calendar date.
+export function fmtAgendaPillDay(openingDatetimeIso: string, todayStr: string): string {
+  const date = santiagoDateOfIso(openingDatetimeIso);
+  if (date === todayStr) return "HOY";
+  const tomorrow = parseDateOnly(todayStr);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  if (date === toDateOnlyString(tomorrow)) return "MAÑANA";
+  const d = parseDateOnly(date);
+  return `${WEEKDAYS[d.getDay()].slice(0, 3).toUpperCase()} ${d.getDate()} ${MONTHS_SHORT[d.getMonth()].toUpperCase()}`;
+}
+
+// Closing date on a cartelera card's pill (2026-10-13), same uppercase
+// style as the agenda's: "HASTA HOY", "HASTA MAÑANA", "HASTA EL 15 OCT",
+// or "HASTA EL 24 ENE '27" when it ends in a later year.
+export function fmtUntilPill(runEndDate: string, todayStr: string): string {
+  if (runEndDate === todayStr) return "HASTA HOY";
+  const tomorrow = parseDateOnly(todayStr);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  if (runEndDate === toDateOnlyString(tomorrow)) return "HASTA MAÑANA";
+  const d = parseDateOnly(runEndDate);
+  const year = d.getFullYear() > parseDateOnly(todayStr).getFullYear() ? ` '${String(d.getFullYear()).slice(-2)}` : "";
+  return `HASTA EL ${d.getDate()} ${MONTHS_SHORT[d.getMonth()].toUpperCase()}${year}`;
+}
+
+// Hour on an agenda card's pill (2026-10-12): "19 HR", uppercase like the
+// Instagram flyer's pills, or "HORA POR CONF.".
+export function fmtAgendaPillHour(openingDatetimeIso: string, openingTimeConfirmed: boolean): string {
+  // Abbreviated (Daniel, 2026-10-13): the full "HORA POR CONFIRMAR" made
+  // the pill too long next to comuna + day.
+  return openingTimeConfirmed ? fmtOpeningHour(openingDatetimeIso).toUpperCase() : "HORA POR CONF.";
+}
+
+// The weeks of a month for the week-picker calendar (2026-10-12): the
+// Monday of every Monday-to-Sunday row that touches the month, first row
+// starting on or before the 1st. `month` is 0-based, like Date's.
+export function monthWeekStarts(year: number, month: number): string[] {
+  const first = new Date(year, month, 1);
+  const offset = (first.getDay() + 6) % 7; // days since Monday
+  const monday = new Date(year, month, 1 - offset);
+  const lastDay = new Date(year, month + 1, 0);
+  const weeks: string[] = [];
+  while (monday <= lastDay) {
+    weeks.push(toDateOnlyString(monday));
+    monday.setDate(monday.getDate() + 7);
+  }
+  return weeks;
+}
+
+// "octubre 2026" — the week-picker calendar's month heading.
+export function fmtMonthYear(year: number, month: number): string {
+  return `${MONTHS[month]} ${year}`;
+}
+
+// Week name for the home's h1 and week dropdown (2026-10-12): "Esta
+// semana", "Semana pasada", "Próxima semana", else "Semana del 28 de
+// septiembre" — reads naturally before "en Santiago".
+export function fmtWeekLabel(weekStart: string, currentWeekStart: string): string {
+  if (weekStart === currentWeekStart) return "Esta semana";
+  if (weekStart === addWeeks(currentWeekStart, -1)) return "Semana pasada";
+  if (weekStart === addWeeks(currentWeekStart, 1)) return "Próxima semana";
+  const d = parseDateOnly(weekStart);
+  return `Semana del ${d.getDate()} de ${MONTHS[d.getMonth()]}${yearSuffix(d, currentWeekStart)}`;
+}
+
+// Day heading for the home agenda (2026-10-12), e.g. "Hoy", "Mañana",
+// "Viernes 17". Relative words only for today/tomorrow — past days and
+// anything further out read as weekday + day number, enough inside a
+// single week's agenda (the week itself is already named above it).
+export function fmtAgendaDay(dateStr: string, todayStr: string): string {
+  if (dateStr === todayStr) return "Hoy";
+  const tomorrow = parseDateOnly(todayStr);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  if (dateStr === toDateOnlyString(tomorrow)) return "Mañana";
+  const d = parseDateOnly(dateStr);
+  const weekday = WEEKDAYS[d.getDay()];
+  return `${weekday.charAt(0).toUpperCase()}${weekday.slice(1)} ${d.getDate()}`;
+}
+
+// Compact week range for the home's week heading (2026-10-12), e.g.
+// "12–18 oct" or, across a month boundary, "27 oct – 2 nov".
+export function fmtWeekRangeShort(weekStart: string, weekEnd: string): string {
+  const s = parseDateOnly(weekStart);
+  const e = parseDateOnly(weekEnd);
+  if (s.getMonth() === e.getMonth()) return `${s.getDate()}–${e.getDate()} ${MONTHS_SHORT[s.getMonth()]}`;
+  return `${s.getDate()} ${MONTHS_SHORT[s.getMonth()]} – ${e.getDate()} ${MONTHS_SHORT[e.getMonth()]}`;
 }
 
 // Rediseño 2.0.0 hero week range (selector). Day always zero-padded to 2
