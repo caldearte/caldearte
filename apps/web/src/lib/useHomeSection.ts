@@ -16,20 +16,41 @@ function visible(el: HTMLElement): boolean {
   return el.getClientRects().length > 0;
 }
 
+function visibleOne(selector: string): HTMLElement | null {
+  return [...document.querySelectorAll<HTMLElement>(selector)].find(visible) ?? null;
+}
+
+// The stuck bar's padding + bottom border (WeekHeading: py-[10px] +
+// border-b) — keep in sync. Its content row is the same height stuck or
+// not wherever the section links show (lg+).
+const STUCK_CHROME_PX = 21;
+
+// The line things are "under": where the sticky week/región bar (marked
+// data-week-bar) ends once stuck — even before it has stuck, and even
+// while it has slid away near the page's end — or just below the fixed
+// top bar if it isn't there.
+function barGeometry(): { line: number; barTop: number; slidAway: boolean; shrinkLeft: number } {
+  const bar = visibleOne("[data-week-bar]");
+  const row = bar?.firstElementChild;
+  if (!bar || !(row instanceof HTMLElement)) return { line: 104, barTop: 104, slidAway: false, shrinkLeft: 0 };
+  const stuckHeight = row.offsetHeight + STUCK_CHROME_PX;
+  const barTop = parseFloat(getComputedStyle(bar).top);
+  return {
+    line: barTop + stuckHeight,
+    // Where the fixed top bar ends — what's left once the bar slides away.
+    barTop,
+    slidAway: bar.getBoundingClientRect().bottom <= barTop + 1,
+    // Not stuck yet (scrolling from the very top): it's still taller, and
+    // everything below moves up by the difference once it sticks.
+    shrinkLeft: Math.max(0, bar.offsetHeight - stuckHeight),
+  };
+}
+
 function currentSection(): HomeSection {
-  // The line things are "under": the sticky bar's bottom edge (marked
-  // data-week-bar), or just below the fixed top bar if it isn't there.
-  const bar = [...document.querySelectorAll<HTMLElement>("[data-week-bar]")].find(visible);
-  // Where it sits when stuck, not where it's slid to: near the page's end
-  // the bar slides away on scroll-down, and the line must not move with it.
-  const line = bar
-    ? Math.max(bar.getBoundingClientRect().bottom, parseFloat(getComputedStyle(bar).top) + bar.offsetHeight)
-    : 104;
-  // A part counts as reached well before its top meets the line: the
-  // section links land each part at its scroll-margin (200px), below the
-  // bar, and a real smooth scroll can stop short of that by 50-100px
-  // (Daniel, 2026-10-13) — the part landed on must read as the active one.
-  const reached = line + REACH_SLACK;
+  // A part counts once its top is a little below the line — so a part
+  // whose heading is about to slide under the bar already reads as the
+  // one you're in.
+  const reached = barGeometry().line + REACH_SLACK;
   const markers = [...document.querySelectorAll<HTMLElement>("[data-sticky-section]")].filter(visible);
   // The last part reached stays current through the air before the next
   // one, so the label and link don't blink off between sections.
@@ -40,7 +61,45 @@ function currentSection(): HomeSection {
   return current;
 }
 
-const REACH_SLACK = 120;
+const REACH_SLACK = 48;
+
+// Air between the bar and what a section link lands on.
+const LANDING_GAP_PX = 16;
+
+// Scroll so a part sits right under the stuck bar (Daniel, 2026-10-13:
+// "déjala pegada bajo la barra"). It lands on the part's [data-landing]
+// element if it has one — the cards under "Últimos días" rather than the
+// heading the bar already names, the Curatoría card rather than the air
+// above it. Smooth, then squared up once the scroll ends, since the bar
+// tightening mid-scroll moves the page under it.
+export function scrollToHomeSection(el: HTMLElement) {
+  const anchor = el.querySelector<HTMLElement>("[data-landing]") ?? el;
+  // From the venue section on, scrolling down slides the bar away
+  // (WeekHeading) — there the part lands under the fixed top bar instead.
+  const tail = visibleOne("#espacios-section");
+  const target = (barGone: boolean) => {
+    const { line, barTop, shrinkLeft } = barGeometry();
+    return Math.max(0, window.scrollY + anchor.getBoundingClientRect().top - shrinkLeft - (barGone ? barTop : line) - LANDING_GAP_PX);
+  };
+  const headingDown = anchor.getBoundingClientRect().top > 0;
+  const intoTail = tail !== null && anchor.getBoundingClientRect().top >= tail.getBoundingClientRect().top - 1;
+  window.scrollTo({ top: target(intoTail && headingDown), behavior: "smooth" });
+  function squareUp() {
+    cancel();
+    const y = target(barGeometry().slidAway);
+    if (Math.abs(y - window.scrollY) > 2) window.scrollTo({ top: y, behavior: "instant" });
+  }
+  // Taking over the scroll by hand cancels the squaring up.
+  function cancel() {
+    window.removeEventListener("scrollend", squareUp);
+    HAND_EVENTS.forEach((type) => window.removeEventListener(type, cancel));
+  }
+  window.addEventListener("scrollend", squareUp);
+  HAND_EVENTS.forEach((type) => window.addEventListener(type, cancel, { passive: true }));
+}
+
+// Hand-driven scrolling: wheel/trackpad, touch, keys, the scrollbar.
+const HAND_EVENTS = ["wheel", "touchstart", "keydown", "pointerdown"] as const;
 
 // A section link's own pick (Daniel, 2026-10-13: click "Curatoría" and
 // the bar still read "EL ARTE MÁS CERCA" — the smooth scroll lands a bit
@@ -68,9 +127,7 @@ export function useHomeSection(): HomeSection {
     }
     update();
     subscribers.add(update);
-    // Hand-driven scrolling: wheel/trackpad, touch, keys, the scrollbar.
-    const handEvents = ["wheel", "touchstart", "keydown", "pointerdown"] as const;
-    handEvents.forEach((type) => window.addEventListener(type, unpin, { passive: true }));
+    HAND_EVENTS.forEach((type) => window.addEventListener(type, unpin, { passive: true }));
     window.addEventListener("scroll", update, { passive: true });
     window.addEventListener("resize", update);
     // The sticky bar tightens once stuck (a 300ms transition) and moves
@@ -79,7 +136,7 @@ export function useHomeSection(): HomeSection {
     bar?.addEventListener("transitionend", update);
     return () => {
       subscribers.delete(update);
-      handEvents.forEach((type) => window.removeEventListener(type, unpin));
+      HAND_EVENTS.forEach((type) => window.removeEventListener(type, unpin));
       window.removeEventListener("scroll", update);
       window.removeEventListener("resize", update);
       bar?.removeEventListener("transitionend", update);

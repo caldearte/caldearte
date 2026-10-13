@@ -4,7 +4,7 @@ import Link from "next/link";
 import { esCL } from "@/i18n/es-CL";
 import { useIsAdmin } from "@/lib/useIsAdmin";
 import SiteWordmark from "./SiteWordmark";
-import { pinHomeSection, useHomeSection, type HomeSection } from "@/lib/useHomeSection";
+import { pinHomeSection, scrollToHomeSection, useHomeSection, type HomeSection } from "@/lib/useHomeSection";
 
 interface HeaderProps {
   onOpenSearch: () => void;
@@ -44,8 +44,8 @@ function AdminLink() {
 }
 
 // Jump links to the home's sections, desktop only (Daniel, 2026-10-13).
-// Targets carry scroll-mt so their heading lands under the fixed bar and
-// the sticky week/región bar; "Destacado" is the top of the page (the
+// Each lands right under the sticky week/región bar (scrollToHomeSection);
+// "Destacado" is the top of the page (the
 // agenda, under "EL ARTE MÁS CERCA"). If a section isn't on the page this
 // week (no "Últimos días"), the link falls back to the cartelera's start.
 // `section` is the useHomeSection value that marks the link active
@@ -70,7 +70,7 @@ function SectionNav() {
     const el = targets
       .flatMap((id) => [...document.querySelectorAll<HTMLElement>(`[id="${id}"]`)])
       .find((e) => e.getClientRects().length > 0);
-    el?.scrollIntoView({ behavior: "smooth", block: "start" });
+    if (el) scrollToHomeSection(el);
   }
 
   return (

@@ -6,6 +6,7 @@ import { esCL } from "@/i18n/es-CL";
 import { fmtUntilPill, isClosingSoon } from "@/lib/date";
 import { eventComuna } from "@/lib/event-utils";
 import { useEventCardActions } from "@/lib/useEventCardActions";
+import { useHomeSection } from "@/lib/useHomeSection";
 import { resolveArtistDisplay } from "@/lib/social/flyerText";
 import type { EventRecord } from "@/lib/events";
 import CardImage from "./CardImage";
@@ -33,6 +34,7 @@ export default function CarteleraSection({ events, today }: CarteleraSectionProp
   const [comuna, setComuna] = useState<string | null>(null);
   const [expanded, setExpanded] = useState(false);
   const [closingExpanded, setClosingExpanded] = useState(false);
+  const section = useHomeSection();
 
   if (events.length === 0) return null;
 
@@ -47,6 +49,12 @@ export default function CarteleraSection({ events, today }: CarteleraSectionProp
   const comunas = [...comunaCounts.entries()].sort((a, b) => b[1] - a[1]).map(([c]) => c);
   const filtered = comuna ? rest.filter((e) => eventComuna(e) === comuna) : rest;
   const visible = expanded ? filtered : filtered.slice(0, INITIAL_VISIBLE);
+
+  // From md up the sticky bar names the part being read ("ÚLTIMOS DÍAS",
+  // "AÚN EN CARTELERA"), so that part's own heading fades out meanwhile —
+  // never both at once (Daniel, 2026-10-13). It keeps its space so nothing
+  // jumps. On a phone the stuck bar drops its label, so the heading stays.
+  const headingFade = (active: boolean) => `transition-opacity duration-200 ${active ? "md:opacity-0" : ""}`;
 
   function pickComuna(next: string | null) {
     setComuna(next);
@@ -63,18 +71,28 @@ export default function CarteleraSection({ events, today }: CarteleraSectionProp
         // data-sticky-section: WeekHeading's sticky label shows "ÚLTIMOS
         // DÍAS" / "AÚN EN CARTELERA" while that part is under the bar.
         <div id="ultimos-dias" className="mb-[32px] scroll-mt-[200px]" data-sticky-section="ultimos">
-          <h3 className="font-lato font-black text-[20px] md:text-[22px] text-brand-magenta mb-[10px]">{esCL.home.ultimosDias}</h3>
-          <TileGrid events={closingExpanded ? closing : closing.slice(0, INITIAL_VISIBLE_CLOSING)} today={today} variant="closing" />
-          {closing.length > INITIAL_VISIBLE_CLOSING && (
-            <ExpandButton expanded={closingExpanded} label={esCL.home.seeAllClosing(closing.length)} onClick={() => setClosingExpanded((e) => !e)} />
-          )}
+          <h3 className={`font-lato font-black text-[20px] md:text-[22px] text-brand-magenta mb-[10px] ${headingFade(section === "ultimos")}`}>
+            {esCL.home.ultimosDias}
+          </h3>
+          {/* data-landing: where the top bar's link lands, the heading tucked under the bar. */}
+          <div data-landing>
+            <TileGrid events={closingExpanded ? closing : closing.slice(0, INITIAL_VISIBLE_CLOSING)} today={today} variant="closing" />
+            {closing.length > INITIAL_VISIBLE_CLOSING && (
+              <ExpandButton expanded={closingExpanded} label={esCL.home.seeAllClosing(closing.length)} onClick={() => setClosingExpanded((e) => !e)} />
+            )}
+          </div>
         </div>
       )}
 
       {rest.length > 0 && (
         <div id="cartelera" className="scroll-mt-[200px]" data-sticky-section="aun">
-          {closing.length > 0 && <h3 className="font-lato font-black text-[20px] md:text-[22px] text-text-primary mb-[10px]">{esCL.home.restTitle}</h3>}
+          {closing.length > 0 && (
+            <h3 className={`font-lato font-black text-[20px] md:text-[22px] text-text-primary mb-[10px] ${headingFade(section === "aun")}`}>
+              {esCL.home.restTitle}
+            </h3>
+          )}
 
+          <div data-landing>
           {comunas.length >= MIN_COMUNAS_FOR_FILTER && (
             <div className="-mx-[18px] md:mx-0 mb-[14px]">
               <div className="flex gap-[8px] overflow-x-auto md:flex-wrap px-[18px] md:px-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
@@ -91,6 +109,7 @@ export default function CarteleraSection({ events, today }: CarteleraSectionProp
           {filtered.length > INITIAL_VISIBLE && (
             <ExpandButton expanded={expanded} label={esCL.home.seeAll(filtered.length)} onClick={() => setExpanded((e) => !e)} />
           )}
+          </div>
         </div>
       )}
     </section>
