@@ -6,7 +6,7 @@ import { fetchVenueData } from "@/lib/venues";
 import { findVenueLinkForEvent, type VenueLink } from "@/lib/venuePage";
 import { fetchArtistData } from "@/lib/artists";
 import { findArtistLinksForEvent, type ArtistLink } from "@/lib/artistPage";
-import { truncateDescription, displayNameForCity, resolveAdminRegionName, filterByRegion, filterActiveInRange } from "@/lib/event-utils";
+import { truncateDescription, displayNameForCity, resolveAdminRegionName, filterByRegion, filterActiveInRange, splitAgendaAndCartelera } from "@/lib/event-utils";
 import { buildRegionMetaByCityId, regionIdFromAdminRegionName } from "@/lib/cities";
 import { currentWeekInSantiago, todayInSantiago, isCurrentOrUpcoming } from "@/lib/date";
 import { extractDomain, resolveCardImage } from "@/lib/image-source";
@@ -15,7 +15,8 @@ import { esCL } from "@/i18n/es-CL";
 import EventDetailCard from "@/components/EventDetailCard";
 import EventCityLink from "@/components/EventCityLink";
 import EventPageFooter from "@/components/EventPageFooter";
-import ExpoCard from "@/components/ExpoCard";
+import { AgendaGrid } from "@/components/AgendaSection";
+import { TileGrid } from "@/components/CarteleraSection";
 import SiteWordmark from "@/components/SiteWordmark";
 
 interface PageParams {
@@ -137,15 +138,22 @@ export default async function EventPage({ params }: { params: Promise<PageParams
   const eventRegionId = regionIdFromAdminRegionName(eventAdminRegionName ?? "");
 
   // Deterministic — same input (this event's own región) for every
-  // visitor, so this stays safe to cache. Excludes the event itself; 4
-  // items matches ExposicionesSection's own desktop grid's first "big +
-  // medium" row without needing that component's client-side
-  // slider/toggle machinery this teaser doesn't need.
+  // visitor, so this stays safe to cache. Excludes the event itself. Split
+  // like the home (2026-10-12): the week's upcoming inauguraciones and
+  // visitas guiadas in the agenda's cards, running exhibitions in the
+  // cartelera's — each section looks like its counterpart on the home.
   const today = todayInSantiago();
   const { start: rangeStart, end: rangeEnd } = currentWeekInSantiago();
-  const moreExpos = filterByRegion(filterActiveInRange(events, rangeStart, rangeEnd), eventAdminRegionName ?? "", metaByCityId)
-    .filter((e) => e.id !== event.id && isCurrentOrUpcoming(e, today))
-    .slice(0, 4);
+  const { agenda, cartelera } = splitAgendaAndCartelera(
+    filterByRegion(filterActiveInRange(events, rangeStart, rangeEnd), eventAdminRegionName ?? "", metaByCityId).filter(
+      (e) => e.id !== event.id && isCurrentOrUpcoming(e, today),
+    ),
+    today,
+  );
+  const moreAgenda = agenda.slice(0, 3);
+  // Running today, not just "this month" (isCurrentOrUpcoming's grain) —
+  // a show that closed yesterday isn't "en cartelera".
+  const moreExpos = cartelera.filter((e) => e.runStartDate !== null && e.runEndDate !== null && e.runEndDate >= today).slice(0, 4);
 
   return (
     <main className="min-h-screen w-full bg-surface-sage px-[20px] py-8 md:px-[61px] max-w-[1280px] mx-auto">
@@ -166,14 +174,17 @@ export default async function EventPage({ params }: { params: Promise<PageParams
         {esCL.eventPageBackToHome} →
       </Link>
 
+      {moreAgenda.length > 0 && (
+        <section className="mt-16">
+          <h2 className="font-lato font-black text-[22px] md:text-[26px] text-text-primary mb-[16px]">{esCL.eventPageMoreAgendaLabel}</h2>
+          <AgendaGrid events={moreAgenda} />
+        </section>
+      )}
+
       {moreExpos.length > 0 && (
         <section className="mt-16">
-          <h2 className="font-lato font-black text-[28px] md:text-[41px] text-text-primary mb-6">{esCL.eventPageMoreExposLabel}</h2>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-[20px]">
-            {moreExpos.map((e) => (
-              <ExpoCard key={e.id} event={e} />
-            ))}
-          </div>
+          <h2 className="font-lato font-black text-[22px] md:text-[26px] text-text-primary mb-[16px]">{esCL.eventPageMoreExposLabel}</h2>
+          <TileGrid events={moreExpos} today={today} />
         </section>
       )}
 

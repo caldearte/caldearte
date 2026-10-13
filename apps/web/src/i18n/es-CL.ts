@@ -383,7 +383,8 @@ export const esCL = {
   // comment) — a fixed, non-personalized sample of other current
   // exposiciones in the SAME región as this event, deterministic so the
   // page can stay cache-eligible.
-  eventPageMoreExposLabel: "TAMBIÉN EN CARTELERA",
+  eventPageMoreExposLabel: "También en cartelera",
+  eventPageMoreAgendaLabel: "También esta semana",
   eventPageSourceLabel: (domain: string) => `Fuente: ${domain}`,
   eventPageSourceLink: "Ver publicación original ↗",
   eventPageAttributionNote: (domain: string) =>
@@ -406,6 +407,8 @@ export const esCL = {
   eventPageArtistLink: (artistName: string) => `Más muestras de ${artistName} →`,
   venuePageCurrentLabel: "EN CARTELERA Y PRÓXIMAS",
   venuePagePastLabel: "MUESTRAS ANTERIORES",
+  catalogPageUpcomingLabel: "Próximas inauguraciones y visitas",
+  catalogPageRunningLabel: "En cartelera",
   venuePageNoCurrent: "Por ahora no hay muestras vigentes en este espacio.",
   venuePageEventCount: (n: number) => `${n} ${pluralize(n, "muestra registrada", "muestras registradas")} en Caldearte`,
   venuePageInstagramLink: (handle: string) => `@${handle} en Instagram ↗`,

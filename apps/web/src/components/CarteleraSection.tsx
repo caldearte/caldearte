@@ -123,19 +123,22 @@ function ComunaChip({ label, count, selected, onClick }: { label: string; count?
   );
 }
 
-function TileGrid({ events, today }: { events: EventRecord[]; today: string }) {
+// Also used outside the home (the ficha, venue and artist pages) — the
+// cartelera's look wherever exhibitions are listed. `showPeriod` swaps
+// "Hasta el…" for the full run ("12 al 28 de julio"), for past shows.
+export function TileGrid({ events, today, showPeriod = false }: { events: EventRecord[]; today: string; showPeriod?: boolean }) {
   return (
     <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-x-[12px] gap-y-[20px]">
       {events.map((e) => (
-        <ExpoTile key={e.id} event={e} today={today} />
+        <ExpoTile key={e.id} event={e} today={today} showPeriod={showPeriod} />
       ))}
     </div>
   );
 }
 
-function ExpoTile({ event, today }: { event: EventRecord; today: string }) {
-  const { untilDateLine, venueLine } = useEventCardActions(event, "expo", true);
-  const closing = isClosingSoon(event.runEndDate, today);
+export function ExpoTile({ event, today, showPeriod = false }: { event: EventRecord; today: string; showPeriod?: boolean }) {
+  const { untilDateLine, dateLine, venueLine } = useEventCardActions(event, "expo", true);
+  const closing = !showPeriod && isClosingSoon(event.runEndDate, today);
 
   return (
     <Link href={`/eventos/${event.id}`} className="group flex flex-col gap-[8px] min-w-0">
@@ -143,11 +146,13 @@ function ExpoTile({ event, today }: { event: EventRecord; today: string }) {
         <CardImage imageUrl={event.imageUrl} sourceUrl={event.sourceUrl} sensitivityTags={event.sensitivityTags} alt={event.title} compact />
       </div>
       <div className="flex flex-col gap-[3px]">
-        {untilDateLine && (
-          <p className={`font-geist font-extrabold text-[11px] ${closing ? "text-brand-magenta" : "text-text-secondary"}`}>
-            {event.runEndDate === today ? esCL.home.closesToday : untilDateLine}
-          </p>
-        )}
+        {showPeriod
+          ? dateLine && <p className="font-geist font-extrabold text-[11px] text-text-secondary">{dateLine}</p>
+          : untilDateLine && (
+              <p className={`font-geist font-extrabold text-[11px] ${closing ? "text-brand-magenta" : "text-text-secondary"}`}>
+                {event.runEndDate === today ? esCL.home.closesToday : untilDateLine}
+              </p>
+            )}
         <p className="font-fragment-mono text-[14px] leading-[1.2] text-text-primary line-clamp-2 group-hover:underline">{event.title}</p>
         <p className="font-geist text-[12px] text-text-secondary line-clamp-1">{venueLine}</p>
       </div>

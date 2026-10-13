@@ -106,9 +106,13 @@ export async function computeHomeViewModel({
   const exposActualesForCity = todayFilterOn ? filterActiveInRange(split.exposActuales, today, today) : split.exposActuales;
   const inauguraciones = vigentesFilterOn ? filterUpcomingInauguraciones(inauguracionesForCity, today) : inauguracionesForCity;
   const visitasGuiadas = vigentesFilterOn ? filterUpcomingVisitasGuiadas(visitasGuiadasForCity, today) : visitasGuiadasForCity;
-  const exposActuales = exposActualesForCity;
+  // On the current week, an exhibition that closed earlier this week isn't
+  // "en cartelera" anymore — same day-level rule as the venue and artist
+  // pages (lib/catalogPage.ts). Other weeks keep the whole week's list.
+  const isCurrentWeek = rangeStart === currentWeekInSantiago().start;
+  const exposActuales = isCurrentWeek ? exposActualesForCity.filter((e) => e.runEndDate! >= today) : exposActualesForCity;
 
-  const regionActivity = activityByRegion(activeInRange, rangeStart, rangeEnd, metaByCityId);
+  const regionActivity = activityByRegion(activeInRange, rangeStart, rangeEnd, metaByCityId, isCurrentWeek ? today : undefined);
 
   const nextEvent = findNextEvent(filterByRegion(visible, adminRegionName, metaByCityId), today, rangeEnd);
 

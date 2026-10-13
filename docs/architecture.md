@@ -459,6 +459,14 @@ current week, past days fold to one line in place; text rules shared with `flyer
 cartelera (`CarteleraSection` — "Últimos días" first, then a grid with
 comuna chips and "Ver las N" instead of pages); a compact venue strip
 (this section's `EspaciosSection`); the unchanged `NewsletterSection`.
+The same two card styles are used wherever events are listed outside
+the home — the ficha's "También esta semana" / "También en cartelera" and
+the venue and artist pages — split by `splitAgendaAndCartelera`
+(upcoming inauguraciones and visitas guiadas → `AgendaCard`, the rest →
+`ExpoTile`). On the current week an exhibition that already closed is
+left out of the cartelera and the counts (day-level, same rule as
+`lib/catalogPage.ts`); `isCurrentOrUpcoming`'s month grain still decides
+what's in range elsewhere.
 Per-región counts come from `activityByRegion` (distinct events, so an
 opening that is also a running show counts once), computed in the same
 `computeHomeViewModel` as everything else — still no cookies in the

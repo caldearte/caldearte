@@ -109,6 +109,19 @@ function DayBlock({ group, today, past, firstImagePriority }: { group: DayGroup;
   );
 }
 
+// The agenda's card grid, for lists outside the home (the ficha, venue and
+// artist pages) — same columns as a day block here. Events must have an
+// openingDatetime (see splitAgendaAndCartelera).
+export function AgendaGrid({ events }: { events: EventRecord[] }) {
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-[16px] md:gap-x-[20px] gap-y-[32px]">
+      {events.map((e) => (
+        <AgendaCard key={e.id} event={e} />
+      ))}
+    </div>
+  );
+}
+
 // The flyer's pieces, under the photo instead of on it (Daniel,
 // 2026-10-12: overlays suit Instagram, on the site the image should stay
 // clean): a clean 4:5 photo, then one tag with the artist line, the
@@ -117,7 +130,7 @@ function DayBlock({ group, today, past, firstImagePriority }: { group: DayGroup;
 // "Agregar al calendario" buttons — white here, since the page itself is
 // the flyer's sage. The tag spans the card's width (for the buttons);
 // long text wraps, balanced, like the flyer's.
-function AgendaCard({ event, priority }: { event: EventRecord; priority: boolean }) {
+export function AgendaCard({ event, priority = false }: { event: EventRecord; priority?: boolean }) {
   const type = event.eventType === "visita_guiada" ? "visita_guiada" : "inauguracion";
   const title = titleWithTypePrefix(event.title, type);
   const artist = resolveArtistDisplay(event.artist);
