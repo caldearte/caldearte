@@ -24,7 +24,7 @@ interface AgendaSectionProps {
 // The week's inauguraciones and visitas guiadas (2026-10-12) — the most
 // highlighted thing on the home, so each one is a big card in the same
 // look as the Instagram flyer (flyer-v2.tsx): a clean 4:5 photo with the
-// flyer's pills and tags under it (AgendaCard). Grouped by day,
+// flyer's pills and tags under it (AgendaCard). Ordered by day,
 // Monday to Sunday — visitors plan by day, not by event type, so both
 // types share one list (same reason the Instagram carousel merged them on
 // 2026-08-31). On the current week, days already past stay in their place
@@ -32,28 +32,65 @@ interface AgendaSectionProps {
 // days that are over.
 export default function AgendaSection({ inauguraciones, visitasGuiadas, regionName, today, isCurrentWeek }: AgendaSectionProps) {
   const groups = groupByDay([...inauguraciones, ...visitasGuiadas].filter((e) => e.openingDatetime !== null));
-  const firstUpcoming = groups.findIndex((g) => !isCurrentWeek || g.date >= today);
+  // Past days of the current week start folded; these are the ones the
+  // visitor has opened.
+  const [openedPast, setOpenedPast] = useState<Set<string>>(() => new Set());
+  // The first card of the first day still to come loads its photo first.
+  const priorityId = groups.find((g) => !isCurrentWeek || g.date >= today)?.events[0]?.id;
 
   return (
     // No visible section title (Daniel, 2026-10-12): the h1 already says
     // which week and where, and the cards' own "Inauguración: …" tags say
     // what they are. The name stays for screen readers.
     <section aria-label={esCL.home.agendaTitle} className="mt-[24px]">
-
       {groups.length === 0 && <p className="font-geist text-[15px] text-text-primary">{esCL.home.agendaEmpty(regionName)}</p>}
 
-      {/* Days flow side by side, each spanning as many columns as it has
-          events — on desktop a day with one opening shares its row with
-          the next days instead of leaving two thirds of it empty. Same
-          20px gap inside and between days, so the cards line up. */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-[16px] md:gap-x-[20px] gap-y-[44px] md:gap-y-[56px]">
-        {groups.map((g, i) => (
-          <DayBlock key={g.date} group={g} today={today} past={isCurrentWeek && g.date < today} firstImagePriority={i === firstUpcoming} />
-        ))}
+      {/* One continuous grid, Monday to Sunday (Daniel, 2026-10-13): cards
+          flow into the next free column, so a day that doesn't fit in what
+          a row has left no longer drops whole to the next row and leaves a
+          hole. The day's name sits over its first card; its other cards get
+          an invisible copy of the heading (from sm up) so photos in a row
+          still line up. A day can now wrap across rows — each card's pill
+          also names its day. */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-[16px] md:gap-x-[20px] gap-y-[36px] md:gap-y-[56px]">
+        {groups.flatMap((g) => {
+          const heading = fmtAgendaDay(g.date, today);
+          const past = isCurrentWeek && g.date < today;
+          if (past && !openedPast.has(g.date)) {
+            return [
+              <button
+                key={g.date}
+                type="button"
+                aria-expanded={false}
+                onClick={() => setOpenedPast((prev) => new Set(prev).add(g.date))}
+                className="col-span-full w-full flex items-baseline justify-between gap-3 border-b border-text-primary/15 pb-[8px] text-left cursor-pointer"
+              >
+                <span className="font-lato font-black text-[22px] md:text-[26px] text-text-secondary">{heading}</span>
+                <span className="font-fragment-mono text-[13px] text-text-secondary underline">{esCL.home.agendaPastDay(g.events.length)}</span>
+              </button>,
+            ];
+          }
+          return g.events.map((e, i) => {
+            return (
+              <div key={e.id} className={past ? "opacity-70" : ""}>
+                {i === 0 ? (
+                  <h3 className={DAY_HEADING}>{heading}</h3>
+                ) : (
+                  <div aria-hidden="true" className={`${DAY_HEADING} invisible hidden sm:block`}>
+                    {heading}
+                  </div>
+                )}
+                <AgendaCard event={e} priority={e.id === priorityId} />
+              </div>
+            );
+          });
+        })}
       </div>
     </section>
   );
 }
+
+const DAY_HEADING = "font-lato font-black text-[22px] md:text-[26px] leading-tight text-text-primary mb-[16px]";
 
 interface DayGroup {
   date: string; // YYYY-MM-DD, Chilean calendar date
@@ -71,42 +108,6 @@ function groupByDay(events: EventRecord[]): DayGroup[] {
     else groups.push({ date, events: [e] });
   }
   return groups;
-}
-
-// Column span of a day in the outer grid, and its own inner columns —
-// written out in full so Tailwind sees every class.
-const SPAN: Record<1 | 2 | 3, string> = { 1: "", 2: "sm:col-span-2", 3: "sm:col-span-2 lg:col-span-3" };
-const INNER_COLS: Record<1 | 2 | 3, string> = { 1: "grid-cols-1", 2: "grid-cols-1 sm:grid-cols-2", 3: "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3" };
-
-function DayBlock({ group, today, past, firstImagePriority }: { group: DayGroup; today: string; past: boolean; firstImagePriority: boolean }) {
-  const [open, setOpen] = useState(!past);
-  const heading = fmtAgendaDay(group.date, today);
-  const n = Math.min(group.events.length, 3) as 1 | 2 | 3;
-
-  if (past && !open) {
-    return (
-      <button
-        type="button"
-        aria-expanded={false}
-        onClick={() => setOpen(true)}
-        className="col-span-full w-full flex items-baseline justify-between gap-3 border-b border-text-primary/15 pb-[8px] text-left cursor-pointer"
-      >
-        <span className="font-lato font-black text-[22px] md:text-[26px] text-text-secondary">{heading}</span>
-        <span className="font-fragment-mono text-[13px] text-text-secondary underline">{esCL.home.agendaPastDay(group.events.length)}</span>
-      </button>
-    );
-  }
-
-  return (
-    <div className={`${SPAN[n]} ${past ? "opacity-70" : ""}`}>
-      <h3 className="font-lato font-black text-[22px] md:text-[26px] text-text-primary mb-[16px]">{heading}</h3>
-      <div className={`grid ${INNER_COLS[n]} gap-[16px] md:gap-[20px]`}>
-        {group.events.map((e, i) => (
-          <AgendaCard key={e.id} event={e} priority={firstImagePriority && i === 0} />
-        ))}
-      </div>
-    </div>
-  );
 }
 
 // The agenda's card grid, for lists outside the home (the ficha, venue and

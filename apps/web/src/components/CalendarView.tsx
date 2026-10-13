@@ -200,7 +200,12 @@ export default function CalendarView({
               today={today}
               isCurrentWeek={isCurrentWeek}
             />
-            <div className="w-full flex flex-wrap justify-center">
+            {/* Lots of air around the banner (Daniel, 2026-10-13) — it
+                separates the week's agenda from the cartelera: 120px above
+                and below on a phone, 160px on desktop (above, this margin
+                plus the banner's own mt-16; below, this margin, which the
+                cartelera's mt-[48px] collapses into). */}
+            <div className="w-full flex flex-wrap justify-center mt-[56px] md:mt-[96px] mb-[120px] md:mb-[160px]">
               <CuratoriaBanner />
             </div>
             <CarteleraSection events={exposActuales} today={today} />
