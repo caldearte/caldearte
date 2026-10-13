@@ -159,8 +159,9 @@ export function ExpoTile({ event, today, showPeriod = false }: { event: EventRec
       </div>
       <div className="w-full flex flex-col items-start gap-[5px] rounded-[18px] bg-surface-white px-[12px] pt-[9px] pb-[11px]">
         {artist && <span className="font-geist font-semibold text-[10px] leading-[1.25] tracking-[1px] uppercase text-text-secondary line-clamp-1">{artist}</span>}
-        {/* One line across the whole tag, "…" past it (Daniel, 2026-10-13)
-            — the full title is on the ficha. title attr shows it on hover. */}
+        {/* Title and venue: one line each across the whole tag, "…" past it
+            (Daniel, 2026-10-13) — the full text is on the ficha, and in the
+            title attribute on hover. */}
         <span title={event.title} className="block w-full truncate font-lato font-black text-[14px] leading-[1.25] tracking-[0.2px] uppercase text-brand-magenta group-hover:underline">
           {event.title}
         </span>
@@ -169,7 +170,9 @@ export function ExpoTile({ event, today, showPeriod = false }: { event: EventRec
             {pill}
           </span>
         )}
-        <span className="font-geist font-semibold text-[10px] leading-[1.3] tracking-[1px] uppercase text-text-secondary line-clamp-2">{venueLine}</span>
+        <span title={venueLine} className="block w-full truncate font-geist font-semibold text-[10px] leading-[1.3] tracking-[1px] uppercase text-text-secondary">
+          {venueLine}
+        </span>
       </div>
     </Link>
   );
