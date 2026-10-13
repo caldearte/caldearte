@@ -41,8 +41,8 @@ function AdminLink() {
   );
 }
 
-// Slim fixed top bar (2026-10-12): "CALDEARTE calendario de arte" plus
-// search and menu. Replaces the full-height hero (two-line 96px wordmark,
+// Fixed top bar (2026-10-12): the "CALDE / ARTE." wordmark + "calendario
+// de arte", search and menu. Replaces the full-height hero (two-line 96px wordmark,
 // three-line tagline, SEMANA N°X, the location button and the count
 // rings) that pushed the first event ~1.4 screens down on a phone.
 export default function Header({ onOpenSearch, onOpenMenu }: HeaderProps) {
@@ -50,12 +50,18 @@ export default function Header({ onOpenSearch, onOpenMenu }: HeaderProps) {
     <header>
       {/* `fixed`, not `sticky` — sticky silently failed to pin here
           (verified in-browser). An equal-height spacer below reserves its
-          space in normal flow. */}
+          space in normal flow; keep both heights in sync with the
+          wordmark's size (two lines at 32px / 40px, leading-none). */}
       <div className="fixed top-0 inset-x-0 z-40 bg-surface-sage border-b border-text-primary/10">
-        <div className="max-w-[1280px] mx-auto h-[52px] md:h-[64px] flex items-center justify-between px-[20px] md:px-[61px]">
-          <Link href="/" className="flex items-baseline gap-[10px] min-w-0">
-            <span className="font-lato font-black leading-none text-brand-magenta text-[24px] md:text-[28px]">{esCL.appName}</span>
-            <span className="font-geist text-[13px] md:text-[14px] text-text-secondary truncate">{esCL.home.topBarLabel}</span>
+        <div className="max-w-[1280px] mx-auto h-[84px] md:h-[104px] flex items-center justify-between px-[20px] md:px-[61px]">
+          {/* The two-line "CALDE / ARTE." wordmark (Daniel, 2026-10-12),
+              same as the old hero's and the footer's, at top-bar size. */}
+          <Link href="/" aria-label={esCL.appName} className="flex items-end gap-[12px] min-w-0">
+            <span className="font-lato font-black leading-none text-brand-magenta text-[32px] md:text-[40px]">
+              <span className="block">{esCL.wordmarkLine1}</span>
+              <span className="block">{esCL.wordmarkLine2}</span>
+            </span>
+            <span className="font-geist text-[13px] md:text-[14px] text-text-secondary truncate pb-[2px]">{esCL.home.topBarLabel}</span>
           </Link>
           <div className="flex items-center gap-[16px] shrink-0">
             <AdminLink />
@@ -64,7 +70,7 @@ export default function Header({ onOpenSearch, onOpenMenu }: HeaderProps) {
           </div>
         </div>
       </div>
-      <div className="h-[52px] md:h-[64px]" aria-hidden="true" />
+      <div className="h-[84px] md:h-[104px]" aria-hidden="true" />
     </header>
   );
 }
