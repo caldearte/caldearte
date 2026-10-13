@@ -42,13 +42,35 @@ function currentSection(): HomeSection {
 
 const REACH_SLACK = 120;
 
+// A section link's own pick (Daniel, 2026-10-13: click "Curatoría" and
+// the bar still read "EL ARTE MÁS CERCA" — the smooth scroll lands a bit
+// short of where the geometry above calls it reached). Where you asked to
+// go is where you are until you scroll by hand.
+let pinned: HomeSection | null = null;
+const subscribers = new Set<() => void>();
+
+export function pinHomeSection(section: HomeSection) {
+  pinned = section;
+  subscribers.forEach((notify) => notify());
+}
+
+function unpin() {
+  if (pinned === null) return;
+  pinned = null;
+  subscribers.forEach((notify) => notify());
+}
+
 export function useHomeSection(): HomeSection {
   const [section, setSection] = useState<HomeSection>("destacado");
   useEffect(() => {
     function update() {
-      setSection(currentSection());
+      setSection(pinned ?? currentSection());
     }
     update();
+    subscribers.add(update);
+    // Hand-driven scrolling: wheel/trackpad, touch, keys, the scrollbar.
+    const handEvents = ["wheel", "touchstart", "keydown", "pointerdown"] as const;
+    handEvents.forEach((type) => window.addEventListener(type, unpin, { passive: true }));
     window.addEventListener("scroll", update, { passive: true });
     window.addEventListener("resize", update);
     // The sticky bar tightens once stuck (a 300ms transition) and moves
@@ -56,6 +78,8 @@ export function useHomeSection(): HomeSection {
     const bar = document.querySelector<HTMLElement>("[data-week-bar]");
     bar?.addEventListener("transitionend", update);
     return () => {
+      subscribers.delete(update);
+      handEvents.forEach((type) => window.removeEventListener(type, unpin));
       window.removeEventListener("scroll", update);
       window.removeEventListener("resize", update);
       bar?.removeEventListener("transitionend", update);

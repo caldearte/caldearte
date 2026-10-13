@@ -4,7 +4,7 @@ import Link from "next/link";
 import { esCL } from "@/i18n/es-CL";
 import { useIsAdmin } from "@/lib/useIsAdmin";
 import SiteWordmark from "./SiteWordmark";
-import { useHomeSection, type HomeSection } from "@/lib/useHomeSection";
+import { pinHomeSection, useHomeSection, type HomeSection } from "@/lib/useHomeSection";
 
 interface HeaderProps {
   onOpenSearch: () => void;
@@ -82,6 +82,7 @@ function SectionNav() {
           onClick={(e) => {
             e.preventDefault();
             go(link.targets);
+            pinHomeSection(link.section);
           }}
           aria-current={active === link.section ? "true" : undefined}
           className={`font-geist font-semibold text-[12px] tracking-[1.5px] uppercase whitespace-nowrap hover:text-brand-magenta ${
