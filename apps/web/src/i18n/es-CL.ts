@@ -455,7 +455,6 @@ export const esCL = {
   // one click away in the h1's own dropdown (RegionDropdown) instead of
   // behind the old location button + full-screen panel.
   home: {
-    topBarLabel: "calendario de arte",
     tagline: "EL ARTE MÁS CERCA.",
     weekRegionJoiner: "en",
     weekDropdownAriaLabel: (weekLabel: string) => `${weekLabel} — cambiar semana`,

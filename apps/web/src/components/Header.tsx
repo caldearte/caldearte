@@ -42,8 +42,8 @@ function AdminLink() {
   );
 }
 
-// Fixed top bar (2026-10-12): the "CALDE / ARTE." wordmark + "calendario
-// de arte", search and menu. Replaces the full-height hero (two-line 96px wordmark,
+// Fixed top bar (2026-10-12): the "CALDE / ARTE." wordmark, search and
+// menu. Replaces the full-height hero (two-line 96px wordmark,
 // three-line tagline, SEMANA N°X, the location button and the count
 // rings) that pushed the first event ~1.4 screens down on a phone.
 export default function Header({ onOpenSearch, onOpenMenu }: HeaderProps) {
@@ -56,12 +56,7 @@ export default function Header({ onOpenSearch, onOpenMenu }: HeaderProps) {
       <div className="fixed top-0 inset-x-0 z-40 bg-surface-sage border-b border-text-primary/10">
         <div className="max-w-[1280px] mx-auto h-[84px] md:h-[104px] flex items-center justify-between px-[20px] md:px-[61px]">
           <SiteWordmark />
-          {/* "calendario de arte" sits with the icons, right-aligned and
-              centered on them (Daniel, 2026-10-12); on a narrow phone it
-              may wrap to two right-aligned lines rather than crowd the
-              logo. */}
-          <div className="flex items-center gap-[16px] min-w-0">
-            <span className="min-w-0 text-right font-geist text-[13px] md:text-[14px] leading-tight text-text-secondary">{esCL.home.topBarLabel}</span>
+          <div className="flex items-center gap-[16px]">
             <AdminLink />
             <SearchButton onClick={onOpenSearch} />
             <MenuButton onClick={onOpenMenu} />
