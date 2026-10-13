@@ -456,6 +456,7 @@ export const esCL = {
   // behind the old location button + full-screen panel.
   home: {
     topBarLabel: "calendario de arte",
+    tagline: "EL ARTE ESTÁ MÁS CERCA.",
     weekRegionJoiner: "en",
     weekDropdownAriaLabel: (weekLabel: string) => `${weekLabel} — cambiar semana`,
     weekListAriaLabel: "Elegir semana",

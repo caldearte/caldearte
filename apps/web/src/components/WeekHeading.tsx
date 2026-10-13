@@ -12,8 +12,8 @@ interface WeekHeadingProps {
   isRefreshing: boolean;
 }
 
-// Scroll thresholds for the compact, stuck state — two of them (hysteresis)
-// so the heading's own height change can't make it flicker at the edge.
+// Scroll thresholds for the stuck state — two of them (hysteresis) so the
+// bar's own height change can't make it flicker at the edge.
 const STICK_AT = 60;
 const UNSTICK_AT = 20;
 // Px of scroll in one direction before the bar hides/reappears, so a
@@ -21,7 +21,7 @@ const UNSTICK_AT = 20;
 const DIRECTION_THRESHOLD = 6;
 
 // Sticky-bar behavior (2026-10-12, Daniel): `stuck` once the page has
-// scrolled (compact type); `hidden` only from the venue section
+// scrolled (tighter padding; the tagline hides on a phone); `hidden` only from the venue section
 // (#espacios-section) down — past the event data, scrolling down slides
 // the bar away and scrolling up brings it back.
 function useStickyBar(): { stuck: boolean; hidden: boolean } {
@@ -84,9 +84,19 @@ export default function WeekHeading({ regionControl, rangeStart, currentWeekStar
         stuck ? "py-[10px] border-b border-text-primary/10" : "pt-[20px] md:pt-[28px] pb-[16px]"
       } ${hidden ? "-translate-y-full pointer-events-none" : ""}`}
     >
-      <h1 className={`font-lato font-black leading-[1.15] text-text-primary transition-[font-size] duration-300 ${stuck ? "text-[22px] md:text-[30px]" : "text-[30px] md:text-[44px]"}`}>
-        <WeekDropdown rangeStart={rangeStart} currentWeekStart={currentWeekStart} /> {esCL.home.weekRegionJoiner} {regionControl}
-      </h1>
+      {/* "EL ARTE ESTÁ MÁS CERCA." left, the week/región selector right
+          (Daniel's layout, 2026-10-13); stacked on a phone, where the
+          tagline steps aside once the bar is stuck so it stays one row. */}
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-[10px] md:gap-[24px]">
+        <p className={`font-lato font-black uppercase leading-[1.1] text-text-primary text-[22px] md:text-[32px] ${stuck ? "max-md:hidden" : ""}`}>
+          {esCL.home.tagline}
+        </p>
+        <h1 className="flex flex-wrap items-center gap-x-[8px] md:gap-x-[10px] gap-y-[6px] font-lato font-black leading-[1.15] text-text-primary text-[20px] md:text-[32px]">
+          <WeekDropdown rangeStart={rangeStart} currentWeekStart={currentWeekStart} />
+          <span>{esCL.home.weekRegionJoiner}</span>
+          {regionControl}
+        </h1>
+      </div>
       {isRefreshing && <LoadingBar />}
     </div>
   );

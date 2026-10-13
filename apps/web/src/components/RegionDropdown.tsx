@@ -41,6 +41,7 @@ export default function RegionDropdown({
       label={locating ? esCL.home.locating : regionName}
       ariaLabel={esCL.home.regionDropdownAriaLabel(regionName)}
       listAriaLabel={esCL.home.regionsNavAriaLabel}
+      align="right"
     >
       {(close) => (
         <RegionList

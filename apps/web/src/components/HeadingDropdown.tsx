@@ -6,15 +6,20 @@ interface HeadingDropdownProps {
   label: ReactNode;
   ariaLabel: string;
   listAriaLabel: string;
+  // Which edge of the button the desktop panel lines up with — "right" for
+  // a control sitting at the page's right edge, so the panel stays on
+  // screen. Phones always get the full-width panel.
+  align?: "left" | "right";
   // Renders the popover's content; call `close` after acting on a choice.
   children: (close: () => void) => ReactNode;
 }
 
-// A word inside the home's h1 that opens a list (2026-10-12): "[Esta
+// A word inside the home's h1 that opens a list, boxed with a rounded gray
+// border (2026-10-12): "[Esta
 // semana ⌄] en [Santiago ⌄]" — the week (WeekDropdown) and the región
 // (RegionDropdown). Inherits the h1's type; while open the page behind is
 // frozen and dimmed, and a click outside or Escape closes it.
-export default function HeadingDropdown({ label, ariaLabel, listAriaLabel, children }: HeadingDropdownProps) {
+export default function HeadingDropdown({ label, ariaLabel, listAriaLabel, align = "left", children }: HeadingDropdownProps) {
   const [open, setOpen] = useState(false);
   // Phone: the panel spans the whole screen width, just under the button
   // (Daniel, 2026-10-12 — anchored to the word, a 320px panel ran off the
@@ -71,7 +76,7 @@ export default function HeadingDropdown({ label, ariaLabel, listAriaLabel, child
         aria-expanded={open}
         aria-label={ariaLabel}
         onClick={toggle}
-        className="inline-flex items-baseline gap-[8px] text-left underline decoration-text-primary/25 decoration-[3px] underline-offset-[6px] cursor-pointer hover:decoration-brand-magenta"
+        className="inline-flex items-baseline gap-[6px] md:gap-[8px] text-left rounded-[12px] border border-text-primary/25 px-[10px] md:px-[14px] pt-[4px] pb-[8px] underline decoration-text-primary/25 decoration-[3px] underline-offset-[6px] cursor-pointer hover:border-text-primary/50 hover:decoration-brand-magenta"
       >
         {label}
         {/* Inline (not the 1.6px-stroke chevron-down.svg) so it matches the
@@ -92,7 +97,7 @@ export default function HeadingDropdown({ label, ariaLabel, listAriaLabel, child
           aria-label={listAriaLabel}
           style={phoneTop !== null ? { top: phoneTop, maxHeight: `calc(100dvh - ${phoneTop + 12}px)` } : undefined}
           className={`z-30 overflow-y-auto overscroll-contain bg-surface-white shadow-lg border border-text-primary/10 py-[6px] font-geist font-normal text-[15px] leading-normal tracking-normal ${
-            phoneTop !== null ? "fixed inset-x-0 rounded-b-[14px] border-x-0" : "absolute left-0 top-full mt-[10px] w-[320px] max-h-[65vh] rounded-[10px]"
+            phoneTop !== null ? "fixed inset-x-0 rounded-b-[14px] border-x-0" : `absolute ${align === "right" ? "right-0" : "left-0"} top-full mt-[10px] w-[320px] max-h-[65vh] rounded-[10px]`
           }`}
         >
           {children(() => setOpen(false))}

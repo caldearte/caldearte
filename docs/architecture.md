@@ -434,9 +434,11 @@ site had to convert the visits it got): the first event used to appear
 wordmark, location button, count rings) and the content sat in three
 paged sliders ("1/15" for Santiago's exposiciones on mobile). Now, in
 order: a fixed top bar, the "CALDE / ARTE." wordmark with "calendario de
-arte" by the icons (`Header`); the h1 "[Esta semana ⌄] en [Santiago ⌄]"
-(`WeekHeading` — sticky under the top bar since the whole page is that
-week + región's data, compact once scrolled, sliding away on scroll-down
+arte" by the icons (`Header`); "EL ARTE ESTÁ MÁS CERCA." on the left and
+the h1 "[Esta semana ⌄] en [Santiago ⌄]" on the right, each word a
+gray-bordered box (`WeekHeading` — stacked on a phone, tagline hidden
+once stuck; sticky under the top bar since the whole page is that
+week + región's data, tighter once scrolled, sliding away on scroll-down
 only from the venue section on; any change scrolls back to the top), both words
 dropdowns built on `HeadingDropdown` (full screen width under the h1 on a
 phone; while open the page behind is frozen and dimmed, the panel scrolls
