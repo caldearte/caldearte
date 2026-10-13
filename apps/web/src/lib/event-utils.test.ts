@@ -297,7 +297,7 @@ test("truncateDescription cuts a long description to maxLength and appends an el
 });
 
 // Exported for the event detail page's comuna link (apps/web/src/app/eventos/[id]/page.tsx,
-// EventCityLink) — needs the exact same id/name a click on this event
+// EventComunaTag) — needs the exact same id/name a click on this event
 // elsewhere in the app already resolves to.
 test("resolveCityId prefers regionName (curator-validated) over a freeform_location guess", () => {
   assert.equal(resolveCityId(event({ freeformLocation: "Algún texto libre", regionName: "Punta Arenas" })), "punta-arenas");

@@ -7,13 +7,13 @@ import { findVenueLinkForEvent, type VenueLink } from "@/lib/venuePage";
 import { fetchArtistData } from "@/lib/artists";
 import { findArtistLinksForEvent, type ArtistLink } from "@/lib/artistPage";
 import { truncateDescription, displayNameForCity, resolveAdminRegionName, filterByRegion, filterActiveInRange, splitAgendaAndCartelera } from "@/lib/event-utils";
-import { buildRegionMetaByCityId, regionIdFromAdminRegionName } from "@/lib/cities";
+import { buildRegionMetaByCityId } from "@/lib/cities";
 import { currentWeekInSantiago, todayInSantiago, isCurrentOrUpcoming } from "@/lib/date";
 import { extractDomain, resolveCardImage } from "@/lib/image-source";
 import { buildEventJsonLd, jsonLdScriptContent } from "@/lib/eventJsonLd";
 import { esCL } from "@/i18n/es-CL";
 import EventDetailCard from "@/components/EventDetailCard";
-import EventCityLink from "@/components/EventCityLink";
+import EventComunaTag from "@/components/EventComunaTag";
 import EventPageFooter from "@/components/EventPageFooter";
 import { AgendaGrid } from "@/components/AgendaSection";
 import { TileGrid } from "@/components/CarteleraSection";
@@ -135,7 +135,6 @@ export default async function EventPage({ params }: { params: Promise<PageParams
   const metaByCityId = buildRegionMetaByCityId(regions);
   const eventCityName = displayNameForCity(event);
   const eventAdminRegionName = resolveAdminRegionName(event, metaByCityId);
-  const eventRegionId = regionIdFromAdminRegionName(eventAdminRegionName ?? "");
 
   // Deterministic — same input (this event's own región) for every
   // visitor, so this stays safe to cache. Excludes the event itself. Split
@@ -162,7 +161,7 @@ export default async function EventPage({ params }: { params: Promise<PageParams
 
       <div className="flex items-center justify-between gap-2 mb-[40px] md:mb-[60px]">
         <SiteWordmark />
-        <EventCityLink regionId={eventRegionId} cityName={eventCityName} />
+        <EventComunaTag cityName={eventCityName} />
       </div>
 
       <EventDetailCard event={event} domain={domain} venueLink={venueLink} artistLinks={artistLinks} />
