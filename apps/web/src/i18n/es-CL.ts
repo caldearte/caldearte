@@ -458,6 +458,13 @@ export const esCL = {
     tagline: "EL ARTE MÁS CERCA",
     // The sticky bar's left label swaps to the section scrolling under it.
     stickyCuratoria: "CURATORÍA",
+    // Top bar section links (desktop).
+    sectionNavAriaLabel: "Secciones",
+    navDestacado: "Destacado",
+    navCuratoria: "Curatoría",
+    navUltimosDias: "Últimos días",
+    navCartelera: "Cartelera",
+    navGuiaSemanal: "Boletín",
     stickyUltimosDias: "ÚLTIMOS DÍAS",
     stickyAunEnCartelera: "AÚN EN CARTELERA",
     weekRegionJoiner: "en",

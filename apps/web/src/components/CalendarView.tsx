@@ -205,7 +205,7 @@ export default function CalendarView({
                 and below on a phone, 160px on desktop (above, this margin
                 plus the banner's own mt-16; below, this margin, which the
                 cartelera's mt-[48px] collapses into). */}
-            <div data-sticky-section="curatoria" className="w-full flex flex-wrap justify-center mt-[56px] md:mt-[96px] mb-[120px] md:mb-[160px]">
+            <div id="curatoria" data-sticky-section="curatoria" className="scroll-mt-[200px] w-full flex flex-wrap justify-center mt-[56px] md:mt-[96px] mb-[120px] md:mb-[160px]">
               <CuratoriaBanner />
             </div>
             <CarteleraSection events={exposActuales} today={today} />

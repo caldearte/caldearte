@@ -434,9 +434,12 @@ site had to convert the visits it got): the first event used to appear
 wordmark, location button, count rings) and the content sat in three
 paged sliders ("1/15" for Santiago's exposiciones on mobile). Now, in
 order: a fixed top bar with the "CALDE / ARTE." wordmark, search and menu
-(`Header`); "EL ARTE MÁS CERCA" on the left (swapping to "ÚLTIMOS DÍAS" / "AÚN EN
-CARTELERA" while those parts of the cartelera — marked
-`data-sticky-section` — pass under the bar) and
+(`Header` — on desktop, lg+, also centered links to the home's parts:
+Destacado · Curatoría · Últimos días · Cartelera · Boletín, the one being
+read in magenta); "EL ARTE MÁS CERCA" on the left (swapping to "CURATORÍA" /
+"ÚLTIMOS DÍAS" / "AÚN EN CARTELERA" once those parts — marked
+`data-sticky-section` — reach the bar; `useHomeSection` decides it for both
+the label and the links) and
 the h1 "[Esta semana ⌄] en [Santiago ⌄]" on the right, each word a
 gray-bordered box (`WeekHeading` — stacked on a phone, tagline hidden
 once stuck; sticky under the top bar since the whole page is that

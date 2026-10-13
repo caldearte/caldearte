@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState, type ReactNode, type RefObject } from "react";
+import { useEffect, useState, type ReactNode } from "react";
+import { useHomeSection } from "@/lib/useHomeSection";
 import { esCL } from "@/i18n/es-CL";
 import WeekDropdown from "./WeekDropdown";
 
@@ -21,16 +22,12 @@ const UNSTICK_AT = 20;
 const DIRECTION_THRESHOLD = 6;
 
 // Sticky-bar behavior (2026-10-12, Daniel): `stuck` once the page has
-// scrolled (tighter padding; the left label hides on a phone); `section`
-// = which part of the cartelera is under the bar, for that label; `hidden` only from the venue section
+// scrolled (tighter padding; the left label hides on a phone); `hidden` only from the venue section
 // (#espacios-section) down — past the event data, scrolling down slides
 // the bar away and scrolling up brings it back.
-type StickySection = "curatoria" | "ultimos" | "aun" | null;
-
-function useStickyBar(barRef: RefObject<HTMLDivElement | null>): { stuck: boolean; hidden: boolean; section: StickySection } {
+function useStickyBar(): { stuck: boolean; hidden: boolean } {
   const [stuck, setStuck] = useState(false);
   const [hidden, setHidden] = useState(false);
-  const [section, setSection] = useState<StickySection>(null);
 
   useEffect(() => {
     // Cheap enough to run on every scroll event (a few rect reads, setState
@@ -46,22 +43,13 @@ function useStickyBar(barRef: RefObject<HTMLDivElement | null>): { stuck: boolea
       else if (y < last - DIRECTION_THRESHOLD) setHidden(false);
       if (Math.abs(y - last) > DIRECTION_THRESHOLD || !inTail) last = y;
 
-      // Which marked part of the page (CarteleraSection's
-      // data-sticky-section) is passing under the bar right now.
-      const barBottom = barRef.current?.getBoundingClientRect().bottom ?? 0;
-      let current: StickySection = null;
-      for (const el of document.querySelectorAll<HTMLElement>("[data-sticky-section]")) {
-        const r = el.getBoundingClientRect();
-        if (r.top <= barBottom && r.bottom > barBottom) current = el.dataset.stickySection as StickySection;
-      }
-      setSection(current);
     }
     onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
-  }, [barRef]);
+  }, []);
 
-  return { stuck, hidden, section };
+  return { stuck, hidden };
 }
 
 // "Marching dashes" loading bar under the h1 while HomeClient's fetch is
@@ -91,8 +79,8 @@ function LoadingBar() {
 // z-30 keeps it under the top bar (z-40), which is what it slides behind
 // when hidden.
 export default function WeekHeading({ regionControl, rangeStart, currentWeekStart, isRefreshing }: WeekHeadingProps) {
-  const barRef = useRef<HTMLDivElement>(null);
-  const { stuck, hidden, section } = useStickyBar(barRef);
+  const { stuck, hidden } = useStickyBar();
+  const section = useHomeSection();
   // Left label: the tagline, or — while the cartelera scrolls under the
   // bar — the name of the part being read (Daniel, 2026-10-13).
   const label =
@@ -108,7 +96,7 @@ export default function WeekHeading({ regionControl, rangeStart, currentWeekStar
 
   return (
     <div
-      ref={barRef}
+      data-week-bar
       className={`sticky top-[84px] md:top-[104px] z-30 -mx-[18px] md:-mx-[40px] xl:-mx-[80px] px-[18px] md:px-[40px] xl:px-[80px] bg-surface-sage transition-[transform,padding] duration-300 ${
         stuck ? "py-[10px] border-b border-text-primary/10" : "pt-[20px] md:pt-[28px] pb-[16px]"
       } ${hidden ? "-translate-y-full pointer-events-none" : ""}`}

@@ -56,7 +56,8 @@ export default function NewsletterSection({ adminRegionName = "" }: NewsletterSe
   return (
     <section
       id="newsletter-section"
-      className="h-full bg-text-placeholder p-[28px] md:p-[48px] flex flex-col gap-[28px] md:gap-[36px]"
+      data-sticky-section="guia"
+      className="scroll-mt-[200px] h-full bg-text-placeholder p-[28px] md:p-[48px] flex flex-col gap-[28px] md:gap-[36px]"
     >
       <div className="flex flex-col gap-[14px] md:gap-[16px]">
         {/* eslint-disable-next-line @next/next/no-img-element -- Figma-exported asset, verbatim per design decision */}
