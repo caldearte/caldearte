@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { esCL } from "@/i18n/es-CL";
-import { fmtAgendaPillDate, santiagoDateOfIso } from "@/lib/date";
+import { fmtAgendaDay, fmtAgendaPillDate, santiagoDateOfIso } from "@/lib/date";
 import { eventComuna } from "@/lib/event-utils";
 import type { EventRecord } from "@/lib/events";
 import { resolveArtistDisplay, titleWithTypePrefix } from "@/lib/social/flyerText";
@@ -16,8 +16,8 @@ interface AgendaSectionProps {
   visitasGuiadas: EventRecord[];
   regionName: string;
   today: string;
-  // Events already past only fold away when looking at the real current
-  // week — any other week shows everything as-is.
+  // Days already past only fold away when looking at the real current
+  // week — any other week shows every day open.
   isCurrentWeek: boolean;
 }
 
@@ -25,17 +25,15 @@ interface AgendaSectionProps {
 // highlighted thing on the home, so each one is a big card in the same
 // layout as the Instagram flyer (flyer-v2.tsx): the photo fills a 4:5
 // card, comuna + date pills top-left, artist / title / venue tags
-// bottom-left (Daniel's call, comparing against the post). Chronological;
-// the date pill on each card does the work day headings used to. One list
-// for both types: visitors plan by day, not by event type — same reason
-// the Instagram carousel merged them on 2026-08-31.
+// bottom-left (Daniel's call, comparing against the post). Grouped by day,
+// Monday to Sunday — visitors plan by day, not by event type, so both
+// types share one list (same reason the Instagram carousel merged them on
+// 2026-08-31). On the current week, days already past stay in their place
+// but folded to one line, so a Sunday visitor isn't scrolling past six
+// days that are over.
 export default function AgendaSection({ inauguraciones, visitasGuiadas, regionName, today, isCurrentWeek }: AgendaSectionProps) {
-  const [pastOpen, setPastOpen] = useState(false);
-  const dated = [...inauguraciones, ...visitasGuiadas]
-    .filter((e) => e.openingDatetime !== null)
-    .sort((a, b) => a.openingDatetime!.localeCompare(b.openingDatetime!));
-  const upcoming = isCurrentWeek ? dated.filter((e) => santiagoDateOfIso(e.openingDatetime!) >= today) : dated;
-  const past = isCurrentWeek ? dated.filter((e) => santiagoDateOfIso(e.openingDatetime!) < today) : [];
+  const groups = groupByDay([...inauguraciones, ...visitasGuiadas].filter((e) => e.openingDatetime !== null));
+  const firstUpcoming = groups.findIndex((g) => !isCurrentWeek || g.date >= today);
 
   return (
     <section aria-labelledby="agenda-title" className="mt-[24px]">
@@ -46,37 +44,71 @@ export default function AgendaSection({ inauguraciones, visitasGuiadas, regionNa
         <ShareWeekButton events={inauguraciones} regionName={regionName} />
       </div>
 
-      {upcoming.length === 0 && past.length === 0 && <p className="font-geist text-[15px] text-text-primary">{esCL.home.agendaEmpty(regionName)}</p>}
+      {groups.length === 0 && <p className="font-geist text-[15px] text-text-primary">{esCL.home.agendaEmpty(regionName)}</p>}
 
-      <AgendaGrid events={upcoming} today={today} />
-
-      {past.length > 0 && (
-        <div className="mt-[20px]">
-          <button
-            type="button"
-            aria-expanded={pastOpen}
-            onClick={() => setPastOpen((open) => !open)}
-            className="font-fragment-mono text-[13px] text-text-primary underline cursor-pointer"
-          >
-            {esCL.home.agendaPast(past.length)}
-          </button>
-          {pastOpen && (
-            <div className="mt-[16px] opacity-70">
-              <AgendaGrid events={past} today={today} />
-            </div>
-          )}
-        </div>
-      )}
+      {/* Days flow side by side, each spanning as many columns as it has
+          events — on desktop a day with one opening shares its row with
+          the next days instead of leaving two thirds of it empty. Same
+          20px gap inside and between days, so the cards line up. */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-[16px] md:gap-x-[20px] gap-y-[28px] md:gap-y-[36px]">
+        {groups.map((g, i) => (
+          <DayBlock key={g.date} group={g} today={today} past={isCurrentWeek && g.date < today} firstImagePriority={i === firstUpcoming} />
+        ))}
+      </div>
     </section>
   );
 }
 
-function AgendaGrid({ events, today }: { events: EventRecord[]; today: string }) {
+interface DayGroup {
+  date: string; // YYYY-MM-DD, Chilean calendar date
+  events: EventRecord[];
+}
+
+// Chronological, so days come out Monday to Sunday.
+function groupByDay(events: EventRecord[]): DayGroup[] {
+  const sorted = [...events].sort((a, b) => a.openingDatetime!.localeCompare(b.openingDatetime!));
+  const groups: DayGroup[] = [];
+  for (const e of sorted) {
+    const date = santiagoDateOfIso(e.openingDatetime!);
+    const last = groups[groups.length - 1];
+    if (last && last.date === date) last.events.push(e);
+    else groups.push({ date, events: [e] });
+  }
+  return groups;
+}
+
+// Column span of a day in the outer grid, and its own inner columns —
+// written out in full so Tailwind sees every class.
+const SPAN: Record<1 | 2 | 3, string> = { 1: "", 2: "sm:col-span-2", 3: "sm:col-span-2 lg:col-span-3" };
+const INNER_COLS: Record<1 | 2 | 3, string> = { 1: "grid-cols-1", 2: "grid-cols-1 sm:grid-cols-2", 3: "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3" };
+
+function DayBlock({ group, today, past, firstImagePriority }: { group: DayGroup; today: string; past: boolean; firstImagePriority: boolean }) {
+  const [open, setOpen] = useState(!past);
+  const heading = fmtAgendaDay(group.date, today);
+  const n = Math.min(group.events.length, 3) as 1 | 2 | 3;
+
+  if (past && !open) {
+    return (
+      <button
+        type="button"
+        aria-expanded={false}
+        onClick={() => setOpen(true)}
+        className="col-span-full w-full flex items-baseline justify-between gap-3 border-b border-text-primary/15 pb-[8px] text-left cursor-pointer"
+      >
+        <span className="font-lato font-black text-[22px] md:text-[26px] text-text-secondary">{heading}</span>
+        <span className="font-fragment-mono text-[13px] text-text-secondary underline">{esCL.home.agendaPastDay(group.events.length)}</span>
+      </button>
+    );
+  }
+
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-[16px] md:gap-[20px]">
-      {events.map((e, i) => (
-        <AgendaCard key={e.id} event={e} today={today} priority={i === 0} />
-      ))}
+    <div className={`${SPAN[n]} ${past ? "opacity-70" : ""}`}>
+      <h3 className="font-lato font-black text-[22px] md:text-[26px] text-text-primary mb-[12px]">{heading}</h3>
+      <div className={`grid ${INNER_COLS[n]} gap-[16px] md:gap-[20px]`}>
+        {group.events.map((e, i) => (
+          <AgendaCard key={e.id} event={e} today={today} priority={firstImagePriority && i === 0} />
+        ))}
+      </div>
     </div>
   );
 }

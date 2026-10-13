@@ -443,9 +443,11 @@ search on top, regions north to south with their count, the ones with
 nothing this week dimmed at the end, "Usar mi ubicación" at the bottom,
 replacing the yellow `GeoConsentBanner`; a row of 16 chips was tried
 first and was too much chrome); the week's inauguraciones and visitas guiadas merged
-into one chronological list of cards in the Instagram flyer's layout
-(`AgendaSection` — photo-filled 4:5 card, comuna + date pills, artist /
-title / venue tags; text rules shared with `flyer-v2.tsx` through
+into one agenda grouped by day, Monday to Sunday, of cards in the
+Instagram flyer's layout (`AgendaSection` — photo-filled 4:5 card, comuna
++ date pills, artist / title / venue tags; each day spans as many grid
+columns as it has events so short days share a row on desktop; on the
+current week, past days fold to one line in place; text rules shared with `flyer-v2.tsx` through
 `lib/social/flyerText.ts`); the unchanged `CuratoriaBanner`; the
 cartelera (`CarteleraSection` — "Últimos días" first, then a grid with
 comuna chips and "Ver las N" instead of pages); a compact venue strip
