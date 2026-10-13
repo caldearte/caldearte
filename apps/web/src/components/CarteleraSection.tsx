@@ -14,10 +14,11 @@ interface CarteleraSectionProps {
   today: string;
 }
 
-// 10 fills two desktop rows (5 columns — smaller than the agenda's cards
-// on purpose, Daniel 2026-10-13) and five mobile rows (2 columns); past
-// that, the list is a click away instead of a 15-page slider.
-const INITIAL_VISIBLE = 10;
+// 12 fills two desktop rows of "Siguen en cartelera" (6 columns — smaller
+// than the agenda's cards on purpose, Daniel 2026-10-13) and six mobile
+// rows (2 columns); past that, the list is a click away instead of a
+// 15-page slider.
+const INITIAL_VISIBLE = 12;
 // "Últimos días" can be a long list on a busy week (7 in Santiago on
 // 2026-10-12) — one desktop row, then a click.
 const INITIAL_VISIBLE_CLOSING = 5;
@@ -82,7 +83,7 @@ export default function CarteleraSection({ events, today }: CarteleraSectionProp
             </div>
           )}
 
-          <TileGrid events={visible} today={today} />
+          <TileGrid events={visible} today={today} wide />
 
           {filtered.length > INITIAL_VISIBLE && (
             <ExpandButton expanded={expanded} label={esCL.home.seeAll(filtered.length)} onClick={() => setExpanded((e) => !e)} />
@@ -127,9 +128,11 @@ function ComunaChip({ label, count, selected, onClick }: { label: string; count?
 // Also used outside the home (the ficha, venue and artist pages) — the
 // cartelera's look wherever exhibitions are listed. `showPeriod` swaps
 // "Hasta el…" for the full run ("12 al 28 de julio"), for past shows.
-export function TileGrid({ events, today, showPeriod = false }: { events: EventRecord[]; today: string; showPeriod?: boolean }) {
+// `wide` = 6 desktop columns instead of 5 — the home's "Siguen en
+// cartelera", the longest list. Class strings written out for Tailwind.
+export function TileGrid({ events, today, showPeriod = false, wide = false }: { events: EventRecord[]; today: string; showPeriod?: boolean; wide?: boolean }) {
   return (
-    <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-5 gap-x-[12px] gap-y-[20px]">
+    <div className={`grid grid-cols-2 md:grid-cols-4 ${wide ? "xl:grid-cols-6" : "xl:grid-cols-5"} gap-x-[12px] gap-y-[20px]`}>
       {events.map((e) => (
         <ExpoTile key={e.id} event={e} today={today} showPeriod={showPeriod} />
       ))}
