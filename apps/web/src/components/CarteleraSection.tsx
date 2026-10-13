@@ -158,7 +158,12 @@ export function ExpoTile({ event, today, showPeriod = false }: { event: EventRec
         <CardImage imageUrl={event.imageUrl} sourceUrl={event.sourceUrl} sensitivityTags={event.sensitivityTags} alt={event.title} compact />
       </div>
       <div className="w-full flex flex-col items-start gap-[5px] rounded-[18px] bg-surface-white px-[12px] pt-[9px] pb-[11px]">
-        {artist && <span className="font-geist font-semibold text-[10px] leading-[1.25] tracking-[1px] uppercase text-text-secondary line-clamp-1">{artist}</span>}
+        {/* Always one line, blank when there's no artist (Daniel,
+            2026-10-13) — with title and venue also one line each, every
+            tile ends at the same height. */}
+        <span aria-hidden={artist ? undefined : true} className="block w-full truncate font-geist font-semibold text-[10px] leading-[1.25] tracking-[1px] uppercase text-text-secondary">
+          {artist ?? "\u00a0"}
+        </span>
         {/* Title and venue: one line each across the whole tag, "…" past it
             (Daniel, 2026-10-13) — the full text is on the ficha, and in the
             title attribute on hover. */}
