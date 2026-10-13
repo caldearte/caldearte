@@ -206,6 +206,18 @@ export function santiagoDateOfIso(isoOrDate: string): string {
   return new Intl.DateTimeFormat("en-CA", { timeZone: "America/Santiago" }).format(new Date(isoOrDate));
 }
 
+// Date pill on the home's agenda cards (2026-10-12), same shape as the
+// Instagram flyer's top pill ("MIÉ 14 OCT - 19 HR", flyer-v2.tsx) so a card
+// on the site reads like the post that sent the visitor here. "HOY" for
+// today. Uses the Chilean calendar date, not the UTC slice.
+export function fmtAgendaPillDate(openingDatetimeIso: string, openingTimeConfirmed: boolean, todayStr: string): string {
+  const date = santiagoDateOfIso(openingDatetimeIso);
+  const d = parseDateOnly(date);
+  const day = date === todayStr ? "HOY" : `${WEEKDAYS[d.getDay()].slice(0, 3).toUpperCase()} ${d.getDate()} ${MONTHS_SHORT[d.getMonth()].toUpperCase()}`;
+  const hour = openingTimeConfirmed ? fmtOpeningHour(openingDatetimeIso).toUpperCase() : "HORA POR CONFIRMAR";
+  return `${day} - ${hour}`;
+}
+
 // Day heading for the home agenda (2026-10-12), e.g. "Hoy", "Mañana",
 // "Viernes 17". Relative words only for today/tomorrow — past days and
 // anything further out read as weekday + day number, enough inside a

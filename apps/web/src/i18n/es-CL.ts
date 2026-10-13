@@ -447,14 +447,12 @@ export const esCL = {
     reveal: "Ver contenido",
   },
 
-  // Home layout of 2026-10-12: one agenda by day for the week's
-  // inauguraciones + visitas guiadas, then the cartelera; regions always
-  // visible (RegionNav) instead of behind the location button.
+  // Home layout of 2026-10-12: the week's inauguraciones + visitas
+  // guiadas as flyer-style cards, then the cartelera; regions always
+  // visible as chips (RegionNav) instead of behind the location button.
   home: {
-    intro: "Guía independiente de arte. La estética no es neutral, y nuestra selección tampoco.",
-    introLink: "Cómo curamos",
+    topBarLabel: "calendario de arte",
     weekHeading: (regionName: string) => `Esta semana en ${regionName}`,
-    otherWeekHeading: (regionName: string) => `${regionName}, otra semana`,
     backToCurrentWeek: "Volver a esta semana",
     agendaTitle: "Inauguraciones y visitas guiadas",
     agendaEmpty: (regionName: string) => `Esta semana no hay inauguraciones ni visitas guiadas en ${regionName}.`,
@@ -470,16 +468,12 @@ export const esCL = {
     seeLess: "Ver menos",
     seeAllClosing: (n: number) => `Ver las ${n} que cierran esta semana`,
     closesToday: "Cierra hoy",
-    regionsTitle: "Regiones",
     regionsNavAriaLabel: "Elegir región",
     useMyLocation: "Usar mi ubicación",
     locating: "Ubicando…",
     searchComuna: "Buscar comuna",
-    quietRegions: (n: number) => `Sin actividad esta semana (${n})`,
+    quietRegionTitle: "Sin actividad esta semana",
     agendaDotTitle: (n: number) => `${n} ${n === 1 ? "inauguración o visita" : "inauguraciones o visitas"} esta semana`,
-    newsletterTitle: "Recibe la semana cada domingo",
-    newsletterBody: "Inauguraciones y exposiciones de tu región, en un solo correo.",
-    newsletterSubmit: "Suscribirme",
   },
 
   footer: {

@@ -3,9 +3,10 @@
 import { useState } from "react";
 import Link from "next/link";
 import { esCL } from "@/i18n/es-CL";
-import { fmtAgendaDay, fmtOpeningHour, santiagoDateOfIso } from "@/lib/date";
-import { useEventCardActions } from "@/lib/useEventCardActions";
+import { fmtAgendaPillDate, santiagoDateOfIso } from "@/lib/date";
+import { eventComuna } from "@/lib/event-utils";
 import type { EventRecord } from "@/lib/events";
+import { resolveArtistDisplay, titleWithTypePrefix } from "@/lib/social/flyerText";
 import { hasShareableInauguraciones, shareInauguracionesCarousel } from "@/lib/social/shareInauguracionesCarousel";
 import { ShareGlyph } from "./CardActionIcons";
 import CardImage from "./CardImage";
@@ -15,40 +16,26 @@ interface AgendaSectionProps {
   visitasGuiadas: EventRecord[];
   regionName: string;
   today: string;
-  // Days already past only fold away when looking at the real current
-  // week — any other week shows every day as-is.
+  // Events already past only fold away when looking at the real current
+  // week — any other week shows everything as-is.
   isCurrentWeek: boolean;
 }
 
-interface DayGroup {
-  date: string;
-  events: EventRecord[];
-}
-
-function groupByDay(events: EventRecord[]): DayGroup[] {
-  const sorted = [...events].sort((a, b) => a.openingDatetime!.localeCompare(b.openingDatetime!));
-  const groups: DayGroup[] = [];
-  for (const e of sorted) {
-    const date = santiagoDateOfIso(e.openingDatetime!);
-    const last = groups[groups.length - 1];
-    if (last && last.date === date) last.events.push(e);
-    else groups.push({ date, events: [e] });
-  }
-  return groups;
-}
-
-// The week's time-bound events in one list by day (2026-10-12), replacing
-// separate Inauguraciones / Visitas guiadas sliders: visitors plan by day
-// ("¿qué hay este finde?"), not by event type — the same reasoning that
-// merged the two in the Instagram carousel on 2026-08-31. The type is a
-// label on each item instead of a section of its own.
+// The week's inauguraciones and visitas guiadas (2026-10-12) — the most
+// highlighted thing on the home, so each one is a big card in the same
+// layout as the Instagram flyer (flyer-v2.tsx): the photo fills a 4:5
+// card, comuna + date pills top-left, artist / title / venue tags
+// bottom-left (Daniel's call, comparing against the post). Chronological;
+// the date pill on each card does the work day headings used to. One list
+// for both types: visitors plan by day, not by event type — same reason
+// the Instagram carousel merged them on 2026-08-31.
 export default function AgendaSection({ inauguraciones, visitasGuiadas, regionName, today, isCurrentWeek }: AgendaSectionProps) {
   const [pastOpen, setPastOpen] = useState(false);
-  const dated = [...inauguraciones, ...visitasGuiadas].filter((e) => e.openingDatetime !== null);
-  const groups = groupByDay(dated);
-  const upcoming = isCurrentWeek ? groups.filter((g) => g.date >= today) : groups;
-  const past = isCurrentWeek ? groups.filter((g) => g.date < today) : [];
-  const pastCount = past.reduce((n, g) => n + g.events.length, 0);
+  const dated = [...inauguraciones, ...visitasGuiadas]
+    .filter((e) => e.openingDatetime !== null)
+    .sort((a, b) => a.openingDatetime!.localeCompare(b.openingDatetime!));
+  const upcoming = isCurrentWeek ? dated.filter((e) => santiagoDateOfIso(e.openingDatetime!) >= today) : dated;
+  const past = isCurrentWeek ? dated.filter((e) => santiagoDateOfIso(e.openingDatetime!) < today) : [];
 
   return (
     <section aria-labelledby="agenda-title" className="mt-[24px]">
@@ -59,15 +46,11 @@ export default function AgendaSection({ inauguraciones, visitasGuiadas, regionNa
         <ShareWeekButton events={inauguraciones} regionName={regionName} />
       </div>
 
-      {upcoming.length === 0 && pastCount === 0 && <p className="font-geist text-[15px] text-text-primary">{esCL.home.agendaEmpty(regionName)}</p>}
+      {upcoming.length === 0 && past.length === 0 && <p className="font-geist text-[15px] text-text-primary">{esCL.home.agendaEmpty(regionName)}</p>}
 
-      <div className="flex flex-col gap-[20px]">
-        {upcoming.map((g, i) => (
-          <DayBlock key={g.date} group={g} today={today} firstImagePriority={i === 0} />
-        ))}
-      </div>
+      <AgendaGrid events={upcoming} today={today} />
 
-      {pastCount > 0 && (
+      {past.length > 0 && (
         <div className="mt-[20px]">
           <button
             type="button"
@@ -75,13 +58,11 @@ export default function AgendaSection({ inauguraciones, visitasGuiadas, regionNa
             onClick={() => setPastOpen((open) => !open)}
             className="font-fragment-mono text-[13px] text-text-primary underline cursor-pointer"
           >
-            {esCL.home.agendaPast(pastCount)}
+            {esCL.home.agendaPast(past.length)}
           </button>
           {pastOpen && (
-            <div className="flex flex-col gap-[20px] mt-[16px] opacity-70">
-              {past.map((g) => (
-                <DayBlock key={g.date} group={g} today={today} firstImagePriority={false} />
-              ))}
+            <div className="mt-[16px] opacity-70">
+              <AgendaGrid events={past} today={today} />
             </div>
           )}
         </div>
@@ -90,46 +71,54 @@ export default function AgendaSection({ inauguraciones, visitasGuiadas, regionNa
   );
 }
 
-function DayBlock({ group, today, firstImagePriority }: { group: DayGroup; today: string; firstImagePriority: boolean }) {
+function AgendaGrid({ events, today }: { events: EventRecord[]; today: string }) {
   return (
-    // Desktop: the day sits in its own column left of the events, like a
-    // printed agenda — a day with one event doesn't leave half a row empty.
-    <div className="md:grid md:grid-cols-[150px_minmax(0,1fr)] md:gap-[20px]">
-      <h3 className="font-lato font-black text-[20px] md:text-[22px] leading-tight text-text-primary mb-[10px] md:mb-0 md:pt-[8px]">{fmtAgendaDay(group.date, today)}</h3>
-      <div className="flex flex-col gap-[10px]">
-        {group.events.map((e, i) => (
-          <AgendaItem key={e.id} event={e} priority={firstImagePriority && i === 0} />
-        ))}
-      </div>
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-[16px] md:gap-[20px]">
+      {events.map((e, i) => (
+        <AgendaCard key={e.id} event={e} today={today} priority={i === 0} />
+      ))}
     </div>
   );
 }
 
-// Scan-level card: what, when, where — the full description and the
-// actions (Cómo llegar, Agregar, Compartir) live on the ficha, one tap
-// away.
-function AgendaItem({ event, priority }: { event: EventRecord; priority: boolean }) {
-  const { venueLine } = useEventCardActions(event, "inauguracion", true);
-  const typeLabel = event.eventType === "visita_guiada" ? esCL.home.typeVisitaGuiada : esCL.home.typeInauguracion;
-  const hour = event.openingTimeConfirmed ? fmtOpeningHour(event.openingDatetime!) : esCL.home.hourToConfirm;
+// Each tag hugs its own text (w-fit) and long text wraps, balanced, rather
+// than truncating — same rules as the flyer's tags. Sizes are the flyer's
+// scaled to a ~340px card.
+function AgendaCard({ event, today, priority }: { event: EventRecord; today: string; priority: boolean }) {
+  const type = event.eventType === "visita_guiada" ? "visita_guiada" : "inauguracion";
+  const title = titleWithTypePrefix(event.title, type);
+  const artist = resolveArtistDisplay(event.artist);
+  const venue = event.placeName ?? event.freeformLocation;
+  const comuna = eventComuna(event);
 
   return (
-    <Link href={`/eventos/${event.id}`} className="flex gap-[14px] bg-surface-white p-[10px] rounded-[2px] hover:outline hover:outline-1 hover:outline-text-primary/30">
-      <div className="relative shrink-0 w-[88px] h-[110px] md:w-[112px] md:h-[140px] overflow-hidden">
-        <CardImage imageUrl={event.imageUrl} sourceUrl={event.sourceUrl} sensitivityTags={event.sensitivityTags} priority={priority} alt={event.title} compact />
+    <Link href={`/eventos/${event.id}`} aria-label={esCL.eventCardAriaLabel(event.title)} className="group relative block w-full aspect-[4/5] overflow-hidden bg-stone-800">
+      <div className="absolute inset-0 transition-transform duration-300 group-hover:scale-[1.02]">
+        <CardImage imageUrl={event.imageUrl} sourceUrl={event.sourceUrl} sensitivityTags={event.sensitivityTags} priority={priority} alt={event.title} />
       </div>
-      <div className="flex-1 min-w-0 flex flex-col gap-[6px] py-[2px]">
-        <p className="font-geist font-extrabold text-[12px] text-brand-magenta">
-          {typeLabel} · {hour}
-        </p>
-        <p className="font-fragment-mono text-[16px] leading-[1.2] text-text-primary line-clamp-3">{event.title}</p>
-        <p className="font-geist text-[13px] text-text-secondary line-clamp-2">{venueLine}</p>
-        {/* Desktop only: room for a taste of the text without turning the
-            list back into a wall of copy on a phone. */}
-        {event.description && (
-          <div className="hidden md:block mt-[2px]">
-            <p className="font-geist text-[14px] leading-[1.5] text-text-primary line-clamp-2">{event.description}</p>
-          </div>
+
+      <div className="absolute left-[12px] top-[12px] right-[12px] flex flex-col items-start gap-[6px] pointer-events-none">
+        <span className="max-w-full truncate rounded-full bg-brand-magenta px-[12px] py-[5px] font-lato font-black text-[12px] uppercase tracking-[0.3px] text-white">{comuna}</span>
+        <span className="max-w-full truncate rounded-full bg-brand-magenta px-[12px] py-[5px] font-lato font-black text-[12px] tracking-[0.3px] text-white">
+          {fmtAgendaPillDate(event.openingDatetime!, event.openingTimeConfirmed, today)}
+        </span>
+      </div>
+
+      <div className="absolute left-[12px] bottom-[12px] right-[12px] flex flex-col items-start gap-[6px] pointer-events-none">
+        {artist && (
+          <span className="w-fit max-w-full rounded-[18px] bg-surface-sage px-[14px] py-[8px] font-geist font-semibold text-[11px] leading-[1.25] tracking-[1px] uppercase text-text-secondary [text-wrap:balance]">
+            {artist}
+          </span>
+        )}
+        {/* Clamp on an inner span: on the padded tag itself, overflow
+            clips at the padding box and the 5th line peeks through. */}
+        <span className="w-fit max-w-full rounded-[22px] bg-surface-sage px-[16px] py-[10px]">
+          <span className="font-lato font-black text-[17px] leading-[1.15] tracking-[0.3px] uppercase text-brand-magenta [text-wrap:balance] line-clamp-4">{title}</span>
+        </span>
+        {venue && (
+          <span className="w-fit max-w-full truncate rounded-[18px] bg-surface-sage px-[14px] py-[7px] font-geist font-semibold text-[11px] tracking-[1px] uppercase text-text-secondary">
+            {venue}
+          </span>
         )}
       </div>
     </Link>

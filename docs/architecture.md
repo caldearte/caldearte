@@ -433,17 +433,20 @@ site had to convert the visits it got): the first event used to appear
 ~1.4 screens down on a phone (geo-consent banner, two-line 96px
 wordmark, location button, count rings) and the content sat in three
 paged sliders ("1/15" for Santiago's exposiciones on mobile). Now, in
-order: a slim fixed top bar plus one intro line carrying the curatorial
-stance (`Header`); every región always visible (`RegionNav` — a sticky
-column on desktop, a sticky chip row on mobile, north to south, regions
-with nothing this week grouped at the end, "Usar mi ubicación" replacing
-the yellow `GeoConsentBanner`, comuna search still through
-`CityPickerPanel`); the h1 with the week chevrons (`WeekHeading`); the
-week's inauguraciones and visitas guiadas as one agenda grouped by day
-(`AgendaSection` — visitors plan by day, the same reason the Instagram
-carousel merged the two on 2026-08-31); a compact newsletter strip; the
+order: a slim fixed top bar, "CALDEARTE calendario de arte" (`Header`);
+the h1 ("Esta semana en Santiago", just the región on other weeks) with
+the week chevrons under it (`WeekHeading`); every región as chips
+(`RegionNav` — comuna search first, then north to south, regions with
+nothing this week dimmed at the end, "Usar mi ubicación" replacing the
+yellow `GeoConsentBanner`; one sticky scrolling row on a phone, wrapping
+rows on desktop); the week's inauguraciones and visitas guiadas merged
+into one chronological list of cards in the Instagram flyer's layout
+(`AgendaSection` — photo-filled 4:5 card, comuna + date pills, artist /
+title / venue tags; text rules shared with `flyer-v2.tsx` through
+`lib/social/flyerText.ts`); the unchanged `CuratoriaBanner`; the
 cartelera (`CarteleraSection` — "Últimos días" first, then a grid with
-comuna chips and "Ver las N" instead of pages); the venue strip above.
+comuna chips and "Ver las N" instead of pages); a compact venue strip
+(this section's `EspaciosSection`); the unchanged `NewsletterSection`.
 Per-región counts come from `activityByRegion` (distinct events, so an
 opening that is also a running show counts once), computed in the same
 `computeHomeViewModel` as everything else — still no cookies in the

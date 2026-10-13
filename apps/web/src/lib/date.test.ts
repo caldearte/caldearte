@@ -19,6 +19,7 @@ import {
   weekNumberSince,
   fmtUntilDate,
   fmtAgendaDay,
+  fmtAgendaPillDate,
   santiagoDateOfIso,
   fmtWeekRangeShort,
   isClosingSoon,
@@ -268,4 +269,11 @@ test("santiagoDateOfIso: a 21:30 opening in Santiago stays on its own day", () =
   assert.equal(santiagoDateOfIso("2026-10-18T00:30:00+00:00"), "2026-10-17");
   assert.equal(santiagoDateOfIso("2026-10-17T20:00:00+00:00"), "2026-10-17");
   assert.equal(santiagoDateOfIso("2026-10-17"), "2026-10-17");
+});
+
+test("fmtAgendaPillDate: flyer-style pill, HOY for today, Chilean date", () => {
+  assert.equal(fmtAgendaPillDate("2026-10-14T19:00:00+00:00", true, "2026-10-12"), "MIÉ 14 OCT - 16 HR");
+  // Unconfirmed hour = midnight Santiago placeholder (03:00Z in October, UTC-3).
+  assert.equal(fmtAgendaPillDate("2026-10-17T03:00:00+00:00", false, "2026-10-12"), "SÁB 17 OCT - HORA POR CONFIRMAR");
+  assert.equal(fmtAgendaPillDate("2026-10-12T22:00:00+00:00", true, "2026-10-12"), "HOY - 19 HR");
 });
