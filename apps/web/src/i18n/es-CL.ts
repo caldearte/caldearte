@@ -495,7 +495,7 @@ export const esCL = {
     privacidad: "Privacidad",
     agregaExpo: "Agrega tu expo",
     curatoria: "Curatoría",
-    wordmarkTagline: "CALENDARIO DE ARTE.",
+    wordmarkTagline: "EL ARTE MÁS CERCA.",
   },
 
   privacidad: {
