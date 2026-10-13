@@ -447,7 +447,8 @@ into one agenda grouped by day, Monday to Sunday, of cards in the
 Instagram flyer's look (`AgendaSection` — a clean 4:5 photo with the
 flyer's pills and tags around it, not over it: the artist and the
 "Inauguración: …" / "Visita guiada: …" title tags above, so the type
-reads first; comuna + hour pills and the venue tag below; each day spans as many grid
+reads first, in a fixed-height block from sm up so photos side by side
+start on the same line; a "COMUNA · HORA" pill and the venue tag below; each day spans as many grid
 columns as it has events so short days share a row on desktop; on the
 current week, past days fold to one line in place; text rules shared with `flyer-v2.tsx` through
 `lib/social/flyerText.ts`); the unchanged `CuratoriaBanner`; the
