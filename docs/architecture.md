@@ -438,7 +438,9 @@ arte" by the icons (`Header`); the h1 "[Esta semana ⌄] en [Santiago ⌄]"
 (`WeekHeading` — sticky under the top bar since the whole page is that
 week + región's data, compact once scrolled, sliding away on scroll-down
 only from the venue section on; any change scrolls back to the top), both words
-dropdowns built on `HeadingDropdown`: the week (`WeekDropdown` — a month
+dropdowns built on `HeadingDropdown` (full screen width under the h1 on a
+phone; while open the page behind is frozen and dimmed, the panel scrolls
+on its own, and a tap outside only closes it): the week (`WeekDropdown` — a month
 calendar where each row is a whole Monday-to-Sunday week, from SEMANA N°1
 to two months ahead, each row a real `?semana=` link; the h1 names it
 "Esta semana / Semana pasada / Próxima semana / Semana del 28 de

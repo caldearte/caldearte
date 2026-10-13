@@ -12,8 +12,8 @@ interface HeadingDropdownProps {
 
 // A word inside the home's h1 that opens a list (2026-10-12): "[Esta
 // semana ⌄] en [Santiago ⌄]" — the week (WeekDropdown) and the región
-// (RegionDropdown). Inherits the h1's type; closes on an outside click or
-// Escape.
+// (RegionDropdown). Inherits the h1's type; while open the page behind is
+// frozen and dimmed, and a click outside or Escape closes it.
 export default function HeadingDropdown({ label, ariaLabel, listAriaLabel, children }: HeadingDropdownProps) {
   const [open, setOpen] = useState(false);
   // Phone: the panel spans the whole screen width, just under the button
@@ -46,9 +46,19 @@ export default function HeadingDropdown({ label, ariaLabel, listAriaLabel, child
     }
     document.addEventListener("pointerdown", onPointerDown);
     document.addEventListener("keydown", onKeyDown);
+    // The page behind stays put while a list is open (Daniel, 2026-10-12):
+    // only the panel scrolls. Padding stands in for a desktop scrollbar
+    // that disappears, so the layout doesn't jump sideways.
+    const html = document.documentElement;
+    const scrollbarGap = window.innerWidth - html.clientWidth;
+    const previous = { overflow: html.style.overflow, paddingRight: html.style.paddingRight };
+    html.style.overflow = "hidden";
+    if (scrollbarGap > 0) html.style.paddingRight = `${scrollbarGap}px`;
     return () => {
       document.removeEventListener("pointerdown", onPointerDown);
       document.removeEventListener("keydown", onKeyDown);
+      html.style.overflow = previous.overflow;
+      html.style.paddingRight = previous.paddingRight;
     };
   }, [open]);
 
@@ -71,12 +81,17 @@ export default function HeadingDropdown({ label, ariaLabel, listAriaLabel, child
         </svg>
       </button>
 
+      {/* Backdrop: a tap outside the panel only closes it — it never
+          reaches whatever link or button sits underneath. Dimmer on a
+          phone, where the panel takes the whole width. */}
+      {open && <div aria-hidden="true" onClick={() => setOpen(false)} className="fixed inset-0 z-[29] bg-black/30 sm:bg-black/10" />}
+
       {open && (
         <div
           role="listbox"
           aria-label={listAriaLabel}
           style={phoneTop !== null ? { top: phoneTop, maxHeight: `calc(100dvh - ${phoneTop + 12}px)` } : undefined}
-          className={`z-30 overflow-y-auto bg-surface-white shadow-lg border border-text-primary/10 py-[6px] font-geist font-normal text-[15px] leading-normal tracking-normal ${
+          className={`z-30 overflow-y-auto overscroll-contain bg-surface-white shadow-lg border border-text-primary/10 py-[6px] font-geist font-normal text-[15px] leading-normal tracking-normal ${
             phoneTop !== null ? "fixed inset-x-0 rounded-b-[14px] border-x-0" : "absolute left-0 top-full mt-[10px] w-[320px] max-h-[65vh] rounded-[10px]"
           }`}
         >
