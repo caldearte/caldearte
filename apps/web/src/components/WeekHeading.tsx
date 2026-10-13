@@ -25,7 +25,7 @@ const DIRECTION_THRESHOLD = 6;
 // = which part of the cartelera is under the bar, for that label; `hidden` only from the venue section
 // (#espacios-section) down — past the event data, scrolling down slides
 // the bar away and scrolling up brings it back.
-type StickySection = "ultimos" | "aun" | null;
+type StickySection = "curatoria" | "ultimos" | "aun" | null;
 
 function useStickyBar(barRef: RefObject<HTMLDivElement | null>): { stuck: boolean; hidden: boolean; section: StickySection } {
   const [stuck, setStuck] = useState(false);
@@ -96,7 +96,9 @@ export default function WeekHeading({ regionControl, rangeStart, currentWeekStar
   // Left label: the tagline, or — while the cartelera scrolls under the
   // bar — the name of the part being read (Daniel, 2026-10-13).
   const label =
-    section === "ultimos" ? (
+    section === "curatoria" ? (
+      <span className="text-brand-magenta">{esCL.home.stickyCuratoria}</span>
+    ) : section === "ultimos" ? (
       <span className="text-brand-magenta">{esCL.home.stickyUltimosDias}</span>
     ) : section === "aun" ? (
       esCL.home.stickyAunEnCartelera

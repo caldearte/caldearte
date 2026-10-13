@@ -205,7 +205,7 @@ export default function CalendarView({
                 and below on a phone, 160px on desktop (above, this margin
                 plus the banner's own mt-16; below, this margin, which the
                 cartelera's mt-[48px] collapses into). */}
-            <div className="w-full flex flex-wrap justify-center mt-[56px] md:mt-[96px] mb-[120px] md:mb-[160px]">
+            <div data-sticky-section="curatoria" className="w-full flex flex-wrap justify-center mt-[56px] md:mt-[96px] mb-[120px] md:mb-[160px]">
               <CuratoriaBanner />
             </div>
             <CarteleraSection events={exposActuales} today={today} />
@@ -213,9 +213,11 @@ export default function CalendarView({
         )}
       </div>
 
-      <EspaciosSection />
-
-      <div className="mt-[48px] md:mt-[80px]">
+      {/* The venue ask and the visitor ask side by side from lg up, touching,
+          same height and type scale — two faces of one coin (Daniel,
+          2026-10-13); stacked on smaller screens. */}
+      <div className="mt-[48px] md:mt-[80px] mb-[48px] md:mb-[80px] grid grid-cols-1 lg:grid-cols-2 items-stretch">
+        <EspaciosSection />
         <NewsletterSection />
       </div>
 

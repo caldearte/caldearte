@@ -457,6 +457,7 @@ export const esCL = {
   home: {
     tagline: "EL ARTE MÁS CERCA",
     // The sticky bar's left label swaps to the section scrolling under it.
+    stickyCuratoria: "CURATORÍA",
     stickyUltimosDias: "ÚLTIMOS DÍAS",
     stickyAunEnCartelera: "AÚN EN CARTELERA",
     weekRegionJoiner: "en",
@@ -497,7 +498,7 @@ export const esCL = {
     privacidad: "Privacidad",
     agregaExpo: "Agrega tu expo",
     curatoria: "Curatoría",
-    wordmarkTagline: "EL ARTE MÁS CERCA.",
+    wordmarkTagline: "EL ARTE MÁS CERCA",
   },
 
   privacidad: {

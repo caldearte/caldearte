@@ -467,8 +467,10 @@ the rest, so no column is left empty and photos in a row line up; on the
 current week, past days fold to one line in place; text rules shared with `flyer-v2.tsx` through
 `lib/social/flyerText.ts`); the unchanged `CuratoriaBanner`; the
 cartelera (`CarteleraSection` — "Últimos días" first, then a grid with
-comuna chips and "Ver las N" instead of pages); a compact venue strip
-(this section's `EspaciosSection`); the unchanged `NewsletterSection`.
+comuna chips and "Ver las N" instead of pages); then this section's
+`EspaciosSection` and `NewsletterSection` side by side from lg up,
+touching, same height and type scale — the venue ask and the visitor ask
+as two faces of one coin (the newsletter's composition scaled down).
 The same two card styles are used wherever events are listed outside
 the home — the ficha's "También esta semana" / "También en cartelera" and
 the venue and artist pages — split by `splitAgendaAndCartelera`
