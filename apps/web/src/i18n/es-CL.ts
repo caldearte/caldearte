@@ -686,6 +686,24 @@ export const esCL = {
     rateLimitedPrefix: "Un momento",
     error: "Algo falló de nuestro lado. Intenta de nuevo en unos minutos.",
     scopeNote: "Este formulario es solo para exposiciones con inauguración — para todo lo demás, escríbenos por el ",
+    // Step-by-step form (2026-10-13): each step's headline, split around
+    // its magenta word like the newsletter's.
+    steps: [
+      { start: "¿QUÉ ", highlight: "EXPONES", end: "?" },
+      { start: "¿DÓNDE Y ", highlight: "CUÁNDO", end: "?" },
+      { start: "¿CÓMO ", highlight: "SE VE", end: "?" },
+      { start: "¿QUIÉN LA ", highlight: "ENVÍA", end: "?" },
+    ],
+    stepOf: (n: number, total: number) => `PASO ${n} DE ${total}`,
+    next: "SIGUIENTE",
+    back: "← Atrás",
+    submitStep: "ENVIAR",
+    tryAgain: "Intentar de nuevo",
+    errorTitle: "ALGO FALLÓ",
+    compressing: "Preparando imagen...",
+    comunaNotInList: "Elige una comuna de la lista.",
+    noArtist: "Agrega al menos un artista.",
+    noImage: "Elige una imagen de la expo.",
   },
 };
 
