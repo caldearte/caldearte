@@ -32,9 +32,12 @@ interface CardImageProps {
   // overlay shrinks to just its icon — the label and "Ver contenido"
   // button don't fit at ~90px, and revealing happens on the ficha anyway.
   compact?: boolean;
+  // Lets a card whose own link overlays the photo (AgendaSection) step
+  // aside once the photo is revealed — see AgendaCard.
+  onReveal?: () => void;
 }
 
-export default function CardImage({ imageUrl, sourceUrl, sensitivityTags, fullSize = false, priority = false, alt = "", compact = false }: CardImageProps) {
+export default function CardImage({ imageUrl, sourceUrl, sensitivityTags, fullSize = false, priority = false, alt = "", compact = false, onReveal }: CardImageProps) {
   const [revealed, setRevealed] = useState(false);
   // A photo that fails to load (most often a host not yet in
   // next.config.ts's EVENT_IMAGE_HOSTS — 5 of 85 home images on
@@ -115,6 +118,7 @@ export default function CardImage({ imageUrl, sourceUrl, sensitivityTags, fullSi
                 ev.preventDefault();
                 ev.stopPropagation();
                 setRevealed(true);
+                onReveal?.();
               }}
               className="text-[12px] font-semibold text-white border border-white rounded-full px-3 py-1.5"
             >

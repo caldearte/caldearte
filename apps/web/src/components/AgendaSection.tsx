@@ -126,6 +126,11 @@ function AgendaCard({ event, priority }: { event: EventRecord; priority: boolean
   // "inauguracion" variant for both types: a visita guiada is just as much
   // a dated, timed thing to put in a calendar.
   const { mapsHref, calendarHref } = useEventCardActions(event, "inauguracion", true);
+  // While a sensitive photo is still blurred, the photo sits above the
+  // card's link so its "Ver contenido" button gets the tap; once revealed
+  // it drops back and the photo opens the ficha like the rest of the card.
+  const [revealed, setRevealed] = useState(false);
+  const photoBlocksLink = event.sensitivityTags.length > 0 && !revealed;
   const button =
     "relative z-10 w-full h-[44px] flex items-center justify-center gap-[10px] border border-text-primary bg-surface-white font-fragment-mono text-[13px] text-text-primary hover:bg-surface-sage";
 
@@ -138,9 +143,16 @@ function AgendaCard({ event, priority }: { event: EventRecord; priority: boolean
 
       {/* Photo first, so photos side by side always start on the same
           line; the info tag follows at its own natural height. */}
-      <div className="relative w-full aspect-[4/5] overflow-hidden bg-stone-800">
+      <div className={`relative w-full aspect-[4/5] overflow-hidden bg-stone-800 ${photoBlocksLink ? "z-[2]" : ""}`}>
         <div className="absolute inset-0 transition-transform duration-300 group-hover:scale-[1.02]">
-          <CardImage imageUrl={event.imageUrl} sourceUrl={event.sourceUrl} sensitivityTags={event.sensitivityTags} priority={priority} alt={event.title} />
+          <CardImage
+            imageUrl={event.imageUrl}
+            sourceUrl={event.sourceUrl}
+            sensitivityTags={event.sensitivityTags}
+            priority={priority}
+            alt={event.title}
+            onReveal={() => setRevealed(true)}
+          />
         </div>
       </div>
 
