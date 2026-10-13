@@ -1,8 +1,8 @@
 "use client";
 
-import Link from "next/link";
 import { useSession, signIn, signOut } from "next-auth/react";
 import { esCL } from "@/i18n/es-CL";
+import SiteWordmark from "@/components/SiteWordmark";
 
 // Deliberately never linked from Header/Footer/MenuDrawer — the only way
 // here is knowing this URL exists (confirmed with the user 2026-08-05).
@@ -15,9 +15,7 @@ export default function LoginPage() {
 
   return (
     <main className="min-h-screen w-full bg-surface-sage px-[20px] py-8 md:px-[61px] max-w-[1280px] mx-auto">
-      <Link href="/" className="font-lato font-black leading-none text-brand-magenta text-[28px]">
-        {esCL.appName}
-      </Link>
+      <SiteWordmark />
 
       <div className="mt-[60px] md:mt-[100px] max-w-[480px] flex flex-col gap-[24px]">
         <p className="font-geist text-[16px] text-text-primary">{esCL.loginPage.note}</p>

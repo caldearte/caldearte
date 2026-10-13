@@ -1,11 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import { esCL } from "@/i18n/es-CL";
 import Footer from "./Footer";
 import DrawerShell from "./DrawerShell";
 import ContactPanel from "./ContactPanel";
+import SiteWordmark from "@/components/SiteWordmark";
 
 // Rediseño 2.0.0 — /curatoria, the most prominent secondary page (linked
 // from both the home's CuratoriaBanner and the menu drawer's own magenta
@@ -22,9 +22,7 @@ export default function CuratoriaContent() {
 
   return (
     <main className="min-h-screen w-full bg-surface-sage px-[20px] py-8 md:px-[61px] max-w-[1280px] mx-auto">
-      <Link href="/" className="font-lato font-black leading-none text-brand-magenta text-[28px]">
-        {esCL.appName}
-      </Link>
+      <SiteWordmark />
 
       {/* Hero — same magenta + curatoria-head.svg + wordmark language as
           MenuDrawer's own CURATORIA tile, at the site's biggest

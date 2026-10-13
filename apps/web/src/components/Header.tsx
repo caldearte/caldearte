@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { esCL } from "@/i18n/es-CL";
 import { useIsAdmin } from "@/lib/useIsAdmin";
+import SiteWordmark from "./SiteWordmark";
 
 interface HeaderProps {
   onOpenSearch: () => void;
@@ -54,12 +55,7 @@ export default function Header({ onOpenSearch, onOpenMenu }: HeaderProps) {
           wordmark's size (two lines at 32px / 40px, leading-none). */}
       <div className="fixed top-0 inset-x-0 z-40 bg-surface-sage border-b border-text-primary/10">
         <div className="max-w-[1280px] mx-auto h-[84px] md:h-[104px] flex items-center justify-between px-[20px] md:px-[61px]">
-          {/* The two-line "CALDE / ARTE." wordmark (Daniel, 2026-10-12),
-              same as the old hero's and the footer's, at top-bar size. */}
-          <Link href="/" aria-label={esCL.appName} className="shrink-0 font-lato font-black leading-none text-brand-magenta text-[32px] md:text-[40px]">
-            <span className="block">{esCL.wordmarkLine1}</span>
-            <span className="block">{esCL.wordmarkLine2}</span>
-          </Link>
+          <SiteWordmark />
           {/* "calendario de arte" sits with the icons, right-aligned and
               centered on them (Daniel, 2026-10-12); on a narrow phone it
               may wrap to two right-aligned lines rather than crowd the

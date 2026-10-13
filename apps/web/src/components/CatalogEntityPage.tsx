@@ -5,6 +5,7 @@ import { instagramProfileUrl } from "@/lib/venueJsonLd";
 import type { EventRecord } from "@/lib/events";
 import ExpoCard from "./ExpoCard";
 import EventPageFooter from "./EventPageFooter";
+import SiteWordmark from "@/components/SiteWordmark";
 
 // Past shows listed on a venue/artist page: the most recent ones only, so
 // an entity with a long history doesn't turn into an endless page.
@@ -41,9 +42,7 @@ export default function CatalogEntityPage({
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdScriptContent(jsonLd) }} />
 
       <div className="mb-[40px] md:mb-[60px]">
-        <Link href="/" className="font-lato font-black leading-none text-brand-magenta text-[28px]">
-          {esCL.appName}
-        </Link>
+        <SiteWordmark />
       </div>
 
       <header className="flex flex-col gap-[12px] md:gap-[16px]">

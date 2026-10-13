@@ -1,13 +1,13 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
-import Link from "next/link";
 import { esCL } from "@/i18n/es-CL";
 import { statusBoxClass } from "@/lib/formStatusBox";
 import { compressImage } from "@/lib/compressImage";
 import Footer from "./Footer";
 import DrawerShell from "./DrawerShell";
 import ContactPanel from "./ContactPanel";
+import SiteWordmark from "@/components/SiteWordmark";
 
 interface Comuna {
   id: string;
@@ -96,9 +96,7 @@ export default function AgregaExpoContent({ comunas, galleries }: { comunas: Com
 
   return (
     <main className="min-h-screen w-full bg-surface-sage px-[20px] py-8 md:px-[61px] max-w-[1280px] mx-auto">
-      <Link href="/" className="font-lato font-black leading-none text-brand-magenta text-[28px]">
-        {esCL.appName}
-      </Link>
+      <SiteWordmark />
 
       <h1 className="font-lato font-black leading-none text-text-primary text-[36px] md:text-[48px] mt-[40px] md:mt-[60px] mb-[16px]">
         {esCL.agregaExpo.title}

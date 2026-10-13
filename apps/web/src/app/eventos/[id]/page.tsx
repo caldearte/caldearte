@@ -16,6 +16,7 @@ import EventDetailCard from "@/components/EventDetailCard";
 import EventCityLink from "@/components/EventCityLink";
 import EventPageFooter from "@/components/EventPageFooter";
 import ExpoCard from "@/components/ExpoCard";
+import SiteWordmark from "@/components/SiteWordmark";
 
 interface PageParams {
   id: string;
@@ -152,9 +153,7 @@ export default async function EventPage({ params }: { params: Promise<PageParams
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdScriptContent(buildEventJsonLd(event)) }} />
 
       <div className="flex items-center justify-between gap-2 mb-[40px] md:mb-[60px]">
-        <Link href="/" className="font-lato font-black leading-none text-brand-magenta text-[28px]">
-          {esCL.appName}
-        </Link>
+        <SiteWordmark />
         <EventCityLink regionId={eventRegionId} cityName={eventCityName} />
       </div>
 

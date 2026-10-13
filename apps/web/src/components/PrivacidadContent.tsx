@@ -1,11 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import { esCL } from "@/i18n/es-CL";
 import Footer from "./Footer";
 import DrawerShell from "./DrawerShell";
 import ContactPanel from "./ContactPanel";
+import SiteWordmark from "@/components/SiteWordmark";
 
 // Rediseño 2.0.0 — /privacidad restyled to match the rest of the site
 // (surface-sage page, wordmark header, fragment-mono section labels,
@@ -19,9 +19,7 @@ export default function PrivacidadContent() {
 
   return (
     <main className="min-h-screen w-full bg-surface-sage px-[20px] py-8 md:px-[61px] max-w-[1280px] mx-auto">
-      <Link href="/" className="font-lato font-black leading-none text-brand-magenta text-[28px]">
-        {esCL.appName}
-      </Link>
+      <SiteWordmark />
 
       <h1 className="font-lato font-black leading-none text-text-primary text-[36px] md:text-[48px] mt-[40px] md:mt-[60px] mb-[40px] md:mb-[60px]">
         {esCL.privacidad.title}
