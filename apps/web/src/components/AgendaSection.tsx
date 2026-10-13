@@ -5,8 +5,10 @@ import Link from "next/link";
 import { esCL } from "@/i18n/es-CL";
 import { fmtAgendaDay, fmtAgendaPillHour, santiagoDateOfIso } from "@/lib/date";
 import { eventComuna } from "@/lib/event-utils";
+import { useEventCardActions } from "@/lib/useEventCardActions";
 import type { EventRecord } from "@/lib/events";
 import { resolveArtistDisplay, titleWithTypePrefix } from "@/lib/social/flyerText";
+import { CalendarGlyph, DirectionsGlyph } from "./CardActionIcons";
 import CardImage from "./CardImage";
 
 interface AgendaSectionProps {
@@ -111,18 +113,29 @@ function DayBlock({ group, today, past, firstImagePriority }: { group: DayGroup;
 // 2026-10-12: overlays suit Instagram, on the site the image should stay
 // clean): a clean 4:5 photo, then one tag with the artist line, the
 // "Inauguración: …" / "Visita guiada: …" title line, and the magenta
-// "COMUNA · HORA" pill with the venue beside it — white here, since the
-// page itself is the flyer's sage. The tag hugs its own text and long
-// text wraps, balanced, like the flyer's.
+// "COMUNA · HORA" pill with the venue beside it, and the "Cómo llegar" /
+// "Agregar al calendario" buttons — white here, since the page itself is
+// the flyer's sage. The tag spans the card's width (for the buttons);
+// long text wraps, balanced, like the flyer's.
 function AgendaCard({ event, priority }: { event: EventRecord; priority: boolean }) {
   const type = event.eventType === "visita_guiada" ? "visita_guiada" : "inauguracion";
   const title = titleWithTypePrefix(event.title, type);
   const artist = resolveArtistDisplay(event.artist);
   const venue = event.placeName ?? event.freeformLocation;
   const comuna = eventComuna(event);
+  // "inauguracion" variant for both types: a visita guiada is just as much
+  // a dated, timed thing to put in a calendar.
+  const { mapsHref, calendarHref } = useEventCardActions(event, "inauguracion", true);
+  const button =
+    "relative z-10 w-full h-[44px] flex items-center justify-center gap-[10px] border border-text-primary bg-surface-white font-fragment-mono text-[13px] text-text-primary hover:bg-surface-sage";
 
   return (
-    <Link href={`/eventos/${event.id}`} aria-label={esCL.eventCardAriaLabel(event.title)} className="group flex flex-col gap-[12px]">
+    <div className="group relative flex flex-col gap-[12px]">
+      {/* Whole-card link as an overlay, not a wrapper — the action buttons
+          below are links of their own, and a link can't nest inside
+          another. They sit above it (z-10) and take their own clicks. */}
+      <Link href={`/eventos/${event.id}`} aria-label={esCL.eventCardAriaLabel(event.title)} className="absolute inset-0 z-[1]" />
+
       {/* Photo first, so photos side by side always start on the same
           line; the info tag follows at its own natural height. */}
       <div className="relative w-full aspect-[4/5] overflow-hidden bg-stone-800">
@@ -131,7 +144,7 @@ function AgendaCard({ event, priority }: { event: EventRecord; priority: boolean
         </div>
       </div>
 
-      <span className="w-fit max-w-full flex flex-col gap-[6px] rounded-[22px] bg-surface-white px-[16px] py-[10px]">
+      <div className="w-full flex flex-col gap-[6px] rounded-[22px] bg-surface-white px-[16px] pt-[10px] pb-[16px]">
         {artist && (
           <span className="font-geist font-semibold text-[11px] leading-[1.25] tracking-[1px] uppercase text-text-secondary [text-wrap:balance]">{artist}</span>
         )}
@@ -142,7 +155,27 @@ function AgendaCard({ event, priority }: { event: EventRecord; priority: boolean
           </span>
           {venue && <span className="min-w-0 font-geist font-semibold text-[11px] leading-[1.25] tracking-[1px] uppercase text-text-secondary">{venue}</span>}
         </span>
-      </span>
-    </Link>
+
+        {/* Full-width and stacked (Daniel, 2026-10-12: "Cómo llegar" is
+            the one he always uses) — big, easy targets on a phone. Same
+            look as the ficha's action buttons. */}
+        {(mapsHref || calendarHref) && (
+          <div className="flex flex-col gap-[8px] mt-[10px]">
+            {mapsHref && (
+              <a href={mapsHref} target="_blank" rel="noopener noreferrer" className={button}>
+                <DirectionsGlyph color="#3d373d" />
+                {esCL.cardMenuDirections}
+              </a>
+            )}
+            {calendarHref && (
+              <a href={calendarHref} target="_blank" rel="noopener noreferrer" className={button}>
+                <CalendarGlyph color="#3d373d" />
+                {esCL.home.addToCalendar}
+              </a>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
   );
 }

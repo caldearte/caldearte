@@ -459,6 +459,7 @@ export const esCL = {
     regionDropdownAriaLabel: (regionName: string) => `${regionName} — cambiar región`,
     agendaTitle: "Inauguraciones y visitas guiadas",
     agendaEmpty: (regionName: string) => `Esta semana no hay inauguraciones ni visitas guiadas en ${regionName}.`,
+    addToCalendar: "Agregar al calendario",
     agendaPastDay: (n: number) => `Ya pasó · ver ${n === 1 ? "1 evento" : `${n} eventos`}`,
     typeInauguracion: "Inauguración",
     typeVisitaGuiada: "Visita guiada",

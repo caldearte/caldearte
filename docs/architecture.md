@@ -449,8 +449,10 @@ first and was too much chrome); the week's inauguraciones and visitas guiadas me
 into one agenda grouped by day, Monday to Sunday, of cards in the
 Instagram flyer's look (`AgendaSection` — a clean 4:5 photo first, then
 one tag under it, not over it: the artist line, the "Inauguración: …" /
-"Visita guiada: …" title line, and the magenta "COMUNA · HORA" pill with
-the venue beside it; each day spans as many grid
+"Visita guiada: …" title line, the magenta "COMUNA · HORA" pill with the
+venue beside it, and full-width stacked "Cómo llegar" / "Agregar al
+calendario" buttons — the card's link is an overlay so those can be links
+of their own; each day spans as many grid
 columns as it has events so short days share a row on desktop; on the
 current week, past days fold to one line in place; text rules shared with `flyer-v2.tsx` through
 `lib/social/flyerText.ts`); the unchanged `CuratoriaBanner`; the
