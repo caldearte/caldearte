@@ -44,6 +44,13 @@ const RESPONSE_SCHEMA_INSTRUCTION = `Responde ÚNICAMENTE con un bloque de códi
 
 const SCOPE_INSTRUCTION = `Este formulario es solo para una EXPOSICIÓN CON INAUGURACIÓN (la fiesta de apertura de una muestra). Si lo descrito es en cambio una visita guiada a una muestra ya abierta, un taller, o una exposición sin una fecha de inauguración real, responde "rejected" y explica en publicMessage que este formulario es específicamente para inauguraciones — puede reenviar cuando tenga la fecha de su inauguración, o escribir por el formulario de contacto para otro tipo de actividad.`;
 
+// Test / filler submissions (Daniel, 2026-10-13): the form only checks
+// that fields aren't empty — deliberately, since a word list would also
+// reject real pseudonyms and titles — so this is where an obvious "test"
+// submission gets caught. Judged on the submission as a whole, never on a
+// single odd name or title.
+const TEST_DATA_INSTRUCTION = `Responde "rejected" también si el envío completo es evidentemente una prueba o relleno y no una muestra real: por ejemplo, la descripción es texto sin sentido o repetido ("asdf", "test test", "prueba prueba", "lorem ipsum") o todos los campos son marcadores evidentes ("test", "prueba", "xxx") sin describir ninguna obra ni muestra. Un nombre de artista o un título inusual por sí solo NO es motivo de rechazo: en el arte son habituales los seudónimos, los nombres de una sola palabra, en minúscula o que parecen palabras comunes ("Yo", "Prueba", "Nadie", "TUP"); si la descripción presenta una muestra coherente, evalúala normalmente. Si rechazas por esto, en publicMessage pide con amabilidad que vuelva a enviar el formulario con los datos reales de su muestra.`;
+
 function buildPrompt(input: SubmissionInput): string {
   return `${ART_SCOPE_POLICY}
 
@@ -54,6 +61,8 @@ ${INSTITUTIONAL_EXCLUSION_POLICY}
 ${EVENT_TYPE_POLICY}
 
 ${SCOPE_INSTRUCTION}
+
+${TEST_DATA_INSTRUCTION}
 
 Este es un dato AUTOREPORTADO directamente por la galería/espacio a través de un formulario público (no un texto extraído de una fuente externa) — no hay "cita textual" que verificar, evalúa el contenido tal como se describe a continuación:
 
