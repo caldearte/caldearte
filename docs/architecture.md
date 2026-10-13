@@ -445,8 +445,9 @@ replacing the yellow `GeoConsentBanner`; a row of 16 chips was tried
 first and was too much chrome); the week's inauguraciones and visitas guiadas merged
 into one agenda grouped by day, Monday to Sunday, of cards in the
 Instagram flyer's look (`AgendaSection` — a clean 4:5 photo with the
-flyer's pills and tags under it, not over it: comuna + hour pills,
-artist / title / venue tags; each day spans as many grid
+flyer's pills and tags around it, not over it: the "Inauguración: …" /
+"Visita guiada: …" title tag above, so the type reads first; comuna +
+hour pills and artist / venue tags below; each day spans as many grid
 columns as it has events so short days share a row on desktop; on the
 current week, past days fold to one line in place; text rules shared with `flyer-v2.tsx` through
 `lib/social/flyerText.ts`); the unchanged `CuratoriaBanner`; the
