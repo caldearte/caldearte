@@ -213,6 +213,27 @@ export function fmtAgendaPillHour(openingDatetimeIso: string, openingTimeConfirm
   return openingTimeConfirmed ? fmtOpeningHour(openingDatetimeIso).toUpperCase() : "HORA POR CONFIRMAR";
 }
 
+// The weeks of a month for the week-picker calendar (2026-10-12): the
+// Monday of every Monday-to-Sunday row that touches the month, first row
+// starting on or before the 1st. `month` is 0-based, like Date's.
+export function monthWeekStarts(year: number, month: number): string[] {
+  const first = new Date(year, month, 1);
+  const offset = (first.getDay() + 6) % 7; // days since Monday
+  const monday = new Date(year, month, 1 - offset);
+  const lastDay = new Date(year, month + 1, 0);
+  const weeks: string[] = [];
+  while (monday <= lastDay) {
+    weeks.push(toDateOnlyString(monday));
+    monday.setDate(monday.getDate() + 7);
+  }
+  return weeks;
+}
+
+// "octubre 2026" — the week-picker calendar's month heading.
+export function fmtMonthYear(year: number, month: number): string {
+  return `${MONTHS[month]} ${year}`;
+}
+
 // Week name for the home's h1 and week dropdown (2026-10-12): "Esta
 // semana", "Semana pasada", "Próxima semana", else "Semana del 28 de
 // septiembre" — reads naturally before "en Santiago".
@@ -222,17 +243,6 @@ export function fmtWeekLabel(weekStart: string, currentWeekStart: string): strin
   if (weekStart === addWeeks(currentWeekStart, 1)) return "Próxima semana";
   const d = parseDateOnly(weekStart);
   return `Semana del ${d.getDate()} de ${MONTHS[d.getMonth()]}${yearSuffix(d, currentWeekStart)}`;
-}
-
-// The weeks the dropdown offers, newest first: two ahead (discovery runs
-// on Sundays, so further out is mostly empty), back to SEMANA N°1 —
-// Caldearte didn't exist before it. The week being viewed is always
-// included, even if a ?semana= link points outside that span.
-export function weekOptions(currentWeekStart: string, viewedWeekStart: string, weeksAhead = 2): string[] {
-  const weeks: string[] = [];
-  for (let w = addWeeks(currentWeekStart, weeksAhead); w >= WEEK_ONE_MONDAY; w = addWeeks(w, -1)) weeks.push(w);
-  if (!weeks.includes(viewedWeekStart)) weeks.push(viewedWeekStart);
-  return weeks.sort().reverse();
 }
 
 // Day heading for the home agenda (2026-10-12), e.g. "Hoy", "Mañana",

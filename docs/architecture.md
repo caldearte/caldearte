@@ -438,10 +438,11 @@ arte" by the icons (`Header`); the h1 "[Esta semana ⌄] en [Santiago ⌄]"
 (`WeekHeading` — sticky under the top bar since the whole page is that
 week + región's data, compact once scrolled, sliding away on scroll-down
 only from the venue section on; any change scrolls back to the top), both words
-dropdowns built on `HeadingDropdown`: the week (`WeekDropdown` — "Próxima
-semana / Esta semana / Semana pasada / Semana del 28 de septiembre…", two
-weeks ahead back to SEMANA N°1, each a real `?semana=` link, replacing the
-chevrons and "SEMANA N°X") and the región (`RegionDropdown` — comuna
+dropdowns built on `HeadingDropdown`: the week (`WeekDropdown` — a month
+calendar where each row is a whole Monday-to-Sunday week, from SEMANA N°1
+to two months ahead, each row a real `?semana=` link; the h1 names it
+"Esta semana / Semana pasada / Próxima semana / Semana del 28 de
+septiembre"; replaces the chevrons and "SEMANA N°X") and the región (`RegionDropdown` — comuna
 search on top, regions north to south with their count, the ones with
 nothing this week dimmed at the end, "Usar mi ubicación" at the bottom,
 replacing the yellow `GeoConsentBanner`; a row of 16 chips was tried

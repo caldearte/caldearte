@@ -19,8 +19,9 @@ import {
   weekNumberSince,
   fmtUntilDate,
   fmtAgendaDay,
+  monthWeekStarts,
+  fmtMonthYear,
   fmtWeekLabel,
-  weekOptions,
   fmtAgendaPillHour,
   santiagoDateOfIso,
   fmtWeekRangeShort,
@@ -286,8 +287,16 @@ test("fmtWeekLabel: relative names around the current week, dated otherwise", ()
   assert.equal(fmtWeekLabel("2026-09-28", "2026-10-12"), "Semana del 28 de septiembre");
 });
 
-test("weekOptions: newest first, two weeks ahead, back to week one, always includes the viewed week", () => {
-  const weeks = weekOptions("2026-08-10", "2026-08-10");
-  assert.deepEqual(weeks, ["2026-08-24", "2026-08-17", "2026-08-10", "2026-08-03", "2026-07-27"]);
-  assert.equal(weekOptions("2026-08-10", "2026-09-14")[0], "2026-09-14");
+
+test("monthWeekStarts: Monday-to-Sunday rows touching the month", () => {
+  // October 2026 starts on a Thursday and ends on a Saturday.
+  assert.deepEqual(monthWeekStarts(2026, 9), ["2026-09-28", "2026-10-05", "2026-10-12", "2026-10-19", "2026-10-26"]);
+  // February 2027 starts on a Monday: no leading row from January.
+  assert.deepEqual(monthWeekStarts(2027, 1), ["2027-02-01", "2027-02-08", "2027-02-15", "2027-02-22"]);
+  // December rows can't run into the next year's months.
+  assert.equal(monthWeekStarts(2026, 11).at(-1), "2026-12-28");
+});
+
+test("fmtMonthYear", () => {
+  assert.equal(fmtMonthYear(2026, 9), "octubre 2026");
 });
