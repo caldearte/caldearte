@@ -114,8 +114,8 @@ function DayBlock({ group, today, past, firstImagePriority }: { group: DayGroup;
 
 // The flyer's pieces, but around the photo instead of on it (Daniel,
 // 2026-10-12: overlays suit Instagram, on the site the image should stay
-// clean): the "Inauguración: …" title tag above it, magenta comuna + hour
-// pills and artist / venue tags below — white here, since the page itself
+// clean): the artist and "Inauguración: …" title tags above it, magenta
+// comuna + hour pills and the venue tag below — white here, since the page itself
 // is the flyer's sage. Each tag hugs its
 // own text and long text wraps, balanced, like the flyer's.
 function AgendaCard({ event, priority }: { event: EventRecord; priority: boolean }) {
@@ -129,12 +129,15 @@ function AgendaCard({ event, priority }: { event: EventRecord; priority: boolean
 
   return (
     <Link href={`/eventos/${event.id}`} aria-label={esCL.eventCardAriaLabel(event.title)} className="group flex flex-col gap-[10px]">
-      {/* Title first, above the photo — "Inauguración: …" / "Visita
-          guiada: …" tells at a glance what kind of event this is (Daniel,
-          2026-10-12). */}
-      <span className="w-fit max-w-full rounded-[22px] bg-surface-white px-[16px] py-[10px] font-lato font-black text-[17px] leading-[1.15] tracking-[0.3px] uppercase text-brand-magenta [text-wrap:balance] group-hover:underline">
-        {title}
-      </span>
+      {/* Artist, then title, above the photo — "Inauguración: …" /
+          "Visita guiada: …" tells at a glance what kind of event this is
+          (Daniel, 2026-10-12). */}
+      <div className="flex flex-col items-start gap-[6px]">
+        {artist && <span className={`${tag} py-[8px] leading-[1.25] [text-wrap:balance]`}>{artist}</span>}
+        <span className="w-fit max-w-full rounded-[22px] bg-surface-white px-[16px] py-[10px] font-lato font-black text-[17px] leading-[1.15] tracking-[0.3px] uppercase text-brand-magenta [text-wrap:balance] group-hover:underline">
+          {title}
+        </span>
+      </div>
 
       <div className="relative w-full aspect-[4/5] overflow-hidden bg-stone-800">
         <div className="absolute inset-0 transition-transform duration-300 group-hover:scale-[1.02]">
@@ -147,12 +150,7 @@ function AgendaCard({ event, priority }: { event: EventRecord; priority: boolean
         <span className={pill}>{fmtAgendaPillHour(event.openingDatetime!, event.openingTimeConfirmed)}</span>
       </div>
 
-      {(artist || venue) && (
-        <div className="flex flex-col items-start gap-[6px]">
-          {artist && <span className={`${tag} py-[8px] leading-[1.25] [text-wrap:balance]`}>{artist}</span>}
-          {venue && <span className={`${tag} py-[7px] truncate`}>{venue}</span>}
-        </div>
-      )}
+      {venue && <span className={`${tag} py-[7px] truncate`}>{venue}</span>}
     </Link>
   );
 }
