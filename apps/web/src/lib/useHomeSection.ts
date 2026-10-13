@@ -20,10 +20,15 @@ function currentSection(): HomeSection {
   // The line things are "under": the sticky bar's bottom edge (marked
   // data-week-bar), or just below the fixed top bar if it isn't there.
   const bar = [...document.querySelectorAll<HTMLElement>("[data-week-bar]")].find(visible);
-  const line = bar ? bar.getBoundingClientRect().bottom : 104;
-  // A part counts as reached a little before its top meets the line: the
-  // section links land each part at its scroll-margin (200px), just below
-  // the bar, and that part has to read as the active one.
+  // Where it sits when stuck, not where it's slid to: near the page's end
+  // the bar slides away on scroll-down, and the line must not move with it.
+  const line = bar
+    ? Math.max(bar.getBoundingClientRect().bottom, parseFloat(getComputedStyle(bar).top) + bar.offsetHeight)
+    : 104;
+  // A part counts as reached well before its top meets the line: the
+  // section links land each part at its scroll-margin (200px), below the
+  // bar, and a real smooth scroll can stop short of that by 50-100px
+  // (Daniel, 2026-10-13) — the part landed on must read as the active one.
   const reached = line + REACH_SLACK;
   const markers = [...document.querySelectorAll<HTMLElement>("[data-sticky-section]")].filter(visible);
   // The last part reached stays current through the air before the next
@@ -35,7 +40,7 @@ function currentSection(): HomeSection {
   return current;
 }
 
-const REACH_SLACK = 48;
+const REACH_SLACK = 120;
 
 export function useHomeSection(): HomeSection {
   const [section, setSection] = useState<HomeSection>("destacado");
@@ -46,9 +51,14 @@ export function useHomeSection(): HomeSection {
     update();
     window.addEventListener("scroll", update, { passive: true });
     window.addEventListener("resize", update);
+    // The sticky bar tightens once stuck (a 300ms transition) and moves
+    // everything below it with no scroll event — re-check when it settles.
+    const bar = document.querySelector<HTMLElement>("[data-week-bar]");
+    bar?.addEventListener("transitionend", update);
     return () => {
       window.removeEventListener("scroll", update);
       window.removeEventListener("resize", update);
+      bar?.removeEventListener("transitionend", update);
     };
   }, []);
   return section;
