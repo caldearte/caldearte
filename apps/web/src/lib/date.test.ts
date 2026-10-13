@@ -275,10 +275,10 @@ test("santiagoDateOfIso: a 21:30 opening in Santiago stays on its own day", () =
   assert.equal(santiagoDateOfIso("2026-10-17"), "2026-10-17");
 });
 
-test("fmtAgendaPillHour: Santiago hour, or HORA POR CONFIRMAR", () => {
+test("fmtAgendaPillHour: Santiago hour, or HORA POR CONF.", () => {
   assert.equal(fmtAgendaPillHour("2026-10-14T19:00:00+00:00", true), "16 HR");
   assert.equal(fmtAgendaPillHour("2026-10-14T22:30:00+00:00", true), "19:30 HR");
-  assert.equal(fmtAgendaPillHour("2026-10-17T03:00:00+00:00", false), "HORA POR CONFIRMAR");
+  assert.equal(fmtAgendaPillHour("2026-10-17T03:00:00+00:00", false), "HORA POR CONF.");
 });
 
 test("fmtWeekLabel: relative names around the current week, dated otherwise", () => {

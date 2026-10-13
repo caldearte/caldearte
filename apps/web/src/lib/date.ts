@@ -220,9 +220,11 @@ export function fmtAgendaPillDay(openingDatetimeIso: string, todayStr: string): 
 }
 
 // Hour on an agenda card's pill (2026-10-12): "19 HR", uppercase like the
-// Instagram flyer's pills, or "HORA POR CONFIRMAR".
+// Instagram flyer's pills, or "HORA POR CONF.".
 export function fmtAgendaPillHour(openingDatetimeIso: string, openingTimeConfirmed: boolean): string {
-  return openingTimeConfirmed ? fmtOpeningHour(openingDatetimeIso).toUpperCase() : "HORA POR CONFIRMAR";
+  // Abbreviated (Daniel, 2026-10-13): the full "HORA POR CONFIRMAR" made
+  // the pill too long next to comuna + day.
+  return openingTimeConfirmed ? fmtOpeningHour(openingDatetimeIso).toUpperCase() : "HORA POR CONF.";
 }
 
 // The weeks of a month for the week-picker calendar (2026-10-12): the
