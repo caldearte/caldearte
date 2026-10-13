@@ -7,8 +7,6 @@ import { fmtAgendaDay, fmtAgendaPillHour, santiagoDateOfIso } from "@/lib/date";
 import { eventComuna } from "@/lib/event-utils";
 import type { EventRecord } from "@/lib/events";
 import { resolveArtistDisplay, titleWithTypePrefix } from "@/lib/social/flyerText";
-import { hasShareableInauguraciones, shareInauguracionesCarousel } from "@/lib/social/shareInauguracionesCarousel";
-import { ShareGlyph } from "./CardActionIcons";
 import CardImage from "./CardImage";
 
 interface AgendaSectionProps {
@@ -35,13 +33,10 @@ export default function AgendaSection({ inauguraciones, visitasGuiadas, regionNa
   const firstUpcoming = groups.findIndex((g) => !isCurrentWeek || g.date >= today);
 
   return (
-    <section aria-labelledby="agenda-title" className="mt-[24px]">
-      <div className="flex items-center justify-between gap-3 mb-[16px]">
-        <h2 id="agenda-title" className="font-geist font-semibold text-[13px] tracking-[2px] uppercase text-text-secondary">
-          {esCL.home.agendaTitle}
-        </h2>
-        <ShareWeekButton events={inauguraciones} regionName={regionName} />
-      </div>
+    // No visible section title (Daniel, 2026-10-12): the h1 already says
+    // which week and where, and the cards' own "Inauguración: …" tags say
+    // what they are. The name stays for screen readers.
+    <section aria-label={esCL.home.agendaTitle} className="mt-[24px]">
 
       {groups.length === 0 && <p className="font-geist text-[15px] text-text-primary">{esCL.home.agendaEmpty(regionName)}</p>}
 
@@ -49,7 +44,7 @@ export default function AgendaSection({ inauguraciones, visitasGuiadas, regionNa
           events — on desktop a day with one opening shares its row with
           the next days instead of leaving two thirds of it empty. Same
           20px gap inside and between days, so the cards line up. */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-[16px] md:gap-x-[20px] gap-y-[28px] md:gap-y-[36px]">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-[16px] md:gap-x-[20px] gap-y-[44px] md:gap-y-[56px]">
         {groups.map((g, i) => (
           <DayBlock key={g.date} group={g} today={today} past={isCurrentWeek && g.date < today} firstImagePriority={i === firstUpcoming} />
         ))}
@@ -102,7 +97,7 @@ function DayBlock({ group, today, past, firstImagePriority }: { group: DayGroup;
 
   return (
     <div className={`${SPAN[n]} ${past ? "opacity-70" : ""}`}>
-      <h3 className="font-lato font-black text-[22px] md:text-[26px] text-text-primary mb-[12px]">{heading}</h3>
+      <h3 className="font-lato font-black text-[22px] md:text-[26px] text-text-primary mb-[16px]">{heading}</h3>
       <div className={`grid ${INNER_COLS[n]} gap-[16px] md:gap-[20px]`}>
         {group.events.map((e, i) => (
           <AgendaCard key={e.id} event={e} priority={firstImagePriority && i === 0} />
@@ -128,22 +123,22 @@ function AgendaCard({ event, priority }: { event: EventRecord; priority: boolean
   const tag = "w-fit max-w-full rounded-[18px] bg-surface-white px-[14px] font-geist font-semibold text-[11px] tracking-[1px] uppercase text-text-secondary";
 
   return (
-    <Link href={`/eventos/${event.id}`} aria-label={esCL.eventCardAriaLabel(event.title)} className="group flex flex-col gap-[10px]">
+    <Link href={`/eventos/${event.id}`} aria-label={esCL.eventCardAriaLabel(event.title)} className="group flex flex-col gap-[14px]">
       {/* Artist, then title, above the photo — "Inauguración: …" /
           "Visita guiada: …" tells at a glance what kind of event this is
           (Daniel, 2026-10-12). From sm up, where cards sit side by side,
           this block has a fixed height and its tags rest on the photo, so
           every photo in a row starts at the same line whether or not
-          there's an artist: 116px = a one-line artist tag (30) + gap (6) +
-          a three-line title tag (79); both are clamped to fit, the full
+          there's an artist: 126px = a one-line artist tag (30) + gap (8) +
+          a three-line title tag (20 padding + 3 × 22); both are clamped to fit, the full
           title is on the ficha. One card per row on a phone, so nothing to
           align there and nothing is clamped. */}
-      <div className="flex flex-col items-start justify-end gap-[6px] sm:h-[116px]">
+      <div className="flex flex-col items-start justify-end gap-[8px] sm:h-[126px]">
         {artist && <span className={`${tag} py-[8px] leading-[1.25] [text-wrap:balance] sm:whitespace-nowrap sm:overflow-hidden sm:text-ellipsis`}>{artist}</span>}
         {/* Clamp on an inner span: on the padded tag itself, overflow
             clips at the padding box and a 4th line would peek through. */}
         <span className="w-fit max-w-full rounded-[22px] bg-surface-white px-[16px] py-[10px]">
-          <span className="font-lato font-black text-[17px] leading-[1.15] tracking-[0.3px] uppercase text-brand-magenta [text-wrap:balance] sm:line-clamp-3 group-hover:underline">
+          <span className="font-lato font-black text-[17px] leading-[1.3] tracking-[0.3px] uppercase text-brand-magenta [text-wrap:balance] sm:line-clamp-3 group-hover:underline">
             {title}
           </span>
         </span>
@@ -161,50 +156,5 @@ function AgendaCard({ event, priority }: { event: EventRecord; priority: boolean
 
       {venue && <span className={`${tag} py-[7px] truncate`}>{venue}</span>}
     </Link>
-  );
-}
-
-// Camila's "grab this week's inauguraciones as an Instagram carousel"
-// button (2026-08-31), moved here from the old Inauguraciones section
-// header — same behavior, smaller footprint.
-function ShareWeekButton({ events, regionName }: { events: EventRecord[]; regionName: string }) {
-  const [status, setStatus] = useState<"idle" | "working" | "error">("idle");
-  const [message, setMessage] = useState<string | null>(null);
-
-  if (!hasShareableInauguraciones(events)) return null;
-
-  async function handleShare() {
-    setStatus("working");
-    setMessage(null);
-    try {
-      const outcome = await shareInauguracionesCarousel(events, regionName);
-      setStatus("idle");
-      if (outcome === "downloaded") {
-        setMessage(esCL.shareCarouselDownloaded);
-        setTimeout(() => setMessage(null), 6000);
-      }
-    } catch {
-      setStatus("error");
-      setMessage(esCL.shareCarouselError);
-      setTimeout(() => {
-        setStatus("idle");
-        setMessage(null);
-      }, 4000);
-    }
-  }
-
-  return (
-    <div className="relative shrink-0">
-      <button
-        type="button"
-        onClick={handleShare}
-        disabled={status === "working"}
-        className="flex items-center gap-1.5 h-[30px] px-3 rounded-full border border-text-primary/40 font-geist text-[12px] text-text-primary disabled:opacity-50 cursor-pointer"
-      >
-        <ShareGlyph color="#3d373d" />
-        {status === "working" ? esCL.shareCarouselWorking : esCL.shareCarouselButton}
-      </button>
-      {message && <div className="absolute top-full right-0 mt-2 z-20 w-[240px] rounded-lg bg-black/80 text-white text-xs px-2.5 py-1.5">{message}</div>}
-    </div>
   );
 }
