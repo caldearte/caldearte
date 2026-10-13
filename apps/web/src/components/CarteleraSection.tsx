@@ -62,7 +62,7 @@ export default function CarteleraSection({ events, today }: CarteleraSectionProp
       {closing.length > 0 && (
         <div className="mb-[32px]">
           <h3 className="font-lato font-black text-[20px] md:text-[22px] text-brand-magenta mb-[10px]">{esCL.home.ultimosDias}</h3>
-          <TileGrid events={closingExpanded ? closing : closing.slice(0, INITIAL_VISIBLE_CLOSING)} today={today} />
+          <TileGrid events={closingExpanded ? closing : closing.slice(0, INITIAL_VISIBLE_CLOSING)} today={today} closing />
           {closing.length > INITIAL_VISIBLE_CLOSING && (
             <ExpandButton expanded={closingExpanded} label={esCL.home.seeAllClosing(closing.length)} onClick={() => setClosingExpanded((e) => !e)} />
           )}
@@ -131,22 +131,41 @@ function ComunaChip({ label, count, selected, onClick }: { label: string; count?
 // "Hasta el…" for the full run ("12 al 28 de julio"), for past shows.
 // `wide` = 6 desktop columns instead of 5 — the home's "Siguen en
 // cartelera", the longest list. Class strings written out for Tailwind.
-export function TileGrid({ events, today, showPeriod = false, wide = false }: { events: EventRecord[]; today: string; showPeriod?: boolean; wide?: boolean }) {
+// `closing` = the "Últimos días" variant of the tile (see ExpoTile).
+export function TileGrid({
+  events,
+  today,
+  showPeriod = false,
+  wide = false,
+  closing = false,
+}: {
+  events: EventRecord[];
+  today: string;
+  showPeriod?: boolean;
+  wide?: boolean;
+  closing?: boolean;
+}) {
   return (
     <div className={`grid grid-cols-2 md:grid-cols-4 ${wide ? "xl:grid-cols-6" : "xl:grid-cols-5"} gap-x-[12px] gap-y-[20px]`}>
       {events.map((e) => (
-        <ExpoTile key={e.id} event={e} today={today} showPeriod={showPeriod} />
+        <ExpoTile key={e.id} event={e} today={today} showPeriod={showPeriod} closing={closing} />
       ))}
     </div>
   );
 }
 
-export function ExpoTile({ event, today, showPeriod = false }: { event: EventRecord; today: string; showPeriod?: boolean }) {
+export function ExpoTile({ event, today, showPeriod = false, closing = false }: { event: EventRecord; today: string; showPeriod?: boolean; closing?: boolean }) {
   const { dateLine, venueLine } = useEventCardActions(event, "expo", true);
   const artist = resolveArtistDisplay(event.artist);
   // Past shows (venue/artist pages) read their full run; current ones,
   // when they close.
   const pill = showPeriod ? (dateLine ?? "").toUpperCase() : event.runEndDate ? fmtUntilPill(event.runEndDate, today) : null;
+
+  const pillTag = pill && (
+    <span className="rounded-[12px] bg-brand-magenta px-[9px] py-[3px] font-lato font-black text-[11px] leading-[1.35] uppercase tracking-[0.3px] text-white [text-wrap:balance]">
+      {pill}
+    </span>
+  );
 
   // Same build as the agenda's cards (Daniel, 2026-10-13), a size smaller:
   // a clean 4:5 photo, then one white tag with the artist in gray, the
@@ -158,23 +177,24 @@ export function ExpoTile({ event, today, showPeriod = false }: { event: EventRec
         <CardImage imageUrl={event.imageUrl} sourceUrl={event.sourceUrl} sensitivityTags={event.sensitivityTags} alt={event.title} compact />
       </div>
       <div className="w-full flex flex-col items-start gap-[5px] rounded-[18px] bg-surface-white px-[12px] pt-[9px] pb-[11px]">
-        {/* Always one line, blank when there's no artist (Daniel,
-            2026-10-13) — with title and venue also one line each, every
-            tile ends at the same height. */}
-        <span aria-hidden={artist ? undefined : true} className="block w-full truncate font-geist font-semibold text-[10px] leading-[1.25] tracking-[1px] uppercase text-text-secondary">
-          {artist ?? "\u00a0"}
-        </span>
+        {/* "Últimos días" (Daniel, 2026-10-13): the closing date leads and
+            there's no artist line — when it closes is the point there. */}
+        {closing && pillTag}
+        {/* Elsewhere: always one artist line, blank when there's none — with
+            title and venue also one line each, every tile ends at the same
+            height. */}
+        {!closing && (
+          <span aria-hidden={artist ? undefined : true} className="block w-full truncate font-geist font-semibold text-[10px] leading-[1.25] tracking-[1px] uppercase text-text-secondary">
+            {artist ?? "\u00a0"}
+          </span>
+        )}
         {/* Title and venue: one line each across the whole tag, "…" past it
             (Daniel, 2026-10-13) — the full text is on the ficha, and in the
             title attribute on hover. */}
         <span title={event.title} className="block w-full truncate font-lato font-black text-[14px] leading-[1.25] tracking-[0.2px] uppercase text-brand-magenta group-hover:underline">
           {event.title}
         </span>
-        {pill && (
-          <span className="mt-[2px] rounded-[12px] bg-brand-magenta px-[9px] py-[3px] font-lato font-black text-[11px] leading-[1.35] uppercase tracking-[0.3px] text-white [text-wrap:balance]">
-            {pill}
-          </span>
-        )}
+        {!closing && pillTag}
         <span title={venueLine} className="block w-full truncate font-geist font-semibold text-[10px] leading-[1.3] tracking-[1px] uppercase text-text-secondary">
           {venueLine}
         </span>
