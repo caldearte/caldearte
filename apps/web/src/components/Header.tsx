@@ -50,8 +50,7 @@ export default function Header({ onOpenSearch, onOpenMenu }: HeaderProps) {
     <header>
       {/* `fixed`, not `sticky` — sticky silently failed to pin here
           (verified in-browser). An equal-height spacer below reserves its
-          space in normal flow. RegionNav's sticky offset (top-[52px])
-          depends on this bar's mobile height. */}
+          space in normal flow. */}
       <div className="fixed top-0 inset-x-0 z-40 bg-surface-sage border-b border-text-primary/10">
         <div className="max-w-[1280px] mx-auto h-[52px] md:h-[64px] flex items-center justify-between px-[20px] md:px-[61px]">
           <Link href="/" className="flex items-baseline gap-[10px] min-w-0">

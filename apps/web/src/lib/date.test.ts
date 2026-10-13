@@ -19,6 +19,8 @@ import {
   weekNumberSince,
   fmtUntilDate,
   fmtAgendaDay,
+  fmtWeekLabel,
+  weekOptions,
   fmtAgendaPillDate,
   santiagoDateOfIso,
   fmtWeekRangeShort,
@@ -276,4 +278,17 @@ test("fmtAgendaPillDate: flyer-style pill, HOY for today, Chilean date", () => {
   // Unconfirmed hour = midnight Santiago placeholder (03:00Z in October, UTC-3).
   assert.equal(fmtAgendaPillDate("2026-10-17T03:00:00+00:00", false, "2026-10-12"), "SÁB 17 OCT - HORA POR CONFIRMAR");
   assert.equal(fmtAgendaPillDate("2026-10-12T22:00:00+00:00", true, "2026-10-12"), "HOY - 19 HR");
+});
+
+test("fmtWeekLabel: relative names around the current week, dated otherwise", () => {
+  assert.equal(fmtWeekLabel("2026-10-12", "2026-10-12"), "Esta semana");
+  assert.equal(fmtWeekLabel("2026-10-05", "2026-10-12"), "Semana pasada");
+  assert.equal(fmtWeekLabel("2026-10-19", "2026-10-12"), "Próxima semana");
+  assert.equal(fmtWeekLabel("2026-09-28", "2026-10-12"), "Semana del 28 de septiembre");
+});
+
+test("weekOptions: newest first, two weeks ahead, back to week one, always includes the viewed week", () => {
+  const weeks = weekOptions("2026-08-10", "2026-08-10");
+  assert.deepEqual(weeks, ["2026-08-24", "2026-08-17", "2026-08-10", "2026-08-03", "2026-07-27"]);
+  assert.equal(weekOptions("2026-08-10", "2026-09-14")[0], "2026-09-14");
 });

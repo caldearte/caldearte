@@ -14,7 +14,7 @@ import {
 } from "@/lib/event-utils";
 import { buildRegionMetaByCityId, adminRegionNameByRegionId } from "@/lib/cities";
 import { resolveCityPickerContext, type CookieReader } from "@/lib/cityPickerContext";
-import { todayInSantiago, currentWeekInSantiago, weekBoundsInSantiago, addWeeks, weekNumberSince, isCurrentOrUpcoming } from "@/lib/date";
+import { todayInSantiago, currentWeekInSantiago, weekBoundsInSantiago, isCurrentOrUpcoming } from "@/lib/date";
 import { FAMILY_MODE_COOKIE, TODAY_FILTER_COOKIE, VIGENTES_FILTER_COOKIE } from "@/lib/cookies";
 import type { NewsletterStatus } from "@/components/NewsletterStatusModal";
 
@@ -38,11 +38,8 @@ export interface HomeViewModel {
   today: string;
   rangeStart: string;
   rangeEnd: string;
-  weekNumber: number;
-  prevWeekHref: string;
-  nextWeekHref: string;
   cityCounts: Record<string, CityCounts>;
-  // Distinct events per región for the region nav (RegionNav.tsx) —
+  // Distinct events per región for the región dropdown (RegionDropdown.tsx) —
   // same window as the sections, ignores Hoy/Vigentes. A región with
   // nothing this week has no entry.
   regionActivity: Record<string, RegionActivity>;
@@ -84,9 +81,6 @@ export async function computeHomeViewModel({
   const today = todayInSantiago();
 
   const { start: rangeStart, end: rangeEnd } = /^\d{4}-\d{2}-\d{2}$/.test(semana ?? "") ? weekBoundsInSantiago(semana!) : currentWeekInSantiago();
-  const weekNumber = weekNumberSince(rangeStart);
-  const prevWeekHref = `/?semana=${addWeeks(rangeStart, -1)}`;
-  const nextWeekHref = `/?semana=${addWeeks(rangeStart, 1)}`;
 
   const { events: allEvents, regions } = await fetchApprovedEvents();
   const visible = filterFamilyMode(allEvents, familyMode);
@@ -133,9 +127,6 @@ export async function computeHomeViewModel({
     today,
     rangeStart,
     rangeEnd,
-    weekNumber,
-    prevWeekHref,
-    nextWeekHref,
     cityCounts,
     regionActivity,
     cityThumbnails,

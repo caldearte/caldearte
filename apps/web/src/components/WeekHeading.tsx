@@ -1,25 +1,21 @@
 "use client";
 
-import Link from "next/link";
+import type { ReactNode } from "react";
 import { esCL } from "@/i18n/es-CL";
-import { fmtWeekRangeShort } from "@/lib/date";
+import WeekDropdown from "./WeekDropdown";
 
 interface WeekHeadingProps {
-  regionName: string;
-  rangeStart: string;
-  rangeEnd: string;
-  isCurrentWeek: boolean;
-  currentWeekHref: string;
-  weekNumber: number;
-  prevWeekHref: string;
-  nextWeekHref: string;
+  // The región, as a control (RegionDropdown) — it sits inside the h1.
+  regionControl: ReactNode;
+  rangeStart: string; // Monday of the week being viewed
+  currentWeekStart: string; // Monday of the real current week
   isRefreshing: boolean;
 }
 
-// "Marching dashes" loading bar — replaces the week chevrons while
-// HomeClient's fetch is in flight (real report 2026-08-15: without it a
-// week change felt "stuck").
-function WeekNavLoadingBar() {
+// "Marching dashes" loading bar under the h1 while HomeClient's fetch is
+// in flight (real report 2026-08-15: without it a week or región change
+// felt "stuck").
+function LoadingBar() {
   return (
     <div
       role="status"
@@ -33,55 +29,17 @@ function WeekNavLoadingBar() {
   );
 }
 
-const chevronClass = "inline-flex shrink-0 items-center justify-center size-[32px] rounded-full border border-text-primary/30 cursor-pointer hover:bg-surface-white";
-
-// The page's h1 (2026-10-12) — "Esta semana en Santiago", or just the
-// región on any other week — with the week chevrons under it: what used
-// to be spread across "SEMANA N°X", the location button and a separate
-// range line.
-export default function WeekHeading({
-  regionName,
-  rangeStart,
-  rangeEnd,
-  isCurrentWeek,
-  currentWeekHref,
-  weekNumber,
-  prevWeekHref,
-  nextWeekHref,
-  isRefreshing,
-}: WeekHeadingProps) {
+// The page's h1 (2026-10-12): "[Esta semana ⌄] en [Santiago ⌄]" — both the
+// week and the región are dropdowns inside the sentence (WeekDropdown,
+// RegionDropdown), replacing "SEMANA N°X", the location button, the week
+// chevrons and the range line that used to be spread around the hero.
+export default function WeekHeading({ regionControl, rangeStart, currentWeekStart, isRefreshing }: WeekHeadingProps) {
   return (
     <div className="pt-[20px] md:pt-[28px]">
-      <h1 className="font-lato font-black leading-[1.05] text-[30px] md:text-[44px] text-text-primary">
-        {isCurrentWeek ? esCL.home.weekHeading(regionName) : regionName}
+      <h1 className="font-lato font-black leading-[1.15] text-[30px] md:text-[44px] text-text-primary">
+        <WeekDropdown rangeStart={rangeStart} currentWeekStart={currentWeekStart} /> {esCL.home.weekRegionJoiner} {regionControl}
       </h1>
-      <div className="flex items-center gap-[8px] h-[40px] mt-[6px]">
-        {isRefreshing ? (
-          <WeekNavLoadingBar />
-        ) : (
-          <>
-            {/* No earlier week than SEMANA N°1 (lunes 27 de julio de
-                2026, see weekNumberSince in lib/date.ts) — Caldearte
-                didn't exist before it. */}
-            {weekNumber > 1 && (
-              <Link href={prevWeekHref} aria-label={esCL.prevWeekAriaLabel} scroll={false} className={chevronClass}>
-                {/* eslint-disable-next-line @next/next/no-img-element -- Figma-exported asset, verbatim per design decision */}
-                <img src="/icons/chevron-right.svg" alt="" width={6} height={12} className="rotate-180" />
-              </Link>
-            )}
-            <span className="font-fragment-mono text-[15px] text-text-primary whitespace-nowrap">{fmtWeekRangeShort(rangeStart, rangeEnd)}</span>
-            <Link href={nextWeekHref} aria-label={esCL.nextWeekAriaLabel} scroll={false} className={chevronClass}>
-              {/* eslint-disable-next-line @next/next/no-img-element -- Figma-exported asset, verbatim per design decision */}
-              <img src="/icons/chevron-right.svg" alt="" width={6} height={12} />
-            </Link>
-            {!isCurrentWeek && (
-              <Link href={currentWeekHref} scroll={false} className="ml-[8px] font-fragment-mono text-[13px] text-brand-magenta underline whitespace-nowrap">
-                {esCL.home.backToCurrentWeek}
-              </Link>
-            )}
-          </>
-        )}
-      </div>
+      <div className="h-[12px] mt-[10px] flex items-center">{isRefreshing && <LoadingBar />}</div>
     </div>
   );
 }

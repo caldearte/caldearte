@@ -449,11 +449,14 @@ export const esCL = {
 
   // Home layout of 2026-10-12: the week's inauguraciones + visitas
   // guiadas as flyer-style cards, then the cartelera; regions always
-  // visible as chips (RegionNav) instead of behind the location button.
+  // one click away in the h1's own dropdown (RegionDropdown) instead of
+  // behind the old location button + full-screen panel.
   home: {
     topBarLabel: "calendario de arte",
-    weekHeading: (regionName: string) => `Esta semana en ${regionName}`,
-    backToCurrentWeek: "Volver a esta semana",
+    weekRegionJoiner: "en",
+    weekDropdownAriaLabel: (weekLabel: string) => `${weekLabel} — cambiar semana`,
+    weekListAriaLabel: "Elegir semana",
+    regionDropdownAriaLabel: (regionName: string) => `${regionName} — cambiar región`,
     agendaTitle: "Inauguraciones y visitas guiadas",
     agendaEmpty: (regionName: string) => `Esta semana no hay inauguraciones ni visitas guiadas en ${regionName}.`,
     agendaPast: (n: number) => `Ya pasaron esta semana (${n})`,

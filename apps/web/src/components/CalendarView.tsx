@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { esCL } from "@/i18n/es-CL";
 import { adminRegionNameByRegionId, buildRegionMetaByCityId, regionIdFromAdminRegionName } from "@/lib/cities";
 import { shortRegionName } from "@/lib/regionNames";
@@ -11,7 +11,7 @@ import type { EventRecord, RegionMeta } from "@/lib/events";
 import type { CityCounts, RegionActivity } from "@/lib/event-utils";
 import Header from "./Header";
 import WeekHeading from "./WeekHeading";
-import RegionNav from "./RegionNav";
+import RegionDropdown from "./RegionDropdown";
 import AgendaSection from "./AgendaSection";
 import CarteleraSection from "./CarteleraSection";
 import CuratoriaBanner from "./CuratoriaBanner";
@@ -36,12 +36,8 @@ interface CalendarViewProps {
   todayFilterOn: boolean; // Filtros "Hoy" pill — narrows this city's lists to only today's active events
   today: string; // YYYY-MM-DD, computed server-side for SSR/CSR consistency
   rangeStart: string; // YYYY-MM-DD — the current week's Monday
-  rangeEnd: string; // YYYY-MM-DD — the current week's Sunday
-  weekNumber: number; // sequential since launch, see lib/date.ts — only gates the "previous week" chevron now
-  prevWeekHref: string; // "/?semana=..." — real navigation, not a cookie (see page.tsx)
-  nextWeekHref: string;
   cityCounts: Record<string, CityCounts>; // full-week counts, unaffected by Hoy/Vigentes — city picker
-  regionActivity: Record<string, RegionActivity>; // distinct events per región — RegionNav
+  regionActivity: Record<string, RegionActivity>; // distinct events per región — RegionDropdown
   searchableEvents: EventRecord[]; // active/upcoming, every comuna — SearchPanel's own scope
   nextEvent: EventRecord | null; // empty-state fallback, beyond the current week
   regions: RegionMeta[];
@@ -63,8 +59,8 @@ interface CalendarViewProps {
 
 // Home layout of 2026-10-12, ordered by what a visitor (mostly on a
 // phone, arriving from Instagram/Facebook) needs first:
-//   1. where and which week (WeekHeading), then every región as chips
-//      (RegionNav), comuna search first
+//   1. which week and where: "[Esta semana ⌄] en [Santiago ⌄]"
+//      (WeekHeading — both words are dropdowns)
 //   2. the week's inauguraciones + visitas guiadas as flyer-style cards
 //      (AgendaSection) — the most highlighted thing on the page
 //   3. the Curatoría banner, then what's running (CarteleraSection)
@@ -84,10 +80,6 @@ export default function CalendarView({
   todayFilterOn,
   today,
   rangeStart,
-  rangeEnd,
-  weekNumber,
-  prevWeekHref,
-  nextWeekHref,
   cityCounts,
   regionActivity,
   searchableEvents,
@@ -97,7 +89,6 @@ export default function CalendarView({
   onRefreshNeeded = () => {},
   isRefreshing = false,
 }: CalendarViewProps) {
-  const comunaSearchReturnRef = useRef<HTMLElement | null>(null);
   const [locationOpen, setLocationOpen] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [drawerInitialView, setDrawerInitialView] = useState<"menu" | "contact">("menu");
@@ -124,7 +115,7 @@ export default function CalendarView({
     onRefreshNeeded();
   }
 
-  // "Usar mi ubicación" in RegionNav — replaces the yellow consent banner
+  // "Usar mi ubicación" in RegionDropdown — replaces the yellow consent banner
   // that used to sit above everything on a first visit (and pushed the
   // page down once it appeared). Same cookies the banner set: any outcome
   // records the answer so GeoLocationChangedBanner/the picker know it.
@@ -167,32 +158,23 @@ export default function CalendarView({
         }}
       />
 
-      <div className={`transition-opacity ${isRefreshing ? "opacity-50" : ""}`}>
-        <WeekHeading
-          regionName={regionName}
-          rangeStart={rangeStart}
-          rangeEnd={rangeEnd}
-          isCurrentWeek={isCurrentWeek}
-          currentWeekHref={`/?semana=${currentWeekStart}`}
-          weekNumber={weekNumber}
-          prevWeekHref={prevWeekHref}
-          nextWeekHref={nextWeekHref}
-          isRefreshing={isRefreshing}
-        />
-      </div>
-
-      <RegionNav
-        regions={regions}
-        regionId={regionId}
-        regionActivity={regionActivity}
-        hasPreciseLocation={hasPreciseLocation}
-        locating={locating}
-        onSelectRegion={goToRegion}
-        onUseMyLocation={locateMe}
-        onOpenComunaSearch={() => {
-          comunaSearchReturnRef.current = document.activeElement as HTMLElement | null;
-          setLocationOpen(true);
-        }}
+      <WeekHeading
+        regionControl={
+          <RegionDropdown
+            regionName={regionName}
+            regions={regions}
+            regionId={regionId}
+            regionActivity={regionActivity}
+            hasPreciseLocation={hasPreciseLocation}
+            locating={locating}
+            onSelectRegion={goToRegion}
+            onUseMyLocation={locateMe}
+            onOpenComunaSearch={() => setLocationOpen(true)}
+          />
+        }
+        rangeStart={rangeStart}
+        currentWeekStart={currentWeekStart}
+        isRefreshing={isRefreshing}
       />
 
       <div className={`transition-opacity ${isRefreshing ? "opacity-50" : ""}`}>
@@ -252,7 +234,6 @@ export default function CalendarView({
         regions={regions}
         onClose={() => {
           setLocationOpen(false);
-          comunaSearchReturnRef.current?.focus();
         }}
         onSelectRegion={goToRegion}
       />

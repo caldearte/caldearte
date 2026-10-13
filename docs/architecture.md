@@ -434,12 +434,15 @@ site had to convert the visits it got): the first event used to appear
 wordmark, location button, count rings) and the content sat in three
 paged sliders ("1/15" for Santiago's exposiciones on mobile). Now, in
 order: a slim fixed top bar, "CALDEARTE calendario de arte" (`Header`);
-the h1 ("Esta semana en Santiago", just the región on other weeks) with
-the week chevrons under it (`WeekHeading`); every región as chips
-(`RegionNav` — comuna search first, then north to south, regions with
-nothing this week dimmed at the end, "Usar mi ubicación" replacing the
-yellow `GeoConsentBanner`; one sticky scrolling row on a phone, wrapping
-rows on desktop); the week's inauguraciones and visitas guiadas merged
+the h1 "[Esta semana ⌄] en [Santiago ⌄]" (`WeekHeading`), both words
+dropdowns built on `HeadingDropdown`: the week (`WeekDropdown` — "Próxima
+semana / Esta semana / Semana pasada / Semana del 28 de septiembre…", two
+weeks ahead back to SEMANA N°1, each a real `?semana=` link, replacing the
+chevrons and "SEMANA N°X") and the región (`RegionDropdown` — comuna
+search on top, regions north to south with their count, the ones with
+nothing this week dimmed at the end, "Usar mi ubicación" at the bottom,
+replacing the yellow `GeoConsentBanner`; a row of 16 chips was tried
+first and was too much chrome); the week's inauguraciones and visitas guiadas merged
 into one chronological list of cards in the Instagram flyer's layout
 (`AgendaSection` — photo-filled 4:5 card, comuna + date pills, artist /
 title / venue tags; text rules shared with `flyer-v2.tsx` through
