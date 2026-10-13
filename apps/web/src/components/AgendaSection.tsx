@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { esCL } from "@/i18n/es-CL";
-import { fmtAgendaDay, fmtAgendaPillDate, santiagoDateOfIso } from "@/lib/date";
+import { fmtAgendaDay, fmtAgendaPillHour, santiagoDateOfIso } from "@/lib/date";
 import { eventComuna } from "@/lib/event-utils";
 import type { EventRecord } from "@/lib/events";
 import { resolveArtistDisplay, titleWithTypePrefix } from "@/lib/social/flyerText";
@@ -23,9 +23,8 @@ interface AgendaSectionProps {
 
 // The week's inauguraciones and visitas guiadas (2026-10-12) — the most
 // highlighted thing on the home, so each one is a big card in the same
-// layout as the Instagram flyer (flyer-v2.tsx): the photo fills a 4:5
-// card, comuna + date pills top-left, artist / title / venue tags
-// bottom-left (Daniel's call, comparing against the post). Grouped by day,
+// look as the Instagram flyer (flyer-v2.tsx): a clean 4:5 photo with the
+// flyer's pills and tags under it (AgendaCard). Grouped by day,
 // Monday to Sunday — visitors plan by day, not by event type, so both
 // types share one list (same reason the Instagram carousel merged them on
 // 2026-08-31). On the current week, days already past stay in their place
@@ -106,52 +105,46 @@ function DayBlock({ group, today, past, firstImagePriority }: { group: DayGroup;
       <h3 className="font-lato font-black text-[22px] md:text-[26px] text-text-primary mb-[12px]">{heading}</h3>
       <div className={`grid ${INNER_COLS[n]} gap-[16px] md:gap-[20px]`}>
         {group.events.map((e, i) => (
-          <AgendaCard key={e.id} event={e} today={today} priority={firstImagePriority && i === 0} />
+          <AgendaCard key={e.id} event={e} priority={firstImagePriority && i === 0} />
         ))}
       </div>
     </div>
   );
 }
 
-// Each tag hugs its own text (w-fit) and long text wraps, balanced, rather
-// than truncating — same rules as the flyer's tags. Sizes are the flyer's
-// scaled to a ~340px card.
-function AgendaCard({ event, today, priority }: { event: EventRecord; today: string; priority: boolean }) {
+// The flyer's pieces, but under the photo instead of on it (Daniel,
+// 2026-10-12: overlays suit Instagram, on the site the image should stay
+// clean): magenta comuna + hour pills, then artist / title / venue tags —
+// white here, since the page itself is the flyer's sage. Each tag hugs its
+// own text and long text wraps, balanced, like the flyer's.
+function AgendaCard({ event, priority }: { event: EventRecord; priority: boolean }) {
   const type = event.eventType === "visita_guiada" ? "visita_guiada" : "inauguracion";
   const title = titleWithTypePrefix(event.title, type);
   const artist = resolveArtistDisplay(event.artist);
   const venue = event.placeName ?? event.freeformLocation;
   const comuna = eventComuna(event);
+  const pill = "max-w-full truncate rounded-full bg-brand-magenta px-[12px] py-[5px] font-lato font-black text-[12px] uppercase tracking-[0.3px] text-white";
+  const tag = "w-fit max-w-full rounded-[18px] bg-surface-white px-[14px] font-geist font-semibold text-[11px] tracking-[1px] uppercase text-text-secondary";
 
   return (
-    <Link href={`/eventos/${event.id}`} aria-label={esCL.eventCardAriaLabel(event.title)} className="group relative block w-full aspect-[4/5] overflow-hidden bg-stone-800">
-      <div className="absolute inset-0 transition-transform duration-300 group-hover:scale-[1.02]">
-        <CardImage imageUrl={event.imageUrl} sourceUrl={event.sourceUrl} sensitivityTags={event.sensitivityTags} priority={priority} alt={event.title} />
+    <Link href={`/eventos/${event.id}`} aria-label={esCL.eventCardAriaLabel(event.title)} className="group flex flex-col gap-[10px]">
+      <div className="relative w-full aspect-[4/5] overflow-hidden bg-stone-800">
+        <div className="absolute inset-0 transition-transform duration-300 group-hover:scale-[1.02]">
+          <CardImage imageUrl={event.imageUrl} sourceUrl={event.sourceUrl} sensitivityTags={event.sensitivityTags} priority={priority} alt={event.title} />
+        </div>
       </div>
 
-      <div className="absolute left-[12px] top-[12px] right-[12px] flex flex-col items-start gap-[6px] pointer-events-none">
-        <span className="max-w-full truncate rounded-full bg-brand-magenta px-[12px] py-[5px] font-lato font-black text-[12px] uppercase tracking-[0.3px] text-white">{comuna}</span>
-        <span className="max-w-full truncate rounded-full bg-brand-magenta px-[12px] py-[5px] font-lato font-black text-[12px] tracking-[0.3px] text-white">
-          {fmtAgendaPillDate(event.openingDatetime!, event.openingTimeConfirmed, today)}
-        </span>
+      <div className="flex flex-wrap gap-[6px]">
+        <span className={pill}>{comuna}</span>
+        <span className={pill}>{fmtAgendaPillHour(event.openingDatetime!, event.openingTimeConfirmed)}</span>
       </div>
 
-      <div className="absolute left-[12px] bottom-[12px] right-[12px] flex flex-col items-start gap-[6px] pointer-events-none">
-        {artist && (
-          <span className="w-fit max-w-full rounded-[18px] bg-surface-sage px-[14px] py-[8px] font-geist font-semibold text-[11px] leading-[1.25] tracking-[1px] uppercase text-text-secondary [text-wrap:balance]">
-            {artist}
-          </span>
-        )}
-        {/* Clamp on an inner span: on the padded tag itself, overflow
-            clips at the padding box and the 5th line peeks through. */}
-        <span className="w-fit max-w-full rounded-[22px] bg-surface-sage px-[16px] py-[10px]">
-          <span className="font-lato font-black text-[17px] leading-[1.15] tracking-[0.3px] uppercase text-brand-magenta [text-wrap:balance] line-clamp-4">{title}</span>
+      <div className="flex flex-col items-start gap-[6px]">
+        {artist && <span className={`${tag} py-[8px] leading-[1.25] [text-wrap:balance]`}>{artist}</span>}
+        <span className="w-fit max-w-full rounded-[22px] bg-surface-white px-[16px] py-[10px] font-lato font-black text-[17px] leading-[1.15] tracking-[0.3px] uppercase text-brand-magenta [text-wrap:balance] group-hover:underline">
+          {title}
         </span>
-        {venue && (
-          <span className="w-fit max-w-full truncate rounded-[18px] bg-surface-sage px-[14px] py-[7px] font-geist font-semibold text-[11px] tracking-[1px] uppercase text-text-secondary">
-            {venue}
-          </span>
-        )}
+        {venue && <span className={`${tag} py-[7px] truncate`}>{venue}</span>}
       </div>
     </Link>
   );
