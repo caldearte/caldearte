@@ -14,12 +14,13 @@ interface CarteleraSectionProps {
   today: string;
 }
 
-// 8 fills two desktop rows (4 columns) and four mobile rows (2 columns);
-// past that, the list is a click away instead of a 15-page slider.
-const INITIAL_VISIBLE = 8;
+// 10 fills two desktop rows (5 columns — smaller than the agenda's cards
+// on purpose, Daniel 2026-10-13) and five mobile rows (2 columns); past
+// that, the list is a click away instead of a 15-page slider.
+const INITIAL_VISIBLE = 10;
 // "Últimos días" can be a long list on a busy week (7 in Santiago on
-// 2026-10-12) — two mobile rows, then a click.
-const INITIAL_VISIBLE_CLOSING = 4;
+// 2026-10-12) — one desktop row, then a click.
+const INITIAL_VISIBLE_CLOSING = 5;
 // Fewer distinct comunas than this and the chips add nothing.
 const MIN_COMUNAS_FOR_FILTER = 3;
 
@@ -128,7 +129,7 @@ function ComunaChip({ label, count, selected, onClick }: { label: string; count?
 // "Hasta el…" for the full run ("12 al 28 de julio"), for past shows.
 export function TileGrid({ events, today, showPeriod = false }: { events: EventRecord[]; today: string; showPeriod?: boolean }) {
   return (
-    <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-x-[12px] gap-y-[20px]">
+    <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-5 gap-x-[12px] gap-y-[20px]">
       {events.map((e) => (
         <ExpoTile key={e.id} event={e} today={today} showPeriod={showPeriod} />
       ))}

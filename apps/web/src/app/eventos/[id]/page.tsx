@@ -152,7 +152,7 @@ export default async function EventPage({ params }: { params: Promise<PageParams
   const moreAgenda = agenda.slice(0, 3);
   // Running today, not just "this month" (isCurrentOrUpcoming's grain) —
   // a show that closed yesterday isn't "en cartelera".
-  const moreExpos = cartelera.filter((e) => e.runStartDate !== null && e.runEndDate !== null && e.runEndDate >= today).slice(0, 4);
+  const moreExpos = cartelera.filter((e) => e.runStartDate !== null && e.runEndDate !== null && e.runEndDate >= today).slice(0, 5);
 
   return (
     <main className="min-h-screen w-full bg-surface-sage px-[16px] py-8 md:px-[24px] xl:px-[40px] max-w-[1600px] mx-auto">
