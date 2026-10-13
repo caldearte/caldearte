@@ -125,8 +125,8 @@ export function AgendaGrid({ events }: { events: EventRecord[] }) {
 // The flyer's pieces, under the photo instead of on it (Daniel,
 // 2026-10-12: overlays suit Instagram, on the site the image should stay
 // clean): a clean 4:5 photo, then one tag with the artist line, the
-// "Inauguración: …" / "Visita guiada: …" title line, and the magenta
-// "COMUNA · HORA" pill with the venue beside it, and the "Cómo llegar" /
+// "Inauguración: …" / "Visita guiada: …" title line, the magenta
+// "COMUNA · DÍA · HORA" pill, the venue on its own line, and the "Cómo llegar" /
 // "Agregar al calendario" buttons — white here, since the page itself is
 // the flyer's sage. The tag spans the card's width (for the buttons);
 // long text wraps, balanced, like the flyer's.
@@ -174,12 +174,10 @@ export function AgendaCard({ event, priority = false }: { event: EventRecord; pr
           <span className="font-geist font-semibold text-[11px] leading-[1.25] tracking-[1px] uppercase text-text-secondary [text-wrap:balance]">{artist}</span>
         )}
         <span className="font-lato font-black text-[17px] leading-[1.3] tracking-[0.3px] uppercase text-brand-magenta [text-wrap:balance] group-hover:underline">{title}</span>
-        <span className="flex items-center gap-[10px] min-w-0 mt-[4px]">
-          <span className="shrink-0 rounded-full bg-brand-magenta px-[10px] py-[4px] font-lato font-black text-[12px] uppercase tracking-[0.3px] text-white">
-            {comuna} · {fmtAgendaPillDay(event.openingDatetime!, todayInSantiago())} · {fmtAgendaPillHour(event.openingDatetime!, event.openingTimeConfirmed)}
-          </span>
-          {venue && <span className="min-w-0 font-geist font-semibold text-[11px] leading-[1.25] tracking-[1px] uppercase text-text-secondary">{venue}</span>}
+        <span className="w-fit mt-[4px] rounded-full bg-brand-magenta px-[10px] py-[4px] font-lato font-black text-[12px] uppercase tracking-[0.3px] text-white">
+          {comuna} · {fmtAgendaPillDay(event.openingDatetime!, todayInSantiago())} · {fmtAgendaPillHour(event.openingDatetime!, event.openingTimeConfirmed)}
         </span>
+        {venue && <span className="font-geist font-semibold text-[11px] leading-[1.25] tracking-[1px] uppercase text-text-secondary">{venue}</span>}
 
         {/* Full-width and stacked (Daniel, 2026-10-12: "Cómo llegar" is
             the one he always uses) — big, easy targets on a phone. Same
