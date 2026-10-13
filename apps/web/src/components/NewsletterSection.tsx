@@ -1,10 +1,12 @@
 "use client";
 
+import { useState, type FormEvent } from "react";
 import Image from "next/image";
 import { esCL } from "@/i18n/es-CL";
 import { useNewsletterSubscribe } from "@/lib/useNewsletterSubscribe";
 import { shortRegionName } from "@/lib/regionNames";
 import { statusBoxClass } from "@/lib/formStatusBox";
+import FormField, { FIELD_BOX, FIELD_BOX_INVALID } from "./FormField";
 
 const STATUS_BOX_SUCCESS = statusBoxClass("success", "text-text-primary");
 const STATUS_BOX_ERROR = statusBoxClass("error", "text-text-primary");
@@ -14,10 +16,42 @@ const STATUS_BOX_ERROR = statusBoxClass("error", "text-text-primary");
 // still used for the first-visit auto-prompt and the Footer's
 // "Suscríbete" link, untouched here). Since 2026-10-13 it sits beside
 // EspaciosSection, the same composition scaled down to half the page
-// (Daniel: "dos caras de la misma moneda"). Shares useNewsletterSubscribe so
+// (Daniel: "dos caras de la misma moneda"), with the shared field chrome
+// (FormField: white boxes, visible labels, light examples, errors under
+// each field) and the visitor's región preselected. Shares useNewsletterSubscribe so
 // both forms hit the same región list/submit logic instead of drifting.
-export default function NewsletterSection() {
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+interface NewsletterSectionProps {
+  // The región the visitor is looking at, preselected in the form — they
+  // almost always want the newsletter for the same place.
+  adminRegionName?: string;
+}
+
+export default function NewsletterSection({ adminRegionName = "" }: NewsletterSectionProps) {
   const { status, regions, handleSubmit } = useNewsletterSubscribe();
+  const [errors, setErrors] = useState<{ email?: string; adminRegionName?: string }>({});
+
+  function clearError(name: string) {
+    setErrors((prev) => (name in prev ? { ...prev, [name]: undefined } : prev));
+  }
+
+  // Checks before the shared submit (useNewsletterSubscribe), so each
+  // problem shows under its own field instead of the browser's bubble.
+  function onSubmit(e: FormEvent<HTMLFormElement>) {
+    const data = new FormData(e.currentTarget);
+    const email = ((data.get("email") as string | null) ?? "").trim();
+    const region = (data.get("adminRegionName") as string | null) ?? "";
+    const next: { email?: string; adminRegionName?: string } = {};
+    if (!EMAIL_RE.test(email)) next.email = esCL.newsletter.invalidEmail;
+    if (!region) next.adminRegionName = esCL.newsletter.noRegion;
+    setErrors(next);
+    if (next.email || next.adminRegionName) {
+      e.preventDefault();
+      return;
+    }
+    handleSubmit(e);
+  }
 
   return (
     <section
@@ -39,47 +73,49 @@ export default function NewsletterSection() {
       ) : status === "already_subscribed" ? (
         <p className={STATUS_BOX_SUCCESS}>{esCL.newsletter.alreadySubscribed}</p>
       ) : (
-        <form onSubmit={handleSubmit} className="flex flex-col gap-[16px] md:gap-[20px]">
-          <div className="w-full">
+        <form onSubmit={onSubmit} onInput={(e) => clearError((e.target as HTMLInputElement).name)} noValidate className="flex flex-col gap-[16px]">
+          <FormField label={esCL.newsletter.emailLabel} htmlFor="nl-email" error={errors.email}>
             <input
+              id="nl-email"
               name="email"
               type="email"
-              required
-              placeholder={esCL.newsletter.sectionEmailPlaceholder}
-              className="w-full bg-transparent border-b-4 border-text-primary rounded-input px-[8px] py-[12px] md:py-[14px] font-lato font-semibold text-[16px] md:text-[18px] text-text-primary placeholder:text-text-primary focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#3d373d] focus-visible:outline-offset-2"
+              autoComplete="email"
+              inputMode="email"
+              placeholder={esCL.newsletter.emailPlaceholder}
+              className={`${FIELD_BOX} ${errors.email ? FIELD_BOX_INVALID : ""}`}
             />
-          </div>
-          <div className="flex flex-col md:flex-row gap-[16px] md:gap-[16px] items-stretch">
-            <div className="relative flex-1">
-              <select
-                name="adminRegionName"
-                required
-                defaultValue=""
-                aria-label={esCL.newsletter.regionPlaceholder}
-                className="appearance-none w-full bg-transparent border-b-4 border-text-primary rounded-input px-[8px] py-[12px] md:py-[14px] font-lato font-semibold text-[16px] md:text-[18px] text-text-primary focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#3d373d] focus-visible:outline-offset-2"
-              >
-                <option value="" disabled>
-                  {esCL.newsletter.regionPlaceholder}
-                </option>
-                {regions.map((r) => (
-                  <option key={r.name} value={r.name}>
-                    {shortRegionName(r.name)}
-                  </option>
-                ))}
-              </select>
-              {/* eslint-disable-next-line @next/next/no-img-element -- Figma-exported asset, verbatim per design decision */}
-              <img
-                src="/icons/chevron-down.svg"
-                alt=""
-                width={20}
-                height={20}
-                className="pointer-events-none absolute right-[8px] top-1/2 -translate-y-1/2 md:w-[28px] md:h-[28px]"
-              />
+          </FormField>
+          <div className="flex flex-col sm:flex-row sm:items-end gap-[12px]">
+            <div className="flex-1">
+              <FormField label={esCL.newsletter.regionLabel} htmlFor="nl-region" error={errors.adminRegionName}>
+                <div className="relative">
+                  {/* Keyed on the loaded list so defaultValue (the región the
+                      visitor is looking at) applies once the options exist. */}
+                  <select
+                    key={regions.length}
+                    id="nl-region"
+                    name="adminRegionName"
+                    defaultValue={regions.some((r) => r.name === adminRegionName) ? adminRegionName : ""}
+                    className={`${FIELD_BOX} ${errors.adminRegionName ? FIELD_BOX_INVALID : ""} appearance-none pr-[40px]`}
+                  >
+                    <option value="" disabled>
+                      {esCL.newsletter.regionPlaceholder}
+                    </option>
+                    {regions.map((r) => (
+                      <option key={r.name} value={r.name}>
+                        {shortRegionName(r.name)}
+                      </option>
+                    ))}
+                  </select>
+                  {/* eslint-disable-next-line @next/next/no-img-element -- Figma-exported asset, verbatim per design decision */}
+                  <img src="/icons/chevron-down.svg" alt="" width={20} height={20} className="pointer-events-none absolute right-[12px] top-1/2 -translate-y-1/2" />
+                </div>
+              </FormField>
             </div>
             <button
               type="submit"
               disabled={status === "sending"}
-              className="shrink-0 cursor-pointer rounded-[75px] border-4 border-text-primary bg-text-primary md:bg-transparent text-text-placeholder md:text-text-primary font-lato font-black text-[22px] md:text-[26px] px-[20px] py-[10px] transition-colors md:hover:bg-text-primary md:hover:text-text-placeholder disabled:cursor-default disabled:opacity-60"
+              className="shrink-0 h-[48px] cursor-pointer rounded-[75px] border-4 border-text-primary bg-text-primary text-text-placeholder font-lato font-black text-[20px] md:text-[22px] px-[20px] transition-colors hover:bg-brand-magenta hover:border-brand-magenta hover:text-white disabled:cursor-default disabled:opacity-60"
             >
               {status === "sending" ? esCL.newsletter.sending : esCL.newsletter.sectionSubmit}
             </button>

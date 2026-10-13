@@ -1,113 +1,150 @@
 "use client";
 
-import { useRef, useState, type FormEvent } from "react";
+import { useRef, useState, type DragEvent, type FormEvent, type KeyboardEvent } from "react";
 import { esCL } from "@/i18n/es-CL";
 import { compressImage } from "@/lib/compressImage";
 import Footer from "./Footer";
 import DrawerShell from "./DrawerShell";
 import ContactPanel from "./ContactPanel";
 import SiteWordmark from "@/components/SiteWordmark";
-
-interface Comuna {
-  id: string;
-  name: string;
-  adminRegionName: string | null;
-}
+import FormField, { FIELD_BOX, FIELD_BOX_INVALID } from "./FormField";
+import ComunaCombobox, { type ComunaOption } from "./ComunaCombobox";
 
 type Status = "idle" | "compressing" | "sending" | "approved" | "rejected" | "rate_limited" | "error";
+type Errors = Partial<Record<string, string>>;
 
-// Same field language as the home's newsletter form (NewsletterSection):
-// underlined, Lato, on the panel's gray-blue.
-const INPUT_CLASS =
-  "w-full bg-transparent border-b-4 border-text-primary rounded-input px-[8px] py-[10px] md:py-[12px] font-lato font-semibold text-[16px] md:text-[18px] text-text-primary placeholder:text-text-primary/60 focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#3d373d] focus-visible:outline-offset-2";
-const LABEL_CLASS = "font-geist font-semibold text-[12px] tracking-[1.5px] uppercase text-text-primary/80";
 const PILL_BUTTON =
   "cursor-pointer rounded-[75px] border-4 border-text-primary font-lato font-black text-[20px] md:text-[24px] px-[20px] py-[8px] transition-colors disabled:cursor-default disabled:opacity-60";
 
 const STEP_COUNT = esCL.agregaExpo.steps.length;
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-function findComunaByName(comunas: Comuna[], name: string): Comuna | undefined {
-  const normalized = name.trim().toLowerCase();
-  return comunas.find((c) => c.name.trim().toLowerCase() === normalized);
-}
+// Half-hour slots for the opening hour — every real opening in the data
+// sits on :00 or :30, and a list is quicker to hit on a phone than a
+// native time wheel.
+const TIME_SLOTS = Array.from({ length: (23 - 9) * 2 + 1 }, (_, i) => {
+  const h = 9 + Math.floor(i / 2);
+  return `${String(h).padStart(2, "0")}:${i % 2 ? "30" : "00"}`;
+});
 
 // "Agrega tu expo" as four short steps (2026-10-13, Daniel: simpler and
 // faster to fill) in the newsletter form's look — gray-blue panel, Lato
-// Black headline with one magenta word, underlined fields, round buttons.
-// One <form> holds every step (the hidden ones stay mounted), so the final
-// submit sends the same FormData to /api/submit-event as before; each
-// step is checked before moving on.
-export default function AgregaExpoContent({ comunas, galleries }: { comunas: Comuna[]; galleries: string[] }) {
+// Black headline with one magenta word, round buttons — and the shared
+// field chrome (FormField: white boxes, visible labels, light-gray
+// examples, errors under each field). Artists are chips, the comuna a
+// search-and-pick list, date and hour separate, the image a big drop area
+// with a 4:5 preview. One <form> holds every step; the final submit sends
+// the same fields to /api/submit-event as before (openingDatetime is
+// rebuilt as "YYYY-MM-DDTHH:MM" from the date + hour).
+export default function AgregaExpoContent({ comunas, galleries }: { comunas: ComunaOption[]; galleries: string[] }) {
   const [step, setStep] = useState(0);
   const [status, setStatus] = useState<Status>("idle");
   const [resultMessage, setResultMessage] = useState<string>("");
-  const [formError, setFormError] = useState<string>("");
+  const [errors, setErrors] = useState<Errors>({});
   const [image, setImage] = useState<File | null>(null);
-  const [artists, setArtists] = useState<string[]>([""]);
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [dragging, setDragging] = useState(false);
+  const [artists, setArtists] = useState<string[]>([]);
+  const [artistDraft, setArtistDraft] = useState("");
+  const [comuna, setComuna] = useState<ComunaOption | null>(null);
   const [contactOpen, setContactOpen] = useState(false);
-  const stepRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const formRef = useRef<HTMLFormElement>(null);
+
+  function clearError(name: string) {
+    setErrors((prev) => (prev[name] ? { ...prev, [name]: undefined } : prev));
+  }
 
   async function handleImageChange(file: File | null) {
-    if (!file) {
-      setImage(null);
-      return;
-    }
-    setFormError("");
+    if (!file || !file.type.startsWith("image/")) return;
+    clearError("image");
     setStatus("compressing");
+    let next = file;
     try {
-      setImage(await compressImage(file));
+      next = await compressImage(file);
     } catch {
-      setImage(file);
+      // keep the original
     }
+    setImage(next);
+    setImageUrl((prev) => {
+      if (prev) URL.revokeObjectURL(prev);
+      return URL.createObjectURL(next);
+    });
     setStatus("idle");
   }
 
-  // Native validation for the step's own fields, then the checks the
-  // browser can't do (a comuna from the list, at least one artist, an
-  // image).
-  function validateStep(i: number, form: HTMLFormElement): boolean {
-    setFormError("");
-    const container = stepRefs.current[i];
-    if (container) {
-      for (const field of container.querySelectorAll<HTMLInputElement | HTMLTextAreaElement>("input, textarea")) {
-        if (field.type === "file" || field.type === "hidden") continue;
-        if (!field.checkValidity()) {
-          field.reportValidity();
-          return false;
-        }
-      }
+  function onDrop(e: DragEvent<HTMLLabelElement>) {
+    e.preventDefault();
+    setDragging(false);
+    handleImageChange(e.dataTransfer.files?.[0] ?? null);
+  }
+
+  // Artist chips: Enter or comma turns what's typed into a chip.
+  function commitArtistDraft(): string[] {
+    const name = artistDraft.trim().replace(/,$/, "").trim();
+    if (!name) return artists;
+    const next = artists.includes(name) ? artists : [...artists, name];
+    setArtists(next);
+    setArtistDraft("");
+    clearError("artist");
+    return next;
+  }
+
+  function onArtistKeyDown(e: KeyboardEvent<HTMLInputElement>) {
+    if (e.key === "Enter" || e.key === ",") {
+      e.preventDefault();
+      commitArtistDraft();
+    } else if (e.key === "Backspace" && artistDraft === "" && artists.length > 0) {
+      setArtists(artists.slice(0, -1));
     }
-    if (i === 0 && artists.every((a) => !a.trim())) {
-      setFormError(esCL.agregaExpo.noArtist);
-      return false;
+  }
+
+  function validateStep(i: number): boolean {
+    const data = new FormData(formRef.current!);
+    const value = (name: string) => ((data.get(name) as string | null) ?? "").trim();
+    const next: Errors = {};
+    const required = esCL.agregaExpo.required;
+    if (i === 0) {
+      if (!value("title")) next.title = required;
+      if (commitArtistDraft().length === 0) next.artist = esCL.agregaExpo.noArtist;
     }
-    if (i === 1 && !findComunaByName(comunas, (new FormData(form).get("comunaName") as string) ?? "")) {
-      setFormError(esCL.agregaExpo.comunaNotInList);
-      return false;
+    if (i === 1) {
+      if (!value("galleryName")) next.galleryName = required;
+      if (!comuna) next.comuna = esCL.agregaExpo.comunaNotInList;
+      if (!value("openingDate")) next.openingDate = required;
+      if (!value("openingTime")) next.openingTime = required;
+      if (!value("runEndDate")) next.runEndDate = required;
+      else if (value("openingDate") && value("runEndDate") < value("openingDate")) next.runEndDate = esCL.agregaExpo.endBeforeStart;
     }
-    if (i === 2 && !image) {
-      setFormError(esCL.agregaExpo.noImage);
-      return false;
+    if (i === 2) {
+      if (!image) next.image = esCL.agregaExpo.noImage;
+      if (!value("description")) next.description = required;
     }
-    return true;
+    if (i === 3) {
+      if (!value("submitterName")) next.submitterName = required;
+      if (!EMAIL_RE.test(value("submitterEmail"))) next.submitterEmail = value("submitterEmail") ? esCL.agregaExpo.invalidEmail : required;
+    }
+    setErrors(next);
+    return Object.keys(next).length === 0;
   }
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    const form = e.currentTarget;
-    if (!validateStep(step, form)) return;
+    if (!validateStep(step)) return;
     // Enter in a field, or "Siguiente": next step until the last one.
     if (step < STEP_COUNT - 1) {
       setStep(step + 1);
       return;
     }
-    if (!image) return;
+    if (!image || !comuna) return;
 
+    const form = e.currentTarget;
     const formData = new FormData(form);
-    const comuna = findComunaByName(comunas, (formData.get("comunaName") as string) ?? "")!;
     formData.set("comunaName", comuna.name);
     formData.set("regionId", comuna.id);
-    formData.set("artist", artists.map((a) => a.trim()).filter(Boolean).join(", "));
+    formData.set("artist", artists.join(", "));
+    formData.set("openingDatetime", `${formData.get("openingDate")}T${formData.get("openingTime")}`);
+    formData.delete("openingDate");
+    formData.delete("openingTime");
     formData.delete("images");
     formData.append("images", image);
 
@@ -120,7 +157,9 @@ export default function AgregaExpoContent({ comunas, galleries }: { comunas: Com
       if (data.status === "approved") {
         form.reset();
         setImage(null);
-        setArtists([""]);
+        setImageUrl(null);
+        setArtists([]);
+        setComuna(null);
         setStep(0);
       }
     } catch {
@@ -131,6 +170,7 @@ export default function AgregaExpoContent({ comunas, galleries }: { comunas: Com
   const busy = status === "sending" || status === "compressing";
   const done = status === "approved" || status === "rejected" || status === "rate_limited" || status === "error";
   const heading = esCL.agregaExpo.steps[step];
+  const box = (name: string) => `${FIELD_BOX} ${errors[name] ? FIELD_BOX_INVALID : ""}`;
 
   return (
     <main className="min-h-screen w-full bg-surface-sage px-[20px] py-8 md:px-[61px] max-w-[1280px] mx-auto">
@@ -189,114 +229,171 @@ export default function AgregaExpoContent({ comunas, galleries }: { comunas: Com
             </div>
           </div>
         ) : (
-          <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-[28px] md:gap-[32px]">
+          <form
+            ref={formRef}
+            onSubmit={handleSubmit}
+            onInput={(e) => clearError((e.target as HTMLInputElement).name)}
+            noValidate
+            className="flex flex-col gap-[28px] md:gap-[32px]"
+          >
             <input type="text" name="website" tabIndex={-1} autoComplete="off" className="hidden" aria-hidden="true" />
 
             {/* Step 1 — the show */}
-            <div ref={(el) => { stepRefs.current[0] = el; }} className={step === 0 ? "flex flex-col gap-[20px]" : "hidden"}>
-              <label className="flex flex-col gap-[4px]">
-                <span className={LABEL_CLASS}>{esCL.agregaExpo.titleLabel}</span>
-                <input name="title" type="text" required className={INPUT_CLASS} />
-              </label>
-              <div className="flex flex-col gap-[4px]">
-                <span className={LABEL_CLASS}>{esCL.agregaExpo.artistLabel}</span>
-                {artists.map((value, i) => (
+            <div className={step === 0 ? "flex flex-col gap-[20px]" : "hidden"}>
+              <FormField label={esCL.agregaExpo.titleLabel} htmlFor="ae-title" error={errors.title}>
+                <input id="ae-title" name="title" type="text" placeholder={esCL.agregaExpo.titlePlaceholder} className={box("title")} />
+              </FormField>
+              <FormField label={esCL.agregaExpo.artistLabel} htmlFor="ae-artist" error={errors.artist}>
+                {artists.length > 0 && (
+                  <div className="flex flex-wrap gap-[8px]">
+                    {artists.map((a) => (
+                      <span key={a} className="inline-flex items-center gap-[6px] rounded-full bg-text-primary text-surface-sage pl-[12px] pr-[6px] py-[5px] font-geist font-semibold text-[14px]">
+                        {a}
+                        <button
+                          type="button"
+                          aria-label={esCL.agregaExpo.removeArtist(a)}
+                          onClick={() => setArtists(artists.filter((x) => x !== a))}
+                          className="size-[22px] rounded-full flex items-center justify-center hover:bg-surface-sage/20 cursor-pointer"
+                        >
+                          ×
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+                <div className="flex gap-[8px]">
                   <input
-                    key={i}
+                    id="ae-artist"
                     type="text"
-                    aria-label={esCL.agregaExpo.artistLabel}
-                    value={value}
-                    onChange={(e) => setArtists((prev) => prev.map((a, idx) => (idx === i ? e.target.value : a)))}
-                    className={INPUT_CLASS}
+                    value={artistDraft}
+                    onChange={(e) => setArtistDraft(e.target.value)}
+                    onKeyDown={onArtistKeyDown}
+                    onBlur={() => commitArtistDraft()}
+                    placeholder={esCL.agregaExpo.artistPlaceholder}
+                    className={`${FIELD_BOX} ${errors.artist ? FIELD_BOX_INVALID : ""} flex-1`}
                   />
-                ))}
-                <button
-                  type="button"
-                  onClick={() => setArtists((prev) => [...prev, ""])}
-                  className="self-start mt-[6px] underline font-geist text-[14px] text-text-primary cursor-pointer"
-                >
-                  {esCL.agregaExpo.addArtist}
-                </button>
-              </div>
+                  <button
+                    type="button"
+                    onClick={() => commitArtistDraft()}
+                    className="shrink-0 h-[48px] px-[16px] rounded-[12px] bg-text-primary text-surface-sage font-geist font-semibold text-[14px] cursor-pointer hover:bg-brand-magenta hover:text-white"
+                  >
+                    {esCL.agregaExpo.addArtistButton}
+                  </button>
+                </div>
+              </FormField>
             </div>
 
             {/* Step 2 — where and when */}
-            <div ref={(el) => { stepRefs.current[1] = el; }} className={step === 1 ? "flex flex-col gap-[20px]" : "hidden"}>
-              <label className="flex flex-col gap-[4px]">
-                <span className={LABEL_CLASS}>{esCL.agregaExpo.galleryNameLabel}</span>
-                <input name="galleryName" type="text" required list="galleries-datalist" className={INPUT_CLASS} />
+            <div className={step === 1 ? "flex flex-col gap-[20px]" : "hidden"}>
+              <FormField label={esCL.agregaExpo.galleryNameLabel} htmlFor="ae-gallery" error={errors.galleryName}>
+                <input id="ae-gallery" name="galleryName" type="text" list="galleries-datalist" placeholder={esCL.agregaExpo.galleryPlaceholder} className={box("galleryName")} />
                 <datalist id="galleries-datalist">
                   {galleries.map((g) => (
                     <option key={g} value={g} />
                   ))}
                 </datalist>
-              </label>
-              <label className="flex flex-col gap-[4px]">
-                <span className={LABEL_CLASS}>{esCL.agregaExpo.comunaLabel}</span>
-                <input name="comunaName" type="text" required list="comunas-datalist" placeholder={esCL.agregaExpo.comunaPlaceholder} className={INPUT_CLASS} />
-                <datalist id="comunas-datalist">
-                  {comunas.map((c) => (
-                    <option key={c.id} value={c.name}>
-                      {c.adminRegionName ?? ""}
+              </FormField>
+              <FormField label={esCL.agregaExpo.comunaLabel} htmlFor="ae-comuna" error={errors.comuna}>
+                <ComunaCombobox
+                  id="ae-comuna"
+                  comunas={comunas}
+                  value={comuna}
+                  onChange={(c) => {
+                    setComuna(c);
+                    if (c) clearError("comuna");
+                  }}
+                  invalid={!!errors.comuna}
+                />
+              </FormField>
+              <div className="grid grid-cols-[minmax(0,1fr)_120px] sm:grid-cols-[minmax(0,1fr)_150px] gap-[12px] items-end">
+                <FormField label={esCL.agregaExpo.openingDateLabel} htmlFor="ae-date" error={errors.openingDate}>
+                  <input id="ae-date" name="openingDate" type="date" className={box("openingDate")} />
+                </FormField>
+                <FormField label={esCL.agregaExpo.openingTimeLabel} htmlFor="ae-time" error={errors.openingTime}>
+                  <select id="ae-time" name="openingTime" defaultValue="" className={`${box("openingTime")} appearance-none`}>
+                    <option value="" disabled>
+                      {esCL.agregaExpo.openingTimePlaceholder}
                     </option>
-                  ))}
-                </datalist>
-              </label>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-[20px]">
-                <label className="flex flex-col gap-[4px]">
-                  <span className={LABEL_CLASS}>{esCL.agregaExpo.openingDatetimeLabel}</span>
-                  <input name="openingDatetime" type="datetime-local" required className={INPUT_CLASS} />
-                </label>
-                <label className="flex flex-col gap-[4px]">
-                  <span className={LABEL_CLASS}>{esCL.agregaExpo.runEndDateLabel}</span>
-                  <input name="runEndDate" type="date" required className={INPUT_CLASS} />
-                </label>
+                    {TIME_SLOTS.map((t) => (
+                      <option key={t} value={t}>
+                        {t}
+                      </option>
+                    ))}
+                  </select>
+                </FormField>
               </div>
+              <FormField label={esCL.agregaExpo.runEndLabel} htmlFor="ae-end" error={errors.runEndDate}>
+                <input id="ae-end" name="runEndDate" type="date" className={box("runEndDate")} />
+              </FormField>
             </div>
 
             {/* Step 3 — how it looks */}
-            <div ref={(el) => { stepRefs.current[2] = el; }} className={step === 2 ? "flex flex-col gap-[20px]" : "hidden"}>
-              <div className="flex items-center gap-[16px]">
-                <label htmlFor="agrega-expo-image-input" className={`${PILL_BUTTON} bg-text-primary text-text-placeholder hover:bg-brand-magenta hover:border-brand-magenta hover:text-white`}>
-                  {(image ? esCL.agregaExpo.changeImage : esCL.agregaExpo.chooseImage).toUpperCase()}
+            <div className={step === 2 ? "flex flex-col gap-[20px]" : "hidden"}>
+              <FormField label={esCL.agregaExpo.imagesLabel} htmlFor="agrega-expo-image-input" error={errors.image} hint={esCL.agregaExpo.imageHint}>
+                <label
+                  htmlFor="agrega-expo-image-input"
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    setDragging(true);
+                  }}
+                  onDragLeave={() => setDragging(false)}
+                  onDrop={onDrop}
+                  className={`flex items-center gap-[16px] p-[14px] rounded-[12px] bg-surface-white border-2 border-dashed cursor-pointer ${
+                    errors.image ? "border-red-600" : dragging ? "border-brand-magenta" : "border-text-primary/30 hover:border-text-primary/60"
+                  }`}
+                >
+                  <span className="relative shrink-0 w-[96px] aspect-[4/5] rounded-[6px] overflow-hidden bg-surface-sage flex items-center justify-center">
+                    {imageUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element -- ephemeral local preview via createObjectURL, not a real asset
+                      <img src={imageUrl} alt="" className="absolute inset-0 w-full h-full object-cover" />
+                    ) : (
+                      // eslint-disable-next-line @next/next/no-img-element -- static icon
+                      <img src="/icons/framed-art.svg" alt="" width={36} height={36} className="opacity-60" />
+                    )}
+                  </span>
+                  <span className="font-geist font-semibold text-[15px] text-text-primary">
+                    {status === "compressing" ? esCL.agregaExpo.compressing : image ? esCL.agregaExpo.changeImage : esCL.agregaExpo.imageDrop}
+                  </span>
                 </label>
                 <input
                   id="agrega-expo-image-input"
-                  name="images"
                   type="file"
                   accept="image/jpeg,image/png,image/webp"
                   onChange={(e) => handleImageChange(e.target.files?.[0] ?? null)}
                   className="hidden"
                 />
-                {image && (
-                  // eslint-disable-next-line @next/next/no-img-element -- ephemeral local preview via createObjectURL, not a real asset
-                  <img src={URL.createObjectURL(image)} alt="" className="w-[72px] h-[90px] object-cover" />
-                )}
-                {status === "compressing" && <span className="font-geist text-[14px] text-text-primary">{esCL.agregaExpo.compressing}</span>}
-              </div>
-              <label className="flex flex-col gap-[4px]">
-                <span className={LABEL_CLASS}>{esCL.agregaExpo.descriptionLabel}</span>
-                <textarea name="description" required rows={4} className={`${INPUT_CLASS} resize-none`} />
-              </label>
+              </FormField>
+              <FormField label={esCL.agregaExpo.descriptionLabel} htmlFor="ae-description" error={errors.description}>
+                <textarea
+                  id="ae-description"
+                  name="description"
+                  rows={4}
+                  placeholder={esCL.agregaExpo.descriptionPlaceholder}
+                  className={`${box("description")} h-auto py-[12px] resize-none`}
+                />
+              </FormField>
             </div>
 
             {/* Step 4 — who sends it */}
-            <div ref={(el) => { stepRefs.current[3] = el; }} className={step === 3 ? "flex flex-col gap-[20px]" : "hidden"}>
-              <label className="flex flex-col gap-[4px]">
-                <span className={LABEL_CLASS}>{esCL.agregaExpo.submitterNameLabel}</span>
-                <input name="submitterName" type="text" required className={INPUT_CLASS} />
-              </label>
-              <label className="flex flex-col gap-[4px]">
-                <span className={LABEL_CLASS}>{esCL.agregaExpo.submitterEmailLabel}</span>
-                <input name="submitterEmail" type="email" required className={INPUT_CLASS} />
-              </label>
+            <div className={step === 3 ? "flex flex-col gap-[20px]" : "hidden"}>
+              <FormField label={esCL.agregaExpo.submitterNameLabel} htmlFor="ae-name" error={errors.submitterName}>
+                <input id="ae-name" name="submitterName" type="text" autoComplete="name" placeholder={esCL.agregaExpo.namePlaceholder} className={box("submitterName")} />
+              </FormField>
+              <FormField label={esCL.agregaExpo.submitterEmailLabel} htmlFor="ae-email" error={errors.submitterEmail}>
+                <input id="ae-email" name="submitterEmail" type="email" autoComplete="email" inputMode="email" placeholder={esCL.agregaExpo.emailPlaceholder} className={box("submitterEmail")} />
+              </FormField>
             </div>
-
-            {formError && <p className="font-geist font-semibold text-[14px] text-red-700">{formError}</p>}
 
             <div className="flex items-center justify-between gap-[16px]">
               {step > 0 ? (
-                <button type="button" onClick={() => { setFormError(""); setStep(step - 1); }} className="font-geist font-semibold text-[15px] text-text-primary underline cursor-pointer">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setErrors({});
+                    setStep(step - 1);
+                  }}
+                  className="font-geist font-semibold text-[15px] text-text-primary underline cursor-pointer"
+                >
                   {esCL.agregaExpo.back}
                 </button>
               ) : (

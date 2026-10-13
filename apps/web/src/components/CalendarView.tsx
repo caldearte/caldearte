@@ -61,10 +61,10 @@ interface CalendarViewProps {
 //   2. the week's inauguraciones + visitas guiadas as flyer-style cards
 //      (AgendaSection) — the most highlighted thing on the page
 //   3. the Curatoría banner, then what's running (CarteleraSection)
-//   4. the venue ask (EspaciosSection) and the newsletter, as before
+//   4. the venue ask (EspaciosSection) and the newsletter side by side
 // Replaces the hero + count rings + three paged sliders, which put the
-// first event ~1.4 screens below the fold. CuratoriaBanner and
-// NewsletterSection are unchanged on purpose (Daniel, 2026-10-12).
+// first event ~1.4 screens below the fold. CuratoriaBanner is unchanged
+// on purpose (Daniel, 2026-10-12).
 export default function CalendarView({
   inauguraciones,
   visitasGuiadas,
@@ -218,7 +218,7 @@ export default function CalendarView({
           2026-10-13); stacked on smaller screens. */}
       <div className="mt-[48px] md:mt-[80px] mb-[48px] md:mb-[80px] grid grid-cols-1 lg:grid-cols-2 items-stretch">
         <EspaciosSection />
-        <NewsletterSection />
+        <NewsletterSection adminRegionName={adminRegionName} />
       </div>
 
       <Footer onContactClick={openContactDrawer} />
