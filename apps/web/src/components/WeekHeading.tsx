@@ -84,7 +84,7 @@ export default function WeekHeading({ regionControl, rangeStart, currentWeekStar
         stuck ? "py-[10px] border-b border-text-primary/10" : "pt-[20px] md:pt-[28px] pb-[16px]"
       } ${hidden ? "-translate-y-full pointer-events-none" : ""}`}
     >
-      {/* "EL ARTE ESTÁ MÁS CERCA." left, the week/región selector right
+      {/* "EL ARTE MÁS CERCA." left, the week/región selector right
           (Daniel's layout, 2026-10-13); stacked on a phone, where the
           tagline steps aside once the bar is stuck so it stays one row. */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-[10px] md:gap-[24px]">
