@@ -477,7 +477,6 @@ export const esCL = {
     seeAll: (n: number) => `Ver las ${n} exposiciones`,
     seeLess: "Ver menos",
     seeAllClosing: (n: number) => `Ver las ${n} que cierran esta semana`,
-    closesToday: "Cierra hoy",
     regionsNavAriaLabel: "Elegir región",
     useMyLocation: "Usar mi ubicación",
     locating: "Ubicando…",

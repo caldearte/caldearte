@@ -219,6 +219,19 @@ export function fmtAgendaPillDay(openingDatetimeIso: string, todayStr: string): 
   return `${WEEKDAYS[d.getDay()].slice(0, 3).toUpperCase()} ${d.getDate()} ${MONTHS_SHORT[d.getMonth()].toUpperCase()}`;
 }
 
+// Closing date on a cartelera card's pill (2026-10-13), same uppercase
+// style as the agenda's: "HASTA HOY", "HASTA MAÑANA", "HASTA EL 15 OCT",
+// or "HASTA EL 24 ENE '27" when it ends in a later year.
+export function fmtUntilPill(runEndDate: string, todayStr: string): string {
+  if (runEndDate === todayStr) return "HASTA HOY";
+  const tomorrow = parseDateOnly(todayStr);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  if (runEndDate === toDateOnlyString(tomorrow)) return "HASTA MAÑANA";
+  const d = parseDateOnly(runEndDate);
+  const year = d.getFullYear() > parseDateOnly(todayStr).getFullYear() ? ` '${String(d.getFullYear()).slice(-2)}` : "";
+  return `HASTA EL ${d.getDate()} ${MONTHS_SHORT[d.getMonth()].toUpperCase()}${year}`;
+}
+
 // Hour on an agenda card's pill (2026-10-12): "19 HR", uppercase like the
 // Instagram flyer's pills, or "HORA POR CONF.".
 export function fmtAgendaPillHour(openingDatetimeIso: string, openingTimeConfirmed: boolean): string {

@@ -3,9 +3,10 @@
 import { useState } from "react";
 import Link from "next/link";
 import { esCL } from "@/i18n/es-CL";
-import { isClosingSoon } from "@/lib/date";
+import { fmtUntilPill, isClosingSoon } from "@/lib/date";
 import { eventComuna } from "@/lib/event-utils";
 import { useEventCardActions } from "@/lib/useEventCardActions";
+import { resolveArtistDisplay } from "@/lib/social/flyerText";
 import type { EventRecord } from "@/lib/events";
 import CardImage from "./CardImage";
 
@@ -141,24 +142,32 @@ export function TileGrid({ events, today, showPeriod = false, wide = false }: { 
 }
 
 export function ExpoTile({ event, today, showPeriod = false }: { event: EventRecord; today: string; showPeriod?: boolean }) {
-  const { untilDateLine, dateLine, venueLine } = useEventCardActions(event, "expo", true);
-  const closing = !showPeriod && isClosingSoon(event.runEndDate, today);
+  const { dateLine, venueLine } = useEventCardActions(event, "expo", true);
+  const artist = resolveArtistDisplay(event.artist);
+  // Past shows (venue/artist pages) read their full run; current ones,
+  // when they close.
+  const pill = showPeriod ? (dateLine ?? "").toUpperCase() : event.runEndDate ? fmtUntilPill(event.runEndDate, today) : null;
 
+  // Same build as the agenda's cards (Daniel, 2026-10-13), a size smaller:
+  // a clean 4:5 photo, then one white tag with the artist in gray, the
+  // title in magenta Lato Black, the magenta "HASTA…" pill and the venue
+  // in gray.
   return (
-    <Link href={`/eventos/${event.id}`} className="group flex flex-col gap-[8px] min-w-0">
+    <Link href={`/eventos/${event.id}`} className="group flex flex-col gap-[10px] min-w-0">
       <div className="relative w-full aspect-[4/5] overflow-hidden">
         <CardImage imageUrl={event.imageUrl} sourceUrl={event.sourceUrl} sensitivityTags={event.sensitivityTags} alt={event.title} compact />
       </div>
-      <div className="flex flex-col gap-[3px]">
-        {showPeriod
-          ? dateLine && <p className="font-geist font-extrabold text-[11px] text-text-secondary">{dateLine}</p>
-          : untilDateLine && (
-              <p className={`font-geist font-extrabold text-[11px] ${closing ? "text-brand-magenta" : "text-text-secondary"}`}>
-                {event.runEndDate === today ? esCL.home.closesToday : untilDateLine}
-              </p>
-            )}
-        <p className="font-fragment-mono text-[14px] leading-[1.2] text-text-primary line-clamp-2 group-hover:underline">{event.title}</p>
-        <p className="font-geist text-[12px] text-text-secondary line-clamp-1">{venueLine}</p>
+      <div className="w-full flex flex-col items-start gap-[5px] rounded-[18px] bg-surface-white px-[12px] pt-[9px] pb-[11px]">
+        {artist && <span className="font-geist font-semibold text-[10px] leading-[1.25] tracking-[1px] uppercase text-text-secondary line-clamp-1">{artist}</span>}
+        <span className="font-lato font-black text-[14px] leading-[1.25] tracking-[0.2px] uppercase text-brand-magenta [text-wrap:balance] line-clamp-3 group-hover:underline">
+          {event.title}
+        </span>
+        {pill && (
+          <span className="mt-[2px] rounded-[12px] bg-brand-magenta px-[9px] py-[3px] font-lato font-black text-[11px] leading-[1.35] uppercase tracking-[0.3px] text-white [text-wrap:balance]">
+            {pill}
+          </span>
+        )}
+        <span className="font-geist font-semibold text-[10px] leading-[1.3] tracking-[1px] uppercase text-text-secondary line-clamp-2">{venueLine}</span>
       </div>
     </Link>
   );

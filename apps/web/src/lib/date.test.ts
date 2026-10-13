@@ -24,6 +24,7 @@ import {
   fmtWeekLabel,
   fmtAgendaPillHour,
   fmtAgendaPillDay,
+  fmtUntilPill,
   santiagoDateOfIso,
   fmtWeekRangeShort,
   isClosingSoon,
@@ -308,4 +309,11 @@ test("fmtAgendaPillDay: HOY, MAÑANA, else weekday + day + month", () => {
   assert.equal(fmtAgendaPillDay("2026-10-15T22:00:00+00:00", "2026-10-13"), "JUE 15 OCT");
   // 21:30 in Santiago is already the next day in UTC.
   assert.equal(fmtAgendaPillDay("2026-10-18T00:30:00+00:00", "2026-10-13"), "SÁB 17 OCT");
+});
+
+test("fmtUntilPill: HASTA HOY / MAÑANA / date, year only when later", () => {
+  assert.equal(fmtUntilPill("2026-10-13", "2026-10-13"), "HASTA HOY");
+  assert.equal(fmtUntilPill("2026-10-14", "2026-10-13"), "HASTA MAÑANA");
+  assert.equal(fmtUntilPill("2026-10-31", "2026-10-13"), "HASTA EL 31 OCT");
+  assert.equal(fmtUntilPill("2027-01-24", "2026-10-13"), "HASTA EL 24 ENE '27");
 });

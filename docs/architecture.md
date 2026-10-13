@@ -471,7 +471,8 @@ The same two card styles are used wherever events are listed outside
 the home — the ficha's "También esta semana" / "También en cartelera" and
 the venue and artist pages — split by `splitAgendaAndCartelera`
 (upcoming inauguraciones and visitas guiadas → `AgendaCard`, the rest →
-`ExpoTile`). On the current week an exhibition that already closed is
+`ExpoTile` — the same photo-then-white-tag build a size smaller: artist,
+magenta title, magenta "HASTA…" pill, venue). On the current week an exhibition that already closed is
 left out of the cartelera and the counts (day-level, same rule as
 `lib/catalogPage.ts`); `isCurrentOrUpcoming`'s month grain still decides
 what's in range elsewhere.
