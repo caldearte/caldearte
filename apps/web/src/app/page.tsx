@@ -76,7 +76,7 @@ export default async function HomePage() {
   const model = await computeHomeViewModel({ cookieStore: EMPTY_COOKIE_READER, headerStore: new Headers() });
 
   return (
-    <main className="min-h-screen w-full bg-surface-sage px-[16px] md:px-[24px] xl:px-[40px] max-w-[1600px] mx-auto">
+    <main className="min-h-screen w-full bg-surface-sage px-[18px] md:px-[40px] xl:px-[80px] max-w-[1600px] mx-auto">
       {/* useSearchParams() inside HomeClient needs a Suspense boundary to
           let Next.js statically prerender this shell and bail out to CSR
           only for that part — without it, the whole page can't be

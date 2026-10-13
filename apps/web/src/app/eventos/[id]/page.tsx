@@ -155,7 +155,7 @@ export default async function EventPage({ params }: { params: Promise<PageParams
   const moreExpos = cartelera.filter((e) => e.runStartDate !== null && e.runEndDate !== null && e.runEndDate >= today).slice(0, 5);
 
   return (
-    <main className="min-h-screen w-full bg-surface-sage px-[16px] py-8 md:px-[24px] xl:px-[40px] max-w-[1600px] mx-auto">
+    <main className="min-h-screen w-full bg-surface-sage px-[18px] py-8 md:px-[40px] xl:px-[80px] max-w-[1600px] mx-auto">
       {/* Schema.org VisualArtsEvent — see lib/eventJsonLd.ts's own comment. */}
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdScriptContent(buildEventJsonLd(event)) }} />
 

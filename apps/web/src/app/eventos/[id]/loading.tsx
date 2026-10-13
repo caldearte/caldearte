@@ -9,7 +9,7 @@
 // real layout.
 export default function EventPageLoading() {
   return (
-    <main className="min-h-screen w-full bg-surface-sage px-[16px] py-8 md:px-[24px] xl:px-[40px] max-w-[1600px] mx-auto animate-pulse">
+    <main className="min-h-screen w-full bg-surface-sage px-[18px] py-8 md:px-[40px] xl:px-[80px] max-w-[1600px] mx-auto animate-pulse">
       <div className="mb-[40px] md:mb-[60px] h-[48px]" aria-hidden="true" />
       <div className="flex flex-col md:flex-row gap-[24px] md:gap-[60px] items-start">
         <div className="w-full md:w-[600px] shrink-0 aspect-[4/3] bg-stone-300/60 rounded-sm" />
