@@ -23,6 +23,7 @@ import {
   fmtMonthYear,
   fmtWeekLabel,
   fmtAgendaPillHour,
+  fmtAgendaPillDay,
   santiagoDateOfIso,
   fmtWeekRangeShort,
   isClosingSoon,
@@ -299,4 +300,12 @@ test("monthWeekStarts: Monday-to-Sunday rows touching the month", () => {
 
 test("fmtMonthYear", () => {
   assert.equal(fmtMonthYear(2026, 9), "octubre 2026");
+});
+
+test("fmtAgendaPillDay: HOY, MAÑANA, else weekday + day + month", () => {
+  assert.equal(fmtAgendaPillDay("2026-10-13T22:00:00+00:00", "2026-10-13"), "HOY");
+  assert.equal(fmtAgendaPillDay("2026-10-14T19:00:00+00:00", "2026-10-13"), "MAÑANA");
+  assert.equal(fmtAgendaPillDay("2026-10-15T22:00:00+00:00", "2026-10-13"), "JUE 15 OCT");
+  // 21:30 in Santiago is already the next day in UTC.
+  assert.equal(fmtAgendaPillDay("2026-10-18T00:30:00+00:00", "2026-10-13"), "SÁB 17 OCT");
 });

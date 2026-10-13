@@ -206,6 +206,20 @@ export function santiagoDateOfIso(isoOrDate: string): string {
   return new Intl.DateTimeFormat("en-CA", { timeZone: "America/Santiago" }).format(new Date(isoOrDate));
 }
 
+// Day for an agenda card shown outside the home (the ficha's "También
+// esta semana", venue/artist pages), where no day heading sits above it:
+// "HOY", "MAÑANA" or "JUE 15 OCT" — the Instagram flyer's style, Chilean
+// calendar date.
+export function fmtAgendaPillDay(openingDatetimeIso: string, todayStr: string): string {
+  const date = santiagoDateOfIso(openingDatetimeIso);
+  if (date === todayStr) return "HOY";
+  const tomorrow = parseDateOnly(todayStr);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  if (date === toDateOnlyString(tomorrow)) return "MAÑANA";
+  const d = parseDateOnly(date);
+  return `${WEEKDAYS[d.getDay()].slice(0, 3).toUpperCase()} ${d.getDate()} ${MONTHS_SHORT[d.getMonth()].toUpperCase()}`;
+}
+
 // Hour pill on the home's agenda cards (2026-10-12) — the day is already
 // the heading above the cards, so just "19 HR", uppercase like the
 // Instagram flyer's pills, or "HORA POR CONFIRMAR".
