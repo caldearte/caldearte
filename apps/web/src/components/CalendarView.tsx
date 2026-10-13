@@ -8,7 +8,7 @@ import { REGION_COOKIE, FAMILY_MODE_COOKIE, GEO_CONSENT_COOKIE, PRECISE_CITY_COO
 import { currentWeekInSantiago, fmtShort } from "@/lib/date";
 import { requestPreciseCityId } from "@/lib/geolocation";
 import type { EventRecord, RegionMeta } from "@/lib/events";
-import type { CityCounts, RegionActivity } from "@/lib/event-utils";
+import type { RegionActivity } from "@/lib/event-utils";
 import Header from "./Header";
 import WeekHeading from "./WeekHeading";
 import RegionDropdown from "./RegionDropdown";
@@ -18,7 +18,6 @@ import CuratoriaBanner from "./CuratoriaBanner";
 import NewsletterSection from "./NewsletterSection";
 import EspaciosSection from "./EspaciosSection";
 import Footer from "./Footer";
-import CityPickerPanel from "./CityPickerPanel";
 import MenuDrawer from "./MenuDrawer";
 import SearchPanel from "./SearchPanel";
 import GeoLocationChangedBanner from "./GeoLocationChangedBanner";
@@ -29,14 +28,12 @@ interface CalendarViewProps {
   visitasGuiadas: EventRecord[];
   exposActuales: EventRecord[];
   regionId: string; // the site's own selection unit — see cities.ts's "Región-level selection"
-  actualCityId: string | null; // IP-geolocated comuna, recomputed every render regardless of región — CityPickerPanel's "Tu ubicación actual" row; null when there's no real signal (outside Chile, no geo header)
+  actualCityId: string | null; // IP-geolocated comuna, recomputed every render regardless of región — GeoLocationChangedBanner's comparison point; null when there's no real signal (outside Chile, no geo header)
   hasPreciseLocation: boolean; // true once a real geolocation reading has been granted — hides "Usar mi ubicación"
-  cityNames: Record<string, string>; // real observed comuna names, id -> name — see cities.ts
   familyMode: boolean;
   todayFilterOn: boolean; // Filtros "Hoy" pill — narrows this city's lists to only today's active events
   today: string; // YYYY-MM-DD, computed server-side for SSR/CSR consistency
   rangeStart: string; // YYYY-MM-DD — the current week's Monday
-  cityCounts: Record<string, CityCounts>; // full-week counts, unaffected by Hoy/Vigentes — city picker
   regionActivity: Record<string, RegionActivity>; // distinct events per región — RegionDropdown
   searchableEvents: EventRecord[]; // active/upcoming, every comuna — SearchPanel's own scope
   nextEvent: EventRecord | null; // empty-state fallback, beyond the current week
@@ -75,12 +72,10 @@ export default function CalendarView({
   regionId,
   actualCityId,
   hasPreciseLocation,
-  cityNames,
   familyMode,
   todayFilterOn,
   today,
   rangeStart,
-  cityCounts,
   regionActivity,
   searchableEvents,
   nextEvent,
@@ -89,7 +84,6 @@ export default function CalendarView({
   onRefreshNeeded = () => {},
   isRefreshing = false,
 }: CalendarViewProps) {
-  const [locationOpen, setLocationOpen] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [drawerInitialView, setDrawerInitialView] = useState<"menu" | "contact">("menu");
   const [searchOpen, setSearchOpen] = useState(false);
@@ -110,7 +104,6 @@ export default function CalendarView({
   function goToRegion(nextRegionId: string) {
     if (nextRegionId !== regionId) pushRecentRegionId(regionId);
     setCookie(REGION_COOKIE, nextRegionId);
-    setLocationOpen(false);
     window.scrollTo(0, 0);
     onRefreshNeeded();
   }
@@ -169,7 +162,6 @@ export default function CalendarView({
             locating={locating}
             onSelectRegion={goToRegion}
             onUseMyLocation={locateMe}
-            onOpenComunaSearch={() => setLocationOpen(true)}
           />
         }
         rangeStart={rangeStart}
@@ -223,20 +215,6 @@ export default function CalendarView({
       </div>
 
       <Footer onContactClick={openContactDrawer} />
-
-      <CityPickerPanel
-        open={locationOpen}
-        regionId={regionId}
-        actualCityId={actualCityId}
-        hasPreciseLocation={hasPreciseLocation}
-        cityCounts={cityCounts}
-        cityNames={cityNames}
-        regions={regions}
-        onClose={() => {
-          setLocationOpen(false);
-        }}
-        onSelectRegion={goToRegion}
-      />
 
       <MenuDrawer
         open={drawerOpen}

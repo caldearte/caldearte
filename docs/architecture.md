@@ -442,8 +442,10 @@ dropdowns built on `HeadingDropdown`: the week (`WeekDropdown` — a month
 calendar where each row is a whole Monday-to-Sunday week, from SEMANA N°1
 to two months ahead, each row a real `?semana=` link; the h1 names it
 "Esta semana / Semana pasada / Próxima semana / Semana del 28 de
-septiembre"; replaces the chevrons and "SEMANA N°X") and the región (`RegionDropdown` — comuna
-search on top, regions north to south with their count, the ones with
+septiembre"; replaces the chevrons and "SEMANA N°X") and the región (`RegionDropdown` — a search
+box on top that filters the same list by región or any of the 346
+comunas, always listing the región (`searchRegions`: "villa alemana" →
+Valparaíso); regions north to south with their count, the ones with
 nothing this week dimmed at the end, "Usar mi ubicación" at the bottom,
 replacing the yellow `GeoConsentBanner`; a row of 16 chips was tried
 first and was too much chrome); the week's inauguraciones and visitas guiadas merged

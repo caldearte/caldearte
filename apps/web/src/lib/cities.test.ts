@@ -13,8 +13,7 @@ import {
   groupCitiesByRegion,
   narrowCitiesByRegion,
   OTHER_CITY,
-  DEFAULT_CITY_ID,
-} from "./cities";
+  DEFAULT_CITY_ID, searchRegions } from "./cities";
 import type { RegionMeta } from "./events";
 import type { CityCounts } from "./event-utils";
 
@@ -308,4 +307,21 @@ test("narrowCitiesByRegion doesn't narrow at all when the current comuna's admin
   const cities = ["A", "B", "C"].map(city);
   const result = narrowCitiesByRegion(cities, new Map(), "santiago", countsFor(cities));
   assert.deepEqual(result, cities, "no adminRegionOrder for the current city -> safe fallback, unchanged list");
+});
+
+test("searchRegions: by región name or by any comuna, accent-insensitive", () => {
+  const meta = (name: string, adminRegionName: string, adminRegionOrder: number) => ({
+    id: name, name, country: "CL", adminRegionName, adminRegionOrder, adminRegionNumeral: null, lat: null, lng: null,
+  });
+  const regions = [
+    meta("Valparaíso", "Valparaíso", 6),
+    meta("Villa Alemana", "Valparaíso", 6),
+    meta("Vitacura", "Región Metropolitana de Santiago", 7),
+    meta("Santiago", "Región Metropolitana de Santiago", 7),
+  ];
+  assert.deepEqual([...searchRegions(regions, "villa alemana")], [["valparaiso", ["Villa Alemana"]]]);
+  assert.deepEqual([...searchRegions(regions, "VALPARAISO")], [["valparaiso", []]]);
+  assert.deepEqual([...searchRegions(regions, "vita")], [["region-metropolitana-de-santiago", ["Vitacura"]]]);
+  assert.equal(searchRegions(regions, "  ").size, 0);
+  assert.equal(searchRegions(regions, "punta arenas").size, 0);
 });

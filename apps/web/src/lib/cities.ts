@@ -334,6 +334,29 @@ export function adminRegionNameByRegionId(regions: RegionMeta[]): Map<string, st
   return new Map(allAdminRegions(regions).map((r) => [regionIdFromAdminRegionName(r.adminRegionName), r.adminRegionName]));
 }
 
+// The región dropdown's search box (2026-10-12): which regions match a
+// query, by the región's own name or by any of its comunas' names — all
+// 346 seeded comunas, not just the ones with events this week, so "Villa
+// Alemana" still finds Valparaíso. Accent/case-insensitive (matchesQuery).
+// Value: the matching comuna names, to show why a región matched; empty
+// when the región's own name matched.
+export function searchRegions(regions: RegionMeta[], query: string): Map<string, string[]> {
+  const q = query.trim();
+  const result = new Map<string, string[]>();
+  if (!q) return result;
+  for (const r of allAdminRegions(regions)) {
+    if (matchesQuery(r.adminRegionName, q)) result.set(regionIdFromAdminRegionName(r.adminRegionName), []);
+  }
+  for (const r of regions) {
+    if (r.adminRegionName === null || !matchesQuery(r.name, q)) continue;
+    const id = regionIdFromAdminRegionName(r.adminRegionName);
+    const comunas = result.get(id);
+    if (comunas === undefined) result.set(id, [r.name]);
+    else if (comunas.length > 0 && !comunas.includes(r.name)) comunas.push(r.name);
+  }
+  return result;
+}
+
 // Per-región badge counts for the picker — sums each región's own
 // comunas' already-computed cityCounts (countByCity, events.ts). A comuna
 // with no entry in cityCounts (zero events right now) contributes nothing,
