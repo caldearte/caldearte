@@ -112,12 +112,11 @@ function DayBlock({ group, today, past, firstImagePriority }: { group: DayGroup;
 // The agenda's card grid, for lists outside the home (the ficha, venue and
 // artist pages) — same columns as a day block here. Events must have an
 // openingDatetime (see splitAgendaAndCartelera).
-// No day heading above these cards, so each one carries its own date.
 export function AgendaGrid({ events }: { events: EventRecord[] }) {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-[16px] md:gap-x-[20px] gap-y-[32px]">
       {events.map((e) => (
-        <AgendaCard key={e.id} event={e} showDate />
+        <AgendaCard key={e.id} event={e} />
       ))}
     </div>
   );
@@ -131,7 +130,7 @@ export function AgendaGrid({ events }: { events: EventRecord[] }) {
 // "Agregar al calendario" buttons — white here, since the page itself is
 // the flyer's sage. The tag spans the card's width (for the buttons);
 // long text wraps, balanced, like the flyer's.
-export function AgendaCard({ event, priority = false, showDate = false }: { event: EventRecord; priority?: boolean; showDate?: boolean }) {
+export function AgendaCard({ event, priority = false }: { event: EventRecord; priority?: boolean }) {
   const type = event.eventType === "visita_guiada" ? "visita_guiada" : "inauguracion";
   const title = titleWithTypePrefix(event.title, type);
   const artist = resolveArtistDisplay(event.artist);
@@ -177,8 +176,7 @@ export function AgendaCard({ event, priority = false, showDate = false }: { even
         <span className="font-lato font-black text-[17px] leading-[1.3] tracking-[0.3px] uppercase text-brand-magenta [text-wrap:balance] group-hover:underline">{title}</span>
         <span className="flex items-center gap-[10px] min-w-0 mt-[4px]">
           <span className="shrink-0 rounded-full bg-brand-magenta px-[10px] py-[4px] font-lato font-black text-[12px] uppercase tracking-[0.3px] text-white">
-            {comuna} · {showDate && `${fmtAgendaPillDay(event.openingDatetime!, todayInSantiago())} · `}
-            {fmtAgendaPillHour(event.openingDatetime!, event.openingTimeConfirmed)}
+            {comuna} · {fmtAgendaPillDay(event.openingDatetime!, todayInSantiago())} · {fmtAgendaPillHour(event.openingDatetime!, event.openingTimeConfirmed)}
           </span>
           {venue && <span className="min-w-0 font-geist font-semibold text-[11px] leading-[1.25] tracking-[1px] uppercase text-text-secondary">{venue}</span>}
         </span>
