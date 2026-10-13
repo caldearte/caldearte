@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import { esCL } from "@/i18n/es-CL";
 import { useNewsletterSubscribe } from "@/lib/useNewsletterSubscribe";
 import { shortRegionName } from "@/lib/regionNames";
@@ -9,52 +8,48 @@ import { statusBoxClass } from "@/lib/formStatusBox";
 const STATUS_BOX_SUCCESS = statusBoxClass("success", "text-text-primary");
 const STATUS_BOX_ERROR = statusBoxClass("error", "text-text-primary");
 
-// Rediseño 2.0.0 — inline newsletter section on the home page (174:2987
-// web, 178:161 mobile), distinct from NewsletterEntryModal (the popup —
-// still used for the first-visit auto-prompt and the Footer's
-// "Suscríbete" link, untouched here). Shares useNewsletterSubscribe so
-// both forms hit the same región list/submit logic instead of drifting.
-export default function NewsletterSection() {
+interface NewsletterSectionProps {
+  // The región the visitor is looking at, preselected in the form — they
+  // almost always want the newsletter for the same place.
+  adminRegionName: string;
+}
+
+// The newsletter ask as a compact strip right after the week's agenda
+// (2026-10-12) — the moment "I want this every week" makes sense — instead
+// of a ~700px block at the very end of the page. Same form and endpoint
+// (useNewsletterSubscribe), it's the only subscription form on the site.
+export default function NewsletterSection({ adminRegionName }: NewsletterSectionProps) {
   const { status, regions, handleSubmit } = useNewsletterSubscribe();
+  const field =
+    "h-[44px] bg-surface-white border border-text-primary/20 rounded-input px-[12px] font-geist text-[15px] text-text-primary focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-text-primary";
 
   return (
-    <section
-      id="newsletter-section"
-      className="bg-text-placeholder px-5 md:px-[263px] py-12 md:py-[150px] flex flex-col gap-8 md:gap-[100px]"
-    >
-      <div className="flex flex-col gap-[16px] md:gap-[20px]">
-        {/* eslint-disable-next-line @next/next/no-img-element -- Figma-exported asset, verbatim per design decision */}
-        <img src="/icons/mail.svg" alt="" width={120} height={120} />
-        <h2 className="font-lato font-black leading-none text-text-primary text-[56px] md:text-[96px]">
-          {esCL.newsletter.sectionHeadlinePlainStart}
-          <span className="text-brand-magenta">{esCL.newsletter.sectionHeadlineHighlight}</span>
-          {esCL.newsletter.sectionHeadlinePlainEnd}
-        </h2>
-      </div>
+    <section id="newsletter-section" aria-labelledby="newsletter-title" className="mt-[40px] border-y-2 border-text-primary py-[24px] md:py-[28px]">
+      <div className="flex flex-col md:flex-row md:items-end gap-[16px] md:gap-[32px]">
+        <div className="md:w-[280px] shrink-0">
+          <h2 id="newsletter-title" className="font-lato font-black text-[24px] leading-[1.1] text-text-primary">
+            {esCL.home.newsletterTitle}
+          </h2>
+          <p className="font-geist text-[14px] text-text-secondary mt-[6px]">{esCL.home.newsletterBody}</p>
+        </div>
 
-      {status === "success" ? (
-        <p className={STATUS_BOX_SUCCESS}>{esCL.newsletter.success}</p>
-      ) : status === "already_subscribed" ? (
-        <p className={STATUS_BOX_SUCCESS}>{esCL.newsletter.alreadySubscribed}</p>
-      ) : (
-        <form onSubmit={handleSubmit} className="flex flex-col gap-[24px] md:gap-[40px]">
-          <div className="w-full">
-            <input
-              name="email"
-              type="email"
-              required
-              placeholder={esCL.newsletter.sectionEmailPlaceholder}
-              className="w-full bg-transparent border-b-4 md:border-b-6 border-text-primary rounded-input px-[8px] md:px-[16px] py-[16px] md:py-[20px] font-lato font-semibold text-[16px] md:text-[20px] text-text-primary placeholder:text-text-primary focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#3d373d] focus-visible:outline-offset-2"
-            />
-          </div>
-          <div className="flex flex-col md:flex-row gap-[16px] md:gap-[16px] items-stretch">
-            <div className="relative flex-1">
+        {status === "success" ? (
+          <p className={STATUS_BOX_SUCCESS}>{esCL.newsletter.success}</p>
+        ) : status === "already_subscribed" ? (
+          <p className={STATUS_BOX_SUCCESS}>{esCL.newsletter.alreadySubscribed}</p>
+        ) : (
+          <form onSubmit={handleSubmit} className="flex-1 flex flex-col gap-[10px]">
+            <div className="flex flex-col sm:flex-row gap-[10px]">
+              <input name="email" type="email" required placeholder={esCL.newsletter.sectionEmailPlaceholder} aria-label={esCL.newsletter.sectionEmailPlaceholder} className={`${field} w-full sm:flex-1 min-w-0`} />
+              {/* Keyed on the loaded list so defaultValue applies once the
+                  options exist (they load client-side). */}
               <select
+                key={regions.length}
                 name="adminRegionName"
                 required
-                defaultValue=""
+                defaultValue={regions.some((r) => r.name === adminRegionName) ? adminRegionName : ""}
                 aria-label={esCL.newsletter.regionPlaceholder}
-                className="appearance-none w-full bg-transparent border-b-4 md:border-b-6 border-text-primary rounded-input px-[8px] md:px-[16px] py-[16px] md:py-[20px] font-lato font-semibold text-[16px] md:text-[20px] text-text-primary focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#3d373d] focus-visible:outline-offset-2"
+                className={`${field} sm:w-[180px]`}
               >
                 <option value="" disabled>
                   {esCL.newsletter.regionPlaceholder}
@@ -65,39 +60,17 @@ export default function NewsletterSection() {
                   </option>
                 ))}
               </select>
-              {/* eslint-disable-next-line @next/next/no-img-element -- Figma-exported asset, verbatim per design decision */}
-              <img
-                src="/icons/chevron-down.svg"
-                alt=""
-                width={20}
-                height={20}
-                className="pointer-events-none absolute right-[8px] top-1/2 -translate-y-1/2 md:w-[40px] md:h-[40px]"
-              />
+              <button
+                type="submit"
+                disabled={status === "sending"}
+                className="h-[44px] shrink-0 px-[20px] rounded-input bg-text-primary text-surface-sage font-geist font-semibold text-[15px] cursor-pointer hover:bg-brand-magenta hover:text-white disabled:opacity-60 disabled:cursor-default"
+              >
+                {status === "sending" ? esCL.newsletter.sending : esCL.home.newsletterSubmit}
+              </button>
             </div>
-            <button
-              type="submit"
-              disabled={status === "sending"}
-              className="shrink-0 cursor-pointer rounded-button md:rounded-[75px] border-4 md:border-6 border-text-primary bg-text-primary md:bg-transparent text-text-placeholder md:text-text-primary font-lato font-black text-[40px] md:text-[32px] px-6 md:px-[21px] py-[16px] transition-colors md:hover:bg-text-primary md:hover:text-text-placeholder disabled:cursor-default disabled:opacity-60"
-            >
-              {status === "sending" ? esCL.newsletter.sending : esCL.newsletter.sectionSubmit}
-            </button>
-          </div>
-          {status === "error" && <p className={STATUS_BOX_ERROR}>{esCL.newsletter.error}</p>}
-        </form>
-      )}
-
-      <div className="flex flex-col gap-[12px] md:gap-[24px] items-center max-w-[754px] mx-auto w-full">
-        <div className="grid grid-cols-2 gap-[8px] md:gap-[10px] w-full">
-          <div className="relative aspect-[100/75] md:aspect-[1024/612] rounded-[8px] md:rounded-none overflow-hidden">
-            <Image src="/images/newsletter/hero-1.jpg" alt="" fill sizes="400px" className="object-cover" />
-          </div>
-          <div className="relative aspect-[100/75] md:aspect-[1024/612] rounded-[8px] md:rounded-none overflow-hidden">
-            <Image src="/images/newsletter/hero-3.jpg" alt="" fill sizes="400px" className="object-cover" />
-          </div>
-        </div>
-        <p className="font-geist font-semibold text-[15px] text-text-primary tracking-[2px] text-center uppercase">
-          {esCL.newsletter.sectionCaption}
-        </p>
+            {status === "error" && <p className={STATUS_BOX_ERROR}>{esCL.newsletter.error}</p>}
+          </form>
+        )}
       </div>
     </section>
   );

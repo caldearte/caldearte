@@ -28,13 +28,6 @@ function hasPersonalizationSignal(searchParams: URLSearchParams): boolean {
 export default function HomeClient({ initialModel }: HomeClientProps) {
   const searchParams = useSearchParams();
   const [model, setModel] = useState(initialModel);
-  // Independent of the personalization fetch below (page.tsx's cached
-  // default always starts this false — see its own comment) — a
-  // genuinely fresh visitor has NO cookies at all, so
-  // hasPersonalizationSignal never fires and `refresh()` never runs;
-  // this still needs to show the prompt for them. Runs once on mount,
-  // reading the real cookie directly rather than waiting on any fetch.
-  const [showGeoConsentPrompt, setShowGeoConsentPrompt] = useState(false);
   // Surfaced to Header via CalendarView — the week chevrons themselves
   // resolve almost instantly (same-route search-param change, no real
   // RSC round-trip since page.tsx never reads searchParams), so without
@@ -93,10 +86,5 @@ export default function HomeClient({ initialModel }: HomeClientProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- see comment above
   }, [searchParams]);
 
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- mount-only real-cookie check, see comment above
-    if (getCookie(GEO_CONSENT_COOKIE) === undefined) setShowGeoConsentPrompt(true);
-  }, []);
-
-  return <CalendarView {...model} showGeoConsentPrompt={showGeoConsentPrompt} onRefreshNeeded={refresh} isRefreshing={isRefreshing} />;
+  return <CalendarView {...model} onRefreshNeeded={refresh} isRefreshing={isRefreshing} />;
 }

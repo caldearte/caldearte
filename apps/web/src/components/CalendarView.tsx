@@ -2,25 +2,24 @@
 
 import { useRef, useState } from "react";
 import { esCL } from "@/i18n/es-CL";
-import { adminRegionNameByRegionId } from "@/lib/cities";
+import { adminRegionNameByRegionId, buildRegionMetaByCityId, regionIdFromAdminRegionName } from "@/lib/cities";
 import { shortRegionName } from "@/lib/regionNames";
-import { REGION_COOKIE, FAMILY_MODE_COOKIE, setCookie, pushRecentRegionId } from "@/lib/cookies";
-import { fmtShort } from "@/lib/date";
+import { REGION_COOKIE, FAMILY_MODE_COOKIE, GEO_CONSENT_COOKIE, PRECISE_CITY_COOKIE, setCookie, pushRecentRegionId } from "@/lib/cookies";
+import { currentWeekInSantiago, fmtShort } from "@/lib/date";
+import { requestPreciseCityId } from "@/lib/geolocation";
 import type { EventRecord, RegionMeta } from "@/lib/events";
-import type { CityCounts } from "@/lib/event-utils";
+import type { CityCounts, RegionActivity } from "@/lib/event-utils";
 import Header from "./Header";
-import RegionCountRing from "./RegionCountRing";
-import InauguracionesSection from "./InauguracionesSection";
-import VisitasGuiadasSection from "./VisitasGuiadasSection";
-import ExposicionesSection from "./ExposicionesSection";
-import CuratoriaBanner from "./CuratoriaBanner";
+import WeekHeading from "./WeekHeading";
+import RegionNav from "./RegionNav";
+import AgendaSection from "./AgendaSection";
+import CarteleraSection from "./CarteleraSection";
 import NewsletterSection from "./NewsletterSection";
 import EspaciosSection from "./EspaciosSection";
 import Footer from "./Footer";
 import CityPickerPanel from "./CityPickerPanel";
 import MenuDrawer from "./MenuDrawer";
 import SearchPanel from "./SearchPanel";
-import GeoConsentBanner from "./GeoConsentBanner";
 import GeoLocationChangedBanner from "./GeoLocationChangedBanner";
 import NewsletterStatusModal, { type NewsletterStatus } from "./NewsletterStatusModal";
 
@@ -30,46 +29,48 @@ interface CalendarViewProps {
   exposActuales: EventRecord[];
   regionId: string; // the site's own selection unit — see cities.ts's "Región-level selection"
   actualCityId: string | null; // IP-geolocated comuna, recomputed every render regardless of región — CityPickerPanel's "Tu ubicación actual" row; null when there's no real signal (outside Chile, no geo header)
-  hasPreciseLocation: boolean; // true once a real geolocation reading (banner or picker button) has been granted — hides the picker's redundant "Usar mi ubicación exacta" button
-  showGeoConsentPrompt: boolean; // true only when the visitor has never answered GeoConsentBanner's prompt
+  hasPreciseLocation: boolean; // true once a real geolocation reading has been granted — hides "Usar mi ubicación"
   cityNames: Record<string, string>; // real observed comuna names, id -> name — see cities.ts
   familyMode: boolean;
   todayFilterOn: boolean; // Filtros "Hoy" pill — narrows this city's lists to only today's active events
-  vigentesFilterOn: boolean; // Filtros "Vigentes" pill — hides inauguraciones whose opening date already passed this week
   today: string; // YYYY-MM-DD, computed server-side for SSR/CSR consistency
   rangeStart: string; // YYYY-MM-DD — the current week's Monday
   rangeEnd: string; // YYYY-MM-DD — the current week's Sunday
-  weekNumber: number; // "SEMANA N°X" — sequential since launch, see lib/date.ts
+  weekNumber: number; // sequential since launch, see lib/date.ts — only gates the "previous week" chevron now
   prevWeekHref: string; // "/?semana=..." — real navigation, not a cookie (see page.tsx)
   nextWeekHref: string;
-  chileInauguracionesCount: number; // same week/Hoy/Vigentes filter chain as inauguraciones above, nationwide — Header's ring indicators
-  chileVisitasGuiadasCount: number;
-  chileExposActualesCount: number;
-  cityCounts: Record<string, CityCounts>; // full-week counts, unaffected by Hoy/Vigentes — CityCarousel/city picker
-  cityThumbnails: Record<string, EventRecord[]>; // up to 4 preview events per comuna — CityCarousel
+  cityCounts: Record<string, CityCounts>; // full-week counts, unaffected by Hoy/Vigentes — city picker
+  regionActivity: Record<string, RegionActivity>; // distinct events per región — RegionNav
   searchableEvents: EventRecord[]; // active/upcoming, every comuna — SearchPanel's own scope
   nextEvent: EventRecord | null; // empty-state fallback, beyond the current week
-  regions: RegionMeta[]; // for the city picker's región grouping
+  regions: RegionMeta[];
   newsletterStatus: NewsletterStatus | null; // from ?newsletter= — set by /newsletter/confirmar or /newsletter/baja's redirect
-  // Called after a city or family-mode change, instead of router.refresh()
-  // (2026-08-06) — this page is cache-eligible now (see app/page.tsx's own
-  // comment), so a plain refresh would just re-serve the same cached
-  // default instead of picking up the cookie that was just set.
+  // Called after a región or family-mode change, instead of
+  // router.refresh() (2026-08-06) — this page is cache-eligible (see
+  // app/page.tsx's own comment), so a plain refresh would re-serve the
+  // same cached default instead of picking up the cookie just set.
   // HomeClient.tsx supplies the real implementation (re-fetch
-  // /api/home-data and swap the view model in). Optional, defaulting to a
-  // no-op — page.tsx's own Suspense fallback renders this component
-  // directly from a Server Component, which can't pass a function prop
-  // across that boundary; that fallback is only ever shown for the
-  // instant before client hydration takes over, so a no-op there is safe.
+  // /api/home-data and swap the view model in). No-op default: page.tsx's
+  // Suspense fallback renders this component straight from a Server
+  // Component, which can't pass a function prop; that fallback only
+  // shows for the instant before hydration.
   onRefreshNeeded?: () => void;
-  // Whether onRefreshNeeded's own fetch (HomeClient.tsx) is currently in
-  // flight — surfaced to Header so the week-nav row can show a loading
-  // indicator instead of looking "stuck" (real user report, 2026-08-15).
-  // Same no-op-safe default as onRefreshNeeded, for the same Suspense-
-  // fallback reason.
+  // Whether onRefreshNeeded's fetch is in flight — WeekHeading shows a
+  // loading bar instead of looking "stuck" (real report, 2026-08-15).
   isRefreshing?: boolean;
 }
 
+// Home layout of 2026-10-12, ordered by what a visitor (mostly on a
+// phone, arriving from Instagram/Facebook) needs first:
+//   1. where and which week (WeekHeading) + every región in view (RegionNav)
+//   2. what happens on which day this week (AgendaSection)
+//   3. the newsletter ask, right where "I want this weekly" makes sense
+//   4. what's running, closing-soon first (CarteleraSection)
+// Replaces the hero + count rings + three paged sliders + Curatoría and
+// "¿Tienes un espacio?" banners, which put the first event ~1.4 screens
+// below the fold. The curatorial line moved into Header, the venue ask is
+// a compact strip at the end (EspaciosSection), the AI note lives in the
+// Footer.
 export default function CalendarView({
   inauguraciones,
   visitasGuiadas,
@@ -77,7 +78,6 @@ export default function CalendarView({
   regionId,
   actualCityId,
   hasPreciseLocation,
-  showGeoConsentPrompt,
   cityNames,
   familyMode,
   todayFilterOn,
@@ -87,10 +87,8 @@ export default function CalendarView({
   weekNumber,
   prevWeekHref,
   nextWeekHref,
-  chileInauguracionesCount,
-  chileVisitasGuiadasCount,
-  chileExposActualesCount,
   cityCounts,
+  regionActivity,
   searchableEvents,
   nextEvent,
   regions,
@@ -98,36 +96,54 @@ export default function CalendarView({
   onRefreshNeeded = () => {},
   isRefreshing = false,
 }: CalendarViewProps) {
-  const cityPickerTriggerRef = useRef<HTMLButtonElement>(null);
+  const comunaSearchReturnRef = useRef<HTMLElement | null>(null);
   const [locationOpen, setLocationOpen] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [drawerInitialView, setDrawerInitialView] = useState<"menu" | "contact">("menu");
   const [searchOpen, setSearchOpen] = useState(false);
+  const [locating, setLocating] = useState(false);
 
-  // Footer's "Contacto" link — opens the same MenuDrawer straight into its
-  // contact view, instead of navigating to the now-removed /contacto page.
   function openContactDrawer() {
     setDrawerInitialView("contact");
     setDrawerOpen(true);
   }
 
-  const regionName = shortRegionName(adminRegionNameByRegionId(regions).get(regionId) ?? regionId);
+  const adminRegionName = adminRegionNameByRegionId(regions).get(regionId) ?? regionId;
+  const regionName = shortRegionName(adminRegionName);
+  const currentWeekStart = currentWeekInSantiago().start;
+  const isCurrentWeek = rangeStart === currentWeekStart;
 
   // Records the región being LEFT (not the destination) into "Últimas
   // visitadas" — re-confirming the same región is never worth remembering.
-  function recordDeparture(nextRegionId: string) {
-    if (nextRegionId !== regionId) pushRecentRegionId(regionId);
-  }
-
-  // Commits + navigates immediately — used by the city picker (clicking a
-  // row, or pressing Enter on one). No pending-selection + separate
-  // "Explorar" confirm step.
   function goToRegion(nextRegionId: string) {
-    recordDeparture(nextRegionId);
+    if (nextRegionId !== regionId) pushRecentRegionId(regionId);
     setCookie(REGION_COOKIE, nextRegionId);
     setLocationOpen(false);
     window.scrollTo(0, 0);
     onRefreshNeeded();
+  }
+
+  // "Usar mi ubicación" in RegionNav — replaces the yellow consent banner
+  // that used to sit above everything on a first visit (and pushed the
+  // page down once it appeared). Same cookies the banner set: any outcome
+  // records the answer so GeoLocationChangedBanner/the picker know it.
+  function locateMe() {
+    setLocating(true);
+    requestPreciseCityId(
+      regions,
+      (cityId) => {
+        setLocating(false);
+        setCookie(GEO_CONSENT_COOKIE, "granted");
+        setCookie(PRECISE_CITY_COOKIE, cityId);
+        const detected = buildRegionMetaByCityId(regions).get(cityId)?.adminRegionName;
+        if (detected) goToRegion(regionIdFromAdminRegionName(detected));
+        else onRefreshNeeded();
+      },
+      () => {
+        setLocating(false);
+        setCookie(GEO_CONSENT_COOKIE, "denied");
+      },
+    );
   }
 
   function toggleFamilyMode() {
@@ -136,32 +152,13 @@ export default function CalendarView({
   }
 
   const isEmpty = inauguraciones.length === 0 && visitasGuiadas.length === 0 && exposActuales.length === 0;
-  // CuratoriaBanner sits right after whichever of Inauguraciones/Visitas
-  // guiadas actually rendered — same "never floating alone right under
-  // the Header" reasoning as before, just extended from a 2-way to a
-  // 3-way split.
-  const hasTopSections = inauguraciones.length > 0 || visitasGuiadas.length > 0;
 
   return (
     <div className="w-full relative">
       <NewsletterStatusModal status={newsletterStatus} />
-      <GeoConsentBanner show={showGeoConsentPrompt} regions={regions} />
-      <GeoLocationChangedBanner
-        hasPreciseLocation={hasPreciseLocation}
-        actualCityId={actualCityId}
-        regions={regions}
-      />
+      <GeoLocationChangedBanner hasPreciseLocation={hasPreciseLocation} actualCityId={actualCityId} regions={regions} />
 
       <Header
-        regionName={regionName}
-        rangeStart={rangeStart}
-        rangeEnd={rangeEnd}
-        weekNumber={weekNumber}
-        prevWeekHref={prevWeekHref}
-        nextWeekHref={nextWeekHref}
-        isRefreshing={isRefreshing}
-        onOpenCityPicker={() => setLocationOpen(true)}
-        cityPickerTriggerRef={cityPickerTriggerRef}
         onOpenSearch={() => setSearchOpen(true)}
         onOpenMenu={() => {
           setDrawerInitialView("menu");
@@ -169,106 +166,76 @@ export default function CalendarView({
         }}
       />
 
-      {/* Región-vs-Chile ring indicators (2026-08-18) — its own full-width
-          centered row, not nested inside Header's right-aligned location
-          column (tried first, but the user's own mockup has these
-          centered under the whole page, not tucked into that column).
-          Hidden while isRefreshing, same reasoning as Header's own
-          WeekNavLoadingBar: the counts would otherwise flash the
-          PREVIOUS week/región's numbers for an instant before the fetch
-          resolves. */}
-      {!isRefreshing && (
-        <div className="w-full flex items-center justify-center gap-[32px] md:gap-[40px] pb-8 md:pb-[60px] px-4 md:px-[80px]">
-          <RegionCountRing
-            label={esCL.regionCountRingInauguracionesLabel}
-            shortLabel={esCL.regionCountRingInauguracionesShortLabel}
-            count={inauguraciones.length}
-            total={chileInauguracionesCount}
-            kindLabel={esCL.regionCountRingKindInauguraciones}
-          />
-          <RegionCountRing
-            label={esCL.regionCountRingVisitasGuiadasLabel}
-            shortLabel={esCL.regionCountRingVisitasGuiadasShortLabel}
-            count={visitasGuiadas.length}
-            total={chileVisitasGuiadasCount}
-            kindLabel={esCL.regionCountRingKindVisitasGuiadas}
-          />
-          <RegionCountRing
-            label={esCL.regionCountRingExposicionesLabel}
-            shortLabel={esCL.regionCountRingExposicionesShortLabel}
-            count={exposActuales.length}
-            total={chileExposActualesCount}
-            kindLabel={esCL.regionCountRingKindExposiciones}
-          />
-        </div>
-      )}
+      <div className="lg:grid lg:grid-cols-[200px_minmax(0,1fr)] lg:gap-[48px] lg:mt-[12px]">
+        <RegionNav
+          regions={regions}
+          regionId={regionId}
+          regionActivity={regionActivity}
+          hasPreciseLocation={hasPreciseLocation}
+          locating={locating}
+          onSelectRegion={goToRegion}
+          onUseMyLocation={locateMe}
+          onOpenComunaSearch={() => {
+            comunaSearchReturnRef.current = document.activeElement as HTMLElement | null;
+            setLocationOpen(true);
+          }}
+        />
 
-      {isEmpty ? (
-        <div className="py-10">
-          {nextEvent ? (
-            <p className="text-sm text-heading-gray">
-              {esCL.emptyWithNextEvent(
-                regionName,
-                todayFilterOn ? esCL.todaySuffix : esCL.thisWeekSuffix,
-                nextEvent.openingDatetime ? fmtShort(nextEvent.openingDatetime.slice(0, 10)) : fmtShort(nextEvent.runStartDate ?? today),
-                nextEvent.title,
+        <div className={`min-w-0 transition-opacity ${isRefreshing ? "opacity-50" : ""}`}>
+          <WeekHeading
+            regionName={regionName}
+            rangeStart={rangeStart}
+            rangeEnd={rangeEnd}
+            isCurrentWeek={isCurrentWeek}
+            currentWeekHref={`/?semana=${currentWeekStart}`}
+            weekNumber={weekNumber}
+            prevWeekHref={prevWeekHref}
+            nextWeekHref={nextWeekHref}
+            isRefreshing={isRefreshing}
+          />
+
+          {isEmpty ? (
+            <div className="py-10">
+              {nextEvent ? (
+                <p className="font-geist text-[15px] text-text-primary">
+                  {esCL.emptyWithNextEvent(
+                    regionName,
+                    todayFilterOn ? esCL.todaySuffix : esCL.thisWeekSuffix,
+                    nextEvent.openingDatetime ? fmtShort(nextEvent.openingDatetime.slice(0, 10)) : fmtShort(nextEvent.runStartDate ?? today),
+                    nextEvent.title,
+                  )}
+                </p>
+              ) : (
+                <>
+                  <p className="font-geist text-[15px] text-text-primary mb-2">{esCL.emptyNoEventsYet(regionName)}</p>
+                  <p className="font-geist text-[13px] text-text-secondary">{esCL.doYouKnowOne}</p>
+                  <button type="button" onClick={openContactDrawer} className="mt-3 text-[13px] px-3 py-1.5 rounded-full bg-text-primary text-surface-sage cursor-pointer">
+                    {esCL.tellUs}
+                  </button>
+                </>
               )}
-            </p>
+            </div>
           ) : (
             <>
-              <p className="text-sm text-heading-gray mb-2">{esCL.emptyNoEventsYet(regionName)}</p>
-              <p className="text-xs text-muted-gray mb-3">{esCL.doYouKnowOne}</p>
-              <button className="text-xs px-3 py-1.5 rounded-full bg-city-pill-bg text-city-pill-fg">{esCL.tellUs}</button>
+              <AgendaSection
+                inauguraciones={inauguraciones}
+                visitasGuiadas={visitasGuiadas}
+                regionName={regionName}
+                today={today}
+                isCurrentWeek={isCurrentWeek}
+              />
+              <NewsletterSection adminRegionName={adminRegionName} />
+              <CarteleraSection events={exposActuales} today={today} />
             </>
           )}
+          {isEmpty && <NewsletterSection adminRegionName={adminRegionName} />}
+          <EspaciosSection />
         </div>
-      ) : (
-        <>
-          <InauguracionesSection events={inauguraciones} regionName={regionName} hideTodayBadge={todayFilterOn} />
+      </div>
 
-          <VisitasGuiadasSection events={visitasGuiadas} hideTodayBadge={todayFilterOn} />
-
-          {/* CuratoriaBanner sits right after Inauguraciones/Visitas
-              guiadas only when at least one of them actually rendered
-              (both return null with zero events this week). Otherwise it
-              moves down to sit between Exposiciones and the "texto AI"
-              line below, so it's never floating right under the Header
-              with nothing above it. */}
-          {hasTopSections && (
-            <div className="w-full flex flex-wrap justify-center">
-              <CuratoriaBanner />
-            </div>
-          )}
-
-          <ExposicionesSection events={exposActuales} hideTodayBadge={todayFilterOn} />
-
-          {!hasTopSections && (
-            <div className="w-full flex flex-wrap justify-center">
-              <CuratoriaBanner />
-            </div>
-          )}
-        </>
-      )}
-
-      {/* "Arte en todas partes" (CityCarousel) removed from the home for
-          now, 2026-08-04 — "Explora todo Chile" (región/comuna table) is
-          slated to replace it per the redesign plan; not deleting
-          CityCarousel.tsx itself since that replacement is a near-term
-          next step, not an indefinite removal. cityCounts/cityThumbnails
-          stay wired through unchanged — CityPickerPanel below still
-          needs them regardless of whether this carousel renders. */}
-
-      {/* "texto AI" (174:2985) — its own short section between Exposiciones
-          and the newsletter form, not part of either. Large gap above
-          (echoing Exposiciones' own bottom spacing), tight against the
-          form below. */}
-      <p className="mt-[60px] md:mt-[120px] mb-4 text-center text-[1rem] font-fragment-mono text-text-primary">{esCL.aiDisclaimer}</p>
-
-      <EspaciosSection />
-
-      <NewsletterSection />
-
-      <Footer onContactClick={openContactDrawer} />
+      <div className="mt-[64px] -mx-[20px] md:-mx-[61px]">
+        <Footer onContactClick={openContactDrawer} />
+      </div>
 
       <CityPickerPanel
         open={locationOpen}
@@ -280,7 +247,7 @@ export default function CalendarView({
         regions={regions}
         onClose={() => {
           setLocationOpen(false);
-          cityPickerTriggerRef.current?.focus();
+          comunaSearchReturnRef.current?.focus();
         }}
         onSelectRegion={goToRegion}
       />

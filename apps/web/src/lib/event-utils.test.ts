@@ -17,8 +17,10 @@ import {
   resolveCityId,
   displayNameForCity,
   sortByRunEndAsc,
+  activityByRegion,
 } from "./event-utils";
-import type { EventRecord } from "./events";
+import { buildRegionMetaByCityId } from "./cities";
+import type { EventRecord, RegionMeta } from "./events";
 
 function event(overrides: Partial<EventRecord> = {}): EventRecord {
   return {
@@ -307,4 +309,18 @@ test("resolveCityId falls back to freeform_location's trailing segment when ther
 test("displayNameForCity prefers regionName, falls back to freeform_location's trailing segment", () => {
   assert.equal(displayNameForCity(event({ freeformLocation: "Algún texto libre", regionName: "Punta Arenas" })), "Punta Arenas");
   assert.equal(displayNameForCity(event({ freeformLocation: "Galería X, Valparaíso", regionName: null })), "Valparaíso");
+});
+
+test("activityByRegion counts distinct events per región — an inauguración that also runs as an expo counts once", () => {
+  const regions: RegionMeta[] = [
+    { id: "r1", name: "Santiago", country: "CL", adminRegionName: "Metropolitana de Santiago", adminRegionOrder: 7, adminRegionNumeral: "RM", lat: null, lng: null },
+    { id: "r2", name: "Valparaíso", country: "CL", adminRegionName: "Valparaíso", adminRegionOrder: 6, adminRegionNumeral: "V", lat: null, lng: null },
+  ];
+  const meta = buildRegionMetaByCityId(regions);
+  const openingThatRuns = event({ id: "a", regionName: "Santiago", openingDatetime: "2026-07-09T22:00:00+00:00", runStartDate: "2026-07-09", runEndDate: "2026-08-01" });
+  const visita = event({ id: "b", regionName: "Santiago", eventType: "visita_guiada", openingDatetime: "2026-07-10T19:00:00+00:00", runStartDate: null, runEndDate: null });
+  const expo = event({ id: "c", regionName: "Valparaíso", eventType: "exposicion", runStartDate: "2026-07-01", runEndDate: "2026-07-30" });
+  const result = activityByRegion([openingThatRuns, visita, expo], WEEK_START, WEEK_END, meta);
+  assert.deepEqual(result["metropolitana-de-santiago"], { agenda: 2, total: 2 });
+  assert.deepEqual(result["valparaiso"], { agenda: 0, total: 1 });
 });

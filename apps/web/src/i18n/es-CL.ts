@@ -447,6 +447,41 @@ export const esCL = {
     reveal: "Ver contenido",
   },
 
+  // Home layout of 2026-10-12: one agenda by day for the week's
+  // inauguraciones + visitas guiadas, then the cartelera; regions always
+  // visible (RegionNav) instead of behind the location button.
+  home: {
+    intro: "Guía independiente de arte. La estética no es neutral, y nuestra selección tampoco.",
+    introLink: "Cómo curamos",
+    weekHeading: (regionName: string) => `Esta semana en ${regionName}`,
+    otherWeekHeading: (regionName: string) => `${regionName}, otra semana`,
+    backToCurrentWeek: "Volver a esta semana",
+    agendaTitle: "Inauguraciones y visitas guiadas",
+    agendaEmpty: (regionName: string) => `Esta semana no hay inauguraciones ni visitas guiadas en ${regionName}.`,
+    agendaPast: (n: number) => `Ya pasaron esta semana (${n})`,
+    typeInauguracion: "Inauguración",
+    typeVisitaGuiada: "Visita guiada",
+    hourToConfirm: "hora por confirmar",
+    carteleraTitle: "Exposiciones en cartelera",
+    ultimosDias: "Últimos días",
+    restTitle: "Siguen en cartelera",
+    allComunas: "Todas",
+    seeAll: (n: number) => `Ver las ${n} exposiciones`,
+    seeLess: "Ver menos",
+    seeAllClosing: (n: number) => `Ver las ${n} que cierran esta semana`,
+    closesToday: "Cierra hoy",
+    regionsTitle: "Regiones",
+    regionsNavAriaLabel: "Elegir región",
+    useMyLocation: "Usar mi ubicación",
+    locating: "Ubicando…",
+    searchComuna: "Buscar comuna",
+    quietRegions: (n: number) => `Sin actividad esta semana (${n})`,
+    agendaDotTitle: (n: number) => `${n} ${n === 1 ? "inauguración o visita" : "inauguraciones o visitas"} esta semana`,
+    newsletterTitle: "Recibe la semana cada domingo",
+    newsletterBody: "Inauguraciones y exposiciones de tu región, en un solo correo.",
+    newsletterSubmit: "Suscribirme",
+  },
+
   footer: {
     tagline:
       "Calendario de arte curado por inteligencia humana potenciada por IA",
@@ -454,6 +489,7 @@ export const esCL = {
     contacto: "Contacto",
     privacidad: "Privacidad",
     agregaExpo: "Agrega tu expo",
+    curatoria: "Curatoría",
   },
 
   privacidad: {
@@ -501,7 +537,7 @@ export const esCL = {
     // magenta span with a space in it — no visible difference, simpler
     // code).
     sectionHeadlinePlainStart: "RECIBE NUESTRA ",
-    sectionHeadlineHighlight: "GUIA DE ARTE",
+    sectionHeadlineHighlight: "GUÍA DE ARTE",
     sectionHeadlinePlainEnd: " CADA SEMANA.",
     sectionEmailPlaceholder: "Pon tu mail aquí",
     sectionSubmit: "¡LA QUIERO!",

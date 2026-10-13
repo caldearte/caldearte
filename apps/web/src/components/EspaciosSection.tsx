@@ -2,31 +2,28 @@ import Link from "next/link";
 import { esCL } from "@/i18n/es-CL";
 
 // Home section that speaks to venues, not visitors — see the
-// espaciosSection copy's own comment in es-CL.ts for why it exists. Sits
-// between the AI disclaimer and NewsletterSection: the visitor-facing
-// ask (subscribe) and the venue-facing ask (submit) are back to back at
-// the end of the page, each in its own surface. Server component — no
-// state, one link.
+// espaciosSection copy's own comment in es-CL.ts for why it exists (two
+// venues asked how to submit and never found the footer link; "expos
+// enviadas por espacios" is one of /admin's señales de uso). Compact strip
+// since the 2026-10-12 home layout, after the cartelera — same ask, a
+// fraction of the old 96px-headline block's height. Server component.
 export default function EspaciosSection() {
   return (
-    <section
-      id="espacios-section"
-      className="bg-surface-sage border-t-4 border-text-primary px-5 md:px-[263px] py-12 md:py-[120px] flex flex-col gap-8 md:gap-[48px]"
-    >
-      <h2 className="font-lato font-black leading-none text-text-primary text-[56px] md:text-[96px]">
-        {esCL.espaciosSection.headlinePlainStart}
-        <span className="text-brand-magenta">{esCL.espaciosSection.headlineHighlight}</span>
-        {esCL.espaciosSection.headlinePlainEnd}
-      </h2>
-      <p className="font-lato font-semibold text-[18px] md:text-[24px] text-text-primary max-w-[754px]">{esCL.espaciosSection.body}</p>
-      <div>
-        <Link
-          href="/agrega-tu-expo"
-          className="inline-block rounded-button md:rounded-[75px] border-4 md:border-6 border-text-primary bg-text-primary text-surface-sage font-lato font-black text-[28px] md:text-[32px] px-6 md:px-[32px] py-[16px] transition-colors hover:bg-brand-magenta hover:border-brand-magenta hover:text-white"
-        >
-          {esCL.espaciosSection.cta}
-        </Link>
+    <section id="espacios-section" aria-labelledby="espacios-title" className="mt-[48px] bg-surface-white px-[20px] py-[20px] md:px-[28px] md:py-[24px] flex flex-col md:flex-row md:items-center gap-[14px] md:gap-[32px]">
+      <div className="flex-1">
+        <h2 id="espacios-title" className="font-lato font-black text-[22px] md:text-[24px] leading-[1.1] text-text-primary">
+          {esCL.espaciosSection.headlinePlainStart}
+          <span className="text-brand-magenta">{esCL.espaciosSection.headlineHighlight}</span>
+          {esCL.espaciosSection.headlinePlainEnd}
+        </h2>
+        <p className="font-geist text-[14px] text-text-secondary mt-[6px] max-w-[560px]">{esCL.espaciosSection.body}</p>
       </div>
+      <Link
+        href="/agrega-tu-expo"
+        className="self-start md:self-auto shrink-0 h-[44px] inline-flex items-center px-[20px] rounded-input bg-text-primary text-surface-sage font-geist font-semibold text-[15px] transition-colors hover:bg-brand-magenta hover:text-white"
+      >
+        {esCL.espaciosSection.cta}
+      </Link>
     </section>
   );
 }

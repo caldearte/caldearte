@@ -18,6 +18,9 @@ import {
   addWeeks,
   weekNumberSince,
   fmtUntilDate,
+  fmtAgendaDay,
+  santiagoDateOfIso,
+  fmtWeekRangeShort,
   isClosingSoon,
 } from "./date";
 
@@ -245,4 +248,24 @@ test("isClosingSoon: no runEndDate at all is never closing soon", () => {
 test("isClosingSoon: boundary stays the same calendar week end from any day within it", () => {
   assert.equal(isClosingSoon("2026-08-09", "2026-08-07"), true);
   assert.equal(isClosingSoon("2026-08-09", "2026-08-09"), true);
+});
+
+test("fmtAgendaDay: hoy, mañana, then weekday + day", () => {
+  assert.equal(fmtAgendaDay("2026-10-14", "2026-10-14"), "Hoy");
+  assert.equal(fmtAgendaDay("2026-10-15", "2026-10-14"), "Mañana");
+  assert.equal(fmtAgendaDay("2026-10-17", "2026-10-14"), "Sábado 17");
+  assert.equal(fmtAgendaDay("2026-10-12", "2026-10-14"), "Lunes 12");
+  // Month boundary for "mañana"
+  assert.equal(fmtAgendaDay("2026-11-01", "2026-10-31"), "Mañana");
+});
+
+test("fmtWeekRangeShort: same month and across months", () => {
+  assert.equal(fmtWeekRangeShort("2026-10-12", "2026-10-18"), "12–18 oct");
+  assert.equal(fmtWeekRangeShort("2026-10-26", "2026-11-01"), "26 oct – 1 nov");
+});
+
+test("santiagoDateOfIso: a 21:30 opening in Santiago stays on its own day", () => {
+  assert.equal(santiagoDateOfIso("2026-10-18T00:30:00+00:00"), "2026-10-17");
+  assert.equal(santiagoDateOfIso("2026-10-17T20:00:00+00:00"), "2026-10-17");
+  assert.equal(santiagoDateOfIso("2026-10-17"), "2026-10-17");
 });

@@ -428,6 +428,28 @@ sage surface so the visitor-facing ask (subscribe) and the venue-facing
 ask (submit) read as two distinct blocks back to back. Static server
 component, no state, so the home's caching posture above is untouched.
 
+**Home layout, 2026-10-12** (once Instagram passed 200 followers and the
+site had to convert the visits it got): the first event used to appear
+~1.4 screens down on a phone (geo-consent banner, two-line 96px
+wordmark, location button, count rings) and the content sat in three
+paged sliders ("1/15" for Santiago's exposiciones on mobile). Now, in
+order: a slim fixed top bar plus one intro line carrying the curatorial
+stance (`Header`); every región always visible (`RegionNav` — a sticky
+column on desktop, a sticky chip row on mobile, north to south, regions
+with nothing this week grouped at the end, "Usar mi ubicación" replacing
+the yellow `GeoConsentBanner`, comuna search still through
+`CityPickerPanel`); the h1 with the week chevrons (`WeekHeading`); the
+week's inauguraciones and visitas guiadas as one agenda grouped by day
+(`AgendaSection` — visitors plan by day, the same reason the Instagram
+carousel merged the two on 2026-08-31); a compact newsletter strip; the
+cartelera (`CarteleraSection` — "Últimos días" first, then a grid with
+comuna chips and "Ver las N" instead of pages); the venue strip above.
+Per-región counts come from `activityByRegion` (distinct events, so an
+opening that is also a running show counts once), computed in the same
+`computeHomeViewModel` as everything else — still no cookies in the
+cached render. `showGeoConsentPrompt` and the Chile-wide ring counts were
+removed from the view model with the components that used them.
+
 ## SEO: structured data
 
 **Added 2026-08-08** (a Search Console coverage audit found zero

@@ -12,9 +12,8 @@ import {
   isClosingSoon as computeIsClosingSoon,
   todayInSantiago,
 } from "@/lib/date";
-import { deriveComuna } from "@/lib/comuna";
 import { esCL } from "@/i18n/es-CL";
-import { displayNameForCity } from "@/lib/event-utils";
+import { eventComuna } from "@/lib/event-utils";
 import type { EventRecord } from "@/lib/events";
 
 // Shared business logic behind every event card's date/venue text and
@@ -52,15 +51,10 @@ export function useEventCardActions(event: EventRecord, variant: "inauguracion" 
   const closingSoon = variant === "expo" && computeIsClosingSoon(event.runEndDate, today);
 
   const displayedVenue = event.placeName ?? event.freeformLocation;
-  // deriveComuna's narrow Gran Santiago text-match is the more SPECIFIC
-  // signal when it finds one (e.g. picks out "Vitacura" from a venue
-  // address even when the curator's own broader region_id match landed on
-  // just "Santiago") — falls back to the curator-resolved comuna
-  // (displayNameForCity, event.regionName) otherwise, so a card always
-  // has some comuna to show. Region-level browsing (2026-08-12) means a
-  // result list can span many comunas within one región now — showing
-  // which one, specifically, next to every venue is what tells them apart.
-  const comuna = deriveComuna(event.freeformLocation, event.placeName) ?? displayNameForCity(event);
+  // A result list can span many comunas within one región (región-level
+  // browsing, 2026-08-12) — showing which one next to every venue is what
+  // tells them apart. See eventComuna for how it's derived.
+  const comuna = eventComuna(event);
   // Don't repeat the comuna if it's already visible inside the venue text
   // itself (e.g. "MAC Quinta Normal" already says Quinta Normal).
   const comunaAlreadyShown = displayedVenue.toLowerCase().includes(comuna.toLowerCase());

@@ -6,6 +6,7 @@ const MONTHS = [
   "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre",
 ];
 const MONTHS_SHORT = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
+const WEEKDAYS = ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"];
 
 // "YYYY-MM-DD" -> local Date at midnight (never UTC — avoids off-by-one-day
 // bugs from timezone conversion).
@@ -194,6 +195,38 @@ export function fmtWeekHeader(weekStart: string, weekEnd: string): string {
     return `${s.getDate()} al ${e.getDate()} de ${MONTHS[s.getMonth()].toUpperCase()}`;
   }
   return `${s.getDate()} de ${MONTHS[s.getMonth()].toUpperCase()} al ${e.getDate()} de ${MONTHS[e.getMonth()].toUpperCase()}`;
+}
+
+// Calendar date in Chile for a timestamptz (or a plain date, returned
+// as-is). An opening at 21:00 Santiago time is already the next day in
+// UTC, so slicing the ISO string (dateOnlyFromIso) would file it under
+// the wrong day in the agenda.
+export function santiagoDateOfIso(isoOrDate: string): string {
+  if (/^\d{4}-\d{2}-\d{2}$/.test(isoOrDate)) return isoOrDate;
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "America/Santiago" }).format(new Date(isoOrDate));
+}
+
+// Day heading for the home agenda (2026-10-12), e.g. "Hoy", "Mañana",
+// "Viernes 17". Relative words only for today/tomorrow — past days and
+// anything further out read as weekday + day number, enough inside a
+// single week's agenda (the week itself is already named above it).
+export function fmtAgendaDay(dateStr: string, todayStr: string): string {
+  if (dateStr === todayStr) return "Hoy";
+  const tomorrow = parseDateOnly(todayStr);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  if (dateStr === toDateOnlyString(tomorrow)) return "Mañana";
+  const d = parseDateOnly(dateStr);
+  const weekday = WEEKDAYS[d.getDay()];
+  return `${weekday.charAt(0).toUpperCase()}${weekday.slice(1)} ${d.getDate()}`;
+}
+
+// Compact week range for the home's week heading (2026-10-12), e.g.
+// "12–18 oct" or, across a month boundary, "27 oct – 2 nov".
+export function fmtWeekRangeShort(weekStart: string, weekEnd: string): string {
+  const s = parseDateOnly(weekStart);
+  const e = parseDateOnly(weekEnd);
+  if (s.getMonth() === e.getMonth()) return `${s.getDate()}–${e.getDate()} ${MONTHS_SHORT[s.getMonth()]}`;
+  return `${s.getDate()} ${MONTHS_SHORT[s.getMonth()]} – ${e.getDate()} ${MONTHS_SHORT[e.getMonth()]}`;
 }
 
 // Rediseño 2.0.0 hero week range (selector). Day always zero-padded to 2

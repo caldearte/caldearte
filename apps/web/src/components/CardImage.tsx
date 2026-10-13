@@ -4,15 +4,15 @@ import { useState } from "react";
 import Image from "next/image";
 import { esCL } from "@/i18n/es-CL";
 import { resolveCardImage, PLACEHOLDER_BG } from "@/lib/image-source";
+import { isOptimizableImageUrl } from "@/lib/imageHosts";
 
 interface CardImageProps {
   imageUrl: string | null;
   sourceUrl: string | null;
   sensitivityTags: string[];
-  // True only on the standalone /eventos/[id] page: shows the real photo at
-  // its own natural aspect ratio (no crop) instead of the home/archive
-  // cards' fixed-height object-cover crop. Placeholders have no real
-  // dimensions to respect, so they keep a fixed aspect box either way.
+  // True only on the standalone /eventos/[id] page: shows the whole photo,
+  // uncropped (letterboxed in a 4:5 box), instead of the cards' own
+  // object-cover crop.
   fullSize?: boolean;
   // True only for the very first card on the home page (the mobile LCP
   // element per the 2026-08-17 Lighthouse audit — lcp-discovery-insight
@@ -24,49 +24,61 @@ interface CardImageProps {
   // set. Next's own docs recommend `loading="eager"` + `fetchPriority`
   // instead, which sets the attribute directly on the element.
   priority?: boolean;
+  // Describes the photo for screen readers and image search — the event's
+  // own title is the best text we have (2026-10-12: every event image used
+  // to ship with alt="").
+  alt?: string;
+  // Small thumbnails (home agenda/cartelera, 2026-10-12): the sensitive
+  // overlay shrinks to just its icon — the label and "Ver contenido"
+  // button don't fit at ~90px, and revealing happens on the ficha anyway.
+  compact?: boolean;
 }
 
-export default function CardImage({ imageUrl, sourceUrl, sensitivityTags, fullSize = false, priority = false }: CardImageProps) {
+export default function CardImage({ imageUrl, sourceUrl, sensitivityTags, fullSize = false, priority = false, alt = "", compact = false }: CardImageProps) {
   const [revealed, setRevealed] = useState(false);
+  // A photo that fails to load (most often a host not yet in
+  // next.config.ts's EVENT_IMAGE_HOSTS — 5 of 85 home images on
+  // 2026-10-12) falls back to the same placeholder an event with no photo
+  // gets, instead of an empty dark box.
+  const [failed, setFailed] = useState(false);
   const sensitive = sensitivityTags.length > 0;
-  const image = resolveCardImage({ imageUrl, sourceUrl });
+  const resolved = resolveCardImage({ imageUrl, sourceUrl });
+  const image = failed && resolved.type === "photo" ? resolveCardImage({ imageUrl: null, sourceUrl }) : resolved;
   const blurClass = sensitive && !revealed ? "blur-xl scale-110" : "";
-  // Real bug found 2026-08-06 (EventDetailCard's own listPosition row
-  // exposed it, but it predates that change): fullSize + a PLACEHOLDER
-  // image (no real photo — this prop's own doc comment already says
-  // "placeholders... keep a fixed aspect box either way") used to still
-  // get `h-full` — meaningless on this page, since EventDetailCard's
-  // wrapper div has no explicit height for it to fill, so the whole image
-  // box silently collapsed to 0px and everything below it rendered on
-  // top of the (still absolutely-positioned) HOY/ÚLTIMOS DÍAS badges.
-  const heightClass = fullSize ? (image.type === "photo" ? "" : "aspect-[4/3]") : "h-full";
+  // A host outside next.config.ts's allowlist would 400 through the
+  // optimizer in production and throw during render in `next dev` — load
+  // it straight from the source instead (see lib/imageHosts.ts).
+  const unoptimized = image.type === "photo" && !isOptimizableImageUrl(image.url);
+  // fullSize reserves a 4:5 box (the shape of most source flyers) and
+  // letterboxes the photo inside it with object-contain — never cropped,
+  // and the page no longer jumps ~450px when the photo finishes loading
+  // (2026-10-12: the old width=0/height=0 natural-size image had zero
+  // height until then).
+  const heightClass = fullSize ? "aspect-[4/5]" : "h-full";
 
   return (
-    <div className={`relative w-full ${heightClass} overflow-hidden bg-stone-800`}>
+    <div className={`relative w-full ${heightClass} overflow-hidden ${fullSize ? "bg-surface-sage-dark" : "bg-stone-800"}`}>
       {image.type === "photo" ? (
         fullSize ? (
-          // width=0/height=0 + sizes is next/image's documented pattern for
-          // "unknown real dimensions, full-width, height auto-scaled to the
-          // image's own real aspect ratio" — we don't store the scraped
-          // photo's dimensions, so this is the only way to keep the
-          // uncropped natural-aspect behavior this prop promises while
-          // still going through Vercel's optimizer/srcset.
           <Image
             src={image.url}
-            alt=""
-            width={0}
-            height={0}
-            sizes="100vw"
+            alt={alt}
+            fill
+            sizes="(max-width: 768px) 100vw, 600px"
             loading={priority ? "eager" : "lazy"}
             fetchPriority={priority ? "high" : "auto"}
-            className={`w-full h-auto transition-[filter] duration-300 ${blurClass}`}
+            unoptimized={unoptimized}
+            onError={() => setFailed(true)}
+            className={`object-contain transition-[filter] duration-300 ${blurClass}`}
           />
         ) : (
           <Image
             src={image.url}
-            alt=""
+            alt={alt}
             fill
-            sizes="(max-width: 768px) 100vw, 50vw"
+            sizes={compact ? "(max-width: 768px) 50vw, 25vw" : "(max-width: 768px) 100vw, 50vw"}
+            unoptimized={unoptimized}
+            onError={() => setFailed(true)}
             loading={priority ? "eager" : "lazy"}
             fetchPriority={priority ? "high" : "auto"}
             quality={65}
@@ -86,7 +98,13 @@ export default function CardImage({ imageUrl, sourceUrl, sensitivityTags, fullSi
         </div>
       )}
 
-      {sensitive && !revealed && (
+      {sensitive && !revealed && compact && (
+        <div className="absolute inset-0 bg-black/60 backdrop-blur-xl flex items-center justify-center" title={esCL.sensitiveOverlay.label}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/icons/eye-off.svg" alt={esCL.sensitiveOverlay.label} width={20} height={20} />
+        </div>
+      )}
+      {sensitive && !revealed && !compact && (
         <div className="absolute inset-0 bg-black/60 backdrop-blur-xl flex items-center justify-center">
           <div className="flex flex-col items-center gap-2 bg-black/40 rounded-[20px] px-5 py-4">
             {/* eslint-disable-next-line @next/next/no-img-element */}

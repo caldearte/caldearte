@@ -143,7 +143,7 @@ export default function EventDetailCard({ event, domain, venueLink, artistLinks,
   return (
     <article className="flex flex-col md:flex-row gap-[24px] md:gap-[60px] items-start">
       <div className="relative w-full md:w-[600px] shrink-0">
-        <CardImage imageUrl={event.imageUrl} sourceUrl={event.sourceUrl} sensitivityTags={event.sensitivityTags} fullSize />
+        <CardImage imageUrl={event.imageUrl} sourceUrl={event.sourceUrl} sensitivityTags={event.sensitivityTags} fullSize priority alt={event.title} />
         {showTodayBadge && (
           <span className="absolute top-3 right-3 z-[5] text-[11px] font-bold uppercase tracking-wide bg-white text-text-primary rounded-full px-2.5 py-1">
             {esCL.todayBadge}
