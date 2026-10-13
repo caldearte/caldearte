@@ -455,7 +455,10 @@ export const esCL = {
   // one click away in the h1's own dropdown (RegionDropdown) instead of
   // behind the old location button + full-screen panel.
   home: {
-    tagline: "EL ARTE MÁS CERCA.",
+    tagline: "EL ARTE MÁS CERCA",
+    // The sticky bar's left label swaps to the section scrolling under it.
+    stickyUltimosDias: "ÚLTIMOS DÍAS",
+    stickyAunEnCartelera: "AÚN EN CARTELERA",
     weekRegionJoiner: "en",
     weekDropdownAriaLabel: (weekLabel: string) => `${weekLabel} — cambiar semana`,
     weekListAriaLabel: "Elegir semana",
@@ -472,7 +475,7 @@ export const esCL = {
     hourToConfirm: "hora por confirmar",
     carteleraTitle: "Exposiciones en cartelera",
     ultimosDias: "Últimos días",
-    restTitle: "Siguen en cartelera",
+    restTitle: "Aún en cartelera",
     allComunas: "Todas",
     seeAll: (n: number) => `Ver las ${n} exposiciones`,
     seeLess: "Ver menos",

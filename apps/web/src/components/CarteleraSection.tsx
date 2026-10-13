@@ -60,7 +60,9 @@ export default function CarteleraSection({ events, today }: CarteleraSectionProp
       </h2>
 
       {closing.length > 0 && (
-        <div className="mb-[32px]">
+        // data-sticky-section: WeekHeading's sticky label shows "ÚLTIMOS
+        // DÍAS" / "AÚN EN CARTELERA" while that part is under the bar.
+        <div className="mb-[32px]" data-sticky-section="ultimos">
           <h3 className="font-lato font-black text-[20px] md:text-[22px] text-brand-magenta mb-[10px]">{esCL.home.ultimosDias}</h3>
           <TileGrid events={closingExpanded ? closing : closing.slice(0, INITIAL_VISIBLE_CLOSING)} today={today} variant="closing" />
           {closing.length > INITIAL_VISIBLE_CLOSING && (
@@ -70,7 +72,7 @@ export default function CarteleraSection({ events, today }: CarteleraSectionProp
       )}
 
       {rest.length > 0 && (
-        <div>
+        <div data-sticky-section="aun">
           {closing.length > 0 && <h3 className="font-lato font-black text-[20px] md:text-[22px] text-text-primary mb-[10px]">{esCL.home.restTitle}</h3>}
 
           {comunas.length >= MIN_COMUNAS_FOR_FILTER && (
