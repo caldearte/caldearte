@@ -107,12 +107,13 @@ function DayBlock({ group, today, past, firstImagePriority }: { group: DayGroup;
   );
 }
 
-// The flyer's pieces, above the photo instead of on it (Daniel,
+// The flyer's pieces, under the photo instead of on it (Daniel,
 // 2026-10-12: overlays suit Instagram, on the site the image should stay
-// clean): one tag with the artist, the "Inauguración: …" title, and the
-// magenta "COMUNA · HORA" pill with the venue — white here, since the page
-// itself is the flyer's sage. The tag hugs its own text and long text
-// wraps, balanced, like the flyer's.
+// clean): a clean 4:5 photo, then one tag with the artist line, the
+// "Inauguración: …" / "Visita guiada: …" title line, and the magenta
+// "COMUNA · HORA" pill with the venue beside it — white here, since the
+// page itself is the flyer's sage. The tag hugs its own text and long
+// text wraps, balanced, like the flyer's.
 function AgendaCard({ event, priority }: { event: EventRecord; priority: boolean }) {
   const type = event.eventType === "visita_guiada" ? "visita_guiada" : "inauguracion";
   const title = titleWithTypePrefix(event.title, type);
@@ -121,46 +122,27 @@ function AgendaCard({ event, priority }: { event: EventRecord; priority: boolean
   const comuna = eventComuna(event);
 
   return (
-    <Link href={`/eventos/${event.id}`} aria-label={esCL.eventCardAriaLabel(event.title)} className="group flex flex-col gap-[14px]">
-      {/* Everything in one tag above the photo (Daniel, 2026-10-12):
-          artist line in the flyer's small gray type, title line in its
-          magenta Lato Black ("Inauguración: …" / "Visita guiada: …" tells
-          at a glance what kind of event this is), then the magenta
-          "COMUNA · HORA" pill with the venue beside it in gray. From sm
-          up, where cards sit side by side, this block has a fixed height
-          and the tag rests on the photo, so every photo in a row starts at
-          the same line whether or not there's an artist: 152px fits the
-          tag's padding (20) + a one-line artist (14) + a three-line title
-          (3 × 22) + the pill row (24) + gaps (3 × 6 + 4 extra above the
-          pill row); artist, title and venue are clamped to fit, the full
-          text is on the ficha. One card per row on a phone, so nothing to
-          align there and nothing is clamped. */}
-      <div className="flex flex-col items-start justify-end sm:h-[152px]">
-        <span className="w-fit max-w-full flex flex-col gap-[6px] rounded-[22px] bg-surface-white px-[16px] py-[10px]">
-          {artist && (
-            <span className="font-geist font-semibold text-[11px] leading-[1.25] tracking-[1px] uppercase text-text-secondary [text-wrap:balance] sm:whitespace-nowrap sm:overflow-hidden sm:text-ellipsis">
-              {artist}
-            </span>
-          )}
-          <span className="font-lato font-black text-[17px] leading-[1.3] tracking-[0.3px] uppercase text-brand-magenta [text-wrap:balance] sm:line-clamp-3 group-hover:underline">
-            {title}
-          </span>
-          <span className="flex items-center gap-[10px] min-w-0 mt-[4px]">
-            <span className="shrink-0 rounded-full bg-brand-magenta px-[10px] py-[4px] font-lato font-black text-[12px] uppercase tracking-[0.3px] text-white">
-              {comuna} · {fmtAgendaPillHour(event.openingDatetime!, event.openingTimeConfirmed)}
-            </span>
-            {venue && (
-              <span className="min-w-0 font-geist font-semibold text-[11px] leading-[1.25] tracking-[1px] uppercase text-text-secondary sm:truncate">{venue}</span>
-            )}
-          </span>
-        </span>
-      </div>
-
+    <Link href={`/eventos/${event.id}`} aria-label={esCL.eventCardAriaLabel(event.title)} className="group flex flex-col gap-[12px]">
+      {/* Photo first, so photos side by side always start on the same
+          line; the info tag follows at its own natural height. */}
       <div className="relative w-full aspect-[4/5] overflow-hidden bg-stone-800">
         <div className="absolute inset-0 transition-transform duration-300 group-hover:scale-[1.02]">
           <CardImage imageUrl={event.imageUrl} sourceUrl={event.sourceUrl} sensitivityTags={event.sensitivityTags} priority={priority} alt={event.title} />
         </div>
       </div>
+
+      <span className="w-fit max-w-full flex flex-col gap-[6px] rounded-[22px] bg-surface-white px-[16px] py-[10px]">
+        {artist && (
+          <span className="font-geist font-semibold text-[11px] leading-[1.25] tracking-[1px] uppercase text-text-secondary [text-wrap:balance]">{artist}</span>
+        )}
+        <span className="font-lato font-black text-[17px] leading-[1.3] tracking-[0.3px] uppercase text-brand-magenta [text-wrap:balance] group-hover:underline">{title}</span>
+        <span className="flex items-center gap-[10px] min-w-0 mt-[4px]">
+          <span className="shrink-0 rounded-full bg-brand-magenta px-[10px] py-[4px] font-lato font-black text-[12px] uppercase tracking-[0.3px] text-white">
+            {comuna} · {fmtAgendaPillHour(event.openingDatetime!, event.openingTimeConfirmed)}
+          </span>
+          {venue && <span className="min-w-0 font-geist font-semibold text-[11px] leading-[1.25] tracking-[1px] uppercase text-text-secondary">{venue}</span>}
+        </span>
+      </span>
     </Link>
   );
 }
