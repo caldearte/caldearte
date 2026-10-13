@@ -2,7 +2,7 @@
 
 import { useId, useState } from "react";
 import { esCL } from "@/i18n/es-CL";
-import { matchesQuery } from "@/lib/cities";
+import { rankComunaMatch } from "@/lib/cities";
 import { shortRegionName } from "@/lib/regionNames";
 import { FIELD_BOX, FIELD_BOX_INVALID } from "./FormField";
 
@@ -34,8 +34,14 @@ export default function ComunaCombobox({ id, comunas, value, onChange, invalid =
   const listId = useId();
 
   const q = query.trim();
+  // Best matches first (rankComunaMatch), alphabetical within a rank.
   const options = q
-    ? comunas.filter((c) => matchesQuery(c.name, q) || (c.adminRegionName !== null && matchesQuery(c.adminRegionName, q))).slice(0, MAX_OPTIONS)
+    ? comunas
+        .map((c) => ({ c, rank: rankComunaMatch(c.name, c.adminRegionName, q) }))
+        .filter((x): x is { c: ComunaOption; rank: number } => x.rank !== null)
+        .sort((a, b) => a.rank - b.rank || a.c.name.localeCompare(b.c.name, "es"))
+        .slice(0, MAX_OPTIONS)
+        .map((x) => x.c)
     : [];
 
   function pick(c: ComunaOption) {

@@ -61,6 +61,24 @@ export function matchesQuery(text: string, query: string): boolean {
   return normalize(text).includes(normalize(query));
 }
 
+// How well a comuna matches what was typed in a comuna search box, lower
+// is better, null = no match (2026-10-13): exact name, then name starting
+// with it, then a word in the name starting with it ("alemana" → Villa
+// Alemana), then anywhere in the name, and last a match on its región's
+// name only. Typing "santiago" must put the comuna Santiago first, not
+// bury it under every comuna of Región Metropolitana de Santiago.
+export function rankComunaMatch(name: string, adminRegionName: string | null, query: string): number | null {
+  const n = normalize(name);
+  const q = normalize(query);
+  if (!q) return null;
+  if (n === q) return 0;
+  if (n.startsWith(q)) return 1;
+  if (n.split(/[\s-]+/).some((word) => word.startsWith(q))) return 2;
+  if (n.includes(q)) return 3;
+  if (adminRegionName !== null && normalize(adminRegionName).includes(q)) return 4;
+  return null;
+}
+
 // A stable, deterministic id for any comuna/city name — spaces and
 // punctuation become hyphens, e.g. "Puerto Varas" -> "puerto-varas",
 // "Cabo de Hornos" -> "cabo-de-hornos".

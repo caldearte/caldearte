@@ -13,7 +13,7 @@ import {
   groupCitiesByRegion,
   narrowCitiesByRegion,
   OTHER_CITY,
-  DEFAULT_CITY_ID, searchRegions } from "./cities";
+  DEFAULT_CITY_ID, searchRegions, rankComunaMatch } from "./cities";
 import type { RegionMeta } from "./events";
 import type { CityCounts } from "./event-utils";
 
@@ -324,4 +324,15 @@ test("searchRegions: by región name or by any comuna, accent-insensitive", () =
   assert.deepEqual([...searchRegions(regions, "vita")], [["region-metropolitana-de-santiago", ["Vitacura"]]]);
   assert.equal(searchRegions(regions, "  ").size, 0);
   assert.equal(searchRegions(regions, "punta arenas").size, 0);
+});
+
+test("rankComunaMatch: the comuna named like the query beats its región's other comunas", () => {
+  const rm = "Región Metropolitana de Santiago";
+  assert.equal(rankComunaMatch("Santiago", rm, "santiago"), 0);
+  assert.equal(rankComunaMatch("Buin", rm, "santiago"), 4);
+  assert.equal(rankComunaMatch("San Bernardo", rm, "san"), 1);
+  assert.equal(rankComunaMatch("Villa Alemana", "Valparaíso", "alemana"), 2);
+  assert.equal(rankComunaMatch("Peñalolén", rm, "lolen"), 3);
+  assert.equal(rankComunaMatch("Peñalolén", rm, "penalolen"), 0);
+  assert.equal(rankComunaMatch("Arica", "Arica y Parinacota", "punta"), null);
 });
