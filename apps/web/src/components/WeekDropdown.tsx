@@ -30,7 +30,12 @@ export default function WeekDropdown({ rangeStart, currentWeekStart }: WeekDropd
               scroll={false}
               role="option"
               aria-selected={selected}
-              onClick={close}
+              onClick={() => {
+                close();
+                // The whole page below is about to change — start it from
+                // the top, same as a región change (CalendarView.goToRegion).
+                window.scrollTo(0, 0);
+              }}
               className={`${DROPDOWN_ROW} ${selected ? "font-semibold bg-surface-sage" : ""} text-text-primary`}
             >
               <span>{fmtWeekLabel(week, currentWeekStart)}</span>

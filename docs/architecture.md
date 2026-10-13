@@ -433,8 +433,11 @@ site had to convert the visits it got): the first event used to appear
 ~1.4 screens down on a phone (geo-consent banner, two-line 96px
 wordmark, location button, count rings) and the content sat in three
 paged sliders ("1/15" for Santiago's exposiciones on mobile). Now, in
-order: a slim fixed top bar, "CALDEARTE calendario de arte" (`Header`);
-the h1 "[Esta semana ⌄] en [Santiago ⌄]" (`WeekHeading`), both words
+order: a fixed top bar, the "CALDE / ARTE." wordmark with "calendario de
+arte" by the icons (`Header`); the h1 "[Esta semana ⌄] en [Santiago ⌄]"
+(`WeekHeading` — sticky under the top bar since the whole page is that
+week + región's data, compact once scrolled, sliding away on scroll-down
+only from the venue section on; any change scrolls back to the top), both words
 dropdowns built on `HeadingDropdown`: the week (`WeekDropdown` — "Próxima
 semana / Esta semana / Semana pasada / Semana del 28 de septiembre…", two
 weeks ahead back to SEMANA N°1, each a real `?semana=` link, replacing the
