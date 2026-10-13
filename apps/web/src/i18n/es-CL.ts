@@ -546,8 +546,8 @@ export const esCL = {
     // magenta span with a space in it — no visible difference, simpler
     // code).
     sectionHeadlinePlainStart: "RECIBE NUESTRA ",
-    sectionHeadlineHighlight: "GUÍA DE ARTE",
-    sectionHeadlinePlainEnd: " CADA SEMANA.",
+    sectionHeadlineHighlight: "GUÍA SEMANAL",
+    sectionHeadlinePlainEnd: "",
     sectionEmailPlaceholder: "Pon tu mail aquí",
     sectionSubmit: "¡LA QUIERO!",
     sectionCaption: "¡No te pierdas ninguna inauguración!",
