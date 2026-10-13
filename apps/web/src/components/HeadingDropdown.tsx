@@ -16,8 +16,22 @@ interface HeadingDropdownProps {
 // Escape.
 export default function HeadingDropdown({ label, ariaLabel, listAriaLabel, children }: HeadingDropdownProps) {
   const [open, setOpen] = useState(false);
+  // Phone: the panel spans the whole screen width, just under the button
+  // (Daniel, 2026-10-12 — anchored to the word, a 320px panel ran off the
+  // right edge whenever the word sat mid-line, cutting the regions off).
+  // Measured on open; null = the regular popover under the word (sm+).
+  const [phoneTop, setPhoneTop] = useState<number | null>(null);
   const rootRef = useRef<HTMLSpanElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
+
+  function toggle() {
+    if (!open && buttonRef.current && window.matchMedia("(max-width: 639px)").matches) {
+      setPhoneTop(Math.round(buttonRef.current.getBoundingClientRect().bottom + 8));
+    } else if (!open) {
+      setPhoneTop(null);
+    }
+    setOpen((o) => !o);
+  }
 
   useEffect(() => {
     if (!open) return;
@@ -46,7 +60,7 @@ export default function HeadingDropdown({ label, ariaLabel, listAriaLabel, child
         aria-haspopup="listbox"
         aria-expanded={open}
         aria-label={ariaLabel}
-        onClick={() => setOpen((o) => !o)}
+        onClick={toggle}
         className="inline-flex items-baseline gap-[8px] text-left underline decoration-text-primary/25 decoration-[3px] underline-offset-[6px] cursor-pointer hover:decoration-brand-magenta"
       >
         {label}
@@ -61,7 +75,10 @@ export default function HeadingDropdown({ label, ariaLabel, listAriaLabel, child
         <div
           role="listbox"
           aria-label={listAriaLabel}
-          className="absolute left-0 top-full mt-[10px] z-30 w-[min(320px,calc(100vw-40px))] max-h-[65vh] overflow-y-auto rounded-[10px] bg-surface-white shadow-lg border border-text-primary/10 py-[6px] font-geist font-normal text-[15px] leading-normal tracking-normal"
+          style={phoneTop !== null ? { top: phoneTop, maxHeight: `calc(100dvh - ${phoneTop + 12}px)` } : undefined}
+          className={`z-30 overflow-y-auto bg-surface-white shadow-lg border border-text-primary/10 py-[6px] font-geist font-normal text-[15px] leading-normal tracking-normal ${
+            phoneTop !== null ? "fixed inset-x-0 rounded-b-[14px] border-x-0" : "absolute left-0 top-full mt-[10px] w-[320px] max-h-[65vh] rounded-[10px]"
+          }`}
         >
           {children(() => setOpen(false))}
         </div>
