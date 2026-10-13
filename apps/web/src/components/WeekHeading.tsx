@@ -57,7 +57,7 @@ function LoadingBar() {
     <div
       role="status"
       aria-label={esCL.weekLoadingAriaLabel}
-      className="absolute left-[20px] md:left-[61px] bottom-[4px] w-[96px] h-[3px] rounded-full animate-week-nav-dashes"
+      className="absolute left-[16px] md:left-[24px] xl:left-[40px] bottom-[4px] w-[96px] h-[3px] rounded-full animate-week-nav-dashes"
       style={{
         backgroundImage: "repeating-linear-gradient(90deg, var(--color-brand-magenta) 0 10px, transparent 10px 18px)",
         backgroundSize: "18px 100%",
@@ -80,7 +80,7 @@ export default function WeekHeading({ regionControl, rangeStart, currentWeekStar
 
   return (
     <div
-      className={`sticky top-[84px] md:top-[104px] z-30 -mx-[20px] md:-mx-[61px] px-[20px] md:px-[61px] bg-surface-sage transition-[transform,padding] duration-300 ${
+      className={`sticky top-[84px] md:top-[104px] z-30 -mx-[16px] md:-mx-[24px] xl:-mx-[40px] px-[16px] md:px-[24px] xl:px-[40px] bg-surface-sage transition-[transform,padding] duration-300 ${
         stuck ? "py-[10px] border-b border-text-primary/10" : "pt-[20px] md:pt-[28px] pb-[16px]"
       } ${hidden ? "-translate-y-full pointer-events-none" : ""}`}
     >

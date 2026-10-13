@@ -52,7 +52,7 @@ export default function AgendaSection({ inauguraciones, visitasGuiadas, regionNa
           an invisible copy of the heading (from sm up) so photos in a row
           still line up. A day can now wrap across rows — each card's pill
           also names its day. */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-[16px] md:gap-x-[20px] gap-y-[36px] md:gap-y-[56px]">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-x-[16px] md:gap-x-[20px] gap-y-[36px] md:gap-y-[56px]">
         {groups.flatMap((g) => {
           const heading = fmtAgendaDay(g.date, today);
           const past = isCurrentWeek && g.date < today;
@@ -115,7 +115,7 @@ function groupByDay(events: EventRecord[]): DayGroup[] {
 // openingDatetime (see splitAgendaAndCartelera).
 export function AgendaGrid({ events }: { events: EventRecord[] }) {
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-[16px] md:gap-x-[20px] gap-y-[32px]">
+    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-x-[16px] md:gap-x-[20px] gap-y-[32px]">
       {events.map((e) => (
         <AgendaCard key={e.id} event={e} />
       ))}
@@ -175,7 +175,10 @@ export function AgendaCard({ event, priority = false }: { event: EventRecord; pr
           <span className="font-geist font-semibold text-[11px] leading-[1.25] tracking-[1px] uppercase text-text-secondary [text-wrap:balance]">{artist}</span>
         )}
         <span className="font-lato font-black text-[17px] leading-[1.3] tracking-[0.3px] uppercase text-brand-magenta [text-wrap:balance] group-hover:underline">{title}</span>
-        <span className="w-fit mt-[4px] rounded-full bg-brand-magenta px-[10px] py-[4px] font-lato font-black text-[12px] uppercase tracking-[0.3px] text-white">
+        {/* rounded-[14px], not rounded-full: on the 3-column tablet grid
+            (~200px cards) "COMUNA · DÍA · HORA" wraps to two lines, and a
+            pill shape would bulge; balanced so the lines come out even. */}
+        <span className="w-fit mt-[4px] rounded-[14px] bg-brand-magenta px-[10px] py-[4px] font-lato font-black text-[12px] leading-[1.35] uppercase tracking-[0.3px] text-white [text-wrap:balance]">
           {comuna} · {fmtAgendaPillDay(event.openingDatetime!, todayInSantiago())} · {fmtAgendaPillHour(event.openingDatetime!, event.openingTimeConfirmed)}
         </span>
         {venue && <span className="font-geist font-semibold text-[11px] leading-[1.25] tracking-[1px] uppercase text-text-secondary">{venue}</span>}

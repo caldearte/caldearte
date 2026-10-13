@@ -46,7 +46,7 @@ export default function CatalogEntityPage({
   const { agenda, cartelera } = splitAgendaAndCartelera(current, today);
 
   return (
-    <main className="min-h-screen w-full bg-surface-sage px-[20px] py-8 md:px-[61px] max-w-[1280px] mx-auto">
+    <main className="min-h-screen w-full bg-surface-sage px-[16px] py-8 md:px-[24px] xl:px-[40px] max-w-[1600px] mx-auto">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdScriptContent(jsonLd) }} />
 
       <div className="mb-[40px] md:mb-[60px]">

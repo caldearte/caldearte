@@ -71,8 +71,8 @@ export default function CarteleraSection({ events, today }: CarteleraSectionProp
           {closing.length > 0 && <h3 className="font-lato font-black text-[20px] md:text-[22px] text-text-primary mb-[10px]">{esCL.home.restTitle}</h3>}
 
           {comunas.length >= MIN_COMUNAS_FOR_FILTER && (
-            <div className="-mx-[20px] md:mx-0 mb-[14px]">
-              <div className="flex gap-[8px] overflow-x-auto md:flex-wrap px-[20px] md:px-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <div className="-mx-[16px] md:mx-0 mb-[14px]">
+              <div className="flex gap-[8px] overflow-x-auto md:flex-wrap px-[16px] md:px-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                 <ComunaChip label={esCL.home.allComunas} selected={comuna === null} onClick={() => pickComuna(null)} />
                 {comunas.map((c) => (
                   <ComunaChip key={c} label={c} count={comunaCounts.get(c)} selected={comuna === c} onClick={() => pickComuna(c)} />

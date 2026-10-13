@@ -54,7 +54,7 @@ export default function Header({ onOpenSearch, onOpenMenu }: HeaderProps) {
           space in normal flow; keep both heights in sync with the
           wordmark's size (two lines at 32px / 40px, leading-none). */}
       <div className="fixed top-0 inset-x-0 z-40 bg-surface-sage border-b border-text-primary/10">
-        <div className="max-w-[1280px] mx-auto h-[84px] md:h-[104px] flex items-center justify-between px-[20px] md:px-[61px]">
+        <div className="max-w-[1600px] mx-auto h-[84px] md:h-[104px] flex items-center justify-between px-[16px] md:px-[24px] xl:px-[40px]">
           <SiteWordmark />
           <div className="flex items-center gap-[16px]">
             <AdminLink />
