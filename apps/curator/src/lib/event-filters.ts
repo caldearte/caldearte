@@ -208,6 +208,59 @@ export function isTitleSubsetOfOther(a: string, b: string, placeName: string | n
   return wordsA.every((w) => setB.has(w)) || wordsB.every((w) => setA.has(w));
 }
 
+// Real gap found 2026-10-13 (8 MAC exhibitions doubled on the live site):
+// uchile.cl/artes.uchile.cl wrap every exhibition title in an agenda
+// sentence — 'Muestra "Materia sensible" en el Museo de Arte
+// Contemporáneo', 'Exhibición "La espiga y el oro" en el MAC Quinta
+// Normal' — while arteinformado.com gives the bare 'Materia sensible'. The
+// word-overlap comparators above see the shared words, but every tier that
+// runs them sits behind a bucket the two rows never shared: the sources
+// wrote the comuna differently ("Quinta Normal" vs "Santiago") and the
+// venue differently ("MAC - Quinta Normal" vs "MAC - Museo de Arte
+// Contemporáneo"). coreTitleKey pulls the quoted title out of that
+// sentence so the two can be compared as titles, not as word bags.
+//
+// Only the agenda shape is unwrapped: an optional run of wrapper nouns
+// (Muestra/Exposición/Exhibición/Expo/Inauguración/Instalación), ONE
+// quoted segment, and an optional tail that starts like a place or credit
+// clause ("en el …", "de Eugenio Téllez …", "llega al MAC"). Any other
+// title is left whole — a quotation inside a longer headline is not
+// necessarily the exhibition's name. The key is the token sequence
+// (accent/case/punctuation-free, nothing dropped), so two keys are equal
+// only when the titles say exactly the same words in the same order.
+const QUOTED_TITLE_WRAPPER =
+  /^(?:(?:muestra|exposicion|exhibicion|expo|inauguracion|instalacion)\s+)*(?:"([^"]+)"|“([^”]+)”|«([^»]+)»)(?:\s*[,.:]?\s+(?:en|de|del|se|llega|llegan)\b.*)?\s*$/;
+
+function titleTokens(text: string): string[] {
+  return stripAccents(text.toLowerCase()).split(/[^a-z0-9]+/).filter(Boolean);
+}
+
+function coreTitleText(title: string): string {
+  const lowered = stripAccents(title.toLowerCase()).trim();
+  const m = QUOTED_TITLE_WRAPPER.exec(lowered);
+  return m ? (m[1] ?? m[2] ?? m[3]) : lowered;
+}
+
+export function coreTitleKey(title: string): string {
+  return titleTokens(coreTitleText(title)).join(" ");
+}
+
+// The part of the core title before a title/subtitle separator, or null
+// when there is no subtitle. Real pair (same 2026-10-13 audit): 'Exposición
+// "Colección MAC" en el Museo MAC' (uchile) vs 'Colección MAC. Modulaciones
+// de la imagen fotográfica' (arteinformado) — one source dropped the
+// subtitle. run.ts only uses this under stricter conditions than an equal
+// core title (identical run range, and the bare title must point at ONE
+// subtitled show), because a venue can run "Colección MAC: X" and
+// "Colección MAC: Y" side by side.
+export function mainTitleKey(title: string): string | null {
+  const parts = coreTitleText(title).split(/\s*[.:|–—]\s+|\s+-\s+/);
+  if (parts.length < 2) return null;
+  const main = titleTokens(parts[0]).join(" ");
+  const rest = titleTokens(parts.slice(1).join(" "));
+  return main && rest.length > 0 ? main : null;
+}
+
 // Used by run.ts's cross-source axis safety net (2026-09-07, which
 // replaced the escalation flow originally added 2026-07-30, found via
 // a manual curation audit — see docs/curation-policy.md's "Cross-source

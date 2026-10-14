@@ -4674,6 +4674,42 @@ its festival name, no shared vocabulary at all; only a human knows.
 different wording, so they never share a `placeName` bucket. A fuzzy
 venue bucket is the next lever if this shape recurs.
 
+## Dedup: the agenda-sentence title, keyed by the title itself (2026-10-14)
+
+The same 8 MAC pairs as 2026-07-29 came back (found 2026-10-13, the
+arteinformado copies soft-removed as `duplicado` 10-14): arteinformado.com
+stored first (07-24, 'Materia sensible', "MAC - Museo de Arte
+Contemporáneo", comuna "Santiago" — the sede dropped this time), uchile.cl
+arrived later (08-23, 'Muestra "Materia sensible" en el Museo de Arte
+Contemporáneo', "MAC - Quinta Normal", comuna "Quinta Normal"). Identical
+runs. The title comparators already agreed; what failed was reaching them:
+the fuzzy tier buckets by comuna (split), `sameVenueMatch` by exact venue
+string (split), the strict tier by both.
+
+Fixed with a sixth tier, `coreTitleMatch` (`run.ts` `findCoreTitleMatch`,
+`lib/event-filters.ts` `coreTitleKey`/`mainTitleKey`), bucketed by the
+title, not the place: the quoted name is pulled out of the agenda shape
+(wrapper nouns + one quoted segment + an "en el …"/"de …"/"llega …" tail;
+nothing else is unwrapped) and compared word for word. It needs venues
+sharing a word on both sides, plus the identical run range or the same
+anchor day. A bare main title ('Colección MAC') matches the same title
+with a subtitle only on the identical range and only when it points at
+one subtitled show.
+
+Not overlapping runs: "Colección MAC: Modulaciones de la imagen
+fotográfica" is one exhibition split across both sedes with different
+runs (Parque Forestal 07-11 → 10-11, Quinta Normal 07-18 → 09-27, two
+mac.uchile.cl pages) — overlap would have folded one place into the
+other. No sede-word veto either: the sources put the sede in the venue,
+the comuna or nowhere, and a veto would block exactly these pairs.
+
+Measured read-only over the 523 live approved events: the tier flags the
+8 known pairs and, beyond them, only 3 live pairs an existing tier already
+catches; nothing flagged by this tier alone. Overlap would have added two
+probable real duplicates (Parque Cultural "Ira, Esperanza, Frustración" vs
+"IRA_ESPERANZA_FRUSTRACIÓN"; Anáhuac "Mujeres en el Parque") at the cost
+of the split-sede case.
+
 ## The collab graph as a discovery channel (2026-09-16)
 
 Daniel's question after the co-author fix (#538): can collab posts point

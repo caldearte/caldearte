@@ -36,6 +36,8 @@ import {
   isTitleSubsetOfOther,
   placeNamesLikelySame,
   isWithinAnchorWindow,
+  coreTitleKey,
+  mainTitleKey,
 } from "../lib/event-filters.js";
 import { enrichCandidates, enrichBrightSourceItemDetails, isSocialMediaUrl, type FetchLike as PageFetchLike } from "../lib/page-fetch.js";
 import { rehostImage, type RehostImageFn } from "../lib/image-rehost.js";
@@ -382,6 +384,27 @@ export interface SeenKeys {
   // fires for the exact-venue-exact-enddate case, never a blanket
   // same-venue merge.
   titlesByPlaceName: Map<string, ExistingEventInfo[]>;
+  // Bucketed by coreTitleKey / mainTitleKey (lib/event-filters.ts), with no
+  // location or venue in the key at all — see coreTitleMatch in
+  // findExistingMatch for the venue and date checks that make that safe.
+  // mainTitles only holds rows whose title HAS a subtitle.
+  coreTitles: Map<string, ExistingEventInfo[]>;
+  mainTitles: Map<string, ExistingEventInfo[]>;
+}
+
+function pushToBucket(map: Map<string, ExistingEventInfo[]>, key: string, info: ExistingEventInfo): void {
+  const bucket = map.get(key);
+  if (bucket) bucket.push(info);
+  else map.set(key, [info]);
+}
+
+// Shared by buildSeenKeys and insertCandidates' two in-batch updates, so a
+// sibling candidate later in the same run is compared against this one too.
+function indexCoreTitle(seen: Pick<SeenKeys, "coreTitles" | "mainTitles">, info: ExistingEventInfo): void {
+  const core = coreTitleKey(info.title);
+  if (core) pushToBucket(seen.coreTitles, core, info);
+  const main = mainTitleKey(info.title);
+  if (main) pushToBucket(seen.mainTitles, main, info);
 }
 
 export async function loadExistingKeys(): Promise<SeenKeys> {
@@ -467,12 +490,16 @@ export function buildSeenKeys(rows: ExistingEventInfo[]): SeenKeys {
     else locationDates.set(key, [row]);
   }
 
+  const coreTitleMaps = { coreTitles: new Map<string, ExistingEventInfo[]>(), mainTitles: new Map<string, ExistingEventInfo[]>() };
+  for (const row of rows) indexCoreTitle(coreTitleMaps, row);
+
   return {
     titles: new Map(rows.map((row) => [normalizeTitle(row.title), row])),
     sourceUrls: new Map(rows.flatMap((row) => (row.sourceUrl ? [[row.sourceUrl, row] as const] : []))),
     locationDates,
     titlesByLocationDateOnly,
     titlesByPlaceName,
+    ...coreTitleMaps,
   };
 }
 
@@ -743,7 +770,78 @@ export interface ExistingMatches {
   locationDateMatch: ExistingEventInfo | undefined;
   fuzzyMatch: ExistingEventInfo | undefined;
   sameVenueMatch: ExistingEventInfo | undefined;
+  coreTitleMatch: ExistingEventInfo | undefined;
   existingMatch: ExistingEventInfo | undefined;
+}
+
+// Both rows name a venue and the names share a significant word — the
+// same lenient check the fuzzy tier uses, minus its "no place name means
+// no veto" leniency: coreTitleMatch's buckets carry no location at all, so
+// the venue has to actually be there to weigh in.
+function venuesLikelySame(a: { placeName: string | null }, b: { placeName: string | null }): boolean {
+  return a.placeName !== null && b.placeName !== null && placeNamesLikelySame(a.placeName, b.placeName);
+}
+
+type RunDates = Pick<EventCandidate, "openingDatetime" | "runStartDate" | "runEndDate">;
+
+function sameRunRange(a: RunDates, b: RunDates): boolean {
+  return a.runStartDate !== null && a.runEndDate !== null && a.runStartDate === b.runStartDate && a.runEndDate === b.runEndDate;
+}
+
+// Tier added 2026-10-14 after 8 MAC exhibitions were found doubled on the
+// live site (uchile.cl's 'Muestra "Materia sensible" en el Museo de Arte
+// Contemporáneo', place "MAC - Quinta Normal", comuna "Quinta Normal" vs
+// arteinformado.com's 'Materia sensible', place "MAC - Museo de Arte
+// Contemporáneo", comuna "Santiago"; identical runs). The titles already
+// agreed, but every tier that compares titles is reached through a bucket
+// keyed by comuna or by exact venue string, and the two sources wrote both
+// differently. This tier is keyed by the title itself instead:
+//
+// 1. Equal core title (coreTitleKey: the quoted name pulled out of an
+//    agenda sentence, then compared word for word, nothing dropped) +
+//    venues sharing a word + the same run range or the same anchor day.
+//    NOT merely overlapping runs: "Colección MAC: Modulaciones de la
+//    imagen fotográfica" is one exhibition split across both MAC sedes
+//    with different runs (Parque Forestal 07-11 → 10-11, Quinta Normal
+//    07-18 → 09-27, per mac.uchile.cl's own two pages) — two places to
+//    send someone, and overlap would have folded one into the other.
+//    Exact normalized-title equality is already a match on its own in
+//    titleMatch, with no venue or date check at all, so this is strictly
+//    narrower than a tier the system has trusted since the start; it only
+//    adds the unwrapping.
+// 2. A bare main title against the same title with a subtitle ('Colección
+//    MAC' vs 'Colección MAC. Modulaciones de la imagen fotográfica') +
+//    venues sharing a word + the IDENTICAL run range, and only when the
+//    bare side points at exactly ONE subtitled show — a venue running
+//    "Colección MAC: X" and "Colección MAC: Y" in the same season is the
+//    MAC - Parque Forestal temporada shape, and then nothing merges.
+//
+// What it deliberately does not do: compare word bags (the shared "en el
+// MAC Parque Forestal" tail is what made the temporada regression), or
+// look at sede words ("Quinta Normal"/"Parque Forestal") to veto — the
+// sources put the sede in the venue, the comuna or nowhere, and a veto on
+// that would have blocked exactly the pairs this tier exists for.
+function findCoreTitleMatch(c: EventCandidate, seen: SeenKeys): ExistingEventInfo | undefined {
+  const core = coreTitleKey(c.title);
+  if (!core) return undefined;
+  const equal = (seen.coreTitles.get(core) ?? []).find(
+    (existing) => venuesLikelySame(existing, c) && (sameRunRange(existing, c) || sameAnchorDay(existing, c)),
+  );
+  if (equal) return equal;
+
+  const main = mainTitleKey(c.title);
+  const sameSeason = (existing: ExistingEventInfo) => venuesLikelySame(existing, c) && sameRunRange(existing, c);
+  if (main === null) {
+    // Candidate is the bare title: the one stored show it abbreviates.
+    const subtitled = (seen.mainTitles.get(core) ?? []).filter(sameSeason);
+    return subtitled.length === 1 ? subtitled[0] : undefined;
+  }
+  // Candidate carries the subtitle: a stored bare title it expands, unless
+  // a different subtitled show under the same main title is already stored
+  // for that venue and season.
+  const bare = (seen.coreTitles.get(main) ?? []).filter((existing) => mainTitleKey(existing.title) === null && sameSeason(existing));
+  const siblings = (seen.mainTitles.get(main) ?? []).filter((existing) => coreTitleKey(existing.title) !== core && sameSeason(existing));
+  return bare.length === 1 && siblings.length === 0 ? bare[0] : undefined;
 }
 
 // Which already-stored event (if any) a candidate duplicates, tier by tier.
@@ -835,8 +933,9 @@ export function findExistingMatch(c: EventCandidate, seen: SeenKeys): ExistingMa
             isTitleSubsetOfOther(existing.title, c.title, c.placeName)),
       )
     : undefined;
-  const existingMatch = titleMatch ?? sourceUrlMatch ?? locationDateMatch ?? fuzzyMatch ?? sameVenueMatch;
-  return { titleMatch, sourceUrlMatch, locationDateMatch, fuzzyMatch, sameVenueMatch, existingMatch };
+  const coreTitleMatch = findCoreTitleMatch(c, seen);
+  const existingMatch = titleMatch ?? sourceUrlMatch ?? locationDateMatch ?? fuzzyMatch ?? sameVenueMatch ?? coreTitleMatch;
+  return { titleMatch, sourceUrlMatch, locationDateMatch, fuzzyMatch, sameVenueMatch, coreTitleMatch, existingMatch };
 }
 
 // The set the MiniMax safety net reviews: approved candidates that would
@@ -1042,7 +1141,7 @@ export async function insertCandidates(
 
     const titleKey = normalizeTitle(c.title);
     const locDateOnlyKey = locationDateOnlyKey(c.location, c);
-    const { titleMatch, sourceUrlMatch, locationDateMatch, fuzzyMatch, sameVenueMatch, existingMatch } = findExistingMatch(c, seen);
+    const { titleMatch, sourceUrlMatch, locationDateMatch, fuzzyMatch, sameVenueMatch, coreTitleMatch, existingMatch } = findExistingMatch(c, seen);
 
     if (existingMatch && !shouldReplaceExisting(c, existingMatch)) {
       const reason = fuzzyMatch && !titleMatch && !sourceUrlMatch && !locationDateMatch
@@ -1053,7 +1152,9 @@ export async function insertCandidates(
             ? " (same sourceUrl, different title)"
             : sameVenueMatch && !titleMatch && !sourceUrlMatch && !locationDateMatch && !fuzzyMatch
               ? " (same exact venue + date, differently-worded title — likely two posts about the same real opening)"
-              : "";
+              : coreTitleMatch && !titleMatch && !sourceUrlMatch && !locationDateMatch && !fuzzyMatch && !sameVenueMatch
+                ? ` (same exhibition title once the agenda wrapper is stripped, similar venue, same run — "${existingMatch.title}")`
+                : "";
       console.log(`[event-discovery] skipping duplicate: "${c.title}"${reason}`);
       outcomes.set(c, "duplicate_skipped");
       // Without a record, a candidate Haiku approves but insertCandidates
@@ -1169,6 +1270,7 @@ export async function insertCandidates(
         if (placeBucket) placeBucket.push(updatedInfo);
         else seen.titlesByPlaceName.set(placeKey, [updatedInfo]);
       }
+      indexCoreTitle(seen, updatedInfo);
       outcomes.set(c, "replaced");
       continue;
     }
@@ -1245,6 +1347,7 @@ export async function insertCandidates(
       if (placeBucket) placeBucket.push(freshInfo);
       else seen.titlesByPlaceName.set(placeKey, [freshInfo]);
     }
+    indexCoreTitle(seen, freshInfo);
     outcomes.set(c, "inserted");
     inserted += 1;
   }

@@ -8,6 +8,8 @@ import {
   placeNamesLikelySame,
   isWithinAnchorWindow,
  isTitleSubsetOfOther,
+  coreTitleKey,
+  mainTitleKey,
 } from "./event-filters.js";
 
 test("normalizeLocation collapses a trailing ', Chile'/region suffix — real bug, found 2026-07-20: the same festival got inserted 3x in one run because 'Valparaíso, Chile' vs 'Valparaíso' produced different dedup fingerprints", () => {
@@ -208,4 +210,31 @@ test("isTitleSubsetOfOther leaves genuinely different shows at the same venue al
 test("isTitleSubsetOfOther ignores the venue's own words and empty titles", () => {
   // Every significant word is the venue's → nothing left to compare.
   assert.equal(isTitleSubsetOfOther("Galería Réplica", "Galería Réplica UACh", "Galería Réplica UACh"), false);
+});
+
+test("coreTitleKey unwraps uchile.cl's agenda sentence to the exhibition name (real pairs, 2026-10-13)", () => {
+  assert.equal(coreTitleKey('Muestra "Materia sensible" en el Museo de Arte Contemporáneo'), coreTitleKey("Materia sensible"));
+  assert.equal(coreTitleKey('Exhibición "La espiga y el oro" en el MAC Quinta Normal'), "la espiga y el oro");
+  assert.equal(coreTitleKey('Exposición "Hallazgo, réplica, ficción" en Museo de Arte Contemporáneo'), coreTitleKey("Hallazgo, réplica, ficción"));
+  assert.equal(coreTitleKey('Exposición "Colección MAC" en el Museo MAC'), "coleccion mac");
+  assert.equal(coreTitleKey('Inauguración exposición "Hilvanar el Bosque"'), coreTitleKey("Hilvanar El Bosque"));
+  assert.equal(coreTitleKey("Muestra «Rama torcida» se presenta en el MAC"), "rama torcida");
+});
+
+test("coreTitleKey leaves any other title whole — a quotation inside a headline is not the exhibition's name", () => {
+  assert.equal(
+    coreTitleKey('Camila Desdiore y Colectivo Incorpórea inauguran "Modelo para armar" en BAJ Biobío'),
+    "camila desdiore y colectivo incorporea inauguran modelo para armar en baj biobio",
+  );
+  assert.equal(coreTitleKey("Tierras Raras. Quadra Minerale"), "tierras raras quadra minerale");
+  // Word for word, nothing dropped: generic vocabulary still counts.
+  assert.notEqual(coreTitleKey("Muestra anual"), coreTitleKey("Anual"));
+});
+
+test("mainTitleKey is the part before a subtitle separator, null without a subtitle", () => {
+  assert.equal(mainTitleKey("Colección MAC. Modulaciones de la imagen fotográfica"), "coleccion mac");
+  assert.equal(mainTitleKey("Colección MAC: Modulaciones de la imagen fotográfica"), "coleccion mac");
+  assert.equal(mainTitleKey("Una metáfora verde - arte, activismo y solidaridad"), "una metafora verde");
+  assert.equal(mainTitleKey('Exposición "Colección MAC" en el Museo MAC'), null);
+  assert.equal(mainTitleKey("Vestiario"), null);
 });
