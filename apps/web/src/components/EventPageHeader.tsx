@@ -13,7 +13,9 @@ import SearchPanel from "./SearchPanel";
 // fetched from /api/home-data the first time it opens (that route reads
 // the visitor's cookies, family mode included); family mode is read from
 // and written to its cookie here — nothing on this page filters by it.
-export default function EventPageHeader() {
+// `bottomBorder` off where a sticky bar of the page's own sits right under
+// it (the venue/artist page's title), so the two read as one block.
+export default function EventPageHeader({ bottomBorder = true }: { bottomBorder?: boolean }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchEvents, setSearchEvents] = useState<EventRecord[] | null>(null);
@@ -41,7 +43,7 @@ export default function EventPageHeader() {
 
   return (
     <>
-      <Header onOpenSearch={openSearch} onOpenMenu={openMenu} sectionNav={false} />
+      <Header onOpenSearch={openSearch} onOpenMenu={openMenu} sectionNav={false} bottomBorder={bottomBorder} />
       <MenuDrawer open={menuOpen} familyMode={familyMode} onToggleFamilyMode={toggleFamilyMode} onClose={() => setMenuOpen(false)} />
       <SearchPanel open={searchOpen} events={searchEvents ?? []} onClose={() => setSearchOpen(false)} />
     </>

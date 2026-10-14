@@ -1,117 +1,118 @@
-import Link from "next/link";
 import { esCL } from "@/i18n/es-CL";
 import { jsonLdScriptContent } from "@/lib/eventJsonLd";
 import { instagramProfileUrl } from "@/lib/venueJsonLd";
+import { santiagoDateOfIso } from "@/lib/date";
 import type { EventRecord } from "@/lib/events";
-import { AgendaGrid } from "./AgendaSection";
-import { TileGrid } from "./CarteleraSection";
-import { splitAgendaAndCartelera } from "@/lib/event-utils";
-import { todayInSantiago } from "@/lib/date";
+import { AgendaCard } from "./AgendaSection";
 import EventPageFooter from "./EventPageFooter";
-import SiteWordmark from "@/components/SiteWordmark";
+import EventPageHeader from "./EventPageHeader";
 
 // Past shows listed on a venue/artist page: the most recent ones only, so
 // an entity with a long history doesn't turn into an endless page.
 const MAX_PAST_EVENTS = 24;
 
-const SUBHEAD = "font-lato font-black text-[22px] md:text-[26px] text-text-primary mb-[16px]";
+const SECTION_LABEL = "font-geist text-[13px] leading-[1.3] tracking-[2px] uppercase whitespace-nowrap mb-[16px]";
+// "EN CARTELERA Y PRÓXIMAS" in magenta bold, "MUESTRAS ANTERIORES" in the
+// home's gray small caps (Daniel, 2026-10-13).
+const CURRENT_LABEL = `${SECTION_LABEL} font-bold text-brand-magenta`;
+const PAST_LABEL = `${SECTION_LABEL} font-semibold text-text-secondary`;
 
 interface CatalogEntityPageProps {
+  // Whose page it is — its cards leave out that venue (and comuna) or
+  // that artist, since the whole page already is theirs.
+  kind: "venue" | "artist";
   jsonLd: unknown;
-  // Small mono line above the title (a venue's comuna); absent for artists.
-  eyebrow?: string | null;
   title: string;
   countText: string;
   instagramHandle: string | null;
   current: EventRecord[];
   past: EventRecord[];
   noCurrentText: string;
-  correctionNote: string;
+  // Extra sentence after "…? Escríbenos." (artists: only public shows).
+  correctionAfter?: string;
 }
 
-// The body shared by /espacios/[slug] and /artistas/[slug]: same layout,
-// same sections, same cards — only the copy and the data differ.
+// The date a show is placed by on the page: its opening, else its start,
+// else its end.
+function showDate(e: EventRecord): string {
+  return (e.openingDatetime ? santiagoDateOfIso(e.openingDatetime) : null) ?? e.runStartDate ?? e.runEndDate ?? "";
+}
+
+const newestFirst = (a: EventRecord, b: EventRecord) => showDate(b).localeCompare(showDate(a));
+
+// The body shared by /espacios/[slug] and /artistas/[slug] (Daniel,
+// 2026-10-13): the home's top bar (logo, search, menu), the name as a big
+// sticky title, then every show as the home's featured card, newest first,
+// in one continuous grid — "EN CARTELERA Y PRÓXIMAS", then right after,
+// in the same rows, "MUESTRAS ANTERIORES". Gray page, like the home.
 export default function CatalogEntityPage({
+  kind,
   jsonLd,
-  eyebrow,
   title,
   countText,
   instagramHandle,
   current,
   past,
   noCurrentText,
-  correctionNote,
+  correctionAfter,
 }: CatalogEntityPageProps) {
-  const today = todayInSantiago();
-  const { agenda, cartelera } = splitAgendaAndCartelera(current, today);
-
   return (
-    <main className="min-h-screen w-full bg-surface-sage px-[18px] py-8 md:px-[40px] xl:px-[80px] max-w-[1600px] mx-auto">
+    <main className="min-h-screen w-full bg-surface-sage">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdScriptContent(jsonLd) }} />
 
-      <div className="mb-[40px] md:mb-[60px]">
-        <SiteWordmark />
+      <EventPageHeader bottomBorder={false} />
+
+      <div className="max-w-[1600px] mx-auto px-[18px] md:px-[40px] xl:px-[80px] pb-8">
+        {/* Sticky under the top bar, one block with it (one line under both). */}
+        <h1 className="sticky top-[84px] md:top-[104px] z-30 -mx-[18px] md:-mx-[40px] xl:-mx-[80px] px-[18px] md:px-[40px] xl:px-[80px] py-[14px] md:py-[18px] bg-surface-sage border-b border-text-primary/10 font-lato font-black uppercase text-[44px] md:text-[80px] leading-[1] text-text-primary [overflow-wrap:anywhere]">
+          {title}
+        </h1>
+
+        <div className="mt-[16px] flex flex-wrap items-center gap-x-[16px] gap-y-[6px] font-fragment-mono text-[14px] md:text-[15px] text-text-primary">
+          <span>{countText}</span>
+          {instagramHandle && (
+            <a href={instagramProfileUrl(instagramHandle)} target="_blank" rel="noopener noreferrer" className="underline">
+              {esCL.venuePageInstagramLink(instagramHandle)}
+            </a>
+          )}
+        </div>
+
+        {/* One continuous grid (Daniel, 2026-10-13: "de corrido"): past
+            shows follow right after the current ones in the same rows. A
+            part's label sits over its first card — the home agenda's day
+            headings — and the other cards get an invisible copy (from sm
+            up) so photos in a row still line up. */}
+        {current.length === 0 && (
+          <>
+            <h2 className={`${CURRENT_LABEL} mt-[40px] md:mt-[56px]`}>{esCL.venuePageCurrentLabel}</h2>
+            <p className="mt-[8px] font-fragment-mono text-[14px] text-text-primary">{noCurrentText}</p>
+          </>
+        )}
+        <div className="mt-[40px] md:mt-[56px] grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-x-[16px] md:gap-x-[20px] gap-y-[36px] md:gap-y-[56px]">
+          {[
+            ...[...current].sort(newestFirst).map((e, i) => ({ e, label: i === 0 ? esCL.venuePageCurrentLabel : null })),
+            ...[...past]
+              .sort(newestFirst)
+              .slice(0, MAX_PAST_EVENTS)
+              .map((e, i) => ({ e, label: i === 0 ? esCL.venuePagePastLabel : null })),
+          ].map(({ e, label }) => (
+            <div key={e.id}>
+              {label ? (
+                <h2 className={label === esCL.venuePageCurrentLabel ? CURRENT_LABEL : PAST_LABEL}>{label}</h2>
+              ) : (
+                <div aria-hidden="true" className={`${CURRENT_LABEL} invisible hidden sm:block`}>
+                  {esCL.venuePageCurrentLabel}
+                </div>
+              )}
+              <AgendaCard event={e} history hideVenue={kind === "venue"} hideArtist={kind === "artist"} />
+            </div>
+          ))}
+        </div>
+
+        <div className="mt-[56px] md:mt-[80px]">
+          <EventPageFooter note={{ text: esCL.catalogPageCorrectionQuestion, link: esCL.catalogPageCorrectionLink, after: correctionAfter }} />
+        </div>
       </div>
-
-      <header className="flex flex-col gap-[12px] md:gap-[16px]">
-        {eyebrow && <p className="font-fragment-mono text-[14px] uppercase text-text-primary">{eyebrow}</p>}
-        <h1 className="font-lato font-black text-[32px] md:text-[48px] leading-tight text-text-primary">{title}</h1>
-        <p className="font-fragment-mono text-[14px] text-text-primary">{countText}</p>
-        {instagramHandle && (
-          <a
-            href={instagramProfileUrl(instagramHandle)}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="font-fragment-mono text-[14px] text-text-primary underline w-fit"
-          >
-            {esCL.venuePageInstagramLink(instagramHandle)}
-          </a>
-        )}
-      </header>
-
-      {/* Same two card styles as the home (2026-10-12): upcoming
-          inauguraciones and visitas guiadas in the agenda's cards, running
-          shows in the cartelera's; section labels in the home's small caps,
-          subsections in its Lato Black. */}
-      <section className="mt-12 md:mt-16">
-        <h2 className="font-geist font-semibold text-[13px] tracking-[2px] uppercase text-text-secondary mb-[16px]">{esCL.venuePageCurrentLabel}</h2>
-        {current.length > 0 ? (
-          <div className="flex flex-col gap-[40px]">
-            {agenda.length > 0 && (
-              <div>
-                {cartelera.length > 0 && <h3 className={SUBHEAD}>{esCL.catalogPageUpcomingLabel}</h3>}
-                <AgendaGrid events={agenda} />
-              </div>
-            )}
-            {cartelera.length > 0 && (
-              <div>
-                {agenda.length > 0 && <h3 className={SUBHEAD}>{esCL.catalogPageRunningLabel}</h3>}
-                <TileGrid events={cartelera} today={today} />
-              </div>
-            )}
-          </div>
-        ) : (
-          <p className="font-fragment-mono text-[14px] text-text-primary">{noCurrentText}</p>
-        )}
-      </section>
-
-      {past.length > 0 && (
-        <section className="mt-16">
-          <h2 className="font-geist font-semibold text-[13px] tracking-[2px] uppercase text-text-secondary mb-[16px]">{esCL.venuePagePastLabel}</h2>
-          <TileGrid events={past.slice(0, MAX_PAST_EVENTS)} today={today} showPeriod />
-        </section>
-      )}
-
-      <Link
-        href="/"
-        className="mt-[40px] md:mt-[60px] inline-block font-fragment-mono text-[14px] uppercase text-text-primary underline"
-      >
-        {esCL.eventPageBackToHome} →
-      </Link>
-
-      <p className="mt-10 max-w-[640px] font-fragment-mono text-[13px] text-text-primary">{correctionNote}</p>
-
-      <EventPageFooter />
     </main>
   );
 }
