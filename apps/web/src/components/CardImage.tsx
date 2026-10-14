@@ -56,11 +56,12 @@ export default function CardImage({ imageUrl, sourceUrl, sensitivityTags, fullSi
   // letterboxes the photo inside it with object-contain — never cropped,
   // and the page no longer jumps ~450px when the photo finishes loading
   // (2026-10-12: the old width=0/height=0 natural-size image had zero
-  // height until then).
+  // height until then). The letterbox is see-through (Daniel, 2026-10-13:
+  // no gray bands beside a narrower flyer) — the page shows through.
   const heightClass = fullSize ? "aspect-[4/5]" : "h-full";
 
   return (
-    <div className={`relative w-full ${heightClass} overflow-hidden ${fullSize ? "bg-surface-sage-dark" : "bg-stone-800"}`}>
+    <div className={`relative w-full ${heightClass} overflow-hidden ${fullSize ? "" : "bg-stone-800"}`}>
       {image.type === "photo" ? (
         fullSize ? (
           <Image
