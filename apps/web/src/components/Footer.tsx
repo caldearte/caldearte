@@ -26,10 +26,10 @@ export default function Footer({ onContactClick }: FooterProps) {
           <br />
           {esCL.wordmarkLine2}
         </p>
-        <p className="font-geist font-bold text-[12px] tracking-[2px] uppercase">{esCL.footer.wordmarkTagline}</p>
+        <p className="font-geist font-bold text-[17px] tracking-[2px] uppercase">{esCL.footer.wordmarkTagline}</p>
         {/* Moved here from its own line between the home's sections
             (2026-10-12). */}
-        <p className="font-geist text-[13px] max-w-[320px] mt-[8px]">{esCL.aiDisclaimer}</p>
+        <p className="font-geist text-[15px] w-full mt-[8px]">{esCL.aiDisclaimer}</p>
       </div>
       <div className="flex flex-wrap items-end gap-[20px] font-fragment-mono text-[14px] md:text-[16px]">
         <button type="button" onClick={onContactClick} className="uppercase cursor-pointer">
