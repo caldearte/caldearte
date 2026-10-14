@@ -91,7 +91,7 @@ export default function CostosPage({
     <div className="flex flex-col gap-12">
       <p className={`font-geist text-[14px] ${apifyRemainingUsd <= 0 ? "text-red-700 font-medium" : "text-text-primary/60"}`}>
         {apifyRemainingUsd <= 0
-          ? `⚠️ Apify: límite del ciclo alcanzado ($${apifyCycleGrossUsd.toFixed(2)} de $${APIFY_FREE_TIER_USD}) — sin nuevas corridas hasta el ${formatCycleDate(nextCycleStart)}`
+          ? `⚠️ Apify: crédito del plan agotado ($${apifyCycleGrossUsd.toFixed(2)} de $${APIFY_FREE_TIER_USD}) — el excedente se factura en la próxima factura (${formatCycleDate(nextCycleStart)})`
           : `Apify: $${apifyRemainingUsd.toFixed(2)} disponibles de $${APIFY_FREE_TIER_USD} en el ciclo actual (se renueva el ${formatCycleDate(nextCycleStart)})`}
       </p>
 

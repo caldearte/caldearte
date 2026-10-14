@@ -10,7 +10,7 @@ export default function CostSummaryLine({ effectiveUsd, freeTierUsd }: { effecti
       <span className="font-fragment-mono text-[32px] text-text-primary leading-none">${effectiveUsd.toFixed(2)}</span>
       <span className="font-geist text-[14px] text-text-primary/60">costo efectivo este período</span>
       {freeTierUsd > 0 && (
-        <span className="font-geist text-[13px] text-text-primary/40">(+ ${freeTierUsd.toFixed(2)} en capa gratuita, no cobrado)</span>
+        <span className="font-geist text-[13px] text-text-primary/40">(+ ${freeTierUsd.toFixed(2)} cubierto por el plan, ya incluido en la suscripción)</span>
       )}
     </div>
   );
