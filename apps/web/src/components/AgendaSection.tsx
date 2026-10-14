@@ -113,11 +113,17 @@ function groupByDay(events: EventRecord[]): DayGroup[] {
 // The agenda's card grid, for lists outside the home (the ficha, venue and
 // artist pages) — same columns as a day block here. Events must have an
 // openingDatetime (see splitAgendaAndCartelera).
-export function AgendaGrid({ events }: { events: EventRecord[] }) {
+// Which background the cards sit on (Daniel, 2026-10-13): "white" tags on
+// the site's gray (the default), "gray" tags on a white page (the ficha).
+// The artist/venue lines stay dark gray: white on the site's gray measured
+// 1.4:1 and vanished; #626262 on it is 4.5:1.
+export type CardTone = "white" | "gray";
+
+export function AgendaGrid({ events, tone = "white" }: { events: EventRecord[]; tone?: CardTone }) {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-x-[16px] md:gap-x-[20px] gap-y-[32px]">
       {events.map((e) => (
-        <AgendaCard key={e.id} event={e} />
+        <AgendaCard key={e.id} event={e} tone={tone} />
       ))}
     </div>
   );
@@ -131,7 +137,7 @@ export function AgendaGrid({ events }: { events: EventRecord[] }) {
 // "Agregar al calendario" buttons — white here, since the page itself is
 // the flyer's sage. The tag spans the card's width (for the buttons);
 // long text wraps, balanced, like the flyer's.
-export function AgendaCard({ event, priority = false }: { event: EventRecord; priority?: boolean }) {
+export function AgendaCard({ event, priority = false, tone = "white" }: { event: EventRecord; priority?: boolean; tone?: CardTone }) {
   const type = event.eventType === "visita_guiada" ? "visita_guiada" : "inauguracion";
   const title = titleWithTypePrefix(event.title, type);
   const artist = resolveArtistDisplay(event.artist);
@@ -170,7 +176,7 @@ export function AgendaCard({ event, priority = false }: { event: EventRecord; pr
         </div>
       </div>
 
-      <div className="w-full flex flex-col gap-[6px] rounded-[22px] bg-surface-white px-[16px] pt-[10px] pb-[16px]">
+      <div className={`w-full flex flex-col gap-[6px] rounded-[22px] ${tone === "gray" ? "bg-surface-sage" : "bg-surface-white"} px-[16px] pt-[10px] pb-[16px]`}>
         {artist && (
           <span className="font-geist font-semibold text-[11px] leading-[1.25] tracking-[1px] uppercase text-text-secondary [text-wrap:balance]">{artist}</span>
         )}

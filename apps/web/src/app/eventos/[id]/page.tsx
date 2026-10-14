@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { fetchApprovedEvents } from "@/lib/events";
 import { fetchVenueData } from "@/lib/venues";
@@ -155,39 +154,41 @@ export default async function EventPage({ params }: { params: Promise<PageParams
   const moreExpos = cartelera.filter((e) => e.runStartDate !== null && e.runEndDate !== null && e.runEndDate >= today).slice(0, 5);
 
   return (
-    <main className="min-h-screen w-full bg-surface-sage px-[18px] py-8 md:px-[40px] xl:px-[80px] max-w-[1600px] mx-auto">
+    <main className="min-h-screen w-full bg-surface-sage">
       {/* Schema.org VisualArtsEvent — see lib/eventJsonLd.ts's own comment. */}
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdScriptContent(buildEventJsonLd(event)) }} />
 
-      <div className="flex items-center justify-between gap-2 mb-[40px] md:mb-[60px]">
+      {/* Top bar on the site's gray, edge to edge; from the event down the
+          page is white, edge to edge (Daniel, 2026-10-13). */}
+      <div className="max-w-[1600px] mx-auto px-[18px] md:px-[40px] xl:px-[80px] py-8 flex items-center justify-between gap-2">
         <SiteWordmark />
         <EventComunaTag cityName={eventCityName} />
       </div>
 
-      <EventDetailCard event={event} domain={domain} venueLink={venueLink} artistLinks={artistLinks} />
+      <div className="bg-surface-white">
+        <div className="max-w-[1600px] mx-auto px-[18px] md:px-[40px] xl:px-[80px] pt-[40px] md:pt-[60px] pb-8">
+          <EventDetailCard event={event} domain={domain} venueLink={venueLink} artistLinks={artistLinks} />
 
-      <Link
-        href="/"
-        className="mt-[40px] md:mt-[60px] inline-block font-fragment-mono text-[14px] uppercase text-text-primary underline"
-      >
-        {esCL.eventPageBackToHome} →
-      </Link>
+          {/* tone="gray": gray tags on this white page (CardTone). */}
+          {moreAgenda.length > 0 && (
+            <section className="mt-[64px] md:mt-[96px]">
+              <h2 className="font-lato font-black text-[24px] md:text-[30px] text-text-primary mb-[16px]">{esCL.eventPageMoreAgendaLabel}</h2>
+              <AgendaGrid events={moreAgenda} tone="gray" />
+            </section>
+          )}
 
-      {moreAgenda.length > 0 && (
-        <section className="mt-16">
-          <h2 className="font-lato font-black text-[22px] md:text-[26px] text-text-primary mb-[16px]">{esCL.eventPageMoreAgendaLabel}</h2>
-          <AgendaGrid events={moreAgenda} />
-        </section>
-      )}
+          {moreExpos.length > 0 && (
+            <section className="mt-[64px] md:mt-[96px]">
+              <h2 className="font-lato font-black text-[24px] md:text-[30px] text-text-primary mb-[16px]">{esCL.eventPageMoreExposLabel}</h2>
+              <TileGrid events={moreExpos} today={today} tone="gray" />
+            </section>
+          )}
 
-      {moreExpos.length > 0 && (
-        <section className="mt-16">
-          <h2 className="font-lato font-black text-[22px] md:text-[26px] text-text-primary mb-[16px]">{esCL.eventPageMoreExposLabel}</h2>
-          <TileGrid events={moreExpos} today={today} />
-        </section>
-      )}
-
-      <EventPageFooter />
+          <div className="mt-[64px] md:mt-[96px]">
+            <EventPageFooter />
+          </div>
+        </div>
+      </div>
     </main>
   );
 }
