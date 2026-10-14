@@ -11,7 +11,11 @@ import EventPageHeader from "./EventPageHeader";
 // an entity with a long history doesn't turn into an endless page.
 const MAX_PAST_EVENTS = 24;
 
-const SECTION_LABEL = "font-geist font-semibold text-[13px] leading-[1.3] tracking-[2px] uppercase text-text-secondary whitespace-nowrap mb-[16px]";
+const SECTION_LABEL = "font-geist text-[13px] leading-[1.3] tracking-[2px] uppercase whitespace-nowrap mb-[16px]";
+// "EN CARTELERA Y PRÓXIMAS" in magenta bold, "MUESTRAS ANTERIORES" in the
+// home's gray small caps (Daniel, 2026-10-13).
+const CURRENT_LABEL = `${SECTION_LABEL} font-bold text-brand-magenta`;
+const PAST_LABEL = `${SECTION_LABEL} font-semibold text-text-secondary`;
 
 interface CatalogEntityPageProps {
   // Whose page it is — its cards leave out that venue (and comuna) or
@@ -80,7 +84,7 @@ export default function CatalogEntityPage({
             up) so photos in a row still line up. */}
         {current.length === 0 && (
           <>
-            <h2 className={`${SECTION_LABEL} mt-[40px] md:mt-[56px]`}>{esCL.venuePageCurrentLabel}</h2>
+            <h2 className={`${CURRENT_LABEL} mt-[40px] md:mt-[56px]`}>{esCL.venuePageCurrentLabel}</h2>
             <p className="mt-[8px] font-fragment-mono text-[14px] text-text-primary">{noCurrentText}</p>
           </>
         )}
@@ -94,9 +98,9 @@ export default function CatalogEntityPage({
           ].map(({ e, label }) => (
             <div key={e.id}>
               {label ? (
-                <h2 className={SECTION_LABEL}>{label}</h2>
+                <h2 className={label === esCL.venuePageCurrentLabel ? CURRENT_LABEL : PAST_LABEL}>{label}</h2>
               ) : (
-                <div aria-hidden="true" className={`${SECTION_LABEL} invisible hidden sm:block`}>
+                <div aria-hidden="true" className={`${CURRENT_LABEL} invisible hidden sm:block`}>
                   {esCL.venuePageCurrentLabel}
                 </div>
               )}
