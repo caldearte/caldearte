@@ -102,7 +102,7 @@ test("buildDailyDigestBody lists every pipeline that ran today with its own coun
 test("buildDailyDigestBody's cost section separates Apify's real (billed) cost from what the free tier already covered", () => {
   const summary = summaryWith([]);
   const body = buildDailyDigestBody(summary);
-  assert.match(body, /\$0\.2000 cubierto por capa gratuita/);
+  assert.match(body, /\$0\.2000 cubierto por el crédito del plan/);
   assert.match(body, /\$0\.0000 real de \$0\.2000 bruto/);
 });
 
@@ -190,26 +190,26 @@ test("buildDailyDigestBody/HtmlBody omit the fetch-error warning when nothing fa
   assert.doesNotMatch(buildDailyDigestHtmlBody(summary), /BLOQUEADO/);
 });
 
-test("buildDailyDigestBody/HtmlBody: Apify status line shows remaining budget under the free-tier limit", () => {
+test("buildDailyDigestBody/HtmlBody: Apify status line shows remaining credit under the plan's included credit", () => {
   const body = buildDailyDigestBody(summaryWith([]));
-  assert.match(body, /\$0\.79 disponibles de \$5 en el ciclo actual/, "APIFY_FREE_TIER_USD 5 - apifyCycleGrossUsd 4.21 = 0.79 remaining");
+  assert.match(body, /\$14\.79 disponibles de \$19 en el ciclo actual/, "APIFY_FREE_TIER_USD 19 - apifyCycleGrossUsd 4.21 = 14.79 remaining");
   // Cycle opened 13/08 -> renews 13/09, NOT "next month" generically.
   assert.match(body, /se renueva el 13\/09\/2026/);
-  assert.doesNotMatch(body, /LÍMITE DEL CICLO ALCANZADO/);
+  assert.doesNotMatch(body, /CRÉDITO DEL PLAN AGOTADO/);
 
   const html = buildDailyDigestHtmlBody(summaryWith([]));
-  assert.match(html, /\$0\.79 disponibles/);
-  assert.doesNotMatch(html, /LÍMITE DEL CICLO ALCANZADO/);
+  assert.match(html, /\$14\.79 disponibles/);
+  assert.doesNotMatch(html, /CRÉDITO DEL PLAN AGOTADO/);
 });
 
-test("buildDailyDigestBody/HtmlBody: Apify status line flags the hard limit as reached once gross spend hits the free tier", () => {
-  const overLimitCost: DailyDigestSummary["cost"] = { ...baseCost, apifyCycleGrossUsd: 5.02 };
+test("buildDailyDigestBody/HtmlBody: Apify status line flags the included credit as used up once gross spend reaches it (excess is billed, not blocked)", () => {
+  const overLimitCost: DailyDigestSummary["cost"] = { ...baseCost, apifyCycleGrossUsd: 19.02 };
   const summary: DailyDigestSummary = { date: "2026-08-30", runs: [], cost: overLimitCost };
 
   const body = buildDailyDigestBody(summary);
-  assert.match(body, /LÍMITE DEL CICLO ALCANZADO \(\$5\.02 de \$5\) — sin nuevas corridas hasta el 13\/09\/2026/);
+  assert.match(body, /CRÉDITO DEL PLAN AGOTADO \(\$19\.02 de \$19\) — el excedente se factura en la próxima factura \(13\/09\/2026\)/);
 
   const html = buildDailyDigestHtmlBody(summary);
-  assert.match(html, /LÍMITE DEL CICLO ALCANZADO/);
+  assert.match(html, /CRÉDITO DEL PLAN AGOTADO/);
   assert.match(html, /color:#b3261e/, "the over-limit status must render in the warning color, not the default gray");
 });

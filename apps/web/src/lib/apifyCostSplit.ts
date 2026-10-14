@@ -4,15 +4,20 @@
 // is copied rather than shared. Keep both in sync if Apify's free-tier
 // terms ever change.
 //
-// Apify's real billing shape (confirmed 2026-08-15): $5 of usage credit
-// per billing cycle, consumed first — non-rolling, doesn't carry over.
+// Apify's real billing shape (confirmed 2026-08-15): a fixed amount of
+// usage credit per billing cycle, consumed first — non-rolling, doesn't
+// carry over. $5 on the Free plan until 2026-10-13; since the Starter
+// subscription that day ($19/month, next invoice 2026-11-13, same cycle
+// anchor) it is the plan's $19 prepaid credit, and usage past it is billed
+// as excess instead of blocked. Keep in sync with
+// apps/curator/src/lib/apify-cost-split.ts.
 // The daily amounts stored by apps/curator's apify-usage-snapshot are
 // GROSS usage cost, not already net of the free credit — this file is
 // what splits each day into its free-covered portion vs. its real
 // (billed) portion, so the admin cost views can show "this is real
 // money, this isn't" instead of quietly treating $5/cycle of free usage
 // as if it cost something.
-export const APIFY_FREE_TIER_USD = 5;
+export const APIFY_FREE_TIER_USD = 19;
 
 // Apify's cycle is a billing ANNIVERSARY, not the 1st of the calendar
 // month. Determined 2026-09-06 from two independent signals: Apify's own

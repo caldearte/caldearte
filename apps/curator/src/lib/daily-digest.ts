@@ -77,14 +77,14 @@ export function buildDailyDigestSubject(summary: DailyDigestSummary): string {
   return `Caldearte — resumen diario (${dateStrDDMMYYYY(summary.date)}) — ${summary.runs.length} fuente(s), ${insertedTotal} evento(s) nuevo(s)`;
 }
 
-// Apify's free tier is a HARD limit (not billed overage) — once
-// apifyCycleGrossUsd reaches APIFY_FREE_TIER_USD, Apify itself refuses to
-// start new Actor runs until the next billing cycle (real incident,
-// 2026-08-30: hit mid-cycle, see instagram-bright-sources.yml's own
-// comment). apifyCycleRealUsd staying $0 the whole time (nothing ever
-// gets billed past the free tier on this plan) is exactly why a plain
-// "$X real of $Y budget" framing hides the thing that actually matters
-// here — this line makes the hard-limit status explicit instead.
+// On the Free plan (until 2026-10-13) the included credit was a HARD limit:
+// once apifyCycleGrossUsd reached it, Apify refused to start new Actor runs
+// until the next cycle (real incidents: 2026-08-30 and 2026-10-10, see
+// instagram-bright-sources.yml's own comment). On the Starter plan usage
+// past the included $19 is billed as excess on the next invoice instead, up
+// to the usage limit set in Apify's billing settings — so reaching it is a
+// cost signal, not an outage. Either way a plain "$X real of $Y" framing
+// hides what matters, so this line states the credit status explicitly.
 //
 // Says the reset DATE rather than "el próximo ciclo": the cycle is
 // anniversary-based, so "next month" is actively misleading — on
@@ -93,7 +93,7 @@ function apifyLimitStatusLine(cost: DailyDigestCost): string {
   const remaining = APIFY_FREE_TIER_USD - cost.apifyCycleGrossUsd;
   const resetsOn = dateStrDDMMYYYY(nextApifyCycleStart(cost.apifyCycleStartDate));
   if (remaining <= 0) {
-    return `⚠️ Apify: LÍMITE DEL CICLO ALCANZADO ($${cost.apifyCycleGrossUsd.toFixed(2)} de $${APIFY_FREE_TIER_USD}) — sin nuevas corridas hasta el ${resetsOn}`;
+    return `⚠️ Apify: CRÉDITO DEL PLAN AGOTADO ($${cost.apifyCycleGrossUsd.toFixed(2)} de $${APIFY_FREE_TIER_USD}) — el excedente se factura en la próxima factura (${resetsOn}), hasta el límite de uso configurado en Apify`;
   }
   return `Apify: $${remaining.toFixed(2)} disponibles de $${APIFY_FREE_TIER_USD} en el ciclo actual (se renueva el ${resetsOn})`;
 }
@@ -113,11 +113,11 @@ function buildCostLines(cost: DailyDigestCost): string[] {
   const monthRealTotal = cost.anthropicMonthUsd + cost.safetyNetMonthUsd + cost.apifyCycleRealUsd;
   return [
     "COSTO",
-    `Hoy: ${fmtUsd(todayRealTotal)} real (Anthropic ${fmtUsd(cost.anthropicTodayUsd)} + ${SAFETY_NET_LABEL} ${fmtUsd(cost.safetyNetTodayUsd)} + Apify ${fmtUsd(cost.apifyTodayRealUsd)} real de ${fmtUsd(cost.apifyTodayGrossUsd)} bruto, ${fmtUsd(cost.apifyTodayFreeUsd)} cubierto por capa gratuita)`,
+    `Hoy: ${fmtUsd(todayRealTotal)} real (Anthropic ${fmtUsd(cost.anthropicTodayUsd)} + ${SAFETY_NET_LABEL} ${fmtUsd(cost.safetyNetTodayUsd)} + Apify ${fmtUsd(cost.apifyTodayRealUsd)} real de ${fmtUsd(cost.apifyTodayGrossUsd)} bruto, ${fmtUsd(cost.apifyTodayFreeUsd)} cubierto por el crédito del plan)`,
     `Mes a la fecha: $${monthRealTotal.toFixed(2)} de $${cost.monthlyBudgetUsd.toFixed(2)} (techo mensual)`,
     `  Anthropic: $${cost.anthropicMonthUsd.toFixed(2)} (mes calendario)`,
     `  ${SAFETY_NET_LABEL}: $${cost.safetyNetMonthUsd.toFixed(2)} (mes calendario)`,
-    `  Apify: $${cost.apifyCycleRealUsd.toFixed(2)} real de $${cost.apifyCycleGrossUsd.toFixed(2)} bruto ($${cost.apifyCycleFreeUsd.toFixed(2)} en capa gratuita de $${APIFY_FREE_TIER_USD}, no cobrado) — ciclo desde el ${dateStrDDMMYYYY(cost.apifyCycleStartDate)}`,
+    `  Apify: $${cost.apifyCycleRealUsd.toFixed(2)} real de $${cost.apifyCycleGrossUsd.toFixed(2)} bruto ($${cost.apifyCycleFreeUsd.toFixed(2)} en el crédito del plan Starter de $${APIFY_FREE_TIER_USD}, ya incluido en la suscripción) — ciclo desde el ${dateStrDDMMYYYY(cost.apifyCycleStartDate)}`,
     `  ${apifyLimitStatusLine(cost)}`,
   ];
 }
@@ -205,12 +205,12 @@ export function buildDailyDigestHtmlBody(summary: DailyDigestSummary): string {
       <b>Hoy:</b> ${fmtUsd(todayRealTotal)} real<br>
       &nbsp;&nbsp;Anthropic: ${fmtUsd(cost.anthropicTodayUsd)}<br>
       &nbsp;&nbsp;${SAFETY_NET_LABEL}: ${fmtUsd(cost.safetyNetTodayUsd)}<br>
-      &nbsp;&nbsp;Apify: ${fmtUsd(cost.apifyTodayRealUsd)} real de ${fmtUsd(cost.apifyTodayGrossUsd)} bruto (${fmtUsd(cost.apifyTodayFreeUsd)} en capa gratuita)<br>
+      &nbsp;&nbsp;Apify: ${fmtUsd(cost.apifyTodayRealUsd)} real de ${fmtUsd(cost.apifyTodayGrossUsd)} bruto (${fmtUsd(cost.apifyTodayFreeUsd)} en el crédito del plan)<br>
       <br>
       <b>Mes a la fecha:</b> $${monthRealTotal.toFixed(2)} de $${cost.monthlyBudgetUsd.toFixed(2)} (techo mensual)<br>
       &nbsp;&nbsp;Anthropic: $${cost.anthropicMonthUsd.toFixed(2)} (mes calendario)<br>
       &nbsp;&nbsp;${SAFETY_NET_LABEL}: $${cost.safetyNetMonthUsd.toFixed(2)} (mes calendario)<br>
-      &nbsp;&nbsp;Apify: $${cost.apifyCycleRealUsd.toFixed(2)} real de $${cost.apifyCycleGrossUsd.toFixed(2)} bruto ($${cost.apifyCycleFreeUsd.toFixed(2)} en capa gratuita de $${APIFY_FREE_TIER_USD}, no cobrado) — ciclo desde el ${escapeHtml(dateStrDDMMYYYY(cost.apifyCycleStartDate))}<br>
+      &nbsp;&nbsp;Apify: $${cost.apifyCycleRealUsd.toFixed(2)} real de $${cost.apifyCycleGrossUsd.toFixed(2)} bruto ($${cost.apifyCycleFreeUsd.toFixed(2)} en el crédito del plan Starter de $${APIFY_FREE_TIER_USD}, ya incluido en la suscripción) — ciclo desde el ${escapeHtml(dateStrDDMMYYYY(cost.apifyCycleStartDate))}<br>
       &nbsp;&nbsp;<span style="${cost.apifyCycleGrossUsd >= APIFY_FREE_TIER_USD ? "color:#b3261e;font-weight:600;" : "color:#666;"}">${escapeHtml(apifyLimitStatusLine(cost))}</span>
     </p>
 

@@ -5414,3 +5414,14 @@ Galería Cripta, Galería Madre, Galería QUQU, Palacio Pereira, Centro Cultural
 **Known risk.** *La Veta* (MAPA's show at GAM, 25 Jun–25 Oct) is already on the calendar under the MAPA venue, and two other copies — from chilecultura (`Sala MAPA GAM`) and artes.uchile.cl — were soft-removed as duplicates on 2026-10-05. `loadExistingKeys` reads rows regardless of `removed_at`, so the GAM copy should be recognised against those, but that dedup is exactly what failed twice for this show; watch the first run for a fourth copy.
 
 **Tests.** `extractors.test.ts` (inherited month/year, first range only, New-Year crossing, explicit start year untouched), `sources.test.ts` (real-config fixture of three cards: title, URL, dates, relative background-image, kept schedule text; description recovery from a detail page; not an aggregator).
+
+## Apify moves to the Starter plan (2026-10-13)
+
+The Free plan's $5 credit is a hard limit: the 2026-08-30 and 2026-10-10 blackouts were both Apify refusing runs (workflow green, 0 posts, `apifyError: "Monthly usage hard limit exceeded"`).
+The 09-13 → 10-12 cycle reached $10.00 because the account also carried a $5 promotional credit; the 10-13 cycle was back to $5, which at ~$0.37 a run-day (cost scales
+with posts fetched, not with runs, so a lower cadence would not have saved it) would have run out around 10-26 and left ~16 dark days. Daniel subscribed to **Starter ($19/month,
+$19 prepaid credit, next invoice 2026-11-13 — the cycle anchor stayed on the 13th)**. Excess usage is now billed (up to the usage limit in Apify's billing settings) instead of
+blocked. Headroom at today's ~$0.06 per account per month of Apify plus ~$0.03-0.04 of Haiku/MiniMax: roughly 300 accounts before the credit is used up (about 250 before the
+informal $10 LLM ceiling is hit); the real ceiling is the supply of relevant spaces (the 104-space SAFA radar yielded 7 accounts). `APIFY_FREE_TIER_USD` is now 19 (both copies) and
+the digest/`/admin/costos` lines say "crédito del plan agotado … el excedente se factura" instead of "límite alcanzado — sin nuevas corridas". Billing country must be Chile: with
+Czech Republic selected Apify added 21% VAT ($22.99 instead of $19.00).
