@@ -184,12 +184,31 @@ export function TileGrid({
 // when blank, so tiles in a grid end at the same height.
 export type TileVariant = "full" | "closing" | "minimal";
 
-export function ExpoTile({ event, today, showPeriod = false, variant = "full" }: { event: EventRecord; today: string; showPeriod?: boolean; variant?: TileVariant }) {
+// `pillText` / `title` override the tag's pill and title line — the
+// search's tiles say an opening's day and hour, with its "Inauguración:"
+// prefix, instead of when the show closes.
+export function ExpoTile({
+  event,
+  today,
+  showPeriod = false,
+  variant = "full",
+  pillText,
+  title,
+}: {
+  event: EventRecord;
+  today: string;
+  showPeriod?: boolean;
+  variant?: TileVariant;
+  pillText?: string | null;
+  title?: string;
+}) {
   const { dateLine, venueLine } = useEventCardActions(event, "expo", true);
   const artist = resolveArtistDisplay(event.artist);
   // Past shows (venue/artist pages) read their full run; current ones,
   // when they close.
-  const pill = showPeriod ? (dateLine ?? "").toUpperCase() : event.runEndDate ? fmtUntilPill(event.runEndDate, today) : null;
+  const pill =
+    pillText !== undefined ? pillText : showPeriod ? (dateLine ?? "").toUpperCase() : event.runEndDate ? fmtUntilPill(event.runEndDate, today) : null;
+  const shownTitle = title ?? event.title;
 
   const artistLine = (
     <span aria-hidden={artist ? undefined : true} className="block w-full truncate font-geist font-semibold text-[10px] leading-[1.25] tracking-[1px] uppercase text-text-secondary">
@@ -213,8 +232,8 @@ export function ExpoTile({ event, today, showPeriod = false, variant = "full" }:
       <div className="w-full flex flex-col items-start gap-[5px] rounded-[18px] bg-surface-white px-[12px] pt-[9px] pb-[11px]">
         {variant === "closing" && pillTag}
         {variant === "full" && artistLine}
-        <span title={event.title} className="block w-full truncate font-lato font-black text-[14px] leading-[1.25] tracking-[0.2px] uppercase text-brand-magenta group-hover:underline">
-          {event.title}
+        <span title={shownTitle} className="block w-full truncate font-lato font-black text-[14px] leading-[1.25] tracking-[0.2px] uppercase text-brand-magenta group-hover:underline">
+          {shownTitle}
         </span>
         {variant === "minimal" && artistLine}
         {variant === "full" && pillTag}

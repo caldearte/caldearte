@@ -489,6 +489,28 @@ opening that is also a running show counts once), computed in the same
 cached render. `showGeoConsentPrompt` and the Chile-wide ring counts were
 removed from the view model with the components that used them.
 
+## Site search (2026-10-13)
+
+One box (`SearchPanel`, opened from the top bar's search icon, ⌘K or `/`)
+reaches everything Caldearte has: places (región or comuna — picking one
+switches the home to that región; from another page it sets the región
+cookie and goes home), venues and artists with at least one show (their
+`/espacios` / `/artistas` pages), and every approved event, past ones
+included. Results come grouped as you type, the group with the best match
+first (`lib/search.ts`'s `searchAll`: exact → name starts → a word starts →
+anywhere, accent-insensitive); under 3 letters only places, venues and
+artists whose name starts so. Events: an exact title first, then good
+matches by date — ahead (soonest), running (closing soonest), past (most
+recent). Recent searches stay in the visitor's browser (localStorage);
+nothing is logged server-side (Daniel's call).
+
+The data comes from `/api/search-index` — static, revalidated every 10
+minutes, no cookies (events without description/address; ~90 KB gzip at
+~530 events), fetched once per page load the first time the panel opens
+(`useSearchIndex`), family mode applied in the browser. That replaced the
+home's `searchableEvents` (no longer shipped with the home) and the ficha's
+call to the uncached `/api/home-data`.
+
 ## SEO: structured data
 
 **Added 2026-08-08** (a Search Console coverage audit found zero

@@ -14,7 +14,7 @@ import {
 } from "@/lib/event-utils";
 import { buildRegionMetaByCityId, adminRegionNameByRegionId } from "@/lib/cities";
 import { resolveCityPickerContext, type CookieReader } from "@/lib/cityPickerContext";
-import { todayInSantiago, currentWeekInSantiago, weekBoundsInSantiago, isCurrentOrUpcoming } from "@/lib/date";
+import { todayInSantiago, currentWeekInSantiago, weekBoundsInSantiago } from "@/lib/date";
 import { FAMILY_MODE_COOKIE, TODAY_FILTER_COOKIE, VIGENTES_FILTER_COOKIE } from "@/lib/cookies";
 import type { NewsletterStatus } from "@/components/NewsletterStatusModal";
 
@@ -44,7 +44,6 @@ export interface HomeViewModel {
   // nothing this week has no entry.
   regionActivity: Record<string, RegionActivity>;
   cityThumbnails: Record<string, EventRecord[]>;
-  searchableEvents: EventRecord[];
   nextEvent: EventRecord | null;
   regions: RegionMeta[];
   newsletterStatus: NewsletterStatus | null;
@@ -84,7 +83,6 @@ export async function computeHomeViewModel({
 
   const { events: allEvents, regions } = await fetchApprovedEvents();
   const visible = filterFamilyMode(allEvents, familyMode);
-  const searchableEvents = visible.filter((e) => isCurrentOrUpcoming(e, today));
 
   const { regionId, cityId, cityNames, cityCounts, cityThumbnails, actualCityId, hasPreciseLocation, activeInRange } = await resolveCityPickerContext({
     cookieStore,
@@ -134,7 +132,6 @@ export async function computeHomeViewModel({
     cityCounts,
     regionActivity,
     cityThumbnails,
-    searchableEvents,
     nextEvent,
     regions,
     newsletterStatus,
