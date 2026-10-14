@@ -144,6 +144,7 @@ export default function CalendarView({
       <GeoLocationChangedBanner hasPreciseLocation={hasPreciseLocation} actualCityId={actualCityId} regions={regions} />
 
       <Header
+        bottomBorder={false}
         onOpenSearch={() => setSearchOpen(true)}
         onOpenMenu={() => {
           setDrawerInitialView("menu");

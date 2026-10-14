@@ -5,18 +5,17 @@ import { fetchVenueData } from "@/lib/venues";
 import { findVenueLinkForEvent, type VenueLink } from "@/lib/venuePage";
 import { fetchArtistData } from "@/lib/artists";
 import { findArtistLinksForEvent, type ArtistLink } from "@/lib/artistPage";
-import { truncateDescription, displayNameForCity, resolveAdminRegionName, filterByRegion, filterActiveInRange, splitAgendaAndCartelera } from "@/lib/event-utils";
+import { truncateDescription, resolveAdminRegionName, filterByRegion, filterActiveInRange, splitAgendaAndCartelera } from "@/lib/event-utils";
 import { buildRegionMetaByCityId } from "@/lib/cities";
 import { currentWeekInSantiago, todayInSantiago, isCurrentOrUpcoming } from "@/lib/date";
 import { extractDomain, resolveCardImage } from "@/lib/image-source";
 import { buildEventJsonLd, jsonLdScriptContent } from "@/lib/eventJsonLd";
 import { esCL } from "@/i18n/es-CL";
 import EventDetailCard from "@/components/EventDetailCard";
-import EventComunaTag from "@/components/EventComunaTag";
 import EventPageFooter from "@/components/EventPageFooter";
 import { AgendaGrid } from "@/components/AgendaSection";
 import { TileGrid } from "@/components/CarteleraSection";
-import SiteWordmark from "@/components/SiteWordmark";
+import EventPageHeader from "@/components/EventPageHeader";
 
 interface PageParams {
   id: string;
@@ -132,7 +131,6 @@ export default async function EventPage({ params }: { params: Promise<PageParams
 
   const domain = event.sourceUrl ? extractDomain(event.sourceUrl) : null;
   const metaByCityId = buildRegionMetaByCityId(regions);
-  const eventCityName = displayNameForCity(event);
   const eventAdminRegionName = resolveAdminRegionName(event, metaByCityId);
 
   // Deterministic — same input (this event's own región) for every
@@ -158,35 +156,34 @@ export default async function EventPage({ params }: { params: Promise<PageParams
       {/* Schema.org VisualArtsEvent — see lib/eventJsonLd.ts's own comment. */}
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdScriptContent(buildEventJsonLd(event)) }} />
 
-      {/* Top bar on the site's gray, edge to edge; from the event down the
-          page is white, edge to edge (Daniel, 2026-10-13). */}
-      <div className="max-w-[1600px] mx-auto px-[18px] md:px-[40px] xl:px-[80px] py-8 flex items-center justify-between gap-2">
-        <SiteWordmark />
-        <EventComunaTag cityName={eventCityName} />
-      </div>
+      {/* The home's top bar, logo + search + menu only; gray from
+          "También esta semana" down, edge to edge; only the event itself
+          sits on white (Daniel, 2026-10-13). */}
+      <EventPageHeader />
 
       <div className="bg-surface-white">
-        <div className="max-w-[1600px] mx-auto px-[18px] md:px-[40px] xl:px-[80px] pt-[40px] md:pt-[60px] pb-8">
+        <div className="max-w-[1600px] mx-auto px-[18px] md:px-[40px] xl:px-[80px] py-[40px] md:py-[60px]">
           <EventDetailCard event={event} domain={domain} venueLink={venueLink} artistLinks={artistLinks} />
+        </div>
+      </div>
 
-          {/* tone="gray": gray tags on this white page (CardTone). */}
-          {moreAgenda.length > 0 && (
-            <section className="mt-[64px] md:mt-[96px]">
-              <h2 className="font-lato font-black text-[24px] md:text-[30px] text-text-primary mb-[16px]">{esCL.eventPageMoreAgendaLabel}</h2>
-              <AgendaGrid events={moreAgenda} tone="gray" />
-            </section>
-          )}
+      <div className="max-w-[1600px] mx-auto px-[18px] md:px-[40px] xl:px-[80px] pb-8">
+        {moreAgenda.length > 0 && (
+          <section className="mt-[56px] md:mt-[80px]">
+            <h2 className="font-lato font-black text-[24px] md:text-[30px] text-text-primary mb-[16px]">{esCL.eventPageMoreAgendaLabel}</h2>
+            <AgendaGrid events={moreAgenda} />
+          </section>
+        )}
 
-          {moreExpos.length > 0 && (
-            <section className="mt-[64px] md:mt-[96px]">
-              <h2 className="font-lato font-black text-[24px] md:text-[30px] text-text-primary mb-[16px]">{esCL.eventPageMoreExposLabel}</h2>
-              <TileGrid events={moreExpos} today={today} tone="gray" />
-            </section>
-          )}
+        {moreExpos.length > 0 && (
+          <section className="mt-[56px] md:mt-[80px]">
+            <h2 className="font-lato font-black text-[24px] md:text-[30px] text-text-primary mb-[16px]">{esCL.eventPageMoreExposLabel}</h2>
+            <TileGrid events={moreExpos} today={today} />
+          </section>
+        )}
 
-          <div className="mt-[64px] md:mt-[96px]">
-            <EventPageFooter />
-          </div>
+        <div className="mt-[56px] md:mt-[80px]">
+          <EventPageFooter />
         </div>
       </div>
     </main>
