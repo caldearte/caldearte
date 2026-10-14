@@ -12,6 +12,10 @@ interface HeaderProps {
   // The home's section links (desktop); off on pages that aren't the home
   // (the ficha, 2026-10-13: logo, search and menu only).
   sectionNav?: boolean;
+  // Its own bottom line. Off on the home, where the sticky week/región
+  // bar sits right under it and the two read as one block with a single
+  // line under both (Daniel, 2026-10-13: no double line on scroll).
+  bottomBorder?: boolean;
 }
 
 function SearchButton({ onClick }: { onClick: () => void }) {
@@ -103,14 +107,14 @@ function SectionNav() {
 // links (desktop) and search + menu. Replaces the full-height hero (two-line 96px wordmark,
 // three-line tagline, SEMANA N°X, the location button and the count
 // rings) that pushed the first event ~1.4 screens down on a phone.
-export default function Header({ onOpenSearch, onOpenMenu, sectionNav = true }: HeaderProps) {
+export default function Header({ onOpenSearch, onOpenMenu, sectionNav = true, bottomBorder = true }: HeaderProps) {
   return (
     <header>
       {/* `fixed`, not `sticky` — sticky silently failed to pin here
           (verified in-browser). An equal-height spacer below reserves its
           space in normal flow; keep both heights in sync with the
           wordmark's size (two lines at 32px / 40px, leading-none). */}
-      <div className="fixed top-0 inset-x-0 z-40 bg-surface-sage border-b border-text-primary/10">
+      <div className={`fixed top-0 inset-x-0 z-40 bg-surface-sage ${bottomBorder ? "border-b border-text-primary/10" : ""}`}>
         <div className="max-w-[1600px] mx-auto h-[84px] md:h-[104px] grid grid-cols-[auto_1fr_auto] items-center gap-[24px] px-[18px] md:px-[40px] xl:px-[80px]">
           <SiteWordmark />
           {sectionNav ? <SectionNav /> : <div />}
