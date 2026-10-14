@@ -121,6 +121,25 @@ export default function EventDetailCard({ event, domain, venueLink, artistLinks,
 
   const artist = resolveArtistDisplay(event.artist);
 
+  // "Más muestras de [espacio]" / "de [artista]" (Daniel, 2026-10-13) —
+  // only for a venue or artist with more than this event to show
+  // (venueLink / artistLinks). Placed twice below, one per breakpoint.
+  const morePills =
+    venueLink || (artistLinks && artistLinks.length > 0) ? (
+      <>
+        {venueLink && (
+          <Link href={venueLink.href} className={MORE_PILL}>
+            {esCL.eventPageVenueLink(venueLink.name)}
+          </Link>
+        )}
+        {artistLinks?.map((link) => (
+          <Link key={link.href} href={link.href} className={MORE_PILL}>
+            {esCL.eventPageArtistLink(link.name)}
+          </Link>
+        ))}
+      </>
+    ) : null;
+
   const isAdmin = useIsAdmin();
   // Reason-picker popover, same trigger-then-switch-panel pattern as the
   // Compartir button just above — see AdminRemoveReasonMenu's own comment.
@@ -163,23 +182,9 @@ export default function EventDetailCard({ event, domain, venueLink, artistLinks,
             {esCL.ultimosDias}
           </span>
         )}
-        {/* "Más muestras de [espacio]" / "de [artista]" as pills under the
-            photo (Daniel, 2026-10-13) — only for a venue or artist with more
-            than this event to show (venueLink / artistLinks). */}
-        {(venueLink || (artistLinks && artistLinks.length > 0)) && (
-          <div className="mt-[16px] flex flex-wrap gap-[10px]">
-            {venueLink && (
-              <Link href={venueLink.href} className={MORE_PILL}>
-                {esCL.eventPageVenueLink(venueLink.name)}
-              </Link>
-            )}
-            {artistLinks?.map((link) => (
-              <Link key={link.href} href={link.href} className={MORE_PILL}>
-                {esCL.eventPageArtistLink(link.name)}
-              </Link>
-            ))}
-          </div>
-        )}
+        {/* "Más muestras de [espacio]" / "de [artista]" pills: under the
+            photo from md up; on a phone at the end of the text instead. */}
+        {morePills && <div className="hidden md:flex mt-[16px] flex-wrap gap-[10px]">{morePills}</div>}
       </div>
 
       <div className="flex-1 flex flex-col gap-[20px] md:gap-[24px] min-w-0">
@@ -313,6 +318,8 @@ export default function EventDetailCard({ event, domain, venueLink, artistLinks,
             <p className="font-geist text-[15px] md:text-[16px] text-text-muted">{esCL.eventPageAttributionNote(domain)}</p>
           </div>
         )}
+
+        {morePills && <div className="flex md:hidden flex-wrap gap-[10px]">{morePills}</div>}
       </div>
     </article>
   );
