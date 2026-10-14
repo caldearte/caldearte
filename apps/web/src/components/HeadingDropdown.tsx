@@ -15,7 +15,7 @@ interface HeadingDropdownProps {
 }
 
 // A word inside the home's h1 that opens a list, boxed with a rounded gray
-// border (2026-10-12): "[Esta
+// border, magenta on hover (2026-10-12): "[Esta
 // semana ⌄] en [Santiago ⌄]" — the week (WeekDropdown) and the región
 // (RegionDropdown). Inherits the h1's type; while open the page behind is
 // frozen and dimmed, and a click outside or Escape closes it.
@@ -76,7 +76,11 @@ export default function HeadingDropdown({ label, ariaLabel, listAriaLabel, align
         aria-expanded={open}
         aria-label={ariaLabel}
         onClick={toggle}
-        className="inline-flex items-baseline gap-[6px] md:gap-[8px] text-left rounded-[12px] border border-text-primary/25 px-[10px] md:px-[14px] pt-[4px] pb-[8px] underline decoration-text-primary/25 decoration-[3px] underline-offset-[6px] cursor-pointer hover:border-text-primary/50 hover:decoration-brand-magenta"
+        // No underline (Daniel, 2026-10-13): on hover — and while open —
+        // the border, the word and the chevron (currentColor) go magenta.
+        className={`inline-flex items-baseline gap-[6px] md:gap-[8px] text-left rounded-[12px] border px-[10px] md:px-[14px] py-[6px] cursor-pointer transition-colors hover:border-brand-magenta hover:text-brand-magenta ${
+          open ? "border-brand-magenta text-brand-magenta" : "border-text-primary/25"
+        }`}
       >
         {label}
         {/* Inline (not the 1.6px-stroke chevron-down.svg) so it matches the
