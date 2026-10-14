@@ -9,6 +9,9 @@ import { pinHomeSection, scrollToHomeSection, useHomeSection, type HomeSection }
 interface HeaderProps {
   onOpenSearch: () => void;
   onOpenMenu: () => void;
+  // The home's section links (desktop); off on pages that aren't the home
+  // (the ficha, 2026-10-13: logo, search and menu only).
+  sectionNav?: boolean;
 }
 
 function SearchButton({ onClick }: { onClick: () => void }) {
@@ -100,7 +103,7 @@ function SectionNav() {
 // links (desktop) and search + menu. Replaces the full-height hero (two-line 96px wordmark,
 // three-line tagline, SEMANA N°X, the location button and the count
 // rings) that pushed the first event ~1.4 screens down on a phone.
-export default function Header({ onOpenSearch, onOpenMenu }: HeaderProps) {
+export default function Header({ onOpenSearch, onOpenMenu, sectionNav = true }: HeaderProps) {
   return (
     <header>
       {/* `fixed`, not `sticky` — sticky silently failed to pin here
@@ -110,7 +113,7 @@ export default function Header({ onOpenSearch, onOpenMenu }: HeaderProps) {
       <div className="fixed top-0 inset-x-0 z-40 bg-surface-sage border-b border-text-primary/10">
         <div className="max-w-[1600px] mx-auto h-[84px] md:h-[104px] grid grid-cols-[auto_1fr_auto] items-center gap-[24px] px-[18px] md:px-[40px] xl:px-[80px]">
           <SiteWordmark />
-          <SectionNav />
+          {sectionNav ? <SectionNav /> : <div />}
           <div className="flex items-center gap-[16px]">
             <AdminLink />
             <SearchButton onClick={onOpenSearch} />
