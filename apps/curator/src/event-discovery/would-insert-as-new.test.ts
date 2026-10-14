@@ -86,3 +86,24 @@ test("findExistingMatch reports WHICH tier matched and leaves `seen` untouched (
   const none = findExistingMatch(candidate({ title: "Nada que ver", placeName: "Museo Lejano", location: "Valdivia", sourceUrl: "https://www.instagram.com/p/ZZZ/" }), seen);
   assert.equal(none.existingMatch, undefined);
 });
+
+// Real case 2026-10-14: a museum cartelera publishes every item under one
+// url; the first event inserted made every later one a "duplicate".
+test("findExistingMatch: a candidate sharing a stored event's sourceUrl is a duplicate unless the two run ranges are clearly different shows", () => {
+  const listing = "https://www.mgmistral.gob.cl/cartelera";
+  const seen = buildSeenKeys([stored({ title: "Yin Yin: La Llama Dulce de mi Vida", sourceUrl: listing, runStartDate: "2026-07-07", runEndDate: "2026-09-12", placeName: "Sala Laura Rodig", location: "Vicuña" })]);
+  const base = { sourceUrl: listing, placeName: "Sala Laura Rodig", location: "Vicuña" };
+
+  const nextShow = candidate({ ...base, title: "Arrecia el temporal", runStartDate: "2026-09-22", runEndDate: "2026-10-17" });
+  assert.equal(findExistingMatch(nextShow, seen).sourceUrlMatch, undefined, "disjoint ranges: a different show");
+  assert.equal(wouldInsertAsNew(nextShow, seen, NOW), true);
+
+  const sameShowReworded = candidate({ ...base, title: "Exhibición Yin Yin", runStartDate: "2026-07-07", runEndDate: "2026-09-12" });
+  assert.ok(findExistingMatch(sameShowReworded, seen).sourceUrlMatch, "same range: still the same event");
+
+  const overlapping = candidate({ ...base, title: "Otro título", runStartDate: "2026-08-01", runEndDate: "2026-09-30" });
+  assert.ok(findExistingMatch(overlapping, seen).sourceUrlMatch, "overlapping ranges keep the old behavior");
+
+  const noDates = candidate({ ...base, title: "Sin fechas", runStartDate: null, runEndDate: null });
+  assert.ok(findExistingMatch(noDates, seen).sourceUrlMatch, "a missing date never proves the shows differ");
+});
