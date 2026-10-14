@@ -377,7 +377,6 @@ export const esCL = {
   // /eventos/[id] — the shareable, individually-linkable page for one
   // event (see docs/risks.md's ToS note on scraped sources: this page's
   // whole point is to make attribution unmissable, not buried in a menu).
-  eventPageBackToHome: "Ver más eventos en Caldearte",
   // Teaser strip at the bottom of the page (2026-08-28, replacing the old
   // cookie-dependent "list mode" — see eventos/[id]/page.tsx's own
   // comment) — a fixed, non-personalized sample of other current
@@ -407,15 +406,14 @@ export const esCL = {
   eventPageArtistLink: (artistName: string) => `Más muestras de ${artistName}`,
   venuePageCurrentLabel: "EN CARTELERA Y PRÓXIMAS",
   venuePagePastLabel: "MUESTRAS ANTERIORES",
-  catalogPageUpcomingLabel: "Próximas inauguraciones y visitas",
-  catalogPageRunningLabel: "En cartelera",
   venuePageNoCurrent: "Por ahora no hay muestras vigentes en este espacio.",
   venuePageEventCount: (n: number) => `${n} ${pluralize(n, "muestra registrada", "muestras registradas")} en Caldearte`,
   venuePageInstagramLink: (handle: string) => `@${handle} en Instagram ↗`,
   venuePageMetaDescription: (name: string, comuna: string | null, n: number) =>
     `Muestras e inauguraciones en ${name}${comuna ? `, ${comuna}` : ""}: ${n} ${pluralize(n, "registrada", "registradas")} en Caldearte.`,
-  venuePageCorrectionNote:
-    "¿Hay un error en esta ficha, o prefieres que no aparezca? Escríbenos desde Contacto, más abajo, y la corregimos o la retiramos.",
+  // "Escríbenos" is a link that opens the contact drawer (EventPageFooter).
+  catalogPageCorrectionQuestion: "¿Hay un error en esta ficha, o prefieres que no aparezca?",
+  catalogPageCorrectionLink: "Escríbenos",
 
   // /artistas/[slug] — same page shape as /espacios/[slug] (components/
   // CatalogEntityPage.tsx), so it reuses venuePageEventCount/CurrentLabel/
@@ -423,8 +421,8 @@ export const esCL = {
   artistPageNoCurrent: "Por ahora no hay muestras vigentes de este artista.",
   artistPageMetaDescription: (name: string, n: number) =>
     `Muestras de ${name} registradas en Caldearte: ${n} ${pluralize(n, "muestra", "muestras")}.`,
-  artistPageCorrectionNote:
-    "¿Hay un error en esta ficha, o prefieres que no aparezca? Escríbenos desde Contacto, más abajo, y la corregimos o la retiramos. Solo mostramos muestras que ya eran públicas.",
+  // Follows catalogPageCorrectionQuestion + link on artist pages.
+  artistPageCorrectionAfter: "Solo mostramos muestras que ya eran públicas.",
 
   cityStats: (inauguracionesCount: number, visitasGuiadasCount: number, exposCount: number) =>
     countsPhrase(inauguracionesCount, visitasGuiadasCount, exposCount, " · "),

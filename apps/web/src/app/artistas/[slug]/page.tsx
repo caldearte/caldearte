@@ -57,6 +57,7 @@ export default async function ArtistPage({ params }: { params: Promise<PageParam
 
   return (
     <CatalogEntityPage
+      kind="artist"
       jsonLd={buildArtistJsonLd(artist, `${SITE}/artistas/${artistSlug(artist)}`)}
       title={artist.name}
       countText={esCL.venuePageEventCount(totalEvents)}
@@ -64,7 +65,7 @@ export default async function ArtistPage({ params }: { params: Promise<PageParam
       current={current}
       past={past}
       noCurrentText={esCL.artistPageNoCurrent}
-      correctionNote={esCL.artistPageCorrectionNote}
+      correctionAfter={esCL.artistPageCorrectionAfter}
     />
   );
 }

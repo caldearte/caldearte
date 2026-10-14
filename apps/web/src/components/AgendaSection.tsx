@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { esCL } from "@/i18n/es-CL";
-import { fmtAgendaDay, fmtAgendaPillDay, fmtAgendaPillHour, santiagoDateOfIso, todayInSantiago } from "@/lib/date";
+import { fmtAgendaDay, fmtAgendaPillDay, fmtAgendaPillHour, fmtUntilPill, santiagoDateOfIso, todayInSantiago } from "@/lib/date";
 import { eventComuna } from "@/lib/event-utils";
 import { useEventCardActions } from "@/lib/useEventCardActions";
 import type { EventRecord } from "@/lib/events";
@@ -131,15 +131,47 @@ export function AgendaGrid({ events }: { events: EventRecord[] }) {
 // "Agregar al calendario" buttons — white here, since the page itself is
 // the flyer's sage. The tag spans the card's width (for the buttons);
 // long text wraps, balanced, like the flyer's.
-export function AgendaCard({ event, priority = false }: { event: EventRecord; priority?: boolean }) {
+// `history` (venue and artist pages, 2026-10-13): every show there gets
+// this card, past and running ones too. Only an opening still ahead keeps
+// the "Inauguración:" prefix, the day + hour pill and the calendar button;
+// a running show's pill says until when ("HASTA EL 15 OCT"), a past one's
+// its run ("12 AL 28 DE JULIO"), and a past one drops "Cómo llegar".
+// `hideVenue` / `hideArtist`: the page is already that venue's (comuna
+// too) or that artist's.
+export function AgendaCard({
+  event,
+  priority = false,
+  history = false,
+  hideVenue = false,
+  hideArtist = false,
+}: {
+  event: EventRecord;
+  priority?: boolean;
+  history?: boolean;
+  hideVenue?: boolean;
+  hideArtist?: boolean;
+}) {
+  const today = todayInSantiago();
   const type = event.eventType === "visita_guiada" ? "visita_guiada" : "inauguracion";
-  const title = titleWithTypePrefix(event.title, type);
-  const artist = resolveArtistDisplay(event.artist);
-  const venue = event.placeName ?? event.freeformLocation;
+  const openingAhead = event.openingDatetime !== null && santiagoDateOfIso(event.openingDatetime) >= today;
+  const dated = !history || openingAhead;
+  const title = dated ? titleWithTypePrefix(event.title, type) : event.title;
+  const artist = hideArtist ? null : resolveArtistDisplay(event.artist);
+  const venue = hideVenue ? null : (event.placeName ?? event.freeformLocation);
   const comuna = eventComuna(event);
   // "inauguracion" variant for both types: a visita guiada is just as much
   // a dated, timed thing to put in a calendar.
-  const { mapsHref, calendarHref } = useEventCardActions(event, "inauguracion", true);
+  const actions = useEventCardActions(event, "inauguracion", true);
+  const { dateLine: runLine } = useEventCardActions(event, "expo", true);
+  const running = event.runEndDate !== null && event.runEndDate >= today;
+  const when = dated
+    ? `${fmtAgendaPillDay(event.openingDatetime!, today)} · ${fmtAgendaPillHour(event.openingDatetime!, event.openingTimeConfirmed)}`
+    : running
+      ? fmtUntilPill(event.runEndDate!, today)
+      : (runLine ?? (event.openingDatetime ? fmtAgendaPillDay(event.openingDatetime, today) : "")).toUpperCase();
+  const pill = [hideVenue ? null : comuna, when].filter(Boolean).join(" · ");
+  const mapsHref = dated || running ? actions.mapsHref : null;
+  const calendarHref = dated ? actions.calendarHref : null;
   // While a sensitive photo is still blurred, the photo sits above the
   // card's link so its "Ver contenido" button gets the tap; once revealed
   // it drops back and the photo opens the ficha like the rest of the card.
@@ -178,9 +210,11 @@ export function AgendaCard({ event, priority = false }: { event: EventRecord; pr
         {/* rounded-[14px], not rounded-full: on the 3-column tablet grid
             (~200px cards) "COMUNA · DÍA · HORA" wraps to two lines, and a
             pill shape would bulge; balanced so the lines come out even. */}
-        <span className="w-fit mt-[4px] rounded-[14px] bg-brand-magenta px-[10px] py-[4px] font-lato font-black text-[12px] leading-[1.35] uppercase tracking-[0.3px] text-white [text-wrap:balance]">
-          {comuna} · {fmtAgendaPillDay(event.openingDatetime!, todayInSantiago())} · {fmtAgendaPillHour(event.openingDatetime!, event.openingTimeConfirmed)}
-        </span>
+        {pill && (
+          <span className="w-fit mt-[4px] rounded-[14px] bg-brand-magenta px-[10px] py-[4px] font-lato font-black text-[12px] leading-[1.35] uppercase tracking-[0.3px] text-white [text-wrap:balance]">
+            {pill}
+          </span>
+        )}
         {venue && <span className="font-geist font-semibold text-[11px] leading-[1.25] tracking-[1px] uppercase text-text-secondary">{venue}</span>}
 
         {/* Full-width and stacked (Daniel, 2026-10-12: "Cómo llegar" is
