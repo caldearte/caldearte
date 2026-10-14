@@ -11,6 +11,7 @@ import { useIsAdmin } from "@/lib/useIsAdmin";
 import { useAdminToggleSensitive, ADMIN_SENSITIVE_TAG } from "@/lib/useAdminToggleSensitive";
 import { dateOnlyFromIso, todayInSantiago } from "@/lib/date";
 import { esCL } from "@/i18n/es-CL";
+import { resolveArtistDisplay } from "@/lib/social/flyerText";
 import type { EventRecord } from "@/lib/events";
 import type { ArtistLink } from "@/lib/artistPage";
 
@@ -59,7 +60,7 @@ function ActionButton({
   icon?: React.ReactNode;
   label: string;
 }) {
-  const className = `flex items-center gap-[10px] border px-[16px] py-[12px] text-[13px] font-fragment-mono whitespace-nowrap cursor-pointer disabled:opacity-50 disabled:cursor-default ${
+  const className = `flex items-center gap-[10px] border px-[18px] py-[14px] text-[15px] md:text-[16px] font-fragment-mono whitespace-nowrap cursor-pointer disabled:opacity-50 disabled:cursor-default ${
     destructive ? "border-red-600 text-red-600" : "border-text-primary text-text-primary"
   }`;
   if (href) {
@@ -77,6 +78,10 @@ function ActionButton({
     </button>
   );
 }
+
+// The home's dark pill CTA (EspaciosSection), a size smaller.
+const MORE_PILL =
+  "rounded-full border-2 border-text-primary bg-text-primary px-[18px] py-[9px] font-lato font-black text-[15px] md:text-[16px] leading-[1.3] uppercase tracking-[0.3px] text-surface-sage transition-colors hover:bg-brand-magenta hover:border-brand-magenta hover:text-white";
 
 // Rediseño 2.0.0 — the /eventos/[id] standalone page's own event display,
 // rebuilt in the same visual language as the home bento cards (image +
@@ -114,6 +119,8 @@ export default function EventDetailCard({ event, domain, venueLink, artistLinks,
     handleCopyLink,
   } = useEventCardActions(event, variant, false);
 
+  const artist = resolveArtistDisplay(event.artist);
+
   const isAdmin = useIsAdmin();
   // Reason-picker popover, same trigger-then-switch-panel pattern as the
   // Compartir button just above — see AdminRemoveReasonMenu's own comment.
@@ -141,8 +148,10 @@ export default function EventDetailCard({ event, domain, venueLink, artistLinks,
         : esCL.cardMenuMarkSensitive;
 
   return (
-    <article className="flex flex-col md:flex-row gap-[24px] md:gap-[60px] items-start">
-      <div className="relative w-full md:w-[600px] shrink-0">
+    <article className="flex flex-col md:flex-row gap-[24px] md:gap-[40px] xl:gap-[60px] items-start">
+      {/* Fixed 600px only from xl — on a tablet that left the text column
+          ~200px wide, too narrow for the bigger type. */}
+      <div className="relative w-full md:w-[45%] xl:w-[600px] shrink-0">
         <CardImage imageUrl={event.imageUrl} sourceUrl={event.sourceUrl} sensitivityTags={event.sensitivityTags} fullSize priority alt={event.title} />
         {showTodayBadge && (
           <span className="absolute top-3 right-3 z-[5] text-[11px] font-bold uppercase tracking-wide bg-white text-text-primary rounded-full px-2.5 py-1">
@@ -153,6 +162,23 @@ export default function EventDetailCard({ event, domain, venueLink, artistLinks,
           <span className="absolute top-3 left-3 z-[5] bg-brand-magenta text-white text-[12px] font-bold tracking-[2px] px-[12px] py-[6px]">
             {esCL.ultimosDias}
           </span>
+        )}
+        {/* "Más muestras de [espacio]" / "de [artista]" as pills under the
+            photo (Daniel, 2026-10-13) — only for a venue or artist with more
+            than this event to show (venueLink / artistLinks). */}
+        {(venueLink || (artistLinks && artistLinks.length > 0)) && (
+          <div className="mt-[16px] flex flex-wrap gap-[10px]">
+            {venueLink && (
+              <Link href={venueLink.href} className={MORE_PILL}>
+                {esCL.eventPageVenueLink(venueLink.name)}
+              </Link>
+            )}
+            {artistLinks?.map((link) => (
+              <Link key={link.href} href={link.href} className={MORE_PILL}>
+                {esCL.eventPageArtistLink(link.name)}
+              </Link>
+            ))}
+          </div>
         )}
       </div>
 
@@ -170,7 +196,7 @@ export default function EventDetailCard({ event, domain, venueLink, artistLinks,
               {/* eslint-disable-next-line @next/next/no-img-element -- Figma-exported asset, verbatim per design decision */}
               <img src="/icons/arrow-left.svg" alt="" width={14} height={14} />
             </Link>
-            <p className="font-geist text-[13px] text-text-primary whitespace-nowrap">
+            <p className="font-geist text-[15px] md:text-[16px] text-text-primary whitespace-nowrap">
               {esCL.eventPagePosition(listPosition.current, listPosition.total, listPosition.cityName)}
             </p>
             <Link
@@ -186,20 +212,20 @@ export default function EventDetailCard({ event, domain, venueLink, artistLinks,
             </Link>
           </div>
         )}
+        {/* The home card's build, full size (Daniel, 2026-10-13): artist,
+            magenta Lato Black title, the magenta date pill, the venue —
+            every line bigger than on the cards, to read easily. */}
         <div className="flex flex-col gap-[12px] md:gap-[16px]">
-          {dateLine && <p className="font-geist font-extrabold text-[14px] md:text-[16px] text-brand-magenta">{dateLine}</p>}
-          <h1 className="font-fragment-mono leading-[1.1] text-[28px] md:text-[36px] text-text-primary">{event.title}</h1>
-          <p className="font-geist text-[15px] md:text-[16px] text-text-muted">{venueLine}</p>
-          {venueLink && (
-            <Link href={venueLink.href} className="font-fragment-mono text-[13px] md:text-[14px] text-text-primary underline w-fit">
-              {esCL.eventPageVenueLink(venueLink.name)}
-            </Link>
+          {artist && (
+            <p className="font-geist font-semibold text-[15px] md:text-[17px] leading-[1.3] tracking-[1px] uppercase text-text-secondary">{artist}</p>
           )}
-          {artistLinks?.map((link) => (
-            <Link key={link.href} href={link.href} className="font-fragment-mono text-[13px] md:text-[14px] text-text-primary underline w-fit">
-              {esCL.eventPageArtistLink(link.name)}
-            </Link>
-          ))}
+          <h1 className="font-lato font-black uppercase leading-[1.1] tracking-[0.3px] text-[32px] md:text-[44px] text-brand-magenta [text-wrap:balance] [overflow-wrap:anywhere]">{event.title}</h1>
+          {dateLine && (
+            <p className="w-fit rounded-[16px] bg-brand-magenta px-[14px] py-[6px] font-lato font-black text-[16px] md:text-[19px] leading-[1.35] uppercase tracking-[0.3px] text-white">
+              {dateLine}
+            </p>
+          )}
+          <p className="font-geist font-semibold text-[16px] md:text-[18px] leading-[1.35] tracking-[0.5px] uppercase text-text-secondary">{venueLine}</p>
         </div>
 
         <div className="flex flex-wrap gap-[12px] items-center">
@@ -216,19 +242,19 @@ export default function EventDetailCard({ event, domain, venueLink, artistLinks,
                   onClick={() => setShareSubmenuOpen(false)}
                 />
                 <div className="absolute top-full left-0 mt-2 z-20 min-w-[190px] overflow-hidden rounded-xl bg-white border border-stone-200 shadow-lg py-1">
-                  <button type="button" className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-sm text-heading-gray cursor-pointer" onClick={handleShareWhatsApp}>
+                  <button type="button" className="w-full flex items-center gap-2.5 px-3.5 py-3 text-[15px] text-heading-gray cursor-pointer" onClick={handleShareWhatsApp}>
                     <WhatsAppGlyph color="black" />
                     {esCL.cardMenuWhatsApp}
                   </button>
-                  <button type="button" className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-sm text-heading-gray cursor-pointer" onClick={handleShareTwitter}>
+                  <button type="button" className="w-full flex items-center gap-2.5 px-3.5 py-3 text-[15px] text-heading-gray cursor-pointer" onClick={handleShareTwitter}>
                     <XGlyph color="black" />
                     {esCL.cardMenuTwitter}
                   </button>
-                  <button type="button" className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-sm text-heading-gray cursor-pointer" onClick={handleShareFacebook}>
+                  <button type="button" className="w-full flex items-center gap-2.5 px-3.5 py-3 text-[15px] text-heading-gray cursor-pointer" onClick={handleShareFacebook}>
                     <FacebookGlyph color="black" />
                     {esCL.cardMenuFacebook}
                   </button>
-                  <button type="button" className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-sm text-heading-gray cursor-pointer" onClick={handleCopyLink}>
+                  <button type="button" className="w-full flex items-center gap-2.5 px-3.5 py-3 text-[15px] text-heading-gray cursor-pointer" onClick={handleCopyLink}>
                     <CopyGlyph color="black" />
                     {esCL.cardMenuCopyLink}
                   </button>
@@ -273,18 +299,18 @@ export default function EventDetailCard({ event, domain, venueLink, artistLinks,
         </div>
 
         {event.description && (
-          <p className="font-geist text-[15px] md:text-[16px] leading-[1.6] text-text-primary whitespace-pre-line">{event.description}</p>
+          <p className="font-geist text-[17px] md:text-[19px] leading-[1.6] text-text-primary whitespace-pre-line">{event.description}</p>
         )}
 
         {domain && event.sourceUrl && (
           <div className="flex flex-col gap-[6px] border-t border-border-default pt-[20px]">
-            <div className="flex items-center gap-[8px] font-geist text-[14px] text-text-primary flex-wrap">
+            <div className="flex items-center gap-[8px] font-geist text-[16px] md:text-[17px] text-text-primary flex-wrap">
               <span className="font-bold">{esCL.eventPageSourceLabel(domain)}</span>
               <a href={event.sourceUrl} target="_blank" rel="noopener noreferrer" className="underline text-brand-magenta">
                 {esCL.eventPageSourceLink}
               </a>
             </div>
-            <p className="font-geist text-[13px] text-text-muted">{esCL.eventPageAttributionNote(domain)}</p>
+            <p className="font-geist text-[15px] md:text-[16px] text-text-muted">{esCL.eventPageAttributionNote(domain)}</p>
           </div>
         )}
       </div>

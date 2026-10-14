@@ -401,10 +401,10 @@ export const esCL = {
   // app/espacios/[slug]/page.tsx). Only facts the catalog really holds.
   // Link on /eventos/[id] to the venue's own page, shown only when that page
   // lists more than this event (lib/venuePage.ts's findVenueLinkForEvent).
-  eventPageVenueLink: (venueName: string) => `Más muestras en ${venueName} →`,
+  eventPageVenueLink: (venueName: string) => `Más muestras de ${venueName}`,
   // Same, for each credited artist whose page has more than this event
   // (lib/artistPage.ts's findArtistLinksForEvent).
-  eventPageArtistLink: (artistName: string) => `Más muestras de ${artistName} →`,
+  eventPageArtistLink: (artistName: string) => `Más muestras de ${artistName}`,
   venuePageCurrentLabel: "EN CARTELERA Y PRÓXIMAS",
   venuePagePastLabel: "MUESTRAS ANTERIORES",
   catalogPageUpcomingLabel: "Próximas inauguraciones y visitas",
