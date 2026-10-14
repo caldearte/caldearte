@@ -7,7 +7,6 @@ import { fmtUntilPill, isClosingSoon } from "@/lib/date";
 import { eventComuna } from "@/lib/event-utils";
 import { useEventCardActions } from "@/lib/useEventCardActions";
 import { useHomeSection } from "@/lib/useHomeSection";
-import type { CardTone } from "./AgendaSection";
 import { resolveArtistDisplay } from "@/lib/social/flyerText";
 import type { EventRecord } from "@/lib/events";
 import CardImage from "./CardImage";
@@ -160,19 +159,17 @@ export function TileGrid({
   showPeriod = false,
   wide = false,
   variant = "full",
-  tone = "white",
 }: {
   events: EventRecord[];
   today: string;
   showPeriod?: boolean;
   wide?: boolean;
   variant?: TileVariant;
-  tone?: CardTone;
 }) {
   return (
     <div className={`grid grid-cols-2 md:grid-cols-4 ${wide ? "xl:grid-cols-6" : "xl:grid-cols-5"} gap-x-[12px] gap-y-[20px]`}>
       {events.map((e) => (
-        <ExpoTile key={e.id} event={e} today={today} showPeriod={showPeriod} variant={variant} tone={tone} />
+        <ExpoTile key={e.id} event={e} today={today} showPeriod={showPeriod} variant={variant} />
       ))}
     </div>
   );
@@ -187,19 +184,7 @@ export function TileGrid({
 // when blank, so tiles in a grid end at the same height.
 export type TileVariant = "full" | "closing" | "minimal";
 
-export function ExpoTile({
-  event,
-  today,
-  showPeriod = false,
-  variant = "full",
-  tone = "white",
-}: {
-  event: EventRecord;
-  today: string;
-  showPeriod?: boolean;
-  variant?: TileVariant;
-  tone?: CardTone;
-}) {
+export function ExpoTile({ event, today, showPeriod = false, variant = "full" }: { event: EventRecord; today: string; showPeriod?: boolean; variant?: TileVariant }) {
   const { dateLine, venueLine } = useEventCardActions(event, "expo", true);
   const artist = resolveArtistDisplay(event.artist);
   // Past shows (venue/artist pages) read their full run; current ones,
@@ -225,7 +210,7 @@ export function ExpoTile({
       <div className="relative w-full aspect-[4/5] overflow-hidden">
         <CardImage imageUrl={event.imageUrl} sourceUrl={event.sourceUrl} sensitivityTags={event.sensitivityTags} alt={event.title} compact />
       </div>
-      <div className={`w-full flex flex-col items-start gap-[5px] rounded-[18px] ${tone === "gray" ? "bg-surface-sage" : "bg-surface-white"} px-[12px] pt-[9px] pb-[11px]`}>
+      <div className="w-full flex flex-col items-start gap-[5px] rounded-[18px] bg-surface-white px-[12px] pt-[9px] pb-[11px]">
         {variant === "closing" && pillTag}
         {variant === "full" && artistLine}
         <span title={event.title} className="block w-full truncate font-lato font-black text-[14px] leading-[1.25] tracking-[0.2px] uppercase text-brand-magenta group-hover:underline">

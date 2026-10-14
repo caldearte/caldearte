@@ -158,35 +158,36 @@ export default async function EventPage({ params }: { params: Promise<PageParams
       {/* Schema.org VisualArtsEvent — see lib/eventJsonLd.ts's own comment. */}
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdScriptContent(buildEventJsonLd(event)) }} />
 
-      {/* Top bar on the site's gray, edge to edge; from the event down the
-          page is white, edge to edge (Daniel, 2026-10-13). */}
+      {/* Gray top bar and gray from "También esta semana" down, edge to
+          edge; only the event itself sits on white (Daniel, 2026-10-13). */}
       <div className="max-w-[1600px] mx-auto px-[18px] md:px-[40px] xl:px-[80px] py-8 flex items-center justify-between gap-2">
         <SiteWordmark />
         <EventComunaTag cityName={eventCityName} />
       </div>
 
       <div className="bg-surface-white">
-        <div className="max-w-[1600px] mx-auto px-[18px] md:px-[40px] xl:px-[80px] pt-[40px] md:pt-[60px] pb-8">
+        <div className="max-w-[1600px] mx-auto px-[18px] md:px-[40px] xl:px-[80px] py-[40px] md:py-[60px]">
           <EventDetailCard event={event} domain={domain} venueLink={venueLink} artistLinks={artistLinks} />
+        </div>
+      </div>
 
-          {/* tone="gray": gray tags on this white page (CardTone). */}
-          {moreAgenda.length > 0 && (
-            <section className="mt-[64px] md:mt-[96px]">
-              <h2 className="font-lato font-black text-[24px] md:text-[30px] text-text-primary mb-[16px]">{esCL.eventPageMoreAgendaLabel}</h2>
-              <AgendaGrid events={moreAgenda} tone="gray" />
-            </section>
-          )}
+      <div className="max-w-[1600px] mx-auto px-[18px] md:px-[40px] xl:px-[80px] pb-8">
+        {moreAgenda.length > 0 && (
+          <section className="mt-[56px] md:mt-[80px]">
+            <h2 className="font-lato font-black text-[24px] md:text-[30px] text-text-primary mb-[16px]">{esCL.eventPageMoreAgendaLabel}</h2>
+            <AgendaGrid events={moreAgenda} />
+          </section>
+        )}
 
-          {moreExpos.length > 0 && (
-            <section className="mt-[64px] md:mt-[96px]">
-              <h2 className="font-lato font-black text-[24px] md:text-[30px] text-text-primary mb-[16px]">{esCL.eventPageMoreExposLabel}</h2>
-              <TileGrid events={moreExpos} today={today} tone="gray" />
-            </section>
-          )}
+        {moreExpos.length > 0 && (
+          <section className="mt-[56px] md:mt-[80px]">
+            <h2 className="font-lato font-black text-[24px] md:text-[30px] text-text-primary mb-[16px]">{esCL.eventPageMoreExposLabel}</h2>
+            <TileGrid events={moreExpos} today={today} />
+          </section>
+        )}
 
-          <div className="mt-[64px] md:mt-[96px]">
-            <EventPageFooter />
-          </div>
+        <div className="mt-[56px] md:mt-[80px]">
+          <EventPageFooter />
         </div>
       </div>
     </main>
