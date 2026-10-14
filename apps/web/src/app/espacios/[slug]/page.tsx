@@ -63,7 +63,6 @@ export default async function VenuePage({ params }: { params: Promise<PageParams
     <CatalogEntityPage
       kind="venue"
       jsonLd={buildVenueJsonLd(venue, `${SITE}/espacios/${venueSlug(venue)}`)}
-      eyebrow={venue.comuna}
       title={venue.name}
       countText={esCL.venuePageEventCount(totalEvents)}
       instagramHandle={venue.instagramHandle}

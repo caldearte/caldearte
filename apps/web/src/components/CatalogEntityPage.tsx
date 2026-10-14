@@ -18,8 +18,6 @@ interface CatalogEntityPageProps {
   // that artist, since the whole page already is theirs.
   kind: "venue" | "artist";
   jsonLd: unknown;
-  // A venue's comuna, shown beside the count; absent for artists.
-  eyebrow?: string | null;
   title: string;
   countText: string;
   instagramHandle: string | null;
@@ -46,7 +44,6 @@ const newestFirst = (a: EventRecord, b: EventRecord) => showDate(b).localeCompar
 export default function CatalogEntityPage({
   kind,
   jsonLd,
-  eyebrow,
   title,
   countText,
   instagramHandle,
@@ -63,12 +60,11 @@ export default function CatalogEntityPage({
 
       <div className="max-w-[1600px] mx-auto px-[18px] md:px-[40px] xl:px-[80px] pb-8">
         {/* Sticky under the top bar, one block with it (one line under both). */}
-        <h1 className="sticky top-[84px] md:top-[104px] z-30 -mx-[18px] md:-mx-[40px] xl:-mx-[80px] px-[18px] md:px-[40px] xl:px-[80px] py-[14px] md:py-[18px] bg-surface-sage border-b border-text-primary/10 font-lato font-black uppercase text-[32px] md:text-[48px] leading-[1.05] text-text-primary [overflow-wrap:anywhere]">
+        <h1 className="sticky top-[84px] md:top-[104px] z-30 -mx-[18px] md:-mx-[40px] xl:-mx-[80px] px-[18px] md:px-[40px] xl:px-[80px] py-[14px] md:py-[18px] bg-surface-sage border-b border-text-primary/10 font-lato font-black uppercase text-[44px] md:text-[80px] leading-[1] text-text-primary [overflow-wrap:anywhere]">
           {title}
         </h1>
 
         <div className="mt-[16px] flex flex-wrap items-center gap-x-[16px] gap-y-[6px] font-fragment-mono text-[14px] md:text-[15px] text-text-primary">
-          {eyebrow && <span className="uppercase">{eyebrow}</span>}
           <span>{countText}</span>
           {instagramHandle && (
             <a href={instagramProfileUrl(instagramHandle)} target="_blank" rel="noopener noreferrer" className="underline">
