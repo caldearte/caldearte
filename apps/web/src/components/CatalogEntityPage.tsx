@@ -11,7 +11,7 @@ import EventPageHeader from "./EventPageHeader";
 // an entity with a long history doesn't turn into an endless page.
 const MAX_PAST_EVENTS = 24;
 
-const SECTION_LABEL = "col-span-full font-geist font-semibold text-[13px] tracking-[2px] uppercase text-text-secondary";
+const SECTION_LABEL = "font-geist font-semibold text-[13px] leading-[1.3] tracking-[2px] uppercase text-text-secondary whitespace-nowrap mb-[16px]";
 
 interface CatalogEntityPageProps {
   // Whose page it is — its cards leave out that venue (and comuna) or
@@ -41,8 +41,8 @@ const newestFirst = (a: EventRecord, b: EventRecord) => showDate(b).localeCompar
 // The body shared by /espacios/[slug] and /artistas/[slug] (Daniel,
 // 2026-10-13): the home's top bar (logo, search, menu), the name as a big
 // sticky title, then every show as the home's featured card, newest first,
-// in one continuous grid — "EN CARTELERA Y PRÓXIMAS", then "MUESTRAS
-// ANTERIORES". Gray page, like the home.
+// in one continuous grid — "EN CARTELERA Y PRÓXIMAS", then right after,
+// in the same rows, "MUESTRAS ANTERIORES". Gray page, like the home.
 export default function CatalogEntityPage({
   kind,
   jsonLd,
@@ -55,8 +55,6 @@ export default function CatalogEntityPage({
   noCurrentText,
   correctionAfter,
 }: CatalogEntityPageProps) {
-  const card = (e: EventRecord) => <AgendaCard key={e.id} event={e} history hideVenue={kind === "venue"} hideArtist={kind === "artist"} />;
-
   return (
     <main className="min-h-screen w-full bg-surface-sage">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdScriptContent(jsonLd) }} />
@@ -79,19 +77,36 @@ export default function CatalogEntityPage({
           )}
         </div>
 
-        <div className="mt-[40px] md:mt-[56px] grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-x-[16px] md:gap-x-[20px] gap-y-[32px]">
-          <h2 className={SECTION_LABEL}>{esCL.venuePageCurrentLabel}</h2>
-          {current.length > 0 ? (
-            [...current].sort(newestFirst).map(card)
-          ) : (
-            <p className="col-span-full font-fragment-mono text-[14px] text-text-primary">{noCurrentText}</p>
-          )}
-          {past.length > 0 && (
-            <>
-              <h2 className={`${SECTION_LABEL} mt-[24px]`}>{esCL.venuePagePastLabel}</h2>
-              {[...past].sort(newestFirst).slice(0, MAX_PAST_EVENTS).map(card)}
-            </>
-          )}
+        {/* One continuous grid (Daniel, 2026-10-13: "de corrido"): past
+            shows follow right after the current ones in the same rows. A
+            part's label sits over its first card — the home agenda's day
+            headings — and the other cards get an invisible copy (from sm
+            up) so photos in a row still line up. */}
+        {current.length === 0 && (
+          <>
+            <h2 className={`${SECTION_LABEL} mt-[40px] md:mt-[56px]`}>{esCL.venuePageCurrentLabel}</h2>
+            <p className="mt-[8px] font-fragment-mono text-[14px] text-text-primary">{noCurrentText}</p>
+          </>
+        )}
+        <div className="mt-[40px] md:mt-[56px] grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-x-[16px] md:gap-x-[20px] gap-y-[36px] md:gap-y-[56px]">
+          {[
+            ...[...current].sort(newestFirst).map((e, i) => ({ e, label: i === 0 ? esCL.venuePageCurrentLabel : null })),
+            ...[...past]
+              .sort(newestFirst)
+              .slice(0, MAX_PAST_EVENTS)
+              .map((e, i) => ({ e, label: i === 0 ? esCL.venuePagePastLabel : null })),
+          ].map(({ e, label }) => (
+            <div key={e.id}>
+              {label ? (
+                <h2 className={SECTION_LABEL}>{label}</h2>
+              ) : (
+                <div aria-hidden="true" className={`${SECTION_LABEL} invisible hidden sm:block`}>
+                  {esCL.venuePageCurrentLabel}
+                </div>
+              )}
+              <AgendaCard event={e} history hideVenue={kind === "venue"} hideArtist={kind === "artist"} />
+            </div>
+          ))}
         </div>
 
         <div className="mt-[56px] md:mt-[80px]">
