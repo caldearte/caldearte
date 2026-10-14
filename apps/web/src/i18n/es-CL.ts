@@ -155,21 +155,30 @@ export const esCL = {
   familyMode: "Modo familiar",
   otherCity: "Otro",
 
-  // Global search panel — scope is every active/upcoming event in every
-  // comuna, not just what's currently on screen (see SearchPanel.tsx).
-  searchAriaLabel: "Buscar eventos",
+  // Site search (2026-10-13, SearchPanel / lib/search.ts): places,
+  // venues, artists and every event Caldearte has, past ones included.
+  searchAriaLabel: "Buscar",
   closeSearch: "Cerrar búsqueda",
-  searchTitle: "Buscar eventos",
-  searchPlaceholder: "Buscar por título, artista o lugar...",
-  searchHint:
-    "Busca entre todos los eventos vigentes y próximos, en cualquier comuna.",
-  noSearchResults: "No encontramos eventos con ese término.",
-  // Group headers splitting search results — same two groups as the home
-  // page's own sections, just relabeled without "de la semana"/"actuales"
-  // since a search spans every upcoming date, not one week.
-  searchGroupInauguraciones: "Inauguraciones",
-  searchGroupVisitasGuiadas: "Visitas guiadas",
-  searchGroupExposiciones: "Exposiciones",
+  searchTitle: "Buscar",
+  searchPlaceholder: "Busca una muestra, artista, espacio o comuna",
+  searchClear: "Borrar",
+  searchLoading: "Cargando…",
+  searchShortQueryHint: "Sigue escribiendo para ver también las muestras.",
+  noSearchResults: (q: string) => `No encontramos nada con “${q}”.`,
+  searchNoResultsTip: "Revisa cómo está escrito o prueba con otra palabra.",
+  searchNoResultsSubmit: "¿Falta una muestra? Agrégala aquí",
+  searchGroupPlaces: "Lugares",
+  searchGroupVenues: "Espacios",
+  searchGroupArtists: "Artistas",
+  searchGroupEvents: "Muestras",
+  searchSeeAll: (n: number) => `Ver los ${n}`,
+  searchSeeLess: "Ver menos",
+  searchPlaceAction: "Ver agenda",
+  searchPlaceRegionMeta: "Región",
+  searchEntityCount: (n: number) => `${n} ${pluralize(n, "muestra", "muestras")}`,
+  searchRecentLabel: "Búsquedas recientes",
+  searchTopVenuesLabel: "Espacios con más muestras",
+  searchShortcutHint: "Atajo: ⌘K o /",
 
   // Desktop only — see headerSummaryMobile below for mobile's more compact
   // single-total version.

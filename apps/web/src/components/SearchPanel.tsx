@@ -1,60 +1,167 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { esCL } from "@/i18n/es-CL";
-import { searchEvents, sortByRunEndAsc } from "@/lib/event-utils";
+import { REGION_COOKIE, setCookie } from "@/lib/cookies";
+import { anchorDateOnly, fmtAgendaPillDay, fmtAgendaPillHour, fmtPeriod, fmtUntilPill, santiagoDateOfIso, todayInSantiago } from "@/lib/date";
 import type { EventRecord } from "@/lib/events";
-import { dateOnlyFromIso, todayInSantiago } from "@/lib/date";
-import EventHorizontalListItem from "./EventHorizontalListItem";
+import { eventTense, matchRange, MIN_QUERY_FOR_EVENTS, normalizeSearch, searchAll, type SearchEntity, type SearchGroup, type SearchPlace } from "@/lib/search";
+import { titleWithTypePrefix } from "@/lib/social/flyerText";
+import { useSearchIndex } from "@/lib/useSearchIndex";
+import { ExpoTile } from "./CarteleraSection";
+import SiteWordmark from "./SiteWordmark";
 
 interface SearchPanelProps {
   open: boolean;
-  // Every active/upcoming, family-mode-filtered event across every comuna —
-  // deliberately NOT scoped to the currently selected city/día-semana
-  // window (see the product discussion: a scoped-empty result is
-  // ambiguous — "doesn't exist" vs. "wrong filter"). Never includes past
-  // (archived) events; that stays the Archive's own job.
-  events: EventRecord[];
   onClose: () => void;
+  // Picking a place on the home switches its región in place; anywhere
+  // else (no prop) it sets the región cookie and goes to the home.
+  onSelectRegion?: (regionId: string) => void;
 }
 
-const SEARCH_DEBOUNCE_MS = 200;
+const SEARCH_DEBOUNCE_MS = 120;
+// Rows shown per group before "Ver los N".
+const GROUP_CAP: Record<SearchGroup["kind"], number> = { places: 3, venues: 4, artists: 4, events: 10 };
+const GROUP_LABEL: Record<SearchGroup["kind"], string> = {
+  places: esCL.searchGroupPlaces,
+  venues: esCL.searchGroupVenues,
+  artists: esCL.searchGroupArtists,
+  events: esCL.searchGroupEvents,
+};
+const RECENT_KEY = "caldearte_recent_searches";
+const MAX_RECENT = 5;
+const TOP_VENUES = 6;
 
-// Same "hasn't happened yet" rule as EventDetailCard/splitInauguracionesYExpos
-// — a past-but-still-running exhibition is an "expo" row here, not an
-// "inauguración"/"visita_guiada" one, regardless of whether it once had a
-// dated instance. The old version of this panel just checked
-// `openingDatetime` truthiness (real bug, same class as the one fixed
-// 2026-07-23 elsewhere). Also type-aware since 2026-08-29 (event_type) —
-// a visita guiada must group separately, not fold into "inauguracion"
-// just because it shares the same date field.
-function variantFor(event: EventRecord): "inauguracion" | "visita_guiada" | "expo" {
-  if (!event.openingDatetime || dateOnlyFromIso(event.openingDatetime) < todayInSantiago()) return "expo";
-  return event.eventType === "visita_guiada" ? "visita_guiada" : "inauguracion";
+// Recent searches live only in this browser (Daniel, 2026-10-13: no
+// server-side search log). Storage can be unavailable — then there are none.
+function readRecent(): string[] {
+  try {
+    const raw = JSON.parse(localStorage.getItem(RECENT_KEY) ?? "[]");
+    return Array.isArray(raw) ? raw.filter((q): q is string => typeof q === "string").slice(0, MAX_RECENT) : [];
+  } catch {
+    return [];
+  }
 }
 
-// Rediseño 2.0.0 — full-screen modal, same chrome/behavior as
-// CityPickerPanel (open/close transition, inert while closed, body-scroll
-// lock, focus-on-open, Escape-to-close from anywhere in the panel — not
-// just the input, see CityPickerPanel's own fix 2026-08-04) — independent
-// of it and of MenuDrawer, its own panel per the product decision. Results
-// reuse EventHorizontalListItem (the home's own "list view" row) instead
-// of the old dark kebab-menu cards, so a search result looks like the
-// same event would look on the home page.
-export default function SearchPanel({ open, events, onClose }: SearchPanelProps) {
+function saveRecent(query: string) {
+  const q = query.trim();
+  if (q.length < 2) return;
+  try {
+    const next = [q, ...readRecent().filter((r) => normalizeSearch(r) !== normalizeSearch(q))].slice(0, MAX_RECENT);
+    localStorage.setItem(RECENT_KEY, JSON.stringify(next));
+  } catch {
+    // Not stored — fine.
+  }
+}
+
+// The typed text in magenta bold inside a result's name.
+function Highlight({ text, query }: { text: string; query: string }) {
+  const range = matchRange(text, query);
+  if (!range) return <>{text}</>;
+  return (
+    <>
+      {text.slice(0, range[0])}
+      <mark className="bg-transparent text-brand-magenta">{text.slice(range[0], range[1])}</mark>
+      {text.slice(range[1])}
+    </>
+  );
+}
+
+// An event's tile in the results says what matters for when it is: an
+// opening ahead its day and hour (with the "Inauguración:" prefix), a
+// running show until when, a past one its run.
+function SearchEventTile({ event, today }: { event: EventRecord; today: string }) {
+  const tense = eventTense(event, today);
+  const opening = event.openingDatetime;
+  const openingAhead = opening !== null && santiagoDateOfIso(opening) >= today;
+  const anchor = anchorDateOnly(event) ?? today;
+  const pill = openingAhead
+    ? `${fmtAgendaPillDay(opening, today)} · ${fmtAgendaPillHour(opening, event.openingTimeConfirmed)}`
+    : tense === 1 && event.runEndDate
+      ? fmtUntilPill(event.runEndDate, today)
+      : fmtPeriod(event.runStartDate, event.runEndDate, anchor, today).toUpperCase();
+  const title = openingAhead ? titleWithTypePrefix(event.title, event.eventType === "visita_guiada" ? "visita_guiada" : "inauguracion") : event.title;
+  return (
+    <div data-search-item>
+      <ExpoTile event={event} today={today} pillText={pill} title={title} />
+    </div>
+  );
+}
+
+const ROW =
+  "group w-full flex items-center justify-between gap-[16px] py-[14px] border-b border-text-primary/10 text-left cursor-pointer focus:outline-none focus-visible:bg-surface-white/60";
+const ROW_NAME = "block truncate font-lato font-black text-[20px] md:text-[24px] leading-tight text-text-primary";
+const ROW_META = "block mt-[2px] font-geist font-semibold text-[12px] tracking-[1px] uppercase text-text-secondary";
+const ROW_ACTION = "shrink-0 font-fragment-mono text-[13px] text-text-primary group-hover:text-brand-magenta";
+
+function EntityRow({ entity, query }: { entity: SearchEntity; query: string }) {
+  return (
+    <Link href={entity.href} data-search-item className={ROW}>
+      <span className="min-w-0">
+        <span className={ROW_NAME}>
+          <Highlight text={entity.name} query={query} />
+        </span>
+        <span className={ROW_META}>{[entity.meta, esCL.searchEntityCount(entity.count)].filter(Boolean).join(" · ")}</span>
+      </span>
+      <span className={ROW_ACTION}>→</span>
+    </Link>
+  );
+}
+
+function PlaceRow({ place, query, onSelect }: { place: SearchPlace; query: string; onSelect: (regionId: string) => void }) {
+  return (
+    <button type="button" data-search-item onClick={() => onSelect(place.regionId)} className={ROW}>
+      <span className="min-w-0">
+        <span className={ROW_NAME}>
+          <Highlight text={place.comuna ?? place.regionName} query={query} />
+        </span>
+        <span className={ROW_META}>{place.comuna ? place.regionName : esCL.searchPlaceRegionMeta}</span>
+      </span>
+      <span className={ROW_ACTION}>{esCL.searchPlaceAction} →</span>
+    </button>
+  );
+}
+
+function GroupLabel({ children }: { children: ReactNode }) {
+  return <h3 className="font-geist font-semibold text-[13px] tracking-[2px] uppercase text-text-secondary mb-[8px]">{children}</h3>;
+}
+
+// The site search (2026-10-13, lib/search.ts): a full-screen panel under
+// the home's top bar — logo and close — with one big box that finds
+// places, venues, artists and every event, past ones included. Results
+// come grouped as you type, the group with the best match first; with
+// fewer than 3 letters only places, venues and artists whose name starts
+// so. Arrow keys move through the results, Enter opens, Escape closes.
+// The index loads the first time the panel opens (useSearchIndex).
+export default function SearchPanel({ open, onClose, onSelectRegion }: SearchPanelProps) {
   const [query, setQuery] = useState("");
   const [filterQuery, setFilterQuery] = useState("");
+  const [expanded, setExpanded] = useState<Partial<Record<SearchGroup["kind"], boolean>>>({});
+  const [recent, setRecent] = useState<string[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
+  const resultsRef = useRef<HTMLDivElement>(null);
+  const router = useRouter();
+  const index = useSearchIndex(open);
+  const today = todayInSantiago();
 
-  // Same render-time reset pattern as CityPickerPanel: clears the query the
-  // moment the panel transitions to open, not via an effect.
+  // Fresh every time it opens (render-time reset, like the old panel).
   const [prevOpen, setPrevOpen] = useState(open);
   if (open !== prevOpen) {
     setPrevOpen(open);
     if (open) {
       setQuery("");
       setFilterQuery("");
+      setExpanded({});
+      setRecent(readRecent());
     }
+  }
+  // A new query folds every group back to its cap.
+  const [prevFilter, setPrevFilter] = useState(filterQuery);
+  if (filterQuery !== prevFilter) {
+    setPrevFilter(filterQuery);
+    setExpanded({});
   }
 
   useEffect(() => {
@@ -66,10 +173,8 @@ export default function SearchPanel({ open, events, onClose }: SearchPanelProps)
     };
   }, [open]);
 
-  // Focus the input every time the panel opens, not just once on mount —
-  // this panel stays mounted the whole time (inert/opacity toggle, not a
-  // conditional render), so the plain `autoFocus` attribute below only
-  // ever fires the very first time it appears in the DOM.
+  // The panel stays mounted (inert while closed), so autoFocus alone would
+  // only fire once.
   useEffect(() => {
     if (open) inputRef.current?.focus();
   }, [open]);
@@ -79,10 +184,7 @@ export default function SearchPanel({ open, events, onClose }: SearchPanelProps)
     return () => clearTimeout(timer);
   }, [query]);
 
-  // Document-level, not the input's own onKeyDown — Escape needs to close
-  // this regardless of which element has focus (real bug found and fixed
-  // the same way in CityPickerPanel 2026-08-04: an onKeyDown scoped to one
-  // element only fires for events that bubble up FROM that element).
+  // Escape closes from wherever focus is, not just the input.
   useEffect(() => {
     if (!open) return;
     function onDocumentKeyDown(e: KeyboardEvent) {
@@ -92,20 +194,36 @@ export default function SearchPanel({ open, events, onClose }: SearchPanelProps)
     return () => document.removeEventListener("keydown", onDocumentKeyDown);
   }, [open, onClose]);
 
-  const trimmedQuery = filterQuery.trim();
-  const matches = trimmedQuery ? searchEvents(events, trimmedQuery) : [];
-  // Inauguraciones vigentes first (soonest opening from today onward —
-  // the OPPOSITE of Inauguraciones' own home-page order, which is newest
-  // first; per the user 2026-08-04, a search result should read like a
-  // forward-looking agenda), then Exposiciones in the same order the home
-  // page uses (soonest-closing first, sortByRunEndAsc).
-  const inauguracionResults = matches
-    .filter((e) => variantFor(e) === "inauguracion")
-    .sort((a, b) => (a.openingDatetime! < b.openingDatetime! ? -1 : a.openingDatetime! > b.openingDatetime! ? 1 : 0));
-  const visitaGuiadaResults = matches
-    .filter((e) => variantFor(e) === "visita_guiada")
-    .sort((a, b) => (a.openingDatetime! < b.openingDatetime! ? -1 : a.openingDatetime! > b.openingDatetime! ? 1 : 0));
-  const expoResults = sortByRunEndAsc(matches.filter((e) => variantFor(e) === "expo"));
+  function selectRegion(regionId: string) {
+    saveRecent(filterQuery);
+    onClose();
+    if (onSelectRegion) {
+      onSelectRegion(regionId);
+      return;
+    }
+    // The home reads the cookie on arrival and loads that región (HomeClient).
+    setCookie(REGION_COOKIE, regionId);
+    router.push("/");
+  }
+
+  // ↑/↓ through the results in reading order; ↑ from the first goes back
+  // to the box.
+  function moveFocus(e: ReactKeyboardEvent) {
+    if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
+    const items = [...(resultsRef.current?.querySelectorAll<HTMLElement>("[data-search-item]") ?? [])].map(
+      (el) => el.querySelector<HTMLElement>("a, button") ?? el,
+    );
+    if (items.length === 0) return;
+    const at = items.findIndex((el) => el === document.activeElement);
+    e.preventDefault();
+    if (e.key === "ArrowDown") items[Math.min(at + 1, items.length - 1)].focus();
+    else if (at <= 0) inputRef.current?.focus();
+    else items[at - 1].focus();
+  }
+
+  const q = filterQuery.trim();
+  const groups = index && q ? searchAll(index, q, today) : [];
+  const topVenues = index ? [...index.venues].sort((a, b) => b.count - a.count).slice(0, TOP_VENUES) : [];
 
   return (
     <div
@@ -113,86 +231,156 @@ export default function SearchPanel({ open, events, onClose }: SearchPanelProps)
       aria-modal="true"
       aria-label={esCL.searchTitle}
       inert={!open}
-      className={`fixed inset-0 z-40 bg-surface-sage overflow-y-auto transition-opacity duration-150 ${
+      onKeyDown={moveFocus}
+      className={`fixed inset-0 z-50 bg-surface-sage overflow-y-auto overscroll-contain transition-opacity duration-150 ${
         open ? "opacity-100" : "opacity-0 pointer-events-none"
       }`}
     >
-      <div className="max-w-[1160px] mx-auto px-5 md:px-0 py-[40px] md:py-[60px]">
-        {/* Same header chrome as CityPickerPanel — the back-arrow doubles
-            as this panel's only "close" affordance, big title on the
-            right — instead of a bespoke X glyph. */}
-        <div className="flex items-center justify-between mb-[40px] md:mb-[60px]">
-          <button type="button" onClick={onClose} aria-label={esCL.closeSearch} className="cursor-pointer">
-            {/* eslint-disable-next-line @next/next/no-img-element -- Figma-exported asset, verbatim per design decision */}
-            <img src="/icons/selector-back-arrow.svg" alt="" width={140} height={19} />
+      {/* The home's top bar (logo, close) with the box under it, both
+          staying put while the results scroll. */}
+      <div className="sticky top-0 z-10 bg-surface-sage border-b border-text-primary/10">
+        <div className="max-w-[1600px] mx-auto h-[84px] md:h-[104px] flex items-center justify-between px-[18px] md:px-[40px] xl:px-[80px]">
+          <SiteWordmark />
+          <button type="button" onClick={onClose} aria-label={esCL.closeSearch} className="cursor-pointer p-[6px] -m-[6px] text-text-primary hover:text-brand-magenta">
+            <svg viewBox="0 0 24 24" aria-hidden="true" className="size-[26px]">
+              <path d="M5 5l14 14M19 5L5 19" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" />
+            </svg>
           </button>
-          <p className="font-lato text-[40px] md:text-[64px] text-brand-magenta whitespace-nowrap">{esCL.searchTitle.toUpperCase()}</p>
         </div>
+        <div className="max-w-[1100px] mx-auto px-[18px] md:px-[40px] pb-[16px] md:pb-[24px]">
+          <div className="relative flex items-center rounded-[16px] border-2 border-text-primary/25 bg-surface-white focus-within:border-brand-magenta transition-colors">
+            <svg viewBox="0 0 24 24" aria-hidden="true" className="absolute left-[16px] md:left-[20px] size-[20px] md:size-[26px] text-text-primary">
+              <circle cx="10.5" cy="10.5" r="6.5" fill="none" stroke="currentColor" strokeWidth="2.4" />
+              <path d="M15.5 15.5L21 21" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" />
+            </svg>
+            <input
+              ref={inputRef}
+              type="search"
+              role="searchbox"
+              aria-label={esCL.searchAriaLabel}
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  // Enter in the box opens the first result.
+                  const first = resultsRef.current?.querySelector<HTMLElement>("[data-search-item]");
+                  (first?.querySelector<HTMLElement>("a, button") ?? first)?.click();
+                }
+              }}
+              placeholder={esCL.searchPlaceholder}
+              autoComplete="off"
+              enterKeyHint="search"
+              className="w-full bg-transparent pl-[48px] md:pl-[60px] pr-[88px] py-[14px] md:py-[18px] font-lato font-black text-[20px] md:text-[30px] text-text-primary placeholder:font-semibold placeholder:text-text-placeholder focus:outline-none [&::-webkit-search-cancel-button]:hidden"
+            />
+            {query && (
+              <button
+                type="button"
+                onClick={() => {
+                  setQuery("");
+                  inputRef.current?.focus();
+                }}
+                className="absolute right-[14px] md:right-[18px] font-fragment-mono text-[13px] text-text-secondary underline cursor-pointer hover:text-brand-magenta"
+              >
+                {esCL.searchClear}
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
 
-        <div className="relative max-w-[600px]">
-          <input
-            ref={inputRef}
-            type="text"
-            role="searchbox"
-            aria-label={esCL.searchAriaLabel}
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder={esCL.searchPlaceholder}
-            className="w-full bg-surface-white rounded-input pl-[46px] pr-[16px] py-[16px] font-geist text-[16px] text-text-primary placeholder:text-icon-default focus:outline-none"
-          />
-          {/* eslint-disable-next-line @next/next/no-img-element -- Figma-exported asset, verbatim per design decision */}
-          <img src="/icons/selector-search.svg" alt="" width={18} height={18} className="absolute left-[16px] top-1/2 -translate-y-1/2" />
-        </div>
-
-        <div className="mt-[40px] md:mt-[60px] flex flex-col gap-[32px] md:gap-[40px]">
-          {!trimmedQuery ? (
-            <p className="font-geist text-[15px] text-text-muted text-center py-10">{esCL.searchHint}</p>
-          ) : matches.length === 0 ? (
-            <p className="font-geist text-[15px] text-text-muted text-center py-10">{esCL.noSearchResults}</p>
-          ) : (
-            <>
-              {/* Split into the same two groups as the home page, per the
-                  user 2026-08-04: a flat mixed list made it hard to tell
-                  inauguraciones from expos at a glance. */}
-              {inauguracionResults.length > 0 && (
-                <div>
-                  <p className="font-fragment-mono font-bold text-[14px] uppercase text-text-primary mb-[16px]">
-                    {esCL.searchGroupInauguraciones}
-                  </p>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-[12px]">
-                    {inauguracionResults.map((e) => (
-                      <EventHorizontalListItem key={e.id} event={e} variant="inauguracion" />
-                    ))}
-                  </div>
+      <div
+        ref={resultsRef}
+        onClickCapture={(e) => {
+          if ((e.target as HTMLElement).closest("[data-search-item]")) saveRecent(filterQuery);
+        }}
+        className="max-w-[1100px] mx-auto px-[18px] md:px-[40px] pt-[24px] md:pt-[40px] pb-[64px] flex flex-col gap-[36px] md:gap-[48px]"
+      >
+        {!q ? (
+          // Before typing: recent searches and the busiest venues.
+          <>
+            {recent.length > 0 && (
+              <section>
+                <GroupLabel>{esCL.searchRecentLabel}</GroupLabel>
+                <div className="flex flex-wrap gap-[8px] mt-[12px]">
+                  {recent.map((r) => (
+                    <button
+                      key={r}
+                      type="button"
+                      data-search-item
+                      onClick={() => {
+                        setQuery(r);
+                        setFilterQuery(r);
+                        inputRef.current?.focus();
+                      }}
+                      className="rounded-full bg-surface-white px-[14px] py-[8px] font-geist text-[14px] text-text-primary cursor-pointer hover:text-brand-magenta"
+                    >
+                      {r}
+                    </button>
+                  ))}
                 </div>
-              )}
-              {visitaGuiadaResults.length > 0 && (
-                <div>
-                  <p className="font-fragment-mono font-bold text-[14px] uppercase text-text-primary mb-[16px]">
-                    {esCL.searchGroupVisitasGuiadas}
-                  </p>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-[12px]">
-                    {visitaGuiadaResults.map((e) => (
-                      <EventHorizontalListItem key={e.id} event={e} variant="inauguracion" />
-                    ))}
-                  </div>
-                </div>
-              )}
-              {expoResults.length > 0 && (
-                <div>
-                  <p className="font-fragment-mono font-bold text-[14px] uppercase text-text-primary mb-[16px]">
-                    {esCL.searchGroupExposiciones}
-                  </p>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-[12px]">
-                    {expoResults.map((e) => (
-                      <EventHorizontalListItem key={e.id} event={e} variant="expo" />
-                    ))}
-                  </div>
-                </div>
-              )}
-            </>
-          )}
-        </div>
+              </section>
+            )}
+            {topVenues.length > 0 && (
+              <section>
+                <GroupLabel>{esCL.searchTopVenuesLabel}</GroupLabel>
+                {topVenues.map((v) => (
+                  <EntityRow key={v.href} entity={v} query="" />
+                ))}
+              </section>
+            )}
+            <p className="hidden md:block font-fragment-mono text-[13px] text-text-secondary">{esCL.searchShortcutHint}</p>
+          </>
+        ) : !index ? (
+          <p className="font-geist text-[15px] text-text-secondary">{esCL.searchLoading}</p>
+        ) : groups.length === 0 && normalizeSearch(q).length < MIN_QUERY_FOR_EVENTS ? (
+          <p className="font-geist text-[15px] text-text-secondary">{esCL.searchShortQueryHint}</p>
+        ) : groups.length === 0 ? (
+          <section className="py-[24px]">
+            <p className="font-lato font-black text-[22px] md:text-[28px] text-text-primary">{esCL.noSearchResults(q)}</p>
+            <p className="mt-[8px] font-geist text-[15px] text-text-secondary">{esCL.searchNoResultsTip}</p>
+            <Link href="/agrega-tu-expo" className="inline-block mt-[16px] font-fragment-mono text-[14px] text-text-primary underline hover:text-brand-magenta">
+              {esCL.searchNoResultsSubmit} →
+            </Link>
+          </section>
+        ) : (
+          <>
+            {groups.map((g) => {
+              const cap = GROUP_CAP[g.kind];
+              const showAll = expanded[g.kind] === true;
+              const total = g.items.length;
+              const toggle =
+                total > cap ? (
+                  <button
+                    type="button"
+                    onClick={() => setExpanded((prev) => ({ ...prev, [g.kind]: !showAll }))}
+                    className="mt-[16px] h-[40px] px-[20px] rounded-full border border-text-primary font-fragment-mono text-[13px] text-text-primary cursor-pointer hover:bg-surface-white"
+                  >
+                    {showAll ? esCL.searchSeeLess : esCL.searchSeeAll(total)}
+                  </button>
+                ) : null;
+              return (
+                <section key={g.kind}>
+                  <GroupLabel>
+                    {GROUP_LABEL[g.kind]} · {total}
+                  </GroupLabel>
+                  {g.kind === "events" ? (
+                    <div className="mt-[12px] grid grid-cols-2 md:grid-cols-4 xl:grid-cols-5 gap-x-[12px] gap-y-[20px]">
+                      {(showAll ? g.items : g.items.slice(0, cap)).map((e) => (
+                        <SearchEventTile key={e.id} event={e} today={today} />
+                      ))}
+                    </div>
+                  ) : g.kind === "places" ? (
+                    (showAll ? g.items : g.items.slice(0, cap)).map((p) => <PlaceRow key={`${p.regionId}-${p.comuna ?? ""}`} place={p} query={q} onSelect={selectRegion} />)
+                  ) : (
+                    (showAll ? g.items : g.items.slice(0, cap)).map((ent) => <EntityRow key={ent.href} entity={ent} query={q} />)
+                  )}
+                  {toggle}
+                </section>
+              );
+            })}
+            {normalizeSearch(q).length < MIN_QUERY_FOR_EVENTS && <p className="font-geist text-[14px] text-text-secondary">{esCL.searchShortQueryHint}</p>}
+          </>
+        )}
       </div>
     </div>
   );

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { esCL } from "@/i18n/es-CL";
 import { adminRegionNameByRegionId, buildRegionMetaByCityId, regionIdFromAdminRegionName } from "@/lib/cities";
 import { shortRegionName } from "@/lib/regionNames";
@@ -20,6 +20,7 @@ import EspaciosSection from "./EspaciosSection";
 import Footer from "./Footer";
 import MenuDrawer from "./MenuDrawer";
 import SearchPanel from "./SearchPanel";
+import { useSearchShortcut } from "@/lib/useSearchIndex";
 import GeoLocationChangedBanner from "./GeoLocationChangedBanner";
 import NewsletterStatusModal, { type NewsletterStatus } from "./NewsletterStatusModal";
 
@@ -35,7 +36,6 @@ interface CalendarViewProps {
   today: string; // YYYY-MM-DD, computed server-side for SSR/CSR consistency
   rangeStart: string; // YYYY-MM-DD — the current week's Monday
   regionActivity: Record<string, RegionActivity>; // distinct events per región — RegionDropdown
-  searchableEvents: EventRecord[]; // active/upcoming, every comuna — SearchPanel's own scope
   nextEvent: EventRecord | null; // empty-state fallback, beyond the current week
   regions: RegionMeta[];
   newsletterStatus: NewsletterStatus | null; // from ?newsletter= — set by /newsletter/confirmar or /newsletter/baja's redirect
@@ -77,7 +77,6 @@ export default function CalendarView({
   today,
   rangeStart,
   regionActivity,
-  searchableEvents,
   nextEvent,
   regions,
   newsletterStatus,
@@ -88,6 +87,9 @@ export default function CalendarView({
   const [drawerInitialView, setDrawerInitialView] = useState<"menu" | "contact">("menu");
   const [searchOpen, setSearchOpen] = useState(false);
   const [locating, setLocating] = useState(false);
+
+  const openSearch = useCallback(() => setSearchOpen(true), []);
+  useSearchShortcut(openSearch);
 
   function openContactDrawer() {
     setDrawerInitialView("contact");
@@ -145,7 +147,7 @@ export default function CalendarView({
 
       <Header
         bottomBorder={false}
-        onOpenSearch={() => setSearchOpen(true)}
+        onOpenSearch={openSearch}
         onOpenMenu={() => {
           setDrawerInitialView("menu");
           setDrawerOpen(true);
@@ -232,7 +234,7 @@ export default function CalendarView({
         initialView={drawerInitialView}
       />
 
-      <SearchPanel open={searchOpen} events={searchableEvents} onClose={() => setSearchOpen(false)} />
+      <SearchPanel open={searchOpen} onClose={() => setSearchOpen(false)} onSelectRegion={goToRegion} />
     </div>
   );
 }
