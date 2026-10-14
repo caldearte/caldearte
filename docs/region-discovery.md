@@ -5461,3 +5461,17 @@ blocked. Headroom at today's ~$0.06 per account per month of Apify plus ~$0.03-0
 informal $10 LLM ceiling is hit); the real ceiling is the supply of relevant spaces (the 104-space SAFA radar yielded 7 accounts). `APIFY_FREE_TIER_USD` is now 19 (both copies) and
 the digest/`/admin/costos` lines say "crédito del plan agotado … el excedente se factura" instead of "límite alcanzado — sin nuevas corridas". Billing country must be Chile: with
 Czech Republic selected Apify added 21% VAT ($22.99 instead of $19.00).
+
+### Wednesday 2026-10-14: the 14-day duplicate memory works; a sourceUrl-tier false duplicate
+
+Web run: 31 candidates (86 on 10-07, 36 on 10-11), 2 duplicates skipped (18-20 before the memory existed), Haiku $0.102 + MiniMax $0.008 = $0.110 vs $0.243 on 10-07. The new
+GAM source (#647) inserted COCÚN and Exposición Salvataje without duplicates. Things the review found:
+
+- **The MAM Chiloé exhibition came back a fourth time** (official title "18ª Muestra Regional de Arte Contemporáneo" from mamchiloe.cl, place "Museo de Arte Moderno de Chiloé"); removed by hand.
+- **The sourceUrl tier treated a different show as a duplicate.** "Arrecia el temporal" (Museo Gabriela Mistral de Vicuña, 22-sep → 17-oct) was dropped on every run as a duplicate of
+  "Yin Yin" (7-jul → 12-sep) because that museum's cartelera publishes every item under one url, and the first event stored under a url made every later event from it a "same sourceUrl,
+  different title" duplicate. `findExistingMatch` now ignores a sourceUrl match when both events have full run ranges and the ranges do not overlap (two different shows); missing dates or
+  overlapping ranges keep the old behavior. Not covered: siblings with the same range ("Mi amigo chileno" next to "Te creo paisaje", both copied from one MNBA page).
+  About 2 real events in 3.5 weeks were lost this way (checked by listing approved candidates whose sourceUrl is held by an event with an unrelated title).
+- **Veto call to know about:** "Mundo Pepo" (GAM, 12-nov → 27-dic; life and work of the creator of Condorito, original archives, in the visual arts hall) was vetoed as documentary/heritage.
+  Added by hand by Daniel's decision: graphic art in an art hall is in scope even when it is retrospective.

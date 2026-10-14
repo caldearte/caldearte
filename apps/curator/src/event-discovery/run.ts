@@ -845,6 +845,25 @@ function findCoreTitleMatch(c: EventCandidate, seen: SeenKeys): ExistingEventInf
 }
 
 // Which already-stored event (if any) a candidate duplicates, tier by tier.
+// Two candidates sharing a sourceUrl are normally the same event reported
+// twice — but some sources publish a whole listing under ONE url (the block
+// path of a cartelera page, a multi-event post), so the first event inserted
+// from it used to make every later, genuinely different event from the same
+// url a "duplicate". Found 2026-10-14: "Arrecia el temporal" (Museo Gabriela
+// Mistral de Vicuña, 22-sep → 17-oct) was dropped on every run as a duplicate
+// of "Yin Yin" (7-jul → 12-sep) because both carry the cartelera's url. Two
+// full run ranges that do not overlap are two different shows, so that match
+// doesn't count. Anything less certain (a missing date on either side, ranges
+// that overlap) keeps the old behavior: the same event re-reported with
+// reworded dates must still be skipped.
+function sameSourceUrlUnlessDistinctRun(existing: ExistingEventInfo | undefined, c: EventCandidate): ExistingEventInfo | undefined {
+  if (!existing) return undefined;
+  if (existing.runStartDate && existing.runEndDate && c.runStartDate && c.runEndDate) {
+    if (existing.runEndDate < c.runStartDate || c.runEndDate < existing.runStartDate) return undefined;
+  }
+  return existing;
+}
+
 // Extracted VERBATIM from insertCandidates (2026-10-02) so the safety net
 // can ask "would this candidate end up as a brand-new event?" with the
 // exact same matching insertCandidates then applies — one source of truth,
@@ -854,7 +873,7 @@ export function findExistingMatch(c: EventCandidate, seen: SeenKeys): ExistingMa
   const locDateKey = locationDateKey(c.location, c.placeName, c);
   const locDateOnlyKey = locationDateOnlyKey(c.location, c);
   const titleMatch = seen.titles.get(titleKey);
-  const sourceUrlMatch = c.sourceUrl !== null ? seen.sourceUrls.get(c.sourceUrl) : undefined;
+  const sourceUrlMatch = c.sourceUrl !== null ? sameSourceUrlUnlessDistinctRun(seen.sourceUrls.get(c.sourceUrl), c) : undefined;
   const locationDateMatch = (seen.locationDates.get(locDateKey) ?? []).find((existing) =>
     isLikelySameTitleIgnoringPlaceName(existing.title, c.title, c.placeName),
   );
