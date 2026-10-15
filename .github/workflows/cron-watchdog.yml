@@ -63,6 +63,14 @@ jobs:
             # a catch-up run must actually publish, same as any other
             # real scheduled firing would have.
             extra_dispatch_flag: "-f dry_run=false"
+            # A run that STARTED and FAILED (2026-10-09: one connect
+            # ETIMEDOUT to Meta killed the Friday run) never looks overdue
+            # here — the last SUCCESS was only ~50h old against the 96h
+            # buffer, so nothing re-triggered it and the post would have
+            # been lost until Monday. Retry a failure once if it is at most
+            # this many hours old (publish-social.yml only publishes on its
+            # own Mon/Wed/Fri, so a same-day retry is the useful kind).
+            retry_failed_within_hours: 20
           - workflow: daily-digest.yml
             max_gap_hours: 30
             extra_dispatch_flag: ""
@@ -130,6 +138,29 @@ jobs:
             echo "${{ matrix.workflow }}: no successful run found at all — triggering now."
             gh workflow run "${{ matrix.workflow }}" -R "$REPO" ${{ matrix.extra_dispatch_flag }}
             exit 0
+          fi
+
+          # Retry a recent FAILED run once (only for entries that set
+          # retry_failed_within_hours). Counts failed runs since the last
+          # success whose own end time is inside the window: exactly one
+          # -> re-dispatch it; two or more -> the retry failed too, so stop
+          # retrying and fail this job loudly (GitHub emails the owner)
+          # instead of looping every 4 hours.
+          RETRY_WINDOW="${{ matrix.retry_failed_within_hours }}"
+          if [ -n "$RETRY_WINDOW" ]; then
+            CUTOFF=$(( $(date -u +%s) - RETRY_WINDOW * 3600 ))
+            FAILED_RECENT=$(gh api -X GET "repos/$REPO/actions/workflows/${{ matrix.workflow }}/runs" \
+              -f status=failure -f per_page=10 \
+              | jq --arg last "$LAST" --argjson cutoff "$CUTOFF" \
+                '[.workflow_runs[] | select(.created_at > $last and (.updated_at | fromdateiso8601) > $cutoff)] | length')
+            if [ "$FAILED_RECENT" -eq 1 ]; then
+              echo "${{ matrix.workflow }}: last run failed since the last success (inside ${RETRY_WINDOW}h) — retrying once."
+              gh workflow run "${{ matrix.workflow }}" -R "$REPO" ${{ matrix.extra_dispatch_flag }}
+              exit 0
+            elif [ "$FAILED_RECENT" -gt 1 ]; then
+              echo "::error::${{ matrix.workflow }}: $FAILED_RECENT failed runs since the last success, including the retry — not retrying again, needs a human."
+              exit 1
+            fi
           fi
 
           LAST_EPOCH=$(date -u -d "$LAST" +%s)
