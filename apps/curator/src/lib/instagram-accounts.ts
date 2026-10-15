@@ -2633,6 +2633,36 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
     addedAt: "2026-10-11",
     fixedLocation: { location: "Ñuñoa", placeName: "Galería Azul Petróleo", address: "Máximo Jeria 487, Ñuñoa, Santiago" },
   },
+  {
+    username: "museohistorico_laserena",
+    note:
+      "Encontrada 2026-10-12 en el grafo de coautores (coposteo con " +
+      "taller_99). Museo Histórico Gabriel González Videla, Matta 495, " +
+      "La Serena — museo estatal (Servicio Nacional del Patrimonio " +
+      "Cultural), 4.811 seguidores, 834 publicaciones, activa, destacado " +
+      "\"Actividades\"; web museohistoricolaserena.gob.cl. Contenido " +
+      "mixto como museoregionaldeatacama: exposiciones temporales junto " +
+      "a mediación, efemérides y colección histórica (esto último cae bajo " +
+      "la cláusula documental/patrimonial, Haiku lo filtra). Aporta " +
+      "cobertura a La Serena. Evaluada por Chrome (solo cabecera del " +
+      "perfil; revisar yield en las primeras corridas). fixedLocation.",
+    addedAt: "2026-10-12",
+    fixedLocation: { location: "La Serena", placeName: "Museo Histórico Gabriel González Videla", address: "Matta 495, La Serena" },
+  },
+  {
+    username: "lamenudagaleria",
+    note:
+      "Encontrada 2026-10-12 en el grafo de coautores (autora de un post " +
+      "de lacaracola_galeria). La Menuda — \"galería mínima de artes " +
+      "visuales\", itinerante: sus muestras se montan en otros espacios " +
+      "del sur (octubre 2026: Mesa Tropera en Puerto Varas y Galería La " +
+      "Caracola en Puerto Montt), por eso SIN fixedLocation (Haiku infiere " +
+      "la sede de cada post). 944 seguidores, 122 publicaciones, pública y " +
+      "activa. Riesgo: sus muestras en La Caracola ya entran por " +
+      "lacaracola_galeria, la dedup debería absorberlas. Evaluada por " +
+      "Chrome; revisar yield y duplicados en las primeras corridas.",
+    addedAt: "2026-10-12",
+  },
   // Evaluadas 2026-10-11 con la lista de espacios de SAFA (segunda
   // tanda del grupo A1), por Chrome. Solo Azul Petróleo se agregó:
   //
