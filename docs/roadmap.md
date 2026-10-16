@@ -620,6 +620,26 @@ building infra" discipline the rest of this project has followed.
       generic one plus 3 separate Sunday slots) down to **one**, firing
       only Mon/Wed/Fri — there's only one carousel shape now, so no more
       per-type juggling within a single day.
+  - **Daily "mañana" carousel, 2026-10-16** (Daniel), replacing the 3
+    posting days above: every evening Sunday-Friday at ~19:30 Santiago, one
+    carousel about the **next day**; Friday's covers Saturday+Sunday. Why,
+    measured that day: Friday's Fri-Sun window had 14-18 eligible events
+    for 9 slides; 25 of 40 Saturday openings are before 14:00; and the
+    09:05 cron really ran 4-9 h late, so 13 of 125 posted events had
+    already started when the post went out. Same change:
+    - Fired by **pg_cron in Supabase** (migration
+      `20261016190000_schedule_publish_social_dispatch.sql`) through a
+      `workflow_dispatch`, not by GitHub's `schedule` — the token lives in
+      Supabase Vault (`github_publish_social_dispatch_token`).
+    - When more than 9 events fit the day, the closing slide becomes
+      **"+N eventos más"** (`/api/social/cierre`), counting every
+      inauguración/visita guiada of that window that the site shows and
+      the carousel doesn't. IG is the short version, the site the full one.
+    - A run within 12 h of a published carousel is a no-op (a retry must
+      never post the leftovers as a second carousel); a catch-up run before
+      14:00 targets that same day and drops events that already started.
+    - Windows are Santiago days (they used to slice the UTC timestamp,
+      which put 21:00 openings on the next day).
   - **Discovery cadence moved Monday → Sunday, shipped 2026-08-23**
     (event-discovery bright-sources/headless/Instagram/Google-Alerts
     crons + the weekly newsletter, keeping their existing relative

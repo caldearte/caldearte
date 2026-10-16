@@ -51,7 +51,7 @@ flowchart LR
   D -- curated with the same policy --> DB
 
   DB --> W["caldearte.com<br/>Next.js on Vercel"]
-  DB --> S["Instagram + Facebook<br/>carousels (Mon/Wed/Fri)"]
+  DB --> S["Instagram + Facebook<br/>carousels (daily, ~19:30)"]
   DB --> N["Weekly newsletter<br/>(Resend)"]
   DB --> G["Daily digest<br/>for the curators"]
 ```
@@ -117,7 +117,7 @@ All times are UTC (Chile is UTC−3 or UTC−4).
 | `instagram-bright-sources.yml` | Mon–Sat 08:17 | Instagram discovery via Apify |
 | `google-alerts-bright-source.yml` | Sun 09:22 | Google Alerts feed |
 | `weekly-newsletter.yml` | Sun 10:27 | Weekly digest to subscribers, per region |
-| `publish-social.yml` | Mon, Wed, Fri 12:05 | Instagram and Facebook carousels |
+| `publish-social.yml` | Dispatched by pg_cron, Sun–Fri ~19:30 Santiago | Instagram and Facebook carousels about the next day |
 | `daily-digest.yml` | Daily 10:30 | Summary email for the curators |
 | `apify-usage-snapshot.yml` | Daily 09:33 | Records Apify usage against the free tier |
 | `instagram-insights.yml` | Mon 20:45 | Snapshot of the account's own metrics |

@@ -1,9 +1,10 @@
 // Instagram automated-post cron (docs/roadmap.md, Fase 4 — redesigned
 // 2026-08-31 into a single "agenda" carousel, Camila's "bitácora" request:
 // no repeats, mixed inauguraciones+visitas guiadas, short non-overlapping
-// date windows instead of one big weekly dump). Runs daily; most days it's
-// a no-op — only Monday/Wednesday/Friday post, and only if their window
-// actually has something eligible. Wires together the single pure selector
+// date windows instead of one big weekly dump). Since 2026-10-16 it posts
+// every evening Sunday-Friday about the NEXT day (Friday covers the whole
+// weekend) — see postingPlanFor — and only if that window actually has
+// something eligible. Wires together the single pure selector
 // (./selection.ts), the flyer renderer (apps/web's /api/social/flyer,
 // deployed and publicly reachable — Instagram's Graph API fetches
 // image_url itself server-side, so no image upload step is needed here),
@@ -13,12 +14,20 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database, Tables } from "@caldearte/shared-types";
 import { getSupabaseClient } from "../lib/supabase-client.js";
 import { shortRegionName } from "../lib/regionNames.js";
-import { selectUpcoming, type SocialEvent } from "./selection.js";
+import { santiagoDate, selectUpcoming, type SocialEvent } from "./selection.js";
 import { publishInstagramCarousel, verifyInstagramAccount, type InstagramClientConfig } from "./instagram.js";
 import { publishFacebookPost, verifyFacebookPage, type FacebookClientConfig } from "./facebook.js";
 
 const SITE_URL = "https://www.caldearte.com";
 const CLOSING_SLIDE_URL = `${SITE_URL}/social/ig-post-cierre.png`;
+// Carousels cap at 10 slides on Instagram's side (Graph API, not the app's
+// 20), and one is always the closing slide.
+const MAX_EVENT_SLIDES = 9;
+// A second run within this many hours of a published carousel is a no-op.
+// Without it a retry (watchdog, manual dispatch, a duplicated pg_cron
+// firing) would happily post a SECOND carousel with the leftovers, since
+// social_post_log already excludes everything the first one showed.
+const ALREADY_POSTED_WITHIN_HOURS = 12;
 
 // Keyword-first opener (2026-08-23) — Instagram's own discovery model reads
 // caption text (the first line especially) to decide who a post is for,
@@ -26,10 +35,19 @@ const CLOSING_SLIDE_URL = `${SITE_URL}/social/ig-post-cierre.png`;
 // discovery lever (Mosseri, 2026). "Chile" stays fixed since every
 // carousel is nationwide, not comuna-specific — which comunas show up
 // changes carousel to carousel (diversifyByComuna), so a caption can't
-// name one without being wrong most days. "Próximos días" (not "esta
-// semana") since a window is now 2-3 days, never the whole week.
-const CAPTION =
-  "Esto se viene en los próximos días: inauguraciones y visitas guiadas de arte en Chile — Santiago y regiones. Desliza para ver todas — la agenda completa está en el link de la bio.";
+// name one without being wrong most days. The opener names the exact day
+// the carousel covers (2026-10-16: one day per post, not "próximos días").
+type When = "hoy" | "manana" | "finde" | "proximos";
+const WHEN_OPENER: Record<When, string> = {
+  hoy: "Hoy",
+  manana: "Mañana",
+  finde: "Este fin de semana",
+  proximos: "En los próximos días",
+};
+
+function captionFor(when: When): string {
+  return `${WHEN_OPENER[when]} hay arte en Chile: inauguraciones y visitas guiadas en Santiago y regiones. Desliza para verlas todas — la agenda completa, por región, está en el link de la bio.`;
+}
 
 type EventRow = Tables<"events">;
 type EventWithRegion = EventRow & { comunaName: string | null };
@@ -57,26 +75,34 @@ function mondayOfWeek(dateStr: string): string {
   return dt.toISOString().slice(0, 10);
 }
 
-// The 3 fixed posting days and their (non-overlapping) date windows —
-// Camila's "bitácora" redesign, 2026-08-31: Monday covers Monday+Tuesday,
-// Wednesday covers Wednesday+Thursday, Friday covers Friday through
-// Sunday (the widest window, since real data shows weekends carry most of
-// the week's volume — see the plan doc this commit implements). Every
-// other day is a deliberate no-op, not a bug — and even on a posting day,
-// an empty window still results in no post at all (checked by the caller
-// via selectUpcoming's return length), by design: no filler content.
-function postingWindowFor(now: Date): { start: string; end: string } | null {
-  const dow = new Intl.DateTimeFormat("en-US", { timeZone: "America/Santiago", weekday: "short" }).format(now);
+// Daniel 2026-10-16, replacing the Mon/Wed/Fri windows (Camila's 2026-08-31
+// "bitácora"): one carousel every evening about the NEXT day, Friday about
+// the whole weekend. Measured before the change: Friday's Fri-Sun window
+// had 14-18 eligible events against 9 slides, and 13 of 125 posted events
+// had already started when the post went out — 25 of 40 Saturday openings
+// are before 14:00, and the old morning cron really ran 4-9 hours late
+// (GitHub schedule delay), so it often landed after noon openings.
+//
+// The run is triggered at ~19:30 Santiago by pg_cron (see the
+// schedule_publish_social migration), so "after 14:00" means the normal
+// evening run and the target is tomorrow. A run before 14:00 is a late
+// catch-up (watchdog retry of a failed evening run, a manual dispatch) and
+// targets today instead, so a retried post is still useful the morning of.
+// Sunday is never a target of its own — Saturday's window already covers
+// it — so a Saturday-evening run is a deliberate no-op. An empty window
+// still results in no post at all, by design: no filler content.
+function postingPlanFor(now: Date): { start: string; end: string; when: When } | null {
   const today = todayInSantiago(now);
-  switch (dow) {
-    case "Mon":
-    case "Wed":
-      return { start: today, end: addDays(today, 1) };
-    case "Fri":
-      return { start: today, end: addDays(today, 2) };
-    default:
-      return null;
-  }
+  const hour = Number(
+    new Intl.DateTimeFormat("en-US", { timeZone: "America/Santiago", hour: "numeric", hourCycle: "h23" }).format(now),
+  );
+  const evening = hour >= 14;
+  const target = evening ? addDays(today, 1) : today;
+  const [y, m, d] = target.split("-").map(Number);
+  const targetDow = new Date(Date.UTC(y, m - 1, d)).getUTCDay(); // Sun=0..Sat=6
+  if (targetDow === 0) return null;
+  if (targetDow === 6) return { start: target, end: addDays(target, 1), when: "finde" };
+  return { start: target, end: target, when: evening ? "manana" : "hoy" };
 }
 
 function toSocialEvent(e: EventWithRegion): SocialEvent {
@@ -142,6 +168,30 @@ function buildFlyerUrl(e: SocialEvent, comunaAndRegion: { comuna: string | null;
   return `${SITE_URL}/api/social/flyer?${params.toString()}`;
 }
 
+// Every inauguración/visita guiada in the window the site shows but this
+// carousel doesn't — including ones without a photo, flagged sensitive or
+// already posted earlier, all of which are still on caldearte.com. The
+// closing slide turns that number into the reason to open the site
+// (Daniel 2026-10-16: IG is the short version, the web the full one).
+function countLeftOut(events: SocialEvent[], window: { start: string; end: string }, shown: SocialEvent[]): number {
+  const shownIds = new Set(shown.map((e) => e.id));
+  return events.filter(
+    (e) =>
+      (e.eventType === "inauguracion" || e.eventType === "visita_guiada") &&
+      !shownIds.has(e.id) &&
+      e.openingDatetime &&
+      santiagoDate(e.openingDatetime) >= window.start &&
+      santiagoDate(e.openingDatetime) <= window.end,
+  ).length;
+}
+
+// The static slide when nothing was left out; otherwise the rendered
+// "y N más" variant (apps/web's /api/social/cierre).
+function closingSlideUrl(leftOut: number, when: When): string {
+  if (leftOut === 0) return CLOSING_SLIDE_URL;
+  return `${SITE_URL}/api/social/cierre?${new URLSearchParams({ mas: String(leftOut), cuando: when }).toString()}`;
+}
+
 export interface RunDeps {
   supabase?: SupabaseClient<Database>;
   now?: Date;
@@ -188,13 +238,13 @@ export async function run(deps: RunDeps = {}): Promise<void> {
       : undefined);
 
   // Checked before touching Supabase or Instagram credentials at all —
-  // most days are a no-op by design (see postingWindowFor), and neither
+  // Saturday is a no-op by design (see postingPlanFor), and neither
   // needs to be configured/reachable just to determine that. Real bug,
   // found writing this test: getSupabaseClient() used to run first
   // unconditionally, so a no-op day still required SUPABASE_URL/
   // SUPABASE_SERVICE_ROLE_KEY to be set or it would throw before ever
   // reaching the "nothing scheduled" check.
-  const window = forceWindow ?? postingWindowFor(now);
+  const window = forceWindow ? { ...forceWindow, when: "proximos" as When } : postingPlanFor(now);
   if (!window) {
     console.log(`[social-publish] ${today} — nothing scheduled today, exiting.`);
     return;
@@ -242,18 +292,36 @@ export async function run(deps: RunDeps = {}): Promise<void> {
       // this redesign) — an event already shown once should never repeat,
       // full stop, so there's no "this week only" scoping anymore.
       supabase.from("social_post_log").select("event_id"),
+      supabase
+        .from("instagram_posts")
+        .select("published_at")
+        .eq("post_type", "agenda")
+        .gte("published_at", new Date(now.getTime() - ALREADY_POSTED_WITHIN_HOURS * 3600_000).toISOString()),
     ]);
 
-  let [eventsRes, regionsRes, logRes] = await loadEvents();
-  for (let attempt = 1; attempt <= 3 && (eventsRes.error || regionsRes.error || logRes.error); attempt++) {
-    const err = eventsRes.error ?? regionsRes.error ?? logRes.error;
+  let [eventsRes, regionsRes, logRes, recentPostsRes] = await loadEvents();
+  for (
+    let attempt = 1;
+    attempt <= 3 && (eventsRes.error || regionsRes.error || logRes.error || recentPostsRes.error);
+    attempt++
+  ) {
+    const err = eventsRes.error ?? regionsRes.error ?? logRes.error ?? recentPostsRes.error;
     console.warn(`[social-publish] Supabase read failed (attempt ${attempt}/3): ${err?.message}. Retrying...`);
     await new Promise((resolve) => setTimeout(resolve, attempt * 1500));
-    [eventsRes, regionsRes, logRes] = await loadEvents();
+    [eventsRes, regionsRes, logRes, recentPostsRes] = await loadEvents();
   }
   if (eventsRes.error) throw new Error(`Failed to load events: ${eventsRes.error.message}`);
   if (regionsRes.error) throw new Error(`Failed to load regions: ${regionsRes.error.message}`);
   if (logRes.error) throw new Error(`Failed to load social_post_log: ${logRes.error.message}`);
+  if (recentPostsRes.error) throw new Error(`Failed to load instagram_posts: ${recentPostsRes.error.message}`);
+
+  if ((recentPostsRes.data ?? []).length > 0) {
+    if (!dryRun) {
+      console.log(`[social-publish] ${today}: a carousel already went out in the last ${ALREADY_POSTED_WITHIN_HOURS}h, skipping.`);
+      return;
+    }
+    console.log(`[social-publish] DRY RUN — a carousel already went out in the last ${ALREADY_POSTED_WITHIN_HOURS}h; a real run would skip here.`);
+  }
 
   const regionById = new Map((regionsRes.data ?? []).map((r) => [r.id, r]));
   const events: EventWithRegion[] = ((eventsRes.data ?? []) as EventRow[]).map((e) => {
@@ -271,7 +339,10 @@ export async function run(deps: RunDeps = {}): Promise<void> {
       return [e.id, { comuna, region: regionLabel ?? comuna ?? e.freeform_location ?? "" }];
     }),
   );
-  const socialEvents = events.map(toSocialEvent);
+  // An event that already started can't be announced — only reachable on
+  // a morning catch-up run (postingPlanFor), never on the evening one.
+  const nowIso = now.toISOString();
+  const socialEvents = events.map(toSocialEvent).filter((e) => !e.openingDatetime || e.openingDatetime > nowIso);
 
   const alreadyPostedIds = new Set((logRes.data ?? []).map((r) => r.event_id));
 
@@ -281,25 +352,24 @@ export async function run(deps: RunDeps = {}): Promise<void> {
     return;
   }
 
-  // Reserve one slot for the fixed closing slide — carousels cap at 10
-  // total on Instagram's side, not 10 dynamic + 1 static.
-  const dynamicSlides = selected.slice(0, 9);
+  const dynamicSlides = selected.slice(0, MAX_EVENT_SLIDES);
   const imageUrls = [
     ...dynamicSlides.map((e) => buildFlyerUrl(e, comunaAndRegionById.get(e.id) ?? { comuna: null, region: "" })),
-    CLOSING_SLIDE_URL,
+    closingSlideUrl(countLeftOut(socialEvents, window, dynamicSlides), window.when),
   ];
+  const caption = captionFor(window.when);
   // Instagram-only — the "Con: @handle" line names Instagram accounts
   // (venue/artist), which don't correspond to any real Facebook page or
   // profile. Posting that same text to Facebook would just show up as
   // inert, unlinked "@handle" text with no account behind it — Daniel
   // 2026-09-25, right after the first real Facebook post went out.
-  const instagramCaption = withVenueMentions(CAPTION, dynamicSlides);
+  const instagramCaption = withVenueMentions(caption, dynamicSlides);
 
   if (dryRun) {
     console.log(
       `[social-publish] DRY RUN — would publish a carousel with ${dynamicSlides.length} event(s) + closing slide (window ${window.start}..${window.end}).\n` +
         `  Instagram caption: ${instagramCaption}\n` +
-        `  Facebook caption: ${CAPTION}\n` +
+        `  Facebook caption: ${caption}\n` +
         imageUrls.map((url, i) => `  [${i + 1}/${imageUrls.length}] ${url}`).join("\n"),
     );
     return;
@@ -317,7 +387,7 @@ export async function run(deps: RunDeps = {}): Promise<void> {
   if (facebookConfig) {
     try {
       const publishFacebook = deps.publishFacebookPostFn ?? publishFacebookPost;
-      const facebookPostId = await publishFacebook(facebookConfig, imageUrls, CAPTION);
+      const facebookPostId = await publishFacebook(facebookConfig, imageUrls, caption);
       console.log(`[social-publish] published to Facebook too, post id ${facebookPostId}.`);
     } catch (err) {
       console.error(`[social-publish] Instagram published fine, but the Facebook post failed: ${err instanceof Error ? err.message : String(err)}`);
@@ -331,7 +401,7 @@ export async function run(deps: RunDeps = {}): Promise<void> {
   // constraint) — the old 3-value distinction doesn't apply once there's
   // only one carousel shape; which events it contained is still visible
   // per-event via social_post_log.
-  const weekStart = mondayOfWeek(today);
+  const weekStart = mondayOfWeek(window.start);
   const { error: postLogError } = await supabase
     .from("instagram_posts")
     .insert({ media_id: publishedId, post_type: "agenda", week_start: weekStart, published_at: now.toISOString() });

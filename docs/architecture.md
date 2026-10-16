@@ -727,6 +727,13 @@ and a digest reporting that is exactly what it's for. A failed read
 counts as "found" so a database problem can't turn into a spin.
 GitHub's own job timeout (6 h default) comfortably covers the wait.
 
+**Update 2026-10-16:** `publish-social` no longer uses GitHub's
+`schedule` at all. A post announcing the next day's events needs its time
+to hold, and the drift above (4-9 h for this workflow over its last 20
+runs) made it land after noon openings. pg_cron in Supabase now
+dispatches it at ~19:30 Santiago (see roadmap.md, "Daily mañana carousel").
+The other crons keep GitHub's schedule: nothing they do is time-critical.
+
 ## Cron watchdog (2026-08-28)
 
 Same day, a separate but related discovery: GitHub Actions' `schedule`

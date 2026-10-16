@@ -4,10 +4,10 @@ import { run } from "./run.js";
 
 const hasLocalSupabase = Boolean(process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY);
 
-test("run(): a day with nothing scheduled (e.g. Tuesday) exits without touching Instagram or Supabase", async () => {
+test("run(): a Saturday-evening run (target Sunday, already covered by Friday's weekend post) exits without touching Instagram or Supabase", async () => {
   let publishCalled = false;
   await run({
-    now: new Date("2026-08-04T12:00:00.000Z"), // a Tuesday
+    now: new Date("2026-08-08T22:30:00.000Z"), // Saturday 18:30 in Santiago
     supabase: undefined,
     instagramConfig: { igBusinessAccountId: "unused", accessToken: "unused" },
     publishInstagramCarouselFn: async () => {
@@ -30,6 +30,7 @@ function fakeSupabase(tables: Record<string, unknown[]>) {
         select: () => builder,
         eq: () => builder,
         is: () => builder,
+        gte: () => builder,
         insert: async () => ({ error: new Error("dry run should never insert") }),
         then: (resolve: (v: { data: unknown[]; error: null }) => void) => resolve({ data, error: null }),
       };
@@ -51,6 +52,7 @@ function flakySupabase(tables: Record<string, unknown[]>, failingTable: string, 
         select: () => builder,
         eq: () => builder,
         is: () => builder,
+        gte: () => builder,
         insert: async () => ({ error: new Error("dry run should never insert") }),
         then: (resolve: (v: { data: unknown[] | null; error: Error | null }) => void) => {
           if (table === failingTable && calls < failCount) {
@@ -156,7 +158,7 @@ test("run(): dry run + forceWindow exercises the real pipeline (selection, flyer
   assert.equal(publishCalled, false, "dry run should never actually publish");
 });
 
-test("run(): Monday's window covers Monday+Tuesday only — excludes Sunday (before) and Wednesday (after)", async () => {
+test("run(): an evening run covers only the next day — Sunday evening posts Monday, excluding Sunday (before) and Tuesday/Wednesday (after)", async () => {
   const supabase = fakeSupabase({
     events: [
       {
@@ -231,7 +233,7 @@ test("run(): Monday's window covers Monday+Tuesday only — excludes Sunday (bef
   const published: { imageUrls: string[] }[] = [];
   await run({
     supabase,
-    now: new Date("2026-08-31T12:00:00.000Z"), // a Monday
+    now: new Date("2026-08-30T22:30:00.000Z"), // Sunday 18:30 in Santiago
     instagramConfig: { igBusinessAccountId: "fake-account", accessToken: "fake-token" },
     publishInstagramCarouselFn: async (_config, imageUrls) => {
       published.push({ imageUrls });
@@ -241,16 +243,12 @@ test("run(): Monday's window covers Monday+Tuesday only — excludes Sunday (bef
 
   assert.equal(published.length, 1);
   const dynamicSlides = published[0].imageUrls.slice(0, -1); // last slide is always the fixed closing image
-  assert.equal(dynamicSlides.length, 2, "only Monday+Tuesday events should be selected");
+  assert.equal(dynamicSlides.length, 1, "only Monday's event should be selected");
   assert.match(dynamicSlides[0], /title=Evento\+del\+lunes/);
-  // Each slide carries its OWN event's flyer type now — a mixed carousel,
-  // not one type for the whole post.
   assert.match(dynamicSlides[0], /type=inauguracion/);
-  assert.match(dynamicSlides[1], /title=Recorrido\+del\+martes/);
-  assert.match(dynamicSlides[1], /type=visita_guiada/);
 });
 
-test("run(): Friday's window covers Friday through Sunday", async () => {
+test("run(): a Friday-evening run covers Saturday and Sunday", async () => {
   const supabase = fakeSupabase({
     events: [
       {
@@ -293,7 +291,7 @@ test("run(): Friday's window covers Friday through Sunday", async () => {
   const published: { imageUrls: string[] }[] = [];
   await run({
     supabase,
-    now: new Date("2026-09-04T12:00:00.000Z"), // a Friday
+    now: new Date("2026-09-04T23:00:00.000Z"), // Friday 19:00 in Santiago
     instagramConfig: { igBusinessAccountId: "fake-account", accessToken: "fake-token" },
     publishInstagramCarouselFn: async (_config, imageUrls) => {
       published.push({ imageUrls });
@@ -303,7 +301,7 @@ test("run(): Friday's window covers Friday through Sunday", async () => {
 
   assert.equal(published.length, 1);
   const dynamicSlides = published[0].imageUrls.slice(0, -1);
-  assert.equal(dynamicSlides.length, 1, "only the Sunday event falls inside Friday's window (Fri-Sun)");
+  assert.equal(dynamicSlides.length, 1, "only the Sunday event falls inside the weekend window (Sat-Sun)");
   assert.match(dynamicSlides[0], /title=Evento\+del\+domingo/);
 });
 
@@ -414,7 +412,7 @@ test("run(): @mentions the artist too when the source caption named one, combine
         image_url: "https://example.com/b.jpg",
         description: null,
         sensitivity_tags: [],
-        opening_datetime: "2026-09-01T20:00:00.000Z",
+        opening_datetime: "2026-08-31T21:00:00.000Z",
         opening_time_confirmed: true,
         run_start_date: null,
         run_end_date: null,
@@ -595,7 +593,7 @@ test("run(): a Facebook posting failure is logged, not thrown — Instagram alre
 });
 
 test(
-  "run(): publishes a mixed carousel on Monday, logs every published event (including what used to be exempt as 'inauguracion'), and a second run the same day doesn't repeat it",
+  "run(): publishes a mixed carousel for Monday, logs every published event (including what used to be exempt as 'inauguracion'), and a second run the same day doesn't repeat it",
   { skip: !hasLocalSupabase },
   async () => {
     const { getSupabaseClient } = await import("../lib/supabase-client.js");
@@ -620,7 +618,7 @@ test(
           curation_status: "approved",
           source: "discovered",
           event_type: "inauguracion",
-          opening_datetime: "2026-08-31T20:00:00.000Z", // Monday — inside Monday's window
+          opening_datetime: "2026-08-31T20:00:00.000Z", // Monday — inside Monday's window (posted Sunday evening)
           image_url: "https://example.com/a.jpg",
         },
         {
@@ -630,7 +628,7 @@ test(
           curation_status: "approved",
           source: "discovered",
           event_type: "visita_guiada",
-          opening_datetime: "2026-09-01T20:00:00.000Z", // Tuesday — inside Monday's window
+          opening_datetime: "2026-08-31T15:00:00.000Z", // Monday noon — inside Monday's window
           image_url: "https://example.com/b.jpg",
         },
         {
@@ -648,7 +646,7 @@ test(
       if (eventsError) throw new Error(`Failed to seed test events: ${eventsError.message}`);
 
       const published: { imageUrls: string[]; caption: string }[] = [];
-      const now = new Date("2026-08-31T12:00:00.000Z"); // Monday
+      const now = new Date("2026-08-30T22:30:00.000Z"); // Sunday evening — posts Monday
       await run({
         supabase: client,
         now,
@@ -692,3 +690,106 @@ test(
     }
   },
 );
+
+function eventRow(id: string, openingDatetime: string, eventType = "inauguracion", extra: Record<string, unknown> = {}) {
+  return {
+    id,
+    title: `Evento ${id}`,
+    artist: null,
+    place_name: null,
+    region_id: null,
+    image_url: `https://example.com/${id}.jpg`,
+    description: null,
+    sensitivity_tags: [],
+    opening_datetime: openingDatetime,
+    opening_time_confirmed: true,
+    run_start_date: null,
+    run_end_date: null,
+    freeform_location: "Santiago",
+    event_type: eventType,
+    ...extra,
+  };
+}
+
+async function publishOnce(supabase: unknown, now: Date) {
+  const published: { imageUrls: string[]; caption: string }[] = [];
+  await run({
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- test double
+    supabase: supabase as any,
+    now,
+    instagramConfig: { igBusinessAccountId: "fake-account", accessToken: "fake-token" },
+    publishInstagramCarouselFn: async (_config, imageUrls, caption) => {
+      published.push({ imageUrls, caption });
+      return "fake-media-id";
+    },
+  });
+  return published;
+}
+
+test("run(): a carousel already published in the last 12h makes a second run a no-op — a retry must never post the leftovers as a 2nd carousel", async () => {
+  const supabase = fakeSupabase({
+    events: [eventRow("e1", "2026-10-16T22:30:00.000Z")],
+    regions: [],
+    social_post_log: [],
+    instagram_posts: [{ published_at: "2026-10-15T22:31:00.000Z" }],
+  });
+  const published = await publishOnce(supabase, new Date("2026-10-15T23:30:00.000Z")); // Thursday 20:30
+  assert.equal(published.length, 0);
+});
+
+test("run(): a morning catch-up run targets today and drops events that already started", async () => {
+  const supabase = fakeSupabase({
+    events: [
+      eventRow("mediodia", "2026-10-16T15:00:00.000Z"), // Friday 12:00 Santiago — already started at 13:00
+      eventRow("tarde", "2026-10-16T22:30:00.000Z"), // Friday 19:30
+    ],
+    regions: [],
+    social_post_log: [],
+  });
+  const published = await publishOnce(supabase, new Date("2026-10-16T16:00:00.000Z")); // Friday 13:00
+  assert.equal(published.length, 1);
+  const dynamicSlides = published[0].imageUrls.slice(0, -1);
+  assert.equal(dynamicSlides.length, 1);
+  assert.match(dynamicSlides[0], /title=Evento\+tarde/);
+  assert.match(published[0].caption, /^Hoy hay arte en Chile/);
+});
+
+test("run(): more than 9 events → the closing slide becomes 'y N más', counting every left-out event the site shows (no photo, sensitive, already posted too)", async () => {
+  const saturday = (i: number) => `2026-10-17T${String(12 + i).padStart(2, "0")}:00:00.000Z`;
+  const supabase = fakeSupabase({
+    events: [
+      ...Array.from({ length: 11 }, (_, i) => eventRow(`s${i}`, saturday(i), "inauguracion", { freeform_location: `Comuna ${i}` })),
+      eventRow("sin-foto", "2026-10-18T18:00:00.000Z", "visita_guiada", { image_url: null }),
+      eventRow("sensible", "2026-10-18T19:00:00.000Z", "inauguracion", { sensitivity_tags: ["memoria_dictadura"] }),
+      eventRow("ya-posteado", "2026-10-18T20:00:00.000Z"),
+      eventRow("lunes", "2026-10-19T22:00:00.000Z"), // outside the weekend window — not counted
+      eventRow("expo", "2026-10-17T22:00:00.000Z", "exposicion"), // not an opening/visita — not counted
+    ],
+    regions: [],
+    social_post_log: [{ event_id: "ya-posteado" }],
+  });
+  const published = await publishOnce(supabase, new Date("2026-10-16T22:30:00.000Z")); // Friday 19:30
+  assert.equal(published.length, 1);
+  assert.equal(published[0].imageUrls.length, 10);
+  // 11 Saturday events − 9 shown = 2, + sin-foto + sensible + ya-posteado = 5
+  assert.equal(published[0].imageUrls.at(-1), "https://www.caldearte.com/api/social/cierre?mas=5&cuando=finde");
+  assert.match(published[0].caption, /^Este fin de semana hay arte en Chile/);
+});
+
+test("run(): an event at 21:00 Santiago (00:00Z next day) belongs to its Santiago day", async () => {
+  const supabase = fakeSupabase({
+    events: [
+      eventRow("jueves-21h", "2026-10-16T00:00:00.000Z"), // Thursday 21:00 Santiago
+      eventRow("viernes-21h", "2026-10-17T00:00:00.000Z"), // Friday 21:00 Santiago
+    ],
+    regions: [],
+    social_post_log: [],
+  });
+  const published = await publishOnce(supabase, new Date("2026-10-15T22:30:00.000Z")); // Thursday 19:30 → posts Friday
+  assert.equal(published.length, 1);
+  const dynamicSlides = published[0].imageUrls.slice(0, -1);
+  assert.equal(dynamicSlides.length, 1);
+  assert.match(dynamicSlides[0], /title=Evento\+viernes-21h/);
+  assert.match(published[0].caption, /^Mañana hay arte en Chile/);
+  assert.equal(published[0].imageUrls.at(-1), "https://www.caldearte.com/social/ig-post-cierre.png");
+});
