@@ -727,6 +727,16 @@ and a digest reporting that is exactly what it's for. A failed read
 counts as "found" so a database problem can't turn into a spin.
 GitHub's own job timeout (6 h default) comfortably covers the wait.
 
+**Update 2026-10-16:** `publish-social` needs its time to hold (it
+announces the next day's events at ~19:30), so it uses the drift instead
+of fighting it: scheduled at 11:30 Santiago, the job sleeps until 19:30
+before doing anything. With the 2.2-9.7 h drift measured across all 10
+scheduled workflows, it starts between ~14:40 and ~21:10 and posts at 19:30
+nearly every time. If GitHub ever gets punctual the sleep is ~8 h, over the
+6 h job limit — the step caps it, so the post would go out early rather than
+not at all. The other crons keep plain schedules: nothing they do is
+time-critical.
+
 ## Cron watchdog (2026-08-28)
 
 Same day, a separate but related discovery: GitHub Actions' `schedule`
