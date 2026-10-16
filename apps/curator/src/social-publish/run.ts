@@ -2,9 +2,9 @@
 // 2026-08-31 into a single "agenda" carousel, Camila's "bitácora" request:
 // no repeats, mixed inauguraciones+visitas guiadas, short non-overlapping
 // date windows instead of one big weekly dump). Since 2026-10-16 it posts
-// every evening Sunday-Friday about the NEXT day (Friday covers the whole
-// weekend) — see postingPlanFor — and only if that window actually has
-// something eligible. Wires together the single pure selector
+// the evening BEFORE each window — Sunday, Tuesday, Thursday and Friday,
+// see postingPlanFor — and only if that window actually has something
+// eligible. Wires together the single pure selector
 // (./selection.ts), the flyer renderer (apps/web's /api/social/flyer,
 // deployed and publicly reachable — Instagram's Graph API fetches
 // image_url itself server-side, so no image upload step is needed here),
@@ -35,19 +35,15 @@ const ALREADY_POSTED_WITHIN_HOURS = 12;
 // discovery lever (Mosseri, 2026). "Chile" stays fixed since every
 // carousel is nationwide, not comuna-specific — which comunas show up
 // changes carousel to carousel (diversifyByComuna), so a caption can't
-// name one without being wrong most days. The opener names the exact day
-// the carousel covers (2026-10-16: one day per post, not "próximos días").
-type When = "hoy" | "manana" | "finde" | "proximos";
-const WHEN_OPENER: Record<When, string> = {
-  hoy: "Hoy",
-  manana: "Mañana",
-  finde: "Este fin de semana",
-  proximos: "En los próximos días",
-};
-
-function captionFor(when: When): string {
-  return `${WHEN_OPENER[when]} hay arte en Chile: inauguraciones y visitas guiadas en Santiago y regiones. Desliza para verlas todas — la agenda completa, por región, está en el link de la bio.`;
+// name one without being wrong most days. The opener names the exact days
+// the carousel covers ("Mañana", "Este miércoles y jueves", 2026-10-16).
+function captionFor(opener: string): string {
+  return `${opener} hay arte en Chile: inauguraciones y visitas guiadas en Santiago y regiones. Desliza para verlas todas — la agenda completa, por región, está en el link de la bio.`;
 }
+
+// `when` keys the "+N eventos más" closing slide's wording (/api/social/cierre).
+type When = "hoy" | "manana" | "finde" | "proximos";
+type PostingPlan = { start: string; end: string; when: When; opener: string };
 
 type EventRow = Tables<"events">;
 type EventWithRegion = EventRow & { comunaName: string | null };
@@ -76,33 +72,50 @@ function mondayOfWeek(dateStr: string): string {
 }
 
 // Daniel 2026-10-16, replacing the Mon/Wed/Fri windows (Camila's 2026-08-31
-// "bitácora"): one carousel every evening about the NEXT day, Friday about
-// the whole weekend. Measured before the change: Friday's Fri-Sun window
-// had 14-18 eligible events against 9 slides, and 13 of 125 posted events
-// had already started when the post went out — 25 of 40 Saturday openings
-// are before 14:00, and the old morning cron really ran 4-9 hours late
-// (GitHub schedule delay), so it often landed after noon openings.
+// "bitácora"): each carousel goes out the evening BEFORE the days it covers,
+// so people can plan, and noon openings are announced before they happen.
+// Measured before the change: 25 of 40 Saturday openings are before 14:00,
+// the old 09:05 cron really ran 4-9 hours late (GitHub schedule delay), and
+// 13 of 125 posted events had already started when the post went out.
 //
-// The run is triggered at ~19:30 Santiago by pg_cron (see the
-// schedule_publish_social migration), so "after 14:00" means the normal
-// evening run and the target is tomorrow. A run before 14:00 is a late
-// catch-up (watchdog retry of a failed evening run, a manual dispatch) and
-// targets today instead, so a retried post is still useful the morning of.
-// Sunday is never a target of its own — Saturday's window already covers
-// it — so a Saturday-evening run is a deliberate no-op. An empty window
-// still results in no post at all, by design: no filler content.
-function postingPlanFor(now: Date): { start: string; end: string; when: When } | null {
+// Posting evening → window (days ahead):
+//   Sunday   → Monday + Tuesday    (~4.6 eligible events a week)
+//   Tuesday  → Wednesday + Thursday (~9; Thursday is the busiest day)
+//   Thursday → Friday              (~4.8)
+//   Friday   → Saturday + Sunday   (~6)
+// Four posts of 5-9 events instead of one a day — a daily post was mostly
+// tiny carousels (Monday ~0.4 events, Wednesday ~2.2).
+//
+// The scheduled run waits inside the workflow until ~19:30 Santiago
+// (publish-social.yml), so "from 14:00" means the normal evening run. A
+// run before 14:00 is a late catch-up (watchdog retry of a failed evening
+// run, a manual dispatch): it posts YESTERDAY evening's window, from today
+// on — run() drops whatever already started. Any other day is a no-op, and
+// an empty window still results in no post at all, by design.
+const WINDOW_DAYS_BY_POSTING_DOW: Record<number, number> = { 0: 2, 2: 2, 4: 1, 5: 2 }; // Sun=0..Sat=6
+const WEEKDAY_NAMES = ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"];
+
+function dowOf(dateStr: string): number {
+  const [y, m, d] = dateStr.split("-").map(Number);
+  return new Date(Date.UTC(y, m - 1, d)).getUTCDay();
+}
+
+function postingPlanFor(now: Date): PostingPlan | null {
   const today = todayInSantiago(now);
   const hour = Number(
     new Intl.DateTimeFormat("en-US", { timeZone: "America/Santiago", hour: "numeric", hourCycle: "h23" }).format(now),
   );
   const evening = hour >= 14;
-  const target = evening ? addDays(today, 1) : today;
-  const [y, m, d] = target.split("-").map(Number);
-  const targetDow = new Date(Date.UTC(y, m - 1, d)).getUTCDay(); // Sun=0..Sat=6
-  if (targetDow === 0) return null;
-  if (targetDow === 6) return { start: target, end: addDays(target, 1), when: "finde" };
-  return { start: target, end: target, when: evening ? "manana" : "hoy" };
+  const postingDay = evening ? today : addDays(today, -1);
+  const windowDays = WINDOW_DAYS_BY_POSTING_DOW[dowOf(postingDay)];
+  if (!windowDays) return null;
+  const start = addDays(postingDay, 1);
+  const end = addDays(start, windowDays - 1);
+  const weekend = dowOf(start) === 6;
+  if (windowDays === 1) return { start, end, when: evening ? "manana" : "hoy", opener: evening ? "Mañana" : "Hoy" };
+  if (weekend) return { start, end, when: "finde", opener: "Este fin de semana" };
+  const opener = evening ? `Este ${WEEKDAY_NAMES[dowOf(start)]} y ${WEEKDAY_NAMES[dowOf(end)]}` : "Hoy y mañana";
+  return { start, end, when: "proximos", opener };
 }
 
 function toSocialEvent(e: EventWithRegion): SocialEvent {
@@ -238,13 +251,15 @@ export async function run(deps: RunDeps = {}): Promise<void> {
       : undefined);
 
   // Checked before touching Supabase or Instagram credentials at all —
-  // Saturday is a no-op by design (see postingPlanFor), and neither
+  // most days are a no-op by design (see postingPlanFor), and neither
   // needs to be configured/reachable just to determine that. Real bug,
   // found writing this test: getSupabaseClient() used to run first
   // unconditionally, so a no-op day still required SUPABASE_URL/
   // SUPABASE_SERVICE_ROLE_KEY to be set or it would throw before ever
   // reaching the "nothing scheduled" check.
-  const window = forceWindow ? { ...forceWindow, when: "proximos" as When } : postingPlanFor(now);
+  const window: PostingPlan | null = forceWindow
+    ? { ...forceWindow, when: "proximos", opener: "En los próximos días" }
+    : postingPlanFor(now);
   if (!window) {
     console.log(`[social-publish] ${today} — nothing scheduled today, exiting.`);
     return;
@@ -357,7 +372,7 @@ export async function run(deps: RunDeps = {}): Promise<void> {
     ...dynamicSlides.map((e) => buildFlyerUrl(e, comunaAndRegionById.get(e.id) ?? { comuna: null, region: "" })),
     closingSlideUrl(countLeftOut(socialEvents, window, dynamicSlides), window.when),
   ];
-  const caption = captionFor(window.when);
+  const caption = captionFor(window.opener);
   // Instagram-only — the "Con: @handle" line names Instagram accounts
   // (venue/artist), which don't correspond to any real Facebook page or
   // profile. Posting that same text to Facebook would just show up as

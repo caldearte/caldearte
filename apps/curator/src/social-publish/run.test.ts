@@ -158,7 +158,7 @@ test("run(): dry run + forceWindow exercises the real pipeline (selection, flyer
   assert.equal(publishCalled, false, "dry run should never actually publish");
 });
 
-test("run(): an evening run covers only the next day — Sunday evening posts Monday, excluding Sunday (before) and Tuesday/Wednesday (after)", async () => {
+test("run(): Sunday evening posts Monday+Tuesday — excludes Sunday (before) and Wednesday (after)", async () => {
   const supabase = fakeSupabase({
     events: [
       {
@@ -243,9 +243,12 @@ test("run(): an evening run covers only the next day — Sunday evening posts Mo
 
   assert.equal(published.length, 1);
   const dynamicSlides = published[0].imageUrls.slice(0, -1); // last slide is always the fixed closing image
-  assert.equal(dynamicSlides.length, 1, "only Monday's event should be selected");
+  assert.equal(dynamicSlides.length, 2, "only Monday+Tuesday events should be selected");
   assert.match(dynamicSlides[0], /title=Evento\+del\+lunes/);
+  // Each slide carries its OWN event's flyer type — a mixed carousel.
   assert.match(dynamicSlides[0], /type=inauguracion/);
+  assert.match(dynamicSlides[1], /title=Recorrido\+del\+martes/);
+  assert.match(dynamicSlides[1], /type=visita_guiada/);
 });
 
 test("run(): a Friday-evening run covers Saturday and Sunday", async () => {
@@ -792,4 +795,47 @@ test("run(): an event at 21:00 Santiago (00:00Z next day) belongs to its Santiag
   assert.match(dynamicSlides[0], /title=Evento\+viernes-21h/);
   assert.match(published[0].caption, /^Mañana hay arte en Chile/);
   assert.equal(published[0].imageUrls.at(-1), "https://www.caldearte.com/social/ig-post-cierre.png");
+});
+
+test("run(): Tuesday evening posts Wednesday+Thursday and names both days in the caption", async () => {
+  const supabase = fakeSupabase({
+    events: [
+      eventRow("miercoles", "2026-10-14T22:00:00.000Z"),
+      eventRow("jueves", "2026-10-15T22:00:00.000Z"),
+      eventRow("viernes", "2026-10-16T22:00:00.000Z"), // Thursday evening's window, not this one
+    ],
+    regions: [],
+    social_post_log: [],
+  });
+  const published = await publishOnce(supabase, new Date("2026-10-13T22:30:00.000Z")); // Tuesday 19:30
+  assert.equal(published.length, 1);
+  assert.equal(published[0].imageUrls.length, 3);
+  assert.match(published[0].caption, /^Este miércoles y jueves hay arte en Chile/);
+});
+
+test("run(): Monday, Wednesday and Saturday evenings are no-ops", async () => {
+  for (const now of ["2026-10-12T22:30:00.000Z", "2026-10-14T22:30:00.000Z", "2026-10-17T22:30:00.000Z"]) {
+    let publishCalled = false;
+    await run({
+      now: new Date(now),
+      instagramConfig: { igBusinessAccountId: "unused", accessToken: "unused" },
+      publishInstagramCarouselFn: async () => {
+        publishCalled = true;
+        return "unused";
+      },
+    });
+    assert.equal(publishCalled, false, now);
+  }
+});
+
+test("run(): a Monday-morning catch-up posts Sunday evening's Monday+Tuesday window", async () => {
+  const supabase = fakeSupabase({
+    events: [eventRow("lunes", "2026-10-12T22:00:00.000Z"), eventRow("martes", "2026-10-13T22:00:00.000Z")],
+    regions: [],
+    social_post_log: [],
+  });
+  const published = await publishOnce(supabase, new Date("2026-10-12T12:00:00.000Z")); // Monday 09:00
+  assert.equal(published.length, 1);
+  assert.equal(published[0].imageUrls.length, 3);
+  assert.match(published[0].caption, /^Hoy y mañana hay arte en Chile/);
 });
