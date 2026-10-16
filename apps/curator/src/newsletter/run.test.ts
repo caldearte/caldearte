@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import type { Tables } from "@caldearte/shared-types";
-import { buildDigestSections, run } from "./run.js";
+import { buildDigestSections, run, weekendBoundsInSantiago } from "./run.js";
 
 type EventRow = Tables<"events">;
 type EventWithRegion = EventRow & { adminRegionName: string | null; comunaName: string | null };
@@ -56,37 +56,37 @@ function runningUntil(end: string): Partial<EventWithRegion> {
   return { run_start_date: "2026-07-15", run_end_date: end };
 }
 
-test("buildDigestSections: an event opening inside the week goes in 'Inauguraciones de esta semana', not also elsewhere", () => {
+test("buildDigestSections: an event opening inside the week goes in 'Inauguraciones de este fin de semana', not also elsewhere", () => {
   const event = makeEvent({ opening_datetime: "2026-08-05T20:00:00.000Z", created_at: "2026-07-01T00:00:00.000Z" });
   const { sections } = buildDigestSections([event], REGION_A, WEEK);
-  assert.equal(sections[0].label, "Inauguraciones de esta semana");
+  assert.equal(sections[0].label, "Inauguraciones de este fin de semana");
   assert.equal(sections[0].events.length, 1);
   assert.equal(sections[0].events[0].isOpeningThisWeek, true);
   assert.equal(sections[0].emptyMessage, undefined);
 });
 
-test("buildDigestSections: 'Inauguraciones de esta semana' still renders with an explicit emptyMessage when there are none this week — not silently omitted", () => {
+test("buildDigestSections: 'Inauguraciones de este fin de semana' still renders with an explicit emptyMessage when there are none this week — not silently omitted", () => {
   const event = makeEvent(runningUntil("2026-08-20")); // lands in "Expos para visitar", not an opening
   const { sections } = buildDigestSections([event], REGION_A, WEEK);
-  const inauguraciones = sections.find((s) => s.label === "Inauguraciones de esta semana");
+  const inauguraciones = sections.find((s) => s.label === "Inauguraciones de este fin de semana");
   assert.ok(inauguraciones);
   assert.equal(inauguraciones.events.length, 0);
   assert.match(inauguraciones.emptyMessage ?? "", /No hemos encontrado ninguna inauguración/);
 });
 
-test("buildDigestSections: an event whose run actually STARTS this week (run_start_date) is NOT split into its own 'new' section — it's treated the same as any other non-opening event, in 'Expos para visitar esta semana' — removed 2026-08-08 (user feedback: a separate 'nuevas' bucket read as confusing, since an inauguración already IS how a new exhibition starts)", () => {
+test("buildDigestSections: an event whose run actually STARTS this week (run_start_date) is NOT split into its own 'new' section — it's treated the same as any other non-opening event, in 'Expos para visitar este fin de semana' — removed 2026-08-08 (user feedback: a separate 'nuevas' bucket read as confusing, since an inauguración already IS how a new exhibition starts)", () => {
   const event = makeEvent({ created_at: "2026-06-01T00:00:00.000Z", run_start_date: "2026-08-04", opening_datetime: null });
   const { sections } = buildDigestSections([event], REGION_A, WEEK);
   assert.equal(sections.find((s) => s.label === "Expos nuevas esta semana"), undefined);
-  const paraVisitar = sections.find((s) => s.label === "Expos para visitar esta semana");
+  const paraVisitar = sections.find((s) => s.label === "Expos para visitar este fin de semana");
   assert.ok(paraVisitar);
   assert.equal(paraVisitar.events.length, 1);
 });
 
-test("buildDigestSections: 'Expos para visitar esta semana' renders with an explicit emptyMessage when there's nothing to show — not silently omitted", () => {
+test("buildDigestSections: 'Expos para visitar este fin de semana' renders with an explicit emptyMessage when there's nothing to show — not silently omitted", () => {
   const event = makeEvent({ opening_datetime: "2026-08-05T20:00:00.000Z" }); // only an opening this week
   const { sections } = buildDigestSections([event], REGION_A, WEEK);
-  const paraVisitar = sections.find((s) => s.label === "Expos para visitar esta semana");
+  const paraVisitar = sections.find((s) => s.label === "Expos para visitar este fin de semana");
   assert.ok(paraVisitar);
   assert.equal(paraVisitar.events.length, 0);
   assert.match(paraVisitar.emptyMessage ?? "", /No hemos encontrado exposiciones para visitar/);
@@ -95,35 +95,35 @@ test("buildDigestSections: 'Expos para visitar esta semana' renders with an expl
 test("buildDigestSections: an event whose opening was WEEKS AGO (still running) is NOT marked isOpeningThisWeek, even though openingDatetime is set — it belongs in 'Expos para visitar', not 'Inauguraciones'", () => {
   const event = makeEvent({ opening_datetime: "2026-07-02T19:00:00.000Z", run_end_date: "2026-08-20" });
   const { sections } = buildDigestSections([event], REGION_A, WEEK);
-  assert.equal(sections.find((s) => s.label === "Inauguraciones de esta semana")?.events.length, 0);
-  const paraVisitar = sections.find((s) => s.label === "Expos para visitar esta semana");
+  assert.equal(sections.find((s) => s.label === "Inauguraciones de este fin de semana")?.events.length, 0);
+  const paraVisitar = sections.find((s) => s.label === "Expos para visitar este fin de semana");
   assert.equal(paraVisitar?.events.length, 1);
   assert.equal(paraVisitar?.events[0].isOpeningThisWeek, false);
 });
 
-test("buildDigestSections: a visita_guiada event goes in its own 'Visitas guiadas de esta semana' section, not 'Inauguraciones' — real bug found 2026-08-29, both categories share opening_datetime", () => {
+test("buildDigestSections: a visita_guiada event goes in its own 'Visitas guiadas de este fin de semana' section, not 'Inauguraciones' — real bug found 2026-08-29, both categories share opening_datetime", () => {
   const event = makeEvent({ opening_datetime: "2026-08-05T20:00:00.000Z", event_type: "visita_guiada" });
   const { sections } = buildDigestSections([event], REGION_A, WEEK);
-  assert.equal(sections.find((s) => s.label === "Inauguraciones de esta semana")?.events.length, 0);
-  const visitas = sections.find((s) => s.label === "Visitas guiadas de esta semana");
+  assert.equal(sections.find((s) => s.label === "Inauguraciones de este fin de semana")?.events.length, 0);
+  const visitas = sections.find((s) => s.label === "Visitas guiadas de este fin de semana");
   assert.equal(visitas?.events.length, 1);
   assert.equal(visitas?.events[0].id, event.id);
   // Never leaks into "Expos para visitar" either, even though its own
   // date falls inside the week.
-  assert.equal(sections.find((s) => s.label === "Expos para visitar esta semana")?.events.length, 0);
+  assert.equal(sections.find((s) => s.label === "Expos para visitar este fin de semana")?.events.length, 0);
 });
 
-test("buildDigestSections: 'Visitas guiadas de esta semana' is compact and always renders, even at zero — changed 2026-09-27 (Daniel: primary content is inauguraciones only, visitas guiadas demoted to a count instead of omitted or full cards)", () => {
+test("buildDigestSections: 'Visitas guiadas de este fin de semana' is compact and always renders, even at zero — changed 2026-09-27 (Daniel: primary content is inauguraciones only, visitas guiadas demoted to a count instead of omitted or full cards)", () => {
   const event = makeEvent({ run_start_date: "2026-08-01", run_end_date: "2026-08-20" });
   const { sections } = buildDigestSections([event], REGION_A, WEEK);
-  const visitas = sections.find((s) => s.label === "Visitas guiadas de esta semana");
+  const visitas = sections.find((s) => s.label === "Visitas guiadas de este fin de semana");
   assert.ok(visitas, "expected the section to still render at zero, not be omitted");
   assert.equal(visitas.compact, true);
   assert.equal(visitas.events.length, 0);
-  assert.equal(visitas.emptyMessage, "Ninguna visita guiada programada esta semana.");
+  assert.equal(visitas.emptyMessage, "Ninguna visita guiada programada este fin de semana.");
 });
 
-test("buildDigestSections: 'Expos para visitar esta semana' is compact — full count, no card cap, always a 'ver' link naming the región's TRUE total when there's at least one (changed 2026-09-27, demoted from primary full-card section)", () => {
+test("buildDigestSections: 'Expos para visitar este fin de semana' is compact — full count, no card cap, always a 'ver' link naming the región's TRUE total when there's at least one (changed 2026-09-27, demoted from primary full-card section)", () => {
   const events = [
     makeEvent(runningUntil("2026-08-20")),
     makeEvent(runningUntil("2026-08-10")),
@@ -131,7 +131,7 @@ test("buildDigestSections: 'Expos para visitar esta semana' is compact — full 
     makeEvent(runningUntil("2026-08-12")),
   ];
   const { sections } = buildDigestSections(events, REGION_A, WEEK);
-  const paraVisitar = sections.find((s) => s.label === "Expos para visitar esta semana");
+  const paraVisitar = sections.find((s) => s.label === "Expos para visitar este fin de semana");
   assert.ok(paraVisitar);
   assert.equal(paraVisitar.compact, true);
   assert.equal(paraVisitar.events.length, 4, "full count, no 10-card cap anymore — nothing is rendered as cards");
@@ -139,7 +139,7 @@ test("buildDigestSections: 'Expos para visitar esta semana' is compact — full 
   assert.equal(paraVisitar.moreLink?.url, "https://www.caldearte.com");
 });
 
-test("buildDigestSections: 'Expos para visitar esta semana' still diversified-by-comuna behavior is gone — full count now, no cap at all (2026-08-08 'ojalá de distintas comunas' request no longer applies, superseded 2026-09-27 by the section going compact)", () => {
+test("buildDigestSections: 'Expos para visitar este fin de semana' still diversified-by-comuna behavior is gone — full count now, no cap at all (2026-08-08 'ojalá de distintas comunas' request no longer applies, superseded 2026-09-27 by the section going compact)", () => {
   const events = [
     // Comuna A has 8 closing-soon events — a flat soonest-first cut would
     // fill the whole cap with just this one comuna.
@@ -149,21 +149,21 @@ test("buildDigestSections: 'Expos para visitar esta semana' still diversified-by
     makeEvent({ comunaName: "Comuna D", ...runningUntil("2026-08-27") }),
   ];
   const { sections } = buildDigestSections(events, REGION_A, WEEK);
-  const paraVisitar = sections.find((s) => s.label === "Expos para visitar esta semana");
+  const paraVisitar = sections.find((s) => s.label === "Expos para visitar este fin de semana");
   assert.ok(paraVisitar);
   assert.equal(paraVisitar.events.length, 11, "no cap anymore — the full pool, all 4 comunas' events counted");
   const comunas = new Set(paraVisitar.events.map((e) => e.comunaName));
   assert.equal(comunas.size, 4);
 });
 
-test("buildDigestSections: 'Expos para visitar esta semana' names the región's TRUE total (including openings/new, not just the para-visitar pool) in its moreLink, past what used to be the 10-card cap", () => {
+test("buildDigestSections: 'Expos para visitar este fin de semana' names the región's TRUE total (including openings/new, not just the para-visitar pool) in its moreLink, past what used to be the 10-card cap", () => {
   const events = [
     makeEvent({ opening_datetime: "2026-08-05T20:00:00.000Z" }), // +1 opening
     ...Array.from({ length: 14 }, (_, i) => makeEvent(runningUntil(`2026-08-${10 + i}`))), // 14 para-visitar
   ];
   const { sections, regionTotalThisWeek } = buildDigestSections(events, REGION_A, WEEK);
   assert.equal(regionTotalThisWeek, 15);
-  const paraVisitar = sections.find((s) => s.label === "Expos para visitar esta semana");
+  const paraVisitar = sections.find((s) => s.label === "Expos para visitar este fin de semana");
   assert.ok(paraVisitar);
   assert.equal(paraVisitar.events.length, 14, "no cap — the full para-visitar pool, distinct from regionTotalThisWeek which also counts openings");
   assert.equal(paraVisitar.moreLink?.label, `Ver las 15 exposiciones vigentes en ${REGION_A}`);
@@ -182,23 +182,23 @@ test("buildDigestSections: an exhibition with no known closing date that opened 
   const running = makeEvent({ adminRegionName: REGION_B, ...runningUntil("2026-08-20") });
   const { sections, regionTotalThisWeek } = buildDigestSections([stale, staleElsewhere, running], REGION_A, WEEK);
   assert.equal(regionTotalThisWeek, 0);
-  assert.equal(sections.find((s) => s.label === "Expos para visitar esta semana")?.events.length, 0);
+  assert.equal(sections.find((s) => s.label === "Expos para visitar este fin de semana")?.events.length, 0);
   const otras = sections.find((s) => s.label === "En otras regiones");
   assert.deepEqual(otras?.events.map((e) => e.id), [running.id]);
-  assert.equal(otras?.moreLink?.label, "Si deseas puedes explorar las 1 exposiciones activas esta semana a lo largo de Chile");
+  assert.equal(otras?.moreLink?.label, "Si deseas puedes explorar las 1 exposiciones activas este fin de semana a lo largo de Chile");
 });
 
 test("buildDigestSections: an exhibition with no known closing date that opens THIS week still counts — a one-day event on its anchor date, same as the site's activeRange", () => {
   const event = makeEvent({ opening_datetime: "2026-08-05T20:00:00.000Z" });
   const { sections, regionTotalThisWeek } = buildDigestSections([event], REGION_A, WEEK);
   assert.equal(regionTotalThisWeek, 1);
-  assert.equal(sections.find((s) => s.label === "Inauguraciones de esta semana")?.events.length, 1);
+  assert.equal(sections.find((s) => s.label === "Inauguraciones de este fin de semana")?.events.length, 1);
 });
 
 test("buildDigestSections: an exhibition closing mid-week still counts as visitable this week — 'this week' is the whole Mon-Sun window, same as the site, not just its last day", () => {
   const event = makeEvent(runningUntil("2026-08-05")); // closes Wednesday of WEEK
   const { sections } = buildDigestSections([event], REGION_A, WEEK);
-  assert.deepEqual(sections.find((s) => s.label === "Expos para visitar esta semana")?.events.map((e) => e.id), [event.id]);
+  assert.deepEqual(sections.find((s) => s.label === "Expos para visitar este fin de semana")?.events.map((e) => e.id), [event.id]);
 });
 
 test("buildDigestSections: the nationwide 'exposiciones activas' count leaves out visitas guiadas, same as the región's own count — they aren't exposiciones", () => {
@@ -209,7 +209,7 @@ test("buildDigestSections: the nationwide 'exposiciones activas' count leaves ou
   ];
   const { sections } = buildDigestSections(events, REGION_A, WEEK);
   const otras = sections.find((s) => s.label === "En otras regiones");
-  assert.equal(otras?.moreLink?.label, "Si deseas puedes explorar las 2 exposiciones activas esta semana a lo largo de Chile");
+  assert.equal(otras?.moreLink?.label, "Si deseas puedes explorar las 2 exposiciones activas este fin de semana a lo largo de Chile");
 });
 
 test("buildDigestSections: an event in a different región appears only in 'En otras regiones', sampled up to 10, with an always-present nationwide explore link", () => {
@@ -223,7 +223,7 @@ test("buildDigestSections: an event in a different región appears only in 'En o
   const otras = sections.find((s) => s.label === "En otras regiones");
   assert.ok(otras);
   assert.equal(otras.events.length, 4);
-  assert.equal(otras.moreLink?.label, "Si deseas puedes explorar las 4 exposiciones activas esta semana a lo largo de Chile");
+  assert.equal(otras.moreLink?.label, "Si deseas puedes explorar las 4 exposiciones activas este fin de semana a lo largo de Chile");
   assert.equal(otras.moreLink?.url, "https://www.caldearte.com");
 });
 
@@ -247,7 +247,7 @@ test("buildDigestSections: 'En otras regiones' is sorted soonest-closing-first a
   assert.deepEqual(
     first,
     [events[1].id, events[2].id, events[0].id],
-    "expected soonest-closing-first, same convention as 'Expos para visitar esta semana'",
+    "expected soonest-closing-first, same convention as 'Expos para visitar este fin de semana'",
   );
 });
 
@@ -306,7 +306,7 @@ test("run(): retries a transient Supabase read failure instead of crashing outri
   // absorbed by the retry loop instead of crashing the whole run.
   await run({
     supabase,
-    now: new Date("2026-08-05T12:00:00.000Z"),
+    now: new Date("2026-08-06T22:00:00.000Z"), // Thursday 18:00 Santiago
     sendDigestEmailFn: async () => {},
     generateRegionIntroFn: async () => null,
     generateOtherRegionsIntroFn: async () => null,
@@ -349,7 +349,7 @@ test(
         region_id: regionId,
         curation_status: "approved",
         source: "discovered",
-        opening_datetime: "2026-08-05T20:00:00.000Z",
+        opening_datetime: "2026-08-08T20:00:00.000Z",
       });
       if (eventError) throw new Error(`Failed to seed test event: ${eventError.message}`);
 
@@ -379,7 +379,7 @@ test(
       const sentTo: string[] = [];
       await run({
         supabase: client,
-        now: new Date("2026-08-05T12:00:00.000Z"),
+        now: new Date("2026-08-06T22:00:00.000Z"), // Thursday 18:00 Santiago
         sendDigestEmailFn: async (email) => {
           sentTo.push(email);
         },
@@ -422,7 +422,7 @@ test(
           region_id: regionId,
           curation_status: "approved",
           source: "discovered",
-          opening_datetime: "2026-08-05T20:00:00.000Z",
+          opening_datetime: "2026-08-08T20:00:00.000Z",
         },
         {
           title: "Evento quitado por el admin",
@@ -430,7 +430,7 @@ test(
           region_id: regionId,
           curation_status: "approved",
           source: "discovered",
-          opening_datetime: "2026-08-06T20:00:00.000Z",
+          opening_datetime: "2026-08-07T20:00:00.000Z",
           // removed_at isn't in the generated Database types yet (the
           // schema has it, the checked-in types file is stale) — `as any`
           // here, not in production code, just to seed the fixture.
@@ -447,7 +447,7 @@ test(
       let sentTitles: string[] = [];
       await run({
         supabase: client,
-        now: new Date("2026-08-05T12:00:00.000Z"),
+        now: new Date("2026-08-06T22:00:00.000Z"), // Thursday 18:00 Santiago
         sendDigestEmailFn: async (_email, _token, sections) => {
           sentTitles = sections.flatMap((s) => s.events.map((e) => e.title));
         },
@@ -491,7 +491,7 @@ test(
         region_id: regionId,
         curation_status: "approved",
         source: "discovered",
-        opening_datetime: "2026-08-05T20:00:00.000Z",
+        opening_datetime: "2026-08-08T20:00:00.000Z",
       });
       if (eventError) throw new Error(`Failed to seed test event: ${eventError.message}`);
 
@@ -507,7 +507,7 @@ test(
       const otherRegionsIntrosUsed: Array<string | null> = [];
       await run({
         supabase: client,
-        now: new Date("2026-08-05T12:00:00.000Z"),
+        now: new Date("2026-08-06T22:00:00.000Z"), // Thursday 18:00 Santiago
         sendDigestEmailFn: async (_email, _token, _sections, intro, _week, otherRegionsIntro) => {
           introsUsed.push(intro ?? null);
           otherRegionsIntrosUsed.push(otherRegionsIntro ?? null);
@@ -533,3 +533,24 @@ test(
     }
   },
 );
+
+test("weekendBoundsInSantiago: a Thursday-evening send announces the coming Friday-Sunday; a late send Fri-Sun keeps the weekend under way — 2026-10-16", () => {
+  const weekend = { start: "2026-10-16", end: "2026-10-18" };
+  assert.deepEqual(weekendBoundsInSantiago(new Date("2026-10-15T22:30:00.000Z")), weekend); // Thursday 19:30
+  assert.deepEqual(weekendBoundsInSantiago(new Date("2026-10-16T13:00:00.000Z")), weekend); // Friday
+  assert.deepEqual(weekendBoundsInSantiago(new Date("2026-10-18T22:00:00.000Z")), weekend); // Sunday
+  assert.deepEqual(weekendBoundsInSantiago(new Date("2026-10-19T13:00:00.000Z")), { start: "2026-10-23", end: "2026-10-25" }); // Monday
+  // 01:00 Saturday UTC is still Friday 22:00 in Santiago
+  assert.deepEqual(weekendBoundsInSantiago(new Date("2026-10-17T01:00:00.000Z")), weekend);
+});
+
+test("run(): outside Thursday-Saturday it sends nothing and never touches Supabase — e.g. a watchdog catch-up on a Monday", async () => {
+  let sent = 0;
+  await run({
+    now: new Date("2026-10-19T15:00:00.000Z"), // Monday
+    sendDigestEmailFn: async () => {
+      sent++;
+    },
+  });
+  assert.equal(sent, 0);
+});

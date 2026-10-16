@@ -543,13 +543,13 @@ export const esCL = {
     "Usamos IA para rastrear inauguraciones y exposiciones en todo Chile.",
 
   newsletter: {
-    headerLabel: "Boletín semanal",
+    headerLabel: "Boletín del finde",
     regionPlaceholder: "Tu región",
     sending: "Enviando…",
     success:
       "Te enviamos un correo con un link para confirmar tu suscripción. Si no lo ves en unos minutos, revisa la carpeta de spam.",
     alreadySubscribed:
-      "Tu dirección de correo ya está suscrita a nuestro boletín semanal.",
+      "Tu dirección de correo ya está suscrita a nuestro boletín.",
     error: "No pudimos suscribirte. Intenta de nuevo.",
     close: "Listo",
     // Rediseño 2.0.0 — inline home-page section (174:2987 web, 178:161
@@ -559,8 +559,10 @@ export const esCL = {
     // space between two magenta words renders identically to a single
     // magenta span with a space in it — no visible difference, simpler
     // code).
-    sectionHeadlinePlainStart: "RECIBE NUESTRA ",
-    sectionHeadlineHighlight: "GUÍA SEMANAL",
+    // Concrete promise (what, when, where) instead of "guía semanal" —
+    // 2026-10-16, when the newsletter became a Thursday weekend edition.
+    sectionHeadlinePlainStart: "EL FINDE DEL ARTE, ",
+    sectionHeadlineHighlight: "CADA JUEVES",
     sectionHeadlinePlainEnd: "",
     sectionEmailPlaceholder: "Pon tu mail aquí",
     emailLabel: "Tu correo",
@@ -568,13 +570,25 @@ export const esCL = {
     regionLabel: "Tu región",
     invalidEmail: "Escribe un correo válido.",
     noRegion: "Elige tu región.",
-    sectionSubmit: "¡LA QUIERO!",
-    sectionCaption: "¡No te pierdas ninguna inauguración!",
+    sectionSubmit: "¡LO QUIERO!",
+    sectionCaption: "Las inauguraciones del viernes al domingo, en tu correo el jueves",
+    // Compact card right after the home's agenda and on every event page
+    // (NewsletterFindeCard, 2026-10-16) — where the visitor has just seen
+    // what's on and is deciding, instead of 11 screens down the home.
+    findeHeadlinePlain: "¿TE ENTERASTE TARDE? ",
+    findeHeadlineHighlight: "TE MANDAMOS EL FINDE CADA JUEVES",
+    findeBody: (region: string) =>
+      region
+        ? `Las inauguraciones y visitas guiadas del viernes al domingo en ${region}, en tu correo el jueves en la tarde. Gratis, te das de baja en un clic.`
+        : "Las inauguraciones y visitas guiadas del viernes al domingo en tu región, en tu correo el jueves en la tarde. Gratis, te das de baja en un clic.",
+    findeRegionLine: (region: string) => `Región: ${region}`,
+    findeChangeRegion: "cambiar",
+    findeSubmit: "¡LO QUIERO!",
     confirmar: {
       title: "Confirmar suscripción",
       confirmedTitle: "¡Listo! Ya eres parte de Caldearte",
       confirmed:
-        "Cada semana recibirás lo mejor del arte de tu región, directo a tu correo.",
+        "Cada jueves recibirás las inauguraciones del fin de semana en tu región, directo a tu correo.",
       alreadyConfirmed: "Tu suscripción ya estaba confirmada.",
       unsubscribed: "Esta suscripción ya fue dada de baja.",
       invalid: "Este link de confirmación no es válido.",

@@ -294,7 +294,7 @@ test("buildHeadlessHtmlBody renders the MAVI event table with source link and ve
 
 const fixtureDigestSections: DigestSection[] = [
   {
-    label: "Inauguraciones de esta semana",
+    label: "Inauguraciones de este fin de semana",
     events: [
       {
         id: "event-estrella-distante",
@@ -327,18 +327,24 @@ const fixtureDigestSections: DigestSection[] = [
   },
 ];
 
-test("buildDigestSubject counts every event across all sections", () => {
-  assert.equal(buildDigestSubject(fixtureDigestSections), "Caldearte — tu semana en arte (2 expos)");
-});
-
-test("buildDigestSubject uses singular for exactly one event", () => {
-  assert.equal(buildDigestSubject([fixtureDigestSections[0]]), "Caldearte — tu semana en arte (1 expo)");
-});
-
-test("buildDigestSubject includes the week's date range when provided, making the subject unique week to week — real feedback: Gmail threads emails with an identical subject sent close together", () => {
+test("buildDigestSubject leads with the number of openings this weekend and the subscriber's región — 2026-10-16, Thursday weekend edition", () => {
   assert.equal(
-    buildDigestSubject(fixtureDigestSections, { start: "2026-07-27", end: "2026-08-02" }),
-    "Caldearte — tu semana en arte, 27 de julio al 2 de agosto 2026 (2 expos)",
+    buildDigestSubject(fixtureDigestSections, { start: "2026-10-16", end: "2026-10-18" }, "Región Metropolitana de Santiago"),
+    "1 inauguración este finde en Santiago — Caldearte, 16 al 18 de octubre 2026",
+  );
+});
+
+test("buildDigestSubject pluralizes openings and still works without región or dates", () => {
+  const opening = fixtureDigestSections[0];
+  const twoOpenings: DigestSection = { ...opening, events: [...opening.events, { ...opening.events[0], id: "otra" }] };
+  assert.equal(buildDigestSubject([twoOpenings]), "2 inauguraciones este finde — Caldearte");
+});
+
+test("buildDigestSubject with no openings falls back to a plain weekend line", () => {
+  const noOpenings = fixtureDigestSections.filter((s) => s.label !== "Inauguraciones de este fin de semana");
+  assert.equal(
+    buildDigestSubject(noOpenings, { start: "2026-10-16", end: "2026-10-18" }, "Valparaíso"),
+    "Este finde en arte en Valparaíso — Caldearte, 16 al 18 de octubre 2026",
   );
 });
 
@@ -348,7 +354,7 @@ const WEEK = { start: "2026-08-03", end: "2026-08-09" };
 
 test("buildDigestBody lists every section's events grouped by comuna, links to caldearte.com's own event page, and includes the unsubscribe link", () => {
   const body = buildDigestBody(fixtureDigestSections, "unsub-token", null, WEEK);
-  assert.match(body, /Inauguraciones de esta semana/);
+  assert.match(body, /Inauguraciones de este fin de semana/);
   assert.match(body, /\[Quinta Normal\]/);
   assert.match(body, /Estrella distante — MAC Quinta Normal/);
   assert.match(body, /Inauguración: 3 de agosto · \d{1,2}(:\d{2})? hr/);
@@ -383,7 +389,7 @@ test("buildDigestHtmlBody: the CALDE/ARTE. header is a link to the homepage, sty
 test("buildDigestBody and buildDigestHtmlBody render a section's emptyMessage instead of a card list when it has no events", () => {
   const sections: DigestSection[] = [
     {
-      label: "Inauguraciones de esta semana",
+      label: "Inauguraciones de este fin de semana",
       events: [],
       emptyMessage: "No hemos encontrado ninguna inauguración para esta semana aún. Si sabes de una, avísanos.",
     },
@@ -412,7 +418,7 @@ test("buildDigestBody and buildDigestHtmlBody render a section's moreLink alongs
 test("buildDigestBody omits the hour for an opening whose time isn't confirmed", () => {
   const sections: DigestSection[] = [
     {
-      label: "Inauguraciones de esta semana",
+      label: "Inauguraciones de este fin de semana",
       events: [
         {
           id: "event-sin-hora",
@@ -435,7 +441,7 @@ test("buildDigestBody omits the hour for an opening whose time isn't confirmed",
 test("fmtDigestDate: an event whose opening was weeks ago (still running, isOpeningThisWeek: false) renders 'Hasta el <fecha>', never 'Inauguración:' — real bug found 2026-07-31 where a past opening date read as if it were opening soon", () => {
   const sections: DigestSection[] = [
     {
-      label: "Expos para visitar esta semana",
+      label: "Expos para visitar este fin de semana",
       events: [
         {
           id: "event-ya-abierto",
@@ -463,7 +469,7 @@ test("fmtDigestDate: an event whose opening was weeks ago (still running, isOpen
 test("fmtDigestDate: dates render as 'día de mes', with the year appended only when it differs from the digest's own send year", () => {
   const sameYear: DigestSection[] = [
     {
-      label: "Expos para visitar esta semana",
+      label: "Expos para visitar este fin de semana",
       events: [
         {
           id: "e-same-year",
@@ -485,7 +491,7 @@ test("fmtDigestDate: dates render as 'día de mes', with the year appended only 
 
   const nextYear: DigestSection[] = [
     {
-      label: "Expos para visitar esta semana",
+      label: "Expos para visitar este fin de semana",
       events: [
         {
           id: "e-next-year",
@@ -557,7 +563,7 @@ test("buildDigestHtmlBody: under ~400px, event cards stack (photo full width on 
 test("eventCardHtml: shows an ÚLTIMOS DÍAS badge when the run ends within 7 days of the digest's own week.start, never otherwise", () => {
   const closingSoonEvent: DigestSection[] = [
     {
-      label: "Expos para visitar esta semana",
+      label: "Expos para visitar este fin de semana",
       events: [
         {
           id: "event-closing-soon",
@@ -614,7 +620,7 @@ test("buildDigestHtmlBody: the week line and región line render right-aligned i
   const html = buildDigestHtmlBody(fixtureDigestSections, "unsub-token", null, { start: "2026-07-27", end: "2026-08-02" }, null, "Región Metropolitana de Santiago");
   assert.match(
     html,
-    /<p style="margin:50px 0 0;color:#3d373d;font-family:'Lato',Helvetica,Arial,sans-serif;font-weight:900;font-size:20px;line-height:0\.95;text-align:right;overflow-wrap:anywhere;">SEMANA DEL 27 DE JULIO AL 2 DE AGOSTO<\/p>/,
+    /<p style="margin:50px 0 0;color:#3d373d;font-family:'Lato',Helvetica,Arial,sans-serif;font-weight:900;font-size:20px;line-height:0\.95;text-align:right;overflow-wrap:anywhere;">FIN DE SEMANA DEL 27 DE JULIO AL 2 DE AGOSTO<\/p>/,
   );
   assert.match(
     html,

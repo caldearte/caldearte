@@ -16,6 +16,7 @@ import AgendaSection from "./AgendaSection";
 import CarteleraSection from "./CarteleraSection";
 import CuratoriaBanner from "./CuratoriaBanner";
 import NewsletterSection from "./NewsletterSection";
+import NewsletterFindeCard from "./NewsletterFindeCard";
 import EspaciosSection from "./EspaciosSection";
 import Footer from "./Footer";
 import MenuDrawer from "./MenuDrawer";
@@ -203,6 +204,11 @@ export default function CalendarView({
               today={today}
               isCurrentWeek={isCurrentWeek}
             />
+            {/* The newsletter ask right where the visitor has just seen the
+                week's agenda (2026-10-16) — see NewsletterFindeCard. */}
+            <div className="w-full mt-[40px] md:mt-[56px]">
+              <NewsletterFindeCard adminRegionName={adminRegionName} />
+            </div>
             {/* Lots of air around the banner (Daniel, 2026-10-13) — it
                 separates the week's agenda from the cartelera: 120px above
                 and below on a phone, 160px on desktop (above, this margin

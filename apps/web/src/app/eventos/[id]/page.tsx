@@ -15,6 +15,7 @@ import EventDetailCard from "@/components/EventDetailCard";
 import EventPageFooter from "@/components/EventPageFooter";
 import { AgendaGrid } from "@/components/AgendaSection";
 import { TileGrid } from "@/components/CarteleraSection";
+import NewsletterFindeCard from "@/components/NewsletterFindeCard";
 import EventPageHeader from "@/components/EventPageHeader";
 
 interface PageParams {
@@ -168,6 +169,13 @@ export default async function EventPage({ params }: { params: Promise<PageParams
       </div>
 
       <div className="max-w-[1600px] mx-auto px-[18px] md:px-[40px] xl:px-[80px] pb-8">
+        {/* Newsletter ask under the event itself (2026-10-16): this page is
+            where Instagram, DMs and Google land, and it had no way to sign
+            up. A client island — the page itself stays cache-eligible. */}
+        <div className="mt-[40px] md:mt-[56px]">
+          <NewsletterFindeCard adminRegionName={eventAdminRegionName ?? ""} />
+        </div>
+
         {moreAgenda.length > 0 && (
           <section className="mt-[56px] md:mt-[80px]">
             <h2 className="font-lato font-black text-[24px] md:text-[30px] text-text-primary mb-[16px]">{esCL.eventPageMoreAgendaLabel}</h2>
