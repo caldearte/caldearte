@@ -5,13 +5,17 @@ name: Publish Instagram Social Posts
 # mixed inauguraciones+visitas-guiadas carousel, no repeats, short
 # non-overlapping date windows instead of a weekly dump — see
 # apps/curator/src/social-publish/selection.ts's own doc comment).
-# apps/curator/src/social-publish/run.ts itself decides whether today
-# actually publishes anything: only Monday/Wednesday/Friday post, and only
-# if their window has something eligible — every other day (including this
-# cron's own off days) is a deliberate no-op. No more per-type scheduling
-# to juggle here — there's only one carousel shape now, so a single daily
-# cron restricted to Mon/Wed/Fri is enough (the old Sunday-3-crons
-# workaround for spacing 3 types across one day no longer applies).
+# apps/curator/src/social-publish/run.ts decides what a run covers: since
+# 2026-10-16 the carousel goes out the evening BEFORE its days — Sunday
+# (Mon+Tue), Tuesday (Wed+Thu), Thursday (Fri), Friday (Sat+Sun) — and it
+# skips if a carousel already went out in the last 12h.
+#
+# Timing: GitHub's schedule ran this 4-9 hours late (2.2-9.7 h across all
+# 10 scheduled workflows here, measured 2026-10-16), so the cron is set
+# for 11:30 Santiago and the first step sleeps until 19:30. Started
+# anywhere from ~14:40 to ~21:10 with that drift, the post goes out at
+# 19:30 nearly every time. Chosen over a pg_cron trigger, which needed a
+# GitHub token stored in Supabase (Daniel 2026-10-16).
 on:
   workflow_dispatch:
     inputs:
@@ -23,15 +27,43 @@ on:
     # Not minute 0 — GitHub's own docs flag the top of every hour as the
     # highest-congestion time for scheduled workflows; real 45+ minute
     # delays were observed across every cron in this repo 2026-08-23.
-    - cron: "5 12 * * 1,3,5" # Monday, Wednesday, Friday, ~12:05 UTC
+    # 14:30 UTC = 11:30 Santiago in summer time, 10:30 in winter — the
+    # wait step below targets 19:30 in Santiago either way.
+    - cron: "30 14 * * 0,2,4,5" # Sunday, Tuesday, Thursday, Friday
 
 permissions:
   contents: read
 
+# A watchdog catch-up dispatched while the scheduled run is still waiting
+# queues behind it instead of racing it — then run.ts's 12h check skips it.
+concurrency:
+  group: publish-social
+  cancel-in-progress: false
+
 jobs:
   publish-social:
     runs-on: ubuntu-latest
+    # GitHub's own limit; the wait below is capped well under it.
+    timeout-minutes: 360
     steps:
+      # Only on the schedule — a manual or watchdog dispatch runs at once.
+      # Capped at 5h40m so a punctual GitHub can't push the job past its
+      # 6h limit (it would then post early instead of not at all). After
+      # 19:30 there's no wait.
+      - name: Wait until 19:30 in Santiago
+        if: github.event_name == 'schedule'
+        run: |
+          target=$(TZ=America/Santiago date -d "19:30" +%s)
+          wait=$(( target - $(date +%s) ))
+          max=$(( 5 * 3600 + 40 * 60 ))
+          if [ "$wait" -gt "$max" ]; then wait=$max; fi
+          if [ "$wait" -gt 0 ]; then
+            echo "Started $(TZ=America/Santiago date +%H:%M) Santiago; waiting $(( wait / 60 )) min."
+            sleep "$wait"
+          else
+            echo "Started $(TZ=America/Santiago date +%H:%M) Santiago, past 19:30 — no wait."
+          fi
+
       - uses: actions/checkout@v4
 
       - uses: pnpm/action-setup@v4
@@ -43,7 +75,7 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
-      - name: Publish scheduled Instagram carousel
+      - name: Publish the Instagram agenda carousel
         run: pnpm --filter @caldearte/curator run publish-social
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
@@ -53,7 +85,7 @@ jobs:
           FACEBOOK_PAGE_ID: ${{ secrets.FACEBOOK_PAGE_ID }}
           FACEBOOK_PAGE_ACCESS_TOKEN: ${{ secrets.FACEBOOK_PAGE_ACCESS_TOKEN }}
           # Only set on a manual run — a real scheduled run always
-          # publishes for real, with today's actual window. github.event.inputs
+          # publishes for real. github.event.inputs
           # is empty (not "true"/"false") on a schedule trigger, so DRY_RUN
           # correctly evaluates to false there via run.ts's own "=== 'true'" check.
           DRY_RUN: ${{ inputs.dry_run }}
