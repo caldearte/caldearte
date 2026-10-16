@@ -487,6 +487,23 @@ building infra" discipline the rest of this project has followed.
   full week by comuna, previews, the editorial voice). Stage 3, only
   after stage 2 yields feedback: paid promotion on Instagram or
   elsewhere. Don't skip ahead.
+- **Stage 2 starts: the newsletter becomes a Thursday weekend edition
+  (Daniel, 2026-10-16, at 207 followers).** Measured that day: the
+  Sunday digest for Monday-Sunday went out knowing only ~60% of that
+  week's inauguraciones and visitas guiadas (venues announce late; worst
+  on Fridays, 34% known the Sunday before), while by Thursday 20:00, 83%
+  of the Friday-Sunday events are in — and the weekend is where most
+  openings are. So: one email, Thursday evening, Friday-Sunday
+  (`weekendBoundsInSantiago`, sends only Thursday-Saturday), subject led
+  by the count ("12 inauguraciones este finde en Santiago"). The ask
+  changed too: no signup had come in since the popup was retired
+  (2026-08-04), and the only form sat ~11 screens down the home on a
+  phone. A compact one-field card (`NewsletterFindeCard`, región
+  preselected) now sits right after the home's agenda and under every
+  event page; the promise is concrete ("el finde del arte, cada
+  jueves"). Next, if signups stay at zero: a `/finde` landing page for
+  the Instagram bio, a `source` column to see which form converts, and
+  only then a gentle bottom bar.
 - **Outreach doctrine (2026-09-18).** The Monday message is a gift, not
   an ask — "publicamos tu inauguración, aquí está el link" — sent also
   to accounts that already follow us: the goal is the re-share (their

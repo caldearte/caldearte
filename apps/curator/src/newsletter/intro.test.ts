@@ -7,7 +7,7 @@ const hasLocalSupabase = Boolean(process.env.SUPABASE_URL && process.env.SUPABAS
 
 const fixtureSections: DigestSection[] = [
   {
-    label: "Inauguraciones de esta semana",
+    label: "Inauguraciones de este fin de semana",
     events: [
       {
         id: "e1",
@@ -23,7 +23,7 @@ const fixtureSections: DigestSection[] = [
     ],
   },
   {
-    label: "Expos para visitar esta semana",
+    label: "Expos para visitar este fin de semana",
     events: [
       {
         id: "e3",
@@ -140,9 +140,9 @@ test(
       },
     };
     await generateRegionIntro(fixtureSections, 36, { messagesClient: client });
-    assert.match(capturedPrompt, /Número real de exposiciones activas esta semana en la región: 36/);
-    assert.match(capturedPrompt, /Inauguraciones de esta semana:\n- Estrella distante/);
-    assert.match(capturedPrompt, /Expos para visitar esta semana:\n- En el Tiempo a Distancia/);
+    assert.match(capturedPrompt, /Número real de exposiciones activas este fin de semana en la región: 36/);
+    assert.match(capturedPrompt, /Inauguraciones de este fin de semana:\n- Estrella distante/);
+    assert.match(capturedPrompt, /Expos para visitar este fin de semana:\n- En el Tiempo a Distancia/);
   },
 );
 

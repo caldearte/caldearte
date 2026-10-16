@@ -779,7 +779,8 @@ function fmtWeekHeaderEs(weekStart: string, weekEnd: string): string {
   return `${range} ${ey}`;
 }
 
-// "SEMANA DEL 3 AL 9 DE AGOSTO" — its own line under the header title now
+// "FIN DE SEMANA DEL 17 AL 19 DE OCTUBRE" (was "SEMANA DEL…" until the
+// digest became a Thursday weekend edition, 2026-10-16) — its own line under the header title now
 // (2026-08-08 restack, user request), separate from the fixed "GUIA
 // INDEPENDIENTE DE ARTE." tagline above it, which no longer carries the
 // date range itself. No year (unlike fmtWeekHeaderEs above, used
@@ -789,7 +790,7 @@ function fmtWeekLine(weekStart: string, weekEnd: string): string {
   const [, sm, sd] = weekStart.split("-").map(Number);
   const [, em, ed] = weekEnd.split("-").map(Number);
   const range = sm === em ? `${sd} al ${ed} de ${MONTHS_ES[sm - 1]}` : `${sd} de ${MONTHS_ES[sm - 1]} al ${ed} de ${MONTHS_ES[em - 1]}`;
-  return `SEMANA DEL ${range.toUpperCase()}`;
+  return `FIN DE SEMANA DEL ${range.toUpperCase()}`;
 }
 
 const SITE_URL = "https://www.caldearte.com";
@@ -838,10 +839,20 @@ function groupByComuna(events: DigestEvent[]): Array<[string, DigestEvent[]]> {
 // only formats whatever sections it's handed and never omits a non-empty
 // one, matching the product decision that empty sections are dropped
 // upstream, not hidden here.
-export function buildDigestSubject(sections: DigestSection[], week?: { start: string; end: string }): string {
-  const totalEvents = sections.reduce((sum, s) => sum + s.events.length, 0);
-  const weekLabel = week ? `, ${fmtWeekHeaderEs(week.start, week.end)}` : "";
-  return `Caldearte — tu semana en arte${weekLabel} (${totalEvents} expo${totalEvents === 1 ? "" : "s"})`;
+//
+// Leads with the number of openings (2026-10-16, the Thursday weekend
+// edition): "12 inauguraciones este finde en Santiago" says in the inbox
+// what's inside, which "tu semana en arte (N expos)" didn't.
+export function buildDigestSubject(
+  sections: DigestSection[],
+  week?: { start: string; end: string },
+  regionName: string | null = null,
+): string {
+  const openings = sections.find((s) => s.label === OPENINGS_LABEL)?.events.length ?? 0;
+  const where = regionName ? ` en ${shortRegionName(regionName)}` : "";
+  const dates = week ? `, ${fmtWeekHeaderEs(week.start, week.end)}` : "";
+  const lead = openings > 0 ? `${openings} inauguraci${openings === 1 ? "ón" : "ones"} este finde${where}` : `Este finde en arte${where}`;
+  return `${lead} — Caldearte${dates}`;
 }
 
 // Anchors "same year → no year suffix" to the digest's own send week
@@ -904,7 +915,7 @@ export function buildDigestBody(
   lines.push(`Síguenos en Instagram y no te pierdas las entrevistas que le hacemos a algunos artistas en sus propias inauguraciones: ${INSTAGRAM_URL}`);
   lines.push("");
   lines.push(
-    "Este es el boletín semanal de Caldearte, un calendario de arte curado por inteligencia humana potenciada por IA. Te lo enviamos porque te suscribiste para recibir la agenda de tu región cada semana.",
+    "Este es el boletín de Caldearte, un calendario de arte curado por inteligencia humana potenciada por IA. Te lo enviamos cada jueves porque te suscribiste para recibir las inauguraciones del fin de semana en tu región.",
   );
   lines.push(`Darse de baja: ${unsubscribeUrl(unsubscribeToken)}`);
   return lines.join("\n");
@@ -941,20 +952,21 @@ const LATO_STACK = "'Lato',Helvetica,Arial,sans-serif";
 // heading (see buildDigestHtmlBody's per-section branch below). Any
 // section not in this map falls back to its plain label on one unbroken
 // line, still at the same big size.
-// "Expos para visitar esta semana" removed 2026-09-27 — it's a compact
+// "Expos para visitar" removed 2026-09-27 — it's a compact
 // section now (see DigestSection.compact), never reaches this map's
 // wordmark treatment at all.
+export const OPENINGS_LABEL = "Inauguraciones de este fin de semana";
 const SECTION_LABEL_LINES: Record<string, string[]> = {
-  "Inauguraciones de esta semana": ["INAUGU", "RACIONES."],
+  [OPENINGS_LABEL]: ["INAUGU", "RACIONES."],
 };
 
 // Same "within 7 days, never past" rule as apps/web/src/lib/date.ts's own
 // isClosingSoon (duplicated, not imported — separate packages). `todayStr`
-// anchors off the digest's own week.start (the send goes out Sunday
-// morning for the week starting the next day, per weekBoundsInSantiago's
-// Sunday fix — week.start is "tomorrow", one day off from the real send
-// day, close enough for a 7-day threshold without threading the run's
-// real clock all the way through) — omitted (no badge, ever) when there's
+// anchors off the digest's own week.start (the send goes out Thursday
+// evening for the weekend starting the next day, per
+// weekendBoundsInSantiago — week.start is "tomorrow", one day off from the
+// real send day, close enough for a 7-day threshold without threading the
+// run's real clock all the way through) — omitted (no badge, ever) when there's
 // no week at all.
 function isClosingSoon(runEndDate: string | null, todayStr: string | null, thresholdDays = 7): boolean {
   if (!runEndDate || !todayStr) return false;
@@ -1184,7 +1196,7 @@ export function buildDigestHtmlBody(
     <div style="background:${BRAND_MAGENTA};color:${SURFACE_SAGE};padding:40px 28px;margin-top:56px;">
       <p style="margin:0 0 16px;font-family:${LATO_STACK};font-weight:900;font-size:32px;letter-spacing:0.01em;color:${SURFACE_SAGE};">CALDEARTE.</p>
       <p style="margin:0 0 12px;font-size:12px;line-height:1.6;color:${SURFACE_SAGE};">
-        Este es el boletín semanal de Caldearte, un calendario de arte curado por inteligencia humana potenciada por IA. Te lo enviamos porque te suscribiste para recibir la agenda de tu región cada semana.
+        Este es el boletín de Caldearte, un calendario de arte curado por inteligencia humana potenciada por IA. Te lo enviamos cada jueves porque te suscribiste para recibir las inauguraciones del fin de semana en tu región.
       </p>
       <a href="${unsubscribeUrl(unsubscribeToken)}" style="color:${SURFACE_SAGE};font-size:12px;text-decoration:underline;">Darse de baja</a>
     </div>
@@ -1215,7 +1227,7 @@ export async function sendDigestEmail(
   const { error } = await resend.emails.send({
     from: "Caldearte <contacto@caldearte.com>",
     to: email,
-    subject: buildDigestSubject(sections, week),
+    subject: buildDigestSubject(sections, week, regionName),
     text: buildDigestBody(sections, unsubscribeToken, intro, week, otherRegionsIntro, regionName),
     html: buildDigestHtmlBody(sections, unsubscribeToken, intro, week, otherRegionsIntro, regionName),
     headers: {
