@@ -50,15 +50,15 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # Mon/Wed/Fri (publish-social.yml's own `5 12 * * 1,3,5`) — worst
-          # real gap is Friday ~12:05 UTC to Monday ~12:05 UTC, 72h. 96h
-          # buffer. Was 30h, left over from the pre-2026-08-31 cadence the
-          # comment here still described ("Mon-Sat + 3x Sunday", worst gap
-          # ~18h) — under the real cadence that threshold is exceeded EVERY
-          # weekend, so this entry declared publish-social overdue every
-          # Saturday and Sunday when nothing was actually wrong.
+          # Sun/Tue/Thu/Fri at ~19:30 Santiago since 2026-10-16 (its job
+          # starts hours early and waits — see publish-social.yml) — worst
+          # real gap is 48h (Fri→Sun, Sun→Tue, Tue→Thu), + the same 6h
+          # buffer the daily entries use. Was 96h for the old Mon/Wed/Fri
+          # (72h Fri→Mon). A catch-up dispatch is safe: run.ts posts nothing
+          # if a carousel already went out in the last 12h, and one before
+          # 14:00 posts the previous evening's window.
           - workflow: publish-social.yml
-            max_gap_hours: 96
+            max_gap_hours: 54
             # Re-triggering with no inputs would default dry_run=true —
             # a catch-up run must actually publish, same as any other
             # real scheduled firing would have.
@@ -68,8 +68,8 @@ jobs:
             # here — the last SUCCESS was only ~50h old against the 96h
             # buffer, so nothing re-triggered it and the post would have
             # been lost until Monday. Retry a failure once if it is at most
-            # this many hours old (publish-social.yml only publishes on its
-            # own Mon/Wed/Fri, so a same-day retry is the useful kind).
+            # this many hours old (an evening failure retried the next
+            # morning still posts that window's remaining events).
             retry_failed_within_hours: 20
           - workflow: daily-digest.yml
             max_gap_hours: 30
