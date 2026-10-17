@@ -50,6 +50,8 @@ function ActionButton({
   destructive = false,
   icon,
   label,
+  track,
+  trackEventId,
 }: {
   href?: string;
   onClick?: () => void;
@@ -59,13 +61,16 @@ function ActionButton({
   destructive?: boolean;
   icon?: React.ReactNode;
   label: string;
+  // Counted by components/TrackClicks.tsx (see lib/track.ts).
+  track?: string;
+  trackEventId?: string;
 }) {
   const className = `flex items-center gap-[10px] border px-[18px] py-[14px] text-[15px] md:text-[16px] font-fragment-mono whitespace-nowrap cursor-pointer disabled:opacity-50 disabled:cursor-default ${
     destructive ? "border-red-600 text-red-600" : "border-text-primary text-text-primary"
   }`;
   if (href) {
     return (
-      <a href={href} target="_blank" rel="noopener noreferrer" className={className}>
+      <a href={href} target="_blank" rel="noopener noreferrer" className={className} data-track={track} data-track-event-id={trackEventId}>
         {icon}
         {label}
       </a>
@@ -234,8 +239,8 @@ export default function EventDetailCard({ event, domain, venueLink, artistLinks,
         </div>
 
         <div className="flex flex-wrap gap-[12px] items-center">
-          {mapsHref && <ActionButton href={mapsHref} icon={<DirectionsGlyph color="#3d373d" />} label={esCL.cardMenuDirections} />}
-          {calendarHref && <ActionButton href={calendarHref} icon={<CalendarGlyph color="#3d373d" />} label={esCL.cardMenuAddToCalendar} />}
+          {mapsHref && <ActionButton href={mapsHref} icon={<DirectionsGlyph color="#3d373d" />} label={esCL.cardMenuDirections} track="directions" trackEventId={event.id} />}
+          {calendarHref && <ActionButton href={calendarHref} icon={<CalendarGlyph color="#3d373d" />} label={esCL.cardMenuAddToCalendar} track="add_to_calendar" trackEventId={event.id} />}
           <div className="relative">
             <ActionButton onClick={() => setShareSubmenuOpen((open) => !open)} icon={<ShareGlyph color="#3d373d" />} label={esCL.cardMenuShare} />
             {shareSubmenuOpen && (
@@ -311,7 +316,14 @@ export default function EventDetailCard({ event, domain, venueLink, artistLinks,
           <div className="flex flex-col gap-[6px] border-t border-border-default pt-[20px]">
             <div className="flex items-center gap-[8px] font-geist text-[16px] md:text-[17px] text-text-primary flex-wrap">
               <span className="font-bold">{esCL.eventPageSourceLabel(domain)}</span>
-              <a href={event.sourceUrl} target="_blank" rel="noopener noreferrer" className="underline text-brand-magenta">
+              <a
+                href={event.sourceUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline text-brand-magenta"
+                data-track="outbound_source"
+                data-track-event-id={event.id}
+              >
                 {esCL.eventPageSourceLink}
               </a>
             </div>

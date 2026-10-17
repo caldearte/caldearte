@@ -523,7 +523,7 @@ export const esCL = {
     // from comuna to macro-región on 2026-07-30 (see roadmap.md and
     // newsletter_subscribers.admin_region_name), never updated here.
     dataBody:
-      "Guardamos varias cookies de preferencia en tu navegador, por un año: la comuna que elegiste, si tienes activado el modo familiar, tus filtros de vista, tus últimas comunas visitadas, y tu ubicación si la compartiste. Si te suscribes al newsletter, guardamos tu correo y la región que elegiste, y cada envío incluye un link para darte de baja en un clic. No creamos cuentas, no usamos rastreadores de terceros, y no guardamos nada de lo que escribas en el formulario de contacto: solo lo reenviamos por correo. Usamos Vercel Analytics para ver estadísticas agregadas de visitas, sin cookies ni datos que te identifiquen.",
+      "Guardamos varias cookies de preferencia en tu navegador, por un año: la comuna que elegiste, si tienes activado el modo familiar, tus filtros de vista, tus últimas comunas visitadas, y tu ubicación si la compartiste. Si te suscribes al newsletter, guardamos tu correo y la región que elegiste, y cada envío incluye un link para darte de baja en un clic. No creamos cuentas, no usamos rastreadores de terceros, y no guardamos nada de lo que escribas en el formulario de contacto: solo lo reenviamos por correo. Usamos Vercel Analytics para ver estadísticas agregadas de visitas, sin cookies ni datos que te identifiquen. Además contamos algunos clics, como «Cómo llegar» o «Agregar al calendario», para saber qué muestras interesan: guardamos qué se tocó, en qué página, el país y si fue desde un celular o un computador, nunca tu IP ni nada que te identifique.",
   },
 
   // Shared by /privacidad and /curatoria — both end with the same

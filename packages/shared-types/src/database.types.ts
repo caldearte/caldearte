@@ -1244,6 +1244,39 @@ export type Database = {
           },
         ]
       }
+      web_events: {
+        Row: {
+          country: string | null
+          created_at: string
+          device: string
+          event: string
+          event_id: string | null
+          id: string
+          path: string
+          referrer_host: string | null
+        }
+        Insert: {
+          country?: string | null
+          created_at?: string
+          device: string
+          event: string
+          event_id?: string | null
+          id?: string
+          path: string
+          referrer_host?: string | null
+        }
+        Update: {
+          country?: string | null
+          created_at?: string
+          device?: string
+          event?: string
+          event_id?: string | null
+          id?: string
+          path?: string
+          referrer_host?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       artist_history: {

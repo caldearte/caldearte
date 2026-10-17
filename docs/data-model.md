@@ -302,6 +302,21 @@ newsletter_subscribers (added 20260730180000_add_newsletter_subscribers.sql
   -- token in the confirmation/every-digest-email link — never through
   -- this table's RLS directly.
 
+web_events (added 20261016180000_add_web_events.sql — first-party intent
+    clicks on caldearte.com, since Vercel Analytics only counts visits and
+    ~30% of those are Meta bots)
+  id, event (directions | add_to_calendar | outbound_source |
+    outbound_instagram | newsletter_signup), event_id (nullable, NOT a fk —
+    a count must survive the event being pruned or deleted), path,
+  referrer_host (the host the visitor arrived from, nullable),
+  country (ISO-2 from Vercel's geo header, nullable — always null in local
+    dev), device (mobile | tablet | desktop), created_at
+  -- Anonymous by design: no IP, no user agent, no cookie, no visitor/
+  -- session id. Written by apps/web/src/app/api/track/route.ts (anon key,
+  -- INSERT-only grant, same posture as newsletter_subscribers), which drops
+  -- bot user agents first. Filter on country = 'CL' when reading it — that
+  -- also removes the Meta datacenter traffic (US/SE/IE).
+
 discovery_run_summaries (added 20260817120000_add_discovery_run_summaries.sql
     — see architecture.md's "Admin analytics dashboard" section)
   id, created_at, started_at,

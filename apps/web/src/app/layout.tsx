@@ -4,6 +4,7 @@ import { Analytics } from "@vercel/analytics/react";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { esCL } from "@/i18n/es-CL";
 import AuthSessionProvider from "@/components/AuthSessionProvider";
+import TrackClicks from "@/components/TrackClicks";
 import "./globals.css";
 
 const inter = Inter({
@@ -81,6 +82,7 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col">
         <AuthSessionProvider>{children}</AuthSessionProvider>
         <Analytics />
+        <TrackClicks />
         <SpeedInsights />
       </body>
     </html>

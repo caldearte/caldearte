@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, type FormEvent } from "react";
+import { track } from "./track";
 
 export type NewsletterSubmitStatus = "idle" | "sending" | "success" | "already_subscribed" | "error";
 
@@ -71,7 +72,14 @@ export function useNewsletterSubscribe() {
       });
       if (!res.ok) throw new Error("subscribe failed");
       const body = (await res.json()) as { status?: string };
-      setStatus(body.status === "already_subscribed" ? "already_subscribed" : "success");
+      if (body.status === "already_subscribed") {
+        setStatus("already_subscribed");
+      } else {
+        setStatus("success");
+        // A new pending signup (newsletter_subscribers has the row too,
+        // but not which page's form it came from — that's what this adds).
+        track("newsletter_signup");
+      }
     } catch {
       setStatus("error");
     }

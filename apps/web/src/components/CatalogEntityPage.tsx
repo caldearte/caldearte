@@ -71,7 +71,7 @@ export default function CatalogEntityPage({
         <div className="mt-[16px] flex flex-wrap items-center gap-x-[16px] gap-y-[6px] font-fragment-mono text-[14px] md:text-[15px] text-text-primary">
           <span>{countText}</span>
           {instagramHandle && (
-            <a href={instagramProfileUrl(instagramHandle)} target="_blank" rel="noopener noreferrer" className="underline">
+            <a href={instagramProfileUrl(instagramHandle)} target="_blank" rel="noopener noreferrer" className="underline" data-track="outbound_instagram">
               {esCL.venuePageInstagramLink(instagramHandle)}
             </a>
           )}

@@ -223,13 +223,13 @@ export function AgendaCard({
         {(mapsHref || calendarHref) && (
           <div className="flex flex-col gap-[8px] mt-[10px]">
             {mapsHref && (
-              <a href={mapsHref} target="_blank" rel="noopener noreferrer" className={button}>
+              <a href={mapsHref} target="_blank" rel="noopener noreferrer" className={button} data-track="directions" data-track-event-id={event.id}>
                 <DirectionsGlyph color="#3d373d" />
                 {esCL.cardMenuDirections}
               </a>
             )}
             {calendarHref && (
-              <a href={calendarHref} target="_blank" rel="noopener noreferrer" className={button}>
+              <a href={calendarHref} target="_blank" rel="noopener noreferrer" className={button} data-track="add_to_calendar" data-track-event-id={event.id}>
                 <CalendarGlyph color="#3d373d" />
                 {esCL.home.addToCalendar}
               </a>
