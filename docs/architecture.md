@@ -690,10 +690,63 @@ Vercel's Usage page whenever the PR rate spikes.
 **Analytics, first read (30 days):** 155 visitors, 451 page views,
 bounce 52%; ~34 of the visitors are us (`/admin*`), so ~120 real
 visitors a month, ~4 a day. Referrers: Google 32, Instagram 14, Facebook
-7 — search already brings twice what Instagram does. `/agrega-tu-expo`:
+7 (superseded 2026-10-16: Instagram is split across two referrer rows
+and Facebook is Meta bots — see "Web analytics" below). `/agrega-tu-expo`:
 6 visitors, 0 submissions. UTM breakdown is a paid feature on Hobby.
 The chain of signals, in order: ~100 followers → ~120 visitors/month →
 2 subscribers → 0 submissions (see roadmap.md, "Audience, staged").
+
+## Web analytics: Meta bots and first-party intent tracking (2026-10-16)
+
+**Read Vercel Analytics filtered to Chile, always.** The 30-day view on
+2026-10-16 said 228 visitors (+37%), 438 views, bounce 65%. Split by
+country it's two different populations:
+
+| | Visitors | Bounce | Referrers |
+|---|---|---|---|
+| US + Sweden + Ireland | 68 | 79–88% | 100% facebook.com / m.facebook.com |
+| Chile | 151 | 57% | Google 29, Instagram 31 (two rows: instagram.com + l.instagram.com), Medium 2, Facebook 1 |
+
+The first row is not people: one view each, Windows-heavy, spread
+across single event pages, and US / Luleå / Clonee are exactly Meta's
+datacenter locations — Meta's link scanners running JavaScript. Every
+facebook.com referral in the dashboard is one of them (Chile has 1).
+So "Facebook is the biggest referrer" (read on 2026-10-10) was bot
+traffic, the headline growth is mostly those bots (US +206%), and the
+real audience is ~150 visitors/month in Chile (still including our own
+`/admin` visits), +4%, with page views −30%. Google and Instagram are
+the two real channels and weigh about the same — the earlier "Google
+twice Instagram" was reading one of Instagram's two referrer rows.
+Search Console agrees on Google: 30 clicks / 647 impressions / avg
+position 7.5 over 28 days, against ~35 google.com visitors in Vercel.
+Filter in the dashboard via the country row's filter button (URL param
+`filter={"country":{"values":["CL"],"operator":"eq"}}`).
+
+**Intent tracking, own table (PR #665).** Visits don't measure what
+Caldearte is for (people going to shows), Vercel's custom events need
+Pro, and Google Analytics was considered and declined: it needs cookies
+and a consent banner (Ley 21.719 in force 2026-12-01, and a banner would
+sit on the first screen we just cleaned up), it hands visitors'
+browsing to Google, and it wouldn't filter JS-running Meta bots either.
+Instead the site counts five clicks that show someone means to go —
+`directions` ("Cómo llegar"), `add_to_calendar`, `outbound_source`,
+`outbound_instagram`, `newsletter_signup` — into `web_events` (schema in
+data-model.md). Client: `lib/track.ts` fires a `navigator.sendBeacon` to
+`/api/track` (survives the click opening a new tab), wired through
+`TrackClicks` / the agenda, ficha and catalog components. Server:
+`app/api/track/route.ts` drops bot user agents (incl.
+`facebookexternalhit`/`meta-external`) and cross-site requests
+(`Sec-Fetch-Site`), validates the payload, derives `country` from
+Vercel's geo header and a 3-value `device`, inserts with the anon key
+(INSERT-only grant), and always answers 204. Nothing identifying is
+stored — no IP, user agent, cookie or visitor id — so it can't count
+unique people, only clicks; that's the trade for staying cookie-free.
+The page render is untouched (no cookies/headers read in pages, see the
+Fast Origin Transfer notes). Known gap: anyone with the public anon key
+can insert rows directly; the table's CHECKs bound what they can write,
+same posture as `newsletter_subscribers`. Deployed and smoke-tested in
+production the same day (test row deleted). Read it with
+`where country = 'CL'`; the first meaningful read is ~2 weeks in.
 
 ## GitHub cron drift, measured (2026-09-22) — and why the digest waits instead
 

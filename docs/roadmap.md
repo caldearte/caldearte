@@ -512,13 +512,15 @@ building infra" discipline the rest of this project has followed.
   submit their own shows only after seeing two or three of theirs
   published; the form is the correction step, offered around the third
   contact. What Caldearte offers that Instagram doesn't: the show stays
-  up until it closes (not 24 hours), it's findable on Google (already
-  twice the referrals Instagram sends), it sits in the same grid as the
+  up until it closes (not 24 hours), it's findable on Google (about as
+  many real visitors as Instagram sends — architecture.md, "Web
+  analytics", 2026-10-16), it sits in the same grid as the
   big venues, it's a selection with a line, and the video interviews —
   the one offer nobody can copy. Shared links carry
   `utm_source=share&utm_medium=<channel>` since PR #572 so re-shares can
   be told apart once analytics can read UTMs (paid on Vercel Hobby; an
-  own counter is the fallback). Considered and deferred: an embeddable
+  own counter is the fallback — `web_events` since PR #665 stores the
+  referrer host, not UTMs). Considered and deferred: an embeddable
   HTML card for venue websites — venues with sites have their own
   sections and the rest live on Instagram; a downloadable story image of
   the ficha fits better and reuses the flyer generator.
