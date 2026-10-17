@@ -4,28 +4,26 @@ name: Send Weekly Newsletter
 # docs/data-model.md's newsletter_subscribers entry and
 # docs/roadmap.md's newsletter section for the full design.
 #
-# Moved Monday -> Sunday, 2026-08-23 (docs/roadmap.md's long-flagged
-# "discovery cadence moves Monday -> Sunday") along with the rest of the
-# discovery chain (event-discovery/headless/instagram/google-alerts, same
-# relative stagger) — so the digest announces the week starting the next
-# day, with a real one-day lead time, instead of the week that's already
-# started.
+# Since 2026-10-16: a Thursday-evening WEEKEND edition (Friday-Sunday),
+# not a Sunday digest of the whole week — the Sunday send went out knowing
+# only ~60% of its week's openings (venues announce late), while by
+# Thursday 20:00 ~83% of the weekend is in. See
+# apps/curator/src/newsletter/run.ts (weekendBoundsInSantiago; it only
+# sends Thursday-Saturday). Earlier history: moved Monday -> Sunday
+# 2026-08-23, then placed after the whole discovery chain.
 #
-# Time ALSO moved within that Sunday run, from 08:00 UTC to 10:00 UTC —
-# real bug, found 2026-08-23: this was originally "1h after
-# headless-bright-sources.yml" (07:00 UTC) when headless was the last
-# step in the chain, but instagram-bright-sources.yml (08:00 UTC) and
-# google-alerts-bright-source.yml (09:00 UTC) were added later without
-# ever moving this cron — for weeks, the newsletter ran AT THE SAME TIME
-# as instagram-bright-sources instead of after the full chain, so it
-# never had that week's Instagram- or Google-Alerts-sourced events. Now
-# scheduled 1h after google-alerts (the actual last step).
+# Timing: same approach as publish-social.yml. GitHub's schedule runs
+# 2-10 h late, so the cron is set for 11:30 Santiago and the first step
+# sleeps until 19:00 — by then that day's Instagram run (08:17 UTC cron,
+# observed up to ~9.7 h late, i.e. done by ~15:00 Santiago) is in.
 on:
   workflow_dispatch: {}
   schedule:
     # Not minute 0 — see event-discovery.yml's own comment (top-of-hour
     # congestion, real 26-51min delays observed 2026-08-23).
-    - cron: "27 10 * * 0" # Every Sunday, ~10:27 UTC — 1h after google-alerts-bright-source.yml, the last step in the discovery chain
+    # 14:30 UTC = 11:30 Santiago in summer time, 10:30 in winter — the
+    # wait step below targets 19:00 in Santiago either way.
+    - cron: "30 14 * * 4" # Every Thursday
 
 permissions:
   contents: read
@@ -33,7 +31,26 @@ permissions:
 jobs:
   send-newsletter:
     runs-on: ubuntu-latest
+    # GitHub's own limit; the wait below is capped well under it.
+    timeout-minutes: 360
     steps:
+      # Only on the schedule — a manual or watchdog dispatch sends at once.
+      # Capped at 5h40m so a punctual GitHub can't push the job past its
+      # 6h limit. After 19:00 there's no wait.
+      - name: Wait until 19:00 in Santiago
+        if: github.event_name == 'schedule'
+        run: |
+          target=$(TZ=America/Santiago date -d "19:00" +%s)
+          wait=$(( target - $(date +%s) ))
+          max=$(( 5 * 3600 + 40 * 60 ))
+          if [ "$wait" -gt "$max" ]; then wait=$max; fi
+          if [ "$wait" -gt 0 ]; then
+            echo "Started $(TZ=America/Santiago date +%H:%M) Santiago; waiting $(( wait / 60 )) min."
+            sleep "$wait"
+          else
+            echo "Started $(TZ=America/Santiago date +%H:%M) Santiago, past 19:00 — no wait."
+          fi
+
       - uses: actions/checkout@v4
 
       - uses: pnpm/action-setup@v4
@@ -45,7 +62,7 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
-      - name: Send weekly newsletter
+      - name: Send the weekend newsletter
         run: pnpm --filter @caldearte/curator run send-newsletter
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
