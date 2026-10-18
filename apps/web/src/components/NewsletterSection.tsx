@@ -6,6 +6,7 @@ import { esCL } from "@/i18n/es-CL";
 import { useNewsletterSubscribe } from "@/lib/useNewsletterSubscribe";
 import { shortRegionName } from "@/lib/regionNames";
 import { statusBoxClass } from "@/lib/formStatusBox";
+import { emailFieldError } from "@/lib/emailFieldError";
 import FormField, { FIELD_BOX, FIELD_BOX_INVALID } from "./FormField";
 
 const STATUS_BOX_SUCCESS = statusBoxClass("success", "text-text-primary");
@@ -20,7 +21,6 @@ const STATUS_BOX_ERROR = statusBoxClass("error", "text-text-primary");
 // (FormField: white boxes, visible labels, light examples, errors under
 // each field) and the visitor's región preselected. Shares useNewsletterSubscribe so
 // both forms hit the same región list/submit logic instead of drifting.
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 interface NewsletterSectionProps {
   // The región the visitor is looking at, preselected in the form — they
@@ -43,7 +43,7 @@ export default function NewsletterSection({ adminRegionName = "" }: NewsletterSe
     const email = ((data.get("email") as string | null) ?? "").trim();
     const region = (data.get("adminRegionName") as string | null) ?? "";
     const next: { email?: string; adminRegionName?: string } = {};
-    if (!EMAIL_RE.test(email)) next.email = esCL.newsletter.invalidEmail;
+    next.email = emailFieldError(email, esCL.newsletter.invalidEmail);
     if (!region) next.adminRegionName = esCL.newsletter.noRegion;
     setErrors(next);
     if (next.email || next.adminRegionName) {
