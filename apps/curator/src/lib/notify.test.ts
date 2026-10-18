@@ -294,7 +294,7 @@ test("buildHeadlessHtmlBody renders the MAVI event table with source link and ve
 
 const fixtureDigestSections: DigestSection[] = [
   {
-    label: "Inauguraciones de este fin de semana",
+    label: "Inauguraciones de jueves a domingo",
     events: [
       {
         id: "event-estrella-distante",
@@ -329,24 +329,24 @@ const fixtureDigestSections: DigestSection[] = [
   },
 ];
 
-test("buildDigestSubject leads with the number of openings this weekend and the subscriber's región — 2026-10-16, Thursday weekend edition", () => {
+test("buildDigestSubject leads with the number of openings Thursday to Sunday and the subscriber's región — 2026-10-18", () => {
   assert.equal(
-    buildDigestSubject(fixtureDigestSections, { start: "2026-10-16", end: "2026-10-18" }, "Región Metropolitana de Santiago"),
-    "1 inauguración este finde en Santiago — Caldearte, 16 al 18 de octubre 2026",
+    buildDigestSubject(fixtureDigestSections, { start: "2026-10-22", end: "2026-10-25" }, "Región Metropolitana de Santiago"),
+    "1 inauguración de jueves a domingo en Santiago — Caldearte, 22 al 25 de octubre 2026",
   );
 });
 
 test("buildDigestSubject pluralizes openings and still works without región or dates", () => {
   const opening = fixtureDigestSections[0];
   const twoOpenings: DigestSection = { ...opening, events: [...opening.events, { ...opening.events[0], id: "otra" }] };
-  assert.equal(buildDigestSubject([twoOpenings]), "2 inauguraciones este finde — Caldearte");
+  assert.equal(buildDigestSubject([twoOpenings]), "2 inauguraciones de jueves a domingo — Caldearte");
 });
 
 test("buildDigestSubject with no openings falls back to a plain weekend line", () => {
-  const noOpenings = fixtureDigestSections.filter((s) => s.label !== "Inauguraciones de este fin de semana");
+  const noOpenings = fixtureDigestSections.filter((s) => s.label !== "Inauguraciones de jueves a domingo");
   assert.equal(
-    buildDigestSubject(noOpenings, { start: "2026-10-16", end: "2026-10-18" }, "Valparaíso"),
-    "Este finde en arte en Valparaíso — Caldearte, 16 al 18 de octubre 2026",
+    buildDigestSubject(noOpenings, { start: "2026-10-22", end: "2026-10-25" }, "Valparaíso"),
+    "Arte de jueves a domingo en Valparaíso — Caldearte, 22 al 25 de octubre 2026",
   );
 });
 
@@ -357,7 +357,7 @@ const WEEK = { start: "2026-08-03", end: "2026-08-09" };
 test("buildDigestBody lists the openings grouped by day, links to caldearte.com's own event page, gives a compact section one line with its link, and includes the unsubscribe link", () => {
   const body = buildDigestBody(fixtureDigestSections, "unsub-token", null, WEEK);
   assert.match(body, /^EL ARTE MÁS CERCA\n3 al 9 de agosto 2026/);
-  assert.match(body, /Inauguraciones de este fin de semana/);
+  assert.match(body, /Inauguraciones de jueves a domingo/);
   assert.match(body, /\[Lunes 3\]/);
   assert.match(body, /Estrella distante — MAC Quinta Normal/);
   assert.match(body, /Inauguración: 3 de agosto · \d{1,2}(:\d{2})? hr/);
@@ -391,20 +391,20 @@ test("buildDigestHtmlBody: the CALDE/ARTE. header is a link to the homepage, in 
 });
 
 test("buildDigestHtmlBody: the header carries the site's slogan EL ARTE MÁS CERCA (not the old GUIA INDEPENDIENTE DE ARTE.), then the weekend and the región as the site's pills, only when given — 2026-10-18", () => {
-  const html = buildDigestHtmlBody(fixtureDigestSections, "unsub-token", null, { start: "2026-10-23", end: "2026-10-25" }, "Región Metropolitana de Santiago");
+  const html = buildDigestHtmlBody(fixtureDigestSections, "unsub-token", null, { start: "2026-10-22", end: "2026-10-25" }, "Región Metropolitana de Santiago");
   assert.match(html, />EL ARTE MÁS CERCA</);
   assert.doesNotMatch(html, /GUIA INDEPENDIENTE/);
-  assert.match(html, /<span[^>]*border-radius:12px[^>]*>Finde del 23 al 25 oct<\/span> en <span[^>]*>Santiago<\/span>/);
+  assert.match(html, /<span[^>]*border-radius:12px[^>]*>Jue 22 al dom 25 oct<\/span> en <span[^>]*>Santiago<\/span>/);
 
   const withNeither = buildDigestHtmlBody(fixtureDigestSections, "unsub-token");
   assert.match(withNeither, />EL ARTE MÁS CERCA</);
-  assert.doesNotMatch(withNeither, /Finde del/);
+  assert.doesNotMatch(withNeither, /al dom/);
 });
 
 test("buildDigestBody and buildDigestHtmlBody render a section's emptyMessage instead of a card list when it has no events", () => {
   const sections: DigestSection[] = [
     {
-      label: "Inauguraciones de este fin de semana",
+      label: "Inauguraciones de jueves a domingo",
       events: [],
       emptyMessage: "No hemos encontrado ninguna inauguración para esta semana aún. Si sabes de una, avísanos.",
     },
@@ -418,11 +418,11 @@ test("buildDigestBody and buildDigestHtmlBody render a section's emptyMessage in
 
 test("buildDigestBody and buildDigestHtmlBody: a compact section with nothing to link shows its emptyMessage as plain text", () => {
   const sections: DigestSection[] = [
-    { label: "Visitas guiadas de este fin de semana", events: [], compact: true, emptyMessage: "Ninguna visita guiada programada este fin de semana." },
+    { label: "Visitas guiadas de jueves a domingo", events: [], compact: true, emptyMessage: "Ninguna visita guiada programada de jueves a domingo." },
   ];
-  assert.match(buildDigestBody(sections, "unsub-token"), /-- Visitas guiadas de este fin de semana --\nNinguna visita guiada programada este fin de semana\./);
+  assert.match(buildDigestBody(sections, "unsub-token"), /-- Visitas guiadas de jueves a domingo --\nNinguna visita guiada programada de jueves a domingo\./);
   const html = buildDigestHtmlBody(sections, "unsub-token");
-  assert.match(html, /<p[^>]*>Ninguna visita guiada programada este fin de semana\.<\/p>/);
+  assert.match(html, /<p[^>]*>Ninguna visita guiada programada de jueves a domingo\.<\/p>/);
   assert.doesNotMatch(html, /<h2/);
 });
 
@@ -436,7 +436,7 @@ test("buildDigestHtmlBody: a card section's moreLink renders as a magenta button
 test("buildDigestBody omits the hour for an opening whose time isn't confirmed, and the card's pill says HORA POR CONF.", () => {
   const sections: DigestSection[] = [
     {
-      label: "Inauguraciones de este fin de semana",
+      label: "Inauguraciones de jueves a domingo",
       events: [
         {
           id: "event-sin-hora",
@@ -473,7 +473,7 @@ test("eventCardHtml: one row per event at every screen size — 96×120 thumbnai
 test("fmtDigestDate / card pill: an event whose opening was weeks ago (still running, isOpeningThisWeek: false) reads as running until its end, never 'Inauguración:' — real bug found 2026-07-31 where a past opening date read as if it were opening soon", () => {
   const sections: DigestSection[] = [
     {
-      label: "Inauguraciones de este fin de semana",
+      label: "Inauguraciones de jueves a domingo",
       events: [
         {
           id: "event-ya-abierto",
@@ -501,7 +501,7 @@ test("fmtDigestDate / card pill: an event whose opening was weeks ago (still run
 test("fmtDigestDate: dates render as 'día de mes', with the year appended only when it differs from the digest's own send year", () => {
   const section = (id: string, runEndDate: string): DigestSection[] => [
     {
-      label: "Inauguraciones de este fin de semana",
+      label: "Inauguraciones de jueves a domingo",
       events: [
         { id, title: "Muestra", placeName: "Sala X", comunaName: "Santiago", openingDatetime: null, openingTimeConfirmed: true, runEndDate, imageUrl: null, isOpeningThisWeek: false },
       ],

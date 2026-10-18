@@ -300,6 +300,16 @@ Closed out the initial project brief, moved into a dedicated repo.
     email got the same brand and the Thursday-weekend promise (it still
     said "newsletter semanal"). With last weekend's real data: 8 openings
     in ~3 phone screens, against ~10 screens for 1 opening before.
+    **Thursday morning, Thursday to Sunday, 2026-10-18** (Daniel): the
+    edition now covers Thursday-Sunday and goes out Thursday ~08:00-09:00
+    (night cron + wait, before noon even on a late GitHub day). Thursday
+    is the busiest opening day (68 of 233 openings over 13 weeks), most
+    of its openings start 17:00-19:00 so the 19:00 send missed them, and
+    every Santiago Thursday opening known in advance was known by
+    Wednesday night; Friday-Sunday coverage only drops from 36 to 34 of
+    48 with the earlier send. The site's descriptive lines now say
+    "de jueves a domingo… el jueves en la mañana"; the "del finde"
+    headlines stay as they are.
 
 ## Phase 1b — Inbound-mail flows
 

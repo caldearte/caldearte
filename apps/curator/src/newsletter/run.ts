@@ -1,6 +1,6 @@
 // Newsletter — weekly digest, one email per confirmed subscriber, sent
 // Thursday evening about the coming Friday-Sunday (since 2026-10-16, see
-// weekendBoundsInSantiago). See
+// editionBoundsInSantiago). See
 // docs/roadmap.md's Phase 1a punch list and docs/data-model.md for the
 // full design. Deliberately honest about the discovery pipeline's actual
 // cadence: event-discovery.yml's full comuna search only runs monthly
@@ -33,29 +33,31 @@ export interface RunDeps {
   generateRegionIntroFn?: typeof generateRegionIntro;
 }
 
-// The weekend this digest announces: the coming Friday-Sunday (Daniel
-// 2026-10-16). Measured that day: a Sunday send announcing Monday-Sunday
-// went out knowing only ~60% of the week's inauguraciones and visitas
-// guiadas — venues announce late, so the other 40% turned up after the
-// email, worst on Fridays (34% known the Sunday before). By Thursday
-// 20:00, 83% of the Friday-Sunday events are already in. And the weekend
-// is where nearly everything is: most openings are Thursday-Saturday.
-// Run Monday-Thursday it's the coming weekend; run Friday-Sunday (a late
-// or manual send) it's the weekend already under way. The returned
+// The period this digest announces: Thursday to Sunday (Daniel,
+// 2026-10-18; Friday-Sunday since 2026-10-16). Thursday is the busiest
+// opening day — over 13 weeks, 68 openings nationwide against 47 Fridays,
+// 53 Saturdays and 3 Sundays — and every Santiago Thursday opening known
+// before it happened was already known by Wednesday night (28 of 28), so
+// a Thursday-morning send loses nothing by including it. The old 19:00
+// send couldn't: most Thursday openings start 17:00-19:00. Friday-Sunday
+// coverage barely moves with the earlier send (Santiago, openings known
+// before they happened: 34/48 by Thursday 08:00 vs 36/48 by 19:00).
+// Run Monday-Thursday it's this week's Thursday-Sunday; run Friday-Sunday
+// (a late or manual send) it's the one already under way. The returned
 // `start`/`end` keep the `week` naming used throughout this file and
-// lib/notify.ts — it's the digest's period, now a weekend.
-export function weekendBoundsInSantiago(now: Date): { start: string; end: string } {
+// lib/notify.ts — it's the digest's period.
+export function editionBoundsInSantiago(now: Date): { start: string; end: string } {
   const todayStr = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Santiago" }).format(now); // en-CA gives YYYY-MM-DD
   const [y, m, d] = todayStr.split("-").map(Number);
   const asUtc = new Date(Date.UTC(y, m - 1, d));
   const dow = asUtc.getUTCDay(); // 0=Sun..6=Sat
-  const fridayOffset = dow === 0 ? -2 : dow === 6 ? -1 : 5 - dow;
-  const friday = new Date(asUtc);
-  friday.setUTCDate(asUtc.getUTCDate() + fridayOffset);
-  const sunday = new Date(friday);
-  sunday.setUTCDate(friday.getUTCDate() + 2);
+  const thursdayOffset = dow === 0 ? -3 : 4 - dow;
+  const thursday = new Date(asUtc);
+  thursday.setUTCDate(asUtc.getUTCDate() + thursdayOffset);
+  const sunday = new Date(thursday);
+  sunday.setUTCDate(thursday.getUTCDate() + 3);
   const fmt = (dt: Date) => dt.toISOString().slice(0, 10);
-  return { start: fmt(friday), end: fmt(sunday) };
+  return { start: fmt(thursday), end: fmt(sunday) };
 }
 
 // Mirrors apps/web/src/lib/date.ts's anchorDateOnly/activeRange — the
@@ -182,7 +184,7 @@ export function buildDigestSections(
     label: OPENINGS_LABEL,
     events: openings.map((e) => toDigestEvent(e, week)),
     emptyMessage:
-      openings.length === 0 ? "No hemos encontrado ninguna inauguración para este fin de semana aún. Si sabes de una, avísanos." : undefined,
+      openings.length === 0 ? "No hemos encontrado ninguna inauguración de jueves a domingo aún. Si sabes de una, avísanos." : undefined,
   });
 
   // Compact + always shown (2026-09-27, Daniel: the digest's primary
@@ -191,21 +193,21 @@ export function buildDigestSections(
   // at zero so their absence reads as a real "none this week" rather than
   // an unexplained gap.
   sections.push({
-    label: "Visitas guiadas de este fin de semana",
+    label: "Visitas guiadas de jueves a domingo",
     events: visitasGuiadas.map((e) => toDigestEvent(e, week)),
     compact: true,
-    emptyMessage: visitasGuiadas.length === 0 ? "Ninguna visita guiada programada este fin de semana." : undefined,
+    emptyMessage: visitasGuiadas.length === 0 ? "Ninguna visita guiada programada de jueves a domingo." : undefined,
   });
 
   // The link names the same number it links to (2026-10-18: it used to
   // say 48 "vigentes", openings included, next to "47 expos para
   // visitar"), with the región's short name, as the rest of the email.
   sections.push({
-    label: "Expos para visitar este fin de semana",
+    label: "Expos para visitar de jueves a domingo",
     events: alsoVisitAll.map((e) => toDigestEvent(e, week)),
     compact: true,
     emptyMessage:
-      alsoVisitAll.length === 0 ? "No hemos encontrado exposiciones para visitar este fin de semana aún. Si sabes de una, avísanos." : undefined,
+      alsoVisitAll.length === 0 ? "No hemos encontrado exposiciones para visitar de jueves a domingo aún. Si sabes de una, avísanos." : undefined,
     moreLink:
       alsoVisitAll.length > 0
         ? { label: `Ver las ${alsoVisitAll.length} exposiciones en cartelera en ${regionShort}`, url: SITE_URL }
@@ -230,7 +232,7 @@ export function buildDigestSections(
   return { sections, regionTotalThisWeek };
 }
 
-// The weekend edition only goes out Thursday-Saturday (Santiago). Any
+// The edition only goes out Thursday-Saturday (Santiago). Any
 // other day is a no-op: cron-watchdog.yml re-dispatches this workflow on
 // a gap, and the first gap after the Sunday → Thursday switch (2026-10-16)
 // would otherwise have sent the weekend edition on a Monday.
@@ -240,11 +242,11 @@ export async function run(deps: RunDeps = {}): Promise<void> {
   const now = deps.now ?? new Date();
   const dow = new Intl.DateTimeFormat("en-US", { timeZone: "America/Santiago", weekday: "short" }).format(now);
   if (!SEND_DAYS.has(dow)) {
-    console.log(`[newsletter] ${dow}: the weekend edition only goes out Thursday-Saturday, nothing to send.`);
+    console.log(`[newsletter] ${dow}: the Thursday-Sunday edition only goes out Thursday-Saturday, nothing to send.`);
     return;
   }
   const supabase = deps.supabase ?? getSupabaseClient();
-  const week = weekendBoundsInSantiago(now);
+  const week = editionBoundsInSantiago(now);
 
   // Retried a few times with backoff — mirrors social-publish/run.ts's
   // own fix for the exact same transient Supabase error (2026-09-02: "JWT
