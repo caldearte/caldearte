@@ -32,3 +32,10 @@ const SHORT_REGION_NAMES: Record<string, string> = {
 export function shortRegionName(adminRegionName: string): string {
   return SHORT_REGION_NAMES[adminRegionName] ?? adminRegionName;
 }
+
+// Only one of the 16 known names, else null — for text built from a
+// request payload (the newsletter confirmation email), where an unknown
+// string must never be echoed back.
+export function knownShortRegionName(adminRegionName: string): string | null {
+  return SHORT_REGION_NAMES[adminRegionName] ?? null;
+}
