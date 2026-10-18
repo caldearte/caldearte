@@ -62,9 +62,11 @@ export default function NewsletterSection({ adminRegionName = "" }: NewsletterSe
       <div className="flex flex-col gap-[14px] md:gap-[16px]">
         {/* eslint-disable-next-line @next/next/no-img-element -- Figma-exported asset, verbatim per design decision */}
         <img src="/icons/mail.svg" alt="" width={72} height={72} className="md:w-[88px] md:h-[88px]" />
-        <h2 className="font-lato font-black leading-none text-text-primary text-[40px] md:text-[56px]">
+        {/* Mobile size scales with the viewport so the longest word
+            ("INAUGURACIONES", ~9em) fits the card down to a 320px phone. */}
+        <h2 className="font-lato font-black leading-none text-text-primary text-[clamp(22px,calc((100vw-96px)/9.2),40px)] md:text-[56px]">
           {esCL.newsletter.sectionHeadlinePlainStart}
-          <span className="text-brand-magenta">{esCL.newsletter.sectionHeadlineHighlight}</span>
+          <span className="block text-brand-magenta">{esCL.newsletter.sectionHeadlineHighlight}</span>
           {esCL.newsletter.sectionHeadlinePlainEnd}
         </h2>
       </div>
