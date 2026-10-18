@@ -544,6 +544,14 @@ test("buildDigestHtmlBody: the footer invites readers to flag a missed/misclassi
   assert.equal(html.match(/EL ARTE MÁS CERCA/g)?.length, 2);
 });
 
+test("buildDigestBody and buildDigestHtmlBody: a day's AI paragraph sits between its heading and its cards; a day without one gets none — 2026-10-18", () => {
+  const notes = { "2026-08-03": "Abre Estrella distante en el MAC." };
+  const html = buildDigestHtmlBody(fixtureDigestSections, "unsub-token", null, WEEK, null, notes);
+  assert.match(html, />Lunes 3<\/p><p[^>]*>Abre Estrella distante en el MAC\.<\/p><a href="https:\/\/www\.caldearte\.com\/eventos\/event-estrella-distante"/);
+  assert.match(buildDigestBody(fixtureDigestSections, "unsub-token", null, WEEK, null, notes), /\[Lunes 3\]\nAbre Estrella distante en el MAC\.\nEstrella distante — MAC Quinta Normal/);
+  assert.doesNotMatch(buildDigestHtmlBody(fixtureDigestSections, "unsub-token", null, WEEK), /Abre Estrella distante en el MAC/);
+});
+
 test("sendDigestEmail: no-ops with a warning when RESEND_API_KEY is unset", async () => {
   const original = process.env.RESEND_API_KEY;
   delete process.env.RESEND_API_KEY;

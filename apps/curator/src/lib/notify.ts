@@ -830,18 +830,18 @@ function fmtDayHeading(dateStr: string): string {
 // comuna; the comuna now rides in each card's pill, as on the site). An
 // event with no opening date this weekend falls back to its comuna.
 // Day groups first, in date order; comuna groups after, alphabetically.
-function groupForCards(events: DigestEvent[]): Array<[string, DigestEvent[]]> {
-  const groups = new Map<string, { sortKey: string; events: DigestEvent[] }>();
+function groupForCards(events: DigestEvent[]): Array<{ label: string; date: string | null; events: DigestEvent[] }> {
+  const groups = new Map<string, { sortKey: string; date: string | null; events: DigestEvent[] }>();
   for (const e of events) {
     const date = e.isOpeningThisWeek && e.openingDatetime ? santiagoDateOf(e.openingDatetime) : null;
     const label = date ? fmtDayHeading(date) : (e.comunaName ?? "Otras comunas");
     const sortKey = date ? `0${date}` : `1${label}`;
-    if (!groups.has(label)) groups.set(label, { sortKey, events: [] });
+    if (!groups.has(label)) groups.set(label, { sortKey, date, events: [] });
     groups.get(label)!.events.push(e);
   }
   return Array.from(groups.entries())
     .sort(([, a], [, b]) => a.sortKey.localeCompare(b.sortKey))
-    .map(([label, g]) => [label, [...g.events].sort((a, b) => (a.openingDatetime ?? "").localeCompare(b.openingDatetime ?? ""))]);
+    .map(([label, g]) => ({ label, date: g.date, events: [...g.events].sort((a, b) => (a.openingDatetime ?? "").localeCompare(b.openingDatetime ?? "")) }));
 }
 
 // Includes the week's date range so the subject is unique week to week —
@@ -890,6 +890,7 @@ export function buildDigestBody(
   intro: string | null = null,
   week?: { start: string; end: string },
   regionName: string | null = null,
+  dayNotes: Record<string, string> = {},
 ): string {
   const referenceYear = referenceYearFor(week);
   const lines: string[] = [SLOGAN];
@@ -912,8 +913,9 @@ export function buildDigestBody(
     if (section.events.length === 0 && section.emptyMessage) {
       lines.push(section.emptyMessage);
     } else {
-      for (const [group, events] of groupForCards(section.events)) {
-        lines.push(`[${group}]`);
+      for (const { label, date, events } of groupForCards(section.events)) {
+        lines.push(`[${label}]`);
+        if (date && dayNotes[date]) lines.push(dayNotes[date]);
         for (const e of events) {
           const date = fmtDigestDate(e, referenceYear);
           lines.push(`${e.title} — ${e.placeName}${date ? ` — ${date}` : ""}`);
@@ -1025,6 +1027,7 @@ export function buildDigestHtmlBody(
   intro: string | null = null,
   week?: { start: string; end: string },
   regionName: string | null = null,
+  dayNotes: Record<string, string> = {},
 ): string {
   const referenceYear = referenceYearFor(week);
   const sectionsHtml = sections
@@ -1043,10 +1046,12 @@ export function buildDigestHtmlBody(
         section.events.length === 0 && section.emptyMessage
           ? `<p style="margin:14px 0 0;font-size:15px;color:${TEXT_SECONDARY};font-style:italic;">${escapeHtml(section.emptyMessage)}</p>`
           : groupForCards(section.events)
-              .map(
-                ([group, events]) =>
-                  `<p style="margin:22px 0 10px;font-family:${LATO_STACK};font-weight:900;font-size:20px;color:${TEXT_PRIMARY};">${escapeHtml(group)}</p>${events.map((e) => eventCardHtml(e, referenceYear)).join("")}`,
-              )
+              .map(({ label, date, events }) => {
+                // The day's own short AI paragraph (2026-10-18), between
+                // its heading and its cards.
+                const note = date && dayNotes[date] ? `<p style="margin:0 0 12px;font-size:16px;line-height:1.5;color:${TEXT_PRIMARY};">${escapeHtml(dayNotes[date])}</p>` : "";
+                return `<p style="margin:22px 0 10px;font-family:${LATO_STACK};font-weight:900;font-size:20px;color:${TEXT_PRIMARY};">${escapeHtml(label)}</p>${note}${events.map((e) => eventCardHtml(e, referenceYear)).join("")}`;
+              })
               .join("");
 
       const labelLines = SECTION_LABEL_LINES[section.label];
@@ -1138,6 +1143,7 @@ export async function sendDigestEmail(
   intro: string | null = null,
   week?: { start: string; end: string },
   regionName: string | null = null,
+  dayNotes: Record<string, string> = {},
 ): Promise<void> {
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) {
@@ -1149,8 +1155,8 @@ export async function sendDigestEmail(
     from: "Caldearte <contacto@caldearte.com>",
     to: email,
     subject: buildDigestSubject(sections, week, regionName),
-    text: buildDigestBody(sections, unsubscribeToken, intro, week, regionName),
-    html: buildDigestHtmlBody(sections, unsubscribeToken, intro, week, regionName),
+    text: buildDigestBody(sections, unsubscribeToken, intro, week, regionName, dayNotes),
+    html: buildDigestHtmlBody(sections, unsubscribeToken, intro, week, regionName, dayNotes),
     headers: {
       "List-Unsubscribe": `<${unsubscribeUrl(unsubscribeToken)}>`,
     },

@@ -281,7 +281,7 @@ test("run(): retries a transient Supabase read failure instead of crashing outri
     supabase,
     now: new Date("2026-08-06T22:00:00.000Z"), // Thursday 18:00 Santiago
     sendDigestEmailFn: async () => {},
-    generateRegionIntroFn: async () => null,
+    generateDigestTextsFn: async () => ({ intro: null, days: {} }),
     generateOtherRegionsIntroFn: async () => null,
   });
 });
@@ -359,7 +359,7 @@ test(
         // Stubbed here so this test never hits the real Anthropic API —
         // the intro-generation behavior itself has its own dedicated test
         // below, plus intro.test.ts.
-        generateRegionIntroFn: async () => null,
+        generateDigestTextsFn: async () => ({ intro: null, days: {} }),
       });
 
       assert.deepEqual(sentTo, ["confirmado-con-eventos@example.com"]);
@@ -423,7 +423,7 @@ test(
         sendDigestEmailFn: async (_email, _token, sections) => {
           sentTitles = sections.flatMap((s) => s.events.map((e) => e.title));
         },
-        generateRegionIntroFn: async () => null,
+        generateDigestTextsFn: async () => ({ intro: null, days: {} }),
       });
 
       // Checks presence/absence rather than the exact full list — this
@@ -480,9 +480,9 @@ test(
         sendDigestEmailFn: async (_email, _token, _sections, intro) => {
           introsUsed.push(intro ?? null);
         },
-        generateRegionIntroFn: async () => {
+        generateDigestTextsFn: async () => {
           introCalls++;
-          return "Intro compartida para toda la región.";
+          return { intro: "Intro compartida para toda la región.", days: {} };
         },
       });
 
