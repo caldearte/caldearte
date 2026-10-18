@@ -310,6 +310,15 @@ Closed out the initial project brief, moved into a dedicated repo.
     48 with the earlier send. The site's descriptive lines now say
     "de jueves a domingo… el jueves en la mañana"; the "del finde"
     headlines stay as they are.
+    **AI texts: intro + one paragraph per day, 2026-10-18** (Daniel,
+    after a real Haiku test on two editions): one call returns JSON with a
+    short general intro (no titles) and a paragraph per opening day (at
+    most two titles, no dates, titles copied exactly), shown between each
+    day's heading and its cards. Haiku overruns the prompt's word limits,
+    so any text past 60 words is dropped in code rather than shown. The
+    first test also showed it reading meaning into titles ("una apuesta
+    por la discusión") — the prompt now forbids that, but watch the first
+    real sends.
 
 ## Phase 1b — Inbound-mail flows
 

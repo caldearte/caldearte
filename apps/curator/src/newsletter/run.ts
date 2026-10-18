@@ -12,7 +12,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database, Tables } from "@caldearte/shared-types";
 import { getSupabaseClient } from "../lib/supabase-client.js";
 import { OPENINGS_LABEL, sendDigestEmail, type DigestEvent, type DigestSection } from "../lib/notify.js";
-import { generateRegionIntro } from "./intro.js";
+import { generateDigestTexts, type DigestTexts } from "./intro.js";
 import { shortRegionName } from "../lib/regionNames.js";
 
 type Subscriber = Pick<Tables<"newsletter_subscribers">, "id" | "email" | "admin_region_name" | "confirm_token">;
@@ -30,7 +30,7 @@ export interface RunDeps {
   supabase?: SupabaseClient<Database>;
   now?: Date;
   sendDigestEmailFn?: typeof sendDigestEmail;
-  generateRegionIntroFn?: typeof generateRegionIntro;
+  generateDigestTextsFn?: typeof generateDigestTexts;
 }
 
 // The period this digest announces: Thursday to Sunday (Daniel,
@@ -121,7 +121,7 @@ export interface DigestSectionsResult {
   sections: DigestSection[];
   // True total for the región this week — openings + new + every
   // "también visitar" candidate, NOT just what's capped/rendered. Fed to
-  // generateRegionIntro so it can cite a real number instead of counting
+  // generateDigestTexts so it can cite a real number instead of counting
   // the (possibly truncated) list it was handed, and used for the "ver
   // todas" link's own count — real bug found 2026-07-31: the link and the
   // AI intro each quoted a different, both-wrong count.
@@ -297,11 +297,12 @@ export async function run(deps: RunDeps = {}): Promise<void> {
 
   console.log(`[newsletter] ${subscribers.length} confirmed subscriber(s), ${events.length} eligible approved event(s), week ${week.start}..${week.end}`);
 
-  // One intro per región, shared across every subscriber in it — not
+  // One set of texts (intro + day paragraphs) per región, shared across
+  // every subscriber in it — not
   // per-subscriber, since buildDigestSections' own content is identical
   // for every subscriber of the same región. Keeps the real Haiku cost to
   // "once per active región per week".
-  const introByRegion = new Map<string, string | null>();
+  const textsByRegion = new Map<string, DigestTexts>();
 
   let sent = 0;
   let skipped = 0;
@@ -312,11 +313,10 @@ export async function run(deps: RunDeps = {}): Promise<void> {
       continue;
     }
 
-    if (!introByRegion.has(subscriber.admin_region_name)) {
-      const intro = await (deps.generateRegionIntroFn ?? generateRegionIntro)(sections, regionTotalThisWeek);
-      introByRegion.set(subscriber.admin_region_name, intro);
+    if (!textsByRegion.has(subscriber.admin_region_name)) {
+      textsByRegion.set(subscriber.admin_region_name, await (deps.generateDigestTextsFn ?? generateDigestTexts)(sections, regionTotalThisWeek));
     }
-    const intro = introByRegion.get(subscriber.admin_region_name) ?? null;
+    const texts = textsByRegion.get(subscriber.admin_region_name)!;
 
     // Reuses the subscriber's own confirm_token as the unsubscribe token
     // too — one opaque value per subscriber is enough, see the migration
@@ -325,9 +325,10 @@ export async function run(deps: RunDeps = {}): Promise<void> {
       subscriber.email,
       subscriber.confirm_token,
       sections,
-      intro,
+      texts.intro,
       week,
       subscriber.admin_region_name,
+      texts.days,
     );
     sent++;
   }

@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { generateRegionIntro, type MessagesClient } from "./intro.js";
+import { buildDaysInput, generateDigestTexts, parseDigestTexts, type MessagesClient } from "./intro.js";
 import type { DigestSection } from "../lib/notify.js";
 
 const hasLocalSupabase = Boolean(process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY);
@@ -17,6 +17,17 @@ const fixtureSections: DigestSection[] = [
         openingDatetime: "2026-08-05T20:00:00.000Z",
         openingTimeConfirmed: true,
         runEndDate: "2026-09-01",
+        imageUrl: null,
+        isOpeningThisWeek: true,
+      },
+      {
+        id: "e4",
+        title: "Sín-tesis",
+        placeName: "Galería NAC",
+        comunaName: "Providencia",
+        openingDatetime: "2026-08-07T23:00:00.000Z",
+        openingTimeConfirmed: true,
+        runEndDate: null,
         imageUrl: null,
         isOpeningThisWeek: true,
       },
@@ -67,97 +78,61 @@ function stubClient(text: string): MessagesClient {
   };
 }
 
-test("generateRegionIntro: returns null immediately when there are no events to summarize (nothing running this region this week)", async () => {
-  const intro = await generateRegionIntro([], 0, {});
-  assert.equal(intro, null);
+test("buildDaysInput: openings grouped under their Santiago date, what's already running in its own block, the real total stated, and nothing from other regiones", () => {
+  const input = buildDaysInput(fixtureSections, 36);
+  assert.ok(input);
+  assert.deepEqual(input.dates, ["2026-08-05", "2026-08-07"]);
+  assert.match(input.content, /^Número real de exposiciones activas de jueves a domingo en la región: 36\./);
+  assert.match(input.content, /2026-08-05 \(miércoles 5\):\n- Estrella distante \(MAC Quinta Normal, Quinta Normal\)/);
+  // 23:00 UTC on the 7th is still the 7th in Santiago (19:00)
+  assert.match(input.content, /2026-08-07 \(viernes 7\):\n- Sín-tesis \(Galería NAC, Providencia\)/);
+  assert.match(input.content, /Ya en exhibición \(no inauguran\):\n- En el Tiempo a Distancia/);
+  assert.doesNotMatch(input.content, /otra región/);
+  assert.doesNotMatch(input.content, /2026-09-01|2026-08-20/, "no closing dates reach the model");
+});
+
+test("buildDaysInput: nothing opening and nothing running → null, never calls the model", async () => {
+  assert.equal(buildDaysInput([], 0), null);
+  assert.deepEqual(await generateDigestTexts([], 0, {}), { intro: null, days: {} });
+});
+
+test("parseDigestTexts: keeps the intro and only the requested dates, tolerates text around the JSON, drops a text past 60 words", () => {
+  const long = Array.from({ length: 61 }, () => "palabra").join(" ");
+  const raw = `Aquí va:\n{"intro": " Panorama. ", "dias": {"2026-08-05": "Abre Estrella distante.", "2026-08-07": "${long}", "2026-08-09": "Inventado."}}`;
+  assert.deepEqual(parseDigestTexts(raw, ["2026-08-05", "2026-08-07"]), { intro: "Panorama.", days: { "2026-08-05": "Abre Estrella distante." } });
+});
+
+test("parseDigestTexts: anything that isn't JSON → null", () => {
+  assert.equal(parseDigestTexts("Esta semana hay arte.", ["2026-08-05"]), null);
+  assert.equal(parseDigestTexts('{"intro": "x", ', ["2026-08-05"]), null);
 });
 
 test(
-  "generateRegionIntro: returns the model's text and records usage under the newsletter_intro purpose",
+  "generateDigestTexts: returns the parsed intro and day paragraphs and records usage under the newsletter_intro purpose",
   { skip: !hasLocalSupabase },
   async () => {
-    const { getSupabaseClient } = await import("../lib/supabase-client.js");
-    const client = getSupabaseClient();
     const { getCurrentMonthSpend } = await import("../lib/usage-tracking.js");
-
     const spendBefore = await getCurrentMonthSpend();
-    const intro = await generateRegionIntro(fixtureSections, 2, { messagesClient: stubClient("Esta semana hay una inauguración imperdible.") });
-    assert.equal(intro, "Esta semana hay una inauguración imperdible.");
-
-    const spendAfter = await getCurrentMonthSpend();
-    assert.ok(spendAfter > spendBefore, "expected recordUsage to add a newsletter_intro row with nonzero cost");
-
-    const { data } = await client.from("api_usage_log").select("purpose").order("created_at", { ascending: false }).limit(1);
-    assert.equal(data?.[0]?.purpose, "newsletter_intro");
-  },
-);
-
-// Remaining tests need real events to summarize, which means
-// generateRegionIntro reaches its budget check (getCurrentMonthSpend/
-// getConfigNumber) before ever touching the stub client — that needs
-// local Supabase, same as the usage-recording test above.
-test(
-  "generateRegionIntro: excludes the 'En otras regiones' section from what's sent to the model — only this subscriber's own región's news gets summarized",
-  { skip: !hasLocalSupabase },
-  async () => {
-    let capturedPrompt = "";
-    const client: MessagesClient = {
-      messages: {
-        create: async (params) => {
-          capturedPrompt = String((params.messages as Array<{ content: string }>)[0].content);
-          return {
-            content: [{ type: "text", text: "ok" }],
-            usage: { input_tokens: 1, output_tokens: 1, cache_creation_input_tokens: 0, cache_read_input_tokens: 0 },
-          };
-        },
-      },
-    };
-    await generateRegionIntro(fixtureSections, 2, { messagesClient: client });
-    assert.match(capturedPrompt, /Estrella distante/);
-    assert.doesNotMatch(capturedPrompt, /Evento de otra región/);
-  },
-);
-
-// Real bug found 2026-07-31: a flat, uncategorized event list let Haiku
-// call an already-running show an "inauguración" just because its title
-// echoed a real one. The prompt now groups events under their own
-// section label and passes the true total explicitly — this test
-// verifies both pieces actually reach the model.
-test(
-  "generateRegionIntro: groups events under their own section label and states the real regionTotalThisWeek explicitly, rather than a flat undifferentiated list",
-  { skip: !hasLocalSupabase },
-  async () => {
-    let capturedPrompt = "";
-    const client: MessagesClient = {
-      messages: {
-        create: async (params) => {
-          capturedPrompt = String((params.messages as Array<{ content: string }>)[0].content);
-          return {
-            content: [{ type: "text", text: "ok" }],
-            usage: { input_tokens: 1, output_tokens: 1, cache_creation_input_tokens: 0, cache_read_input_tokens: 0 },
-          };
-        },
-      },
-    };
-    await generateRegionIntro(fixtureSections, 36, { messagesClient: client });
-    assert.match(capturedPrompt, /Número real de exposiciones activas de jueves a domingo en la región: 36/);
-    assert.match(capturedPrompt, /Inauguraciones de jueves a domingo:\n- Estrella distante/);
-    assert.match(capturedPrompt, /Expos para visitar de jueves a domingo:\n- En el Tiempo a Distancia/);
+    const texts = await generateDigestTexts(fixtureSections, 2, {
+      messagesClient: stubClient('{"intro": "Dos aperturas.", "dias": {"2026-08-05": "Abre Estrella distante en el MAC.", "2026-08-07": "Sín-tesis en Galería NAC."}}'),
+    });
+    assert.deepEqual(texts, { intro: "Dos aperturas.", days: { "2026-08-05": "Abre Estrella distante en el MAC.", "2026-08-07": "Sín-tesis en Galería NAC." } });
+    assert.ok((await getCurrentMonthSpend()) > spendBefore, "expected recordUsage to add a newsletter_intro row with nonzero cost");
   },
 );
 
 test(
-  "generateRegionIntro: degrades to null (not a thrown error) when the model call fails",
+  "generateDigestTexts: degrades to no texts (not a thrown error) when the model call fails or answers without JSON",
   { skip: !hasLocalSupabase },
   async () => {
-    const client: MessagesClient = {
+    const failing: MessagesClient = {
       messages: {
         create: async () => {
           throw new Error("simulated API failure");
         },
       },
     };
-    const intro = await generateRegionIntro(fixtureSections, 2, { messagesClient: client });
-    assert.equal(intro, null);
+    assert.deepEqual(await generateDigestTexts(fixtureSections, 2, { messagesClient: failing }), { intro: null, days: {} });
+    assert.deepEqual(await generateDigestTexts(fixtureSections, 2, { messagesClient: stubClient("Sin JSON.") }), { intro: null, days: {} });
   },
 );
