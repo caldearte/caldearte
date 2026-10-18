@@ -3,6 +3,7 @@ import { Resend } from "resend";
 import { getSupabaseClient } from "@/lib/supabase-client";
 import { clientIp, isWithinRateLimit } from "@/lib/rate-limit";
 import { isValidEmail } from "@/lib/email";
+import { knownShortRegionName } from "@/lib/regionNames";
 
 // Two separate limits: per-IP catches a script hammering this endpoint;
 // per-email specifically stops this route being used to email-bomb a
@@ -20,16 +21,32 @@ interface SubscribePayload {
   adminRegionName?: string;
 }
 
+// Same look as the Thursday edition itself (apps/curator/src/lib/notify.ts's
+// buildDigestHtmlBody, 2026-10-18): sage page, magenta CALDE/ARTE.
+// wordmark, the site's slogan. Was a black header with plain text — the
+// first email a new subscriber gets didn't look like the brand.
 function emailShell(bodyHtml: string): string {
-  return `<div style="font-family:'Helvetica Neue',Arial,sans-serif;max-width:520px;margin:0 auto;">
-    <div style="background:#1c1c1c;padding:28px 32px;border-radius:12px 12px 0 0;">
-      <p style="margin:0;color:#fff;font-size:22px;font-weight:800;letter-spacing:0.02em;">CALDEARTE</p>
+  const lato = "'Lato',Helvetica,Arial,sans-serif";
+  return `<!doctype html>
+<html lang="es-CL">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link href="https://fonts.googleapis.com/css2?family=Lato:wght@900&display=swap" rel="stylesheet" />
+  </head>
+  <body style="margin:0;padding:0;background:#d7dfe2;">
+    <div style="font-family:Helvetica,Arial,sans-serif;max-width:520px;margin:0 auto;padding:28px 20px 32px;background:#d7dfe2;">
+      <a href="https://www.caldearte.com" style="display:block;text-decoration:none;color:#ff00fb;font-family:${lato};font-weight:900;font-size:48px;line-height:0.92;">
+        <span style="display:block;">CALDE</span>
+        <span style="display:block;">ARTE.</span>
+      </a>
+      <p style="margin:14px 0 24px;color:#3d373d;font-family:${lato};font-weight:900;font-size:20px;">EL ARTE MÁS CERCA</p>
+      <div style="background:#fff;border-radius:22px;padding:28px 24px;">
+        ${bodyHtml}
+      </div>
     </div>
-    <div style="background:#fff;padding:32px;border-radius:0 0 12px 12px;">
-      ${bodyHtml}
-    </div>
-    <p style="text-align:center;color:#999;font-size:12px;margin-top:20px;">Calendario de arte curado por inteligencia humana potenciada por IA</p>
-  </div>`;
+  </body>
+</html>`;
 }
 
 // Calls the newsletter-resubscribe Edge Function (service-role) when our
@@ -128,17 +145,24 @@ export async function POST(request: Request) {
   // renders a proper page instead.
   const confirmUrl = `https://www.caldearte.com/newsletter/confirmar?token=${encodeURIComponent(confirmToken)}`;
 
+  // The región as the rest of the site names it ("Santiago"). Known names
+  // only — it comes from the request, and the DB's CHECK constraint is
+  // the only other thing standing between it and this email's HTML.
+  const regionLabel = knownShortRegionName(adminRegionName) ?? "tu región";
+
   const resend = new Resend(apiKey);
   const { error: sendError } = await resend.emails.send({
     from: "Caldearte <contacto@caldearte.com>",
     to: email,
     subject: "Confirma tu suscripción a Caldearte",
-    text: `Para recibir el newsletter semanal de Caldearte, confirma tu suscripción:\n\n${confirmUrl}\n\nSi no fuiste tú, ignora este correo.`,
+    // Same promise as the signup form (2026-10-16 weekend edition): what
+    // arrives and when — it used to say "newsletter semanal".
+    text: `Un paso más: confirma tu suscripción y cada jueves te llegarán las inauguraciones del fin de semana en ${regionLabel}.\n\n${confirmUrl}\n\nSi no fuiste tú, ignora este correo.`,
     html: emailShell(`
-      <h1 style="margin:0 0 12px;font-size:20px;color:#1c1c1c;">Un paso más</h1>
-      <p style="margin:0 0 20px;font-size:14px;color:#555;line-height:1.5;">Confirma tu suscripción para empezar a recibir la semana en arte, directo a tu correo.</p>
-      <a href="${confirmUrl}" style="display:inline-block;background:#1c1c1c;color:#fff;padding:12px 22px;border-radius:999px;text-decoration:none;font-weight:700;font-size:14px;">Confirmar suscripción</a>
-      <p style="margin:24px 0 0;font-size:12px;color:#999;">Si no fuiste tú, ignora este correo.</p>
+      <h1 style="margin:0 0 12px;font-family:'Lato',Helvetica,Arial,sans-serif;font-weight:900;font-size:24px;line-height:1.15;color:#ff00fb;text-transform:uppercase;">Un paso más</h1>
+      <p style="margin:0 0 22px;font-size:16px;color:#3d373d;line-height:1.55;">Confirma tu suscripción y cada jueves te llegarán las inauguraciones del fin de semana en ${regionLabel}.</p>
+      <a href="${confirmUrl}" style="display:inline-block;background:#ff00fb;color:#fff;padding:13px 24px;border-radius:999px;text-decoration:none;font-family:'Lato',Helvetica,Arial,sans-serif;font-weight:900;font-size:15px;">Confirmar suscripción</a>
+      <p style="margin:24px 0 0;font-size:12px;color:#767f82;">Si no fuiste tú, ignora este correo.</p>
     `),
   });
 

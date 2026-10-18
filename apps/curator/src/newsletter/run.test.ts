@@ -135,7 +135,7 @@ test("buildDigestSections: 'Expos para visitar este fin de semana' is compact �
   assert.ok(paraVisitar);
   assert.equal(paraVisitar.compact, true);
   assert.equal(paraVisitar.events.length, 4, "full count, no 10-card cap anymore — nothing is rendered as cards");
-  assert.equal(paraVisitar.moreLink?.label, `Ver las 4 exposiciones vigentes en ${REGION_A}`);
+  assert.equal(paraVisitar.moreLink?.label, "Ver las 4 exposiciones en cartelera en Santiago");
   assert.equal(paraVisitar.moreLink?.url, "https://www.caldearte.com");
 });
 
@@ -156,7 +156,7 @@ test("buildDigestSections: 'Expos para visitar este fin de semana' still diversi
   assert.equal(comunas.size, 4);
 });
 
-test("buildDigestSections: 'Expos para visitar este fin de semana' names the región's TRUE total (including openings/new, not just the para-visitar pool) in its moreLink, past what used to be the 10-card cap", () => {
+test("buildDigestSections: 'Expos para visitar este fin de semana' names the same number it counts in its moreLink (openings are left out — they have their own cards), while regionTotalThisWeek still counts both for the intro — 2026-10-18", () => {
   const events = [
     makeEvent({ opening_datetime: "2026-08-05T20:00:00.000Z" }), // +1 opening
     ...Array.from({ length: 14 }, (_, i) => makeEvent(runningUntil(`2026-08-${10 + i}`))), // 14 para-visitar
@@ -166,7 +166,7 @@ test("buildDigestSections: 'Expos para visitar este fin de semana' names the reg
   const paraVisitar = sections.find((s) => s.label === "Expos para visitar este fin de semana");
   assert.ok(paraVisitar);
   assert.equal(paraVisitar.events.length, 14, "no cap — the full para-visitar pool, distinct from regionTotalThisWeek which also counts openings");
-  assert.equal(paraVisitar.moreLink?.label, `Ver las 15 exposiciones vigentes en ${REGION_A}`);
+  assert.equal(paraVisitar.moreLink?.label, "Ver las 14 exposiciones en cartelera en Santiago");
   assert.equal(paraVisitar.moreLink?.url, "https://www.caldearte.com");
 });
 
@@ -185,7 +185,7 @@ test("buildDigestSections: an exhibition with no known closing date that opened 
   assert.equal(sections.find((s) => s.label === "Expos para visitar este fin de semana")?.events.length, 0);
   const otras = sections.find((s) => s.label === "En otras regiones");
   assert.deepEqual(otras?.events.map((e) => e.id), [running.id]);
-  assert.equal(otras?.moreLink?.label, "Si deseas puedes explorar las 1 exposiciones activas este fin de semana a lo largo de Chile");
+  assert.equal(otras?.moreLink?.label, "Y fuera de Santiago, 1 exposición más a lo largo de Chile");
 });
 
 test("buildDigestSections: an exhibition with no known closing date that opens THIS week still counts — a one-day event on its anchor date, same as the site's activeRange", () => {
@@ -201,7 +201,7 @@ test("buildDigestSections: an exhibition closing mid-week still counts as visita
   assert.deepEqual(sections.find((s) => s.label === "Expos para visitar este fin de semana")?.events.map((e) => e.id), [event.id]);
 });
 
-test("buildDigestSections: the nationwide 'exposiciones activas' count leaves out visitas guiadas, same as the región's own count — they aren't exposiciones", () => {
+test("buildDigestSections: the other-regions count leaves out visitas guiadas, same as the región's own count — they aren't exposiciones", () => {
   const events = [
     makeEvent({ adminRegionName: REGION_B, ...runningUntil("2026-08-20") }),
     makeEvent({ adminRegionName: REGION_B, ...runningUntil("2026-08-20") }),
@@ -209,46 +209,19 @@ test("buildDigestSections: the nationwide 'exposiciones activas' count leaves ou
   ];
   const { sections } = buildDigestSections(events, REGION_A, WEEK);
   const otras = sections.find((s) => s.label === "En otras regiones");
-  assert.equal(otras?.moreLink?.label, "Si deseas puedes explorar las 2 exposiciones activas este fin de semana a lo largo de Chile");
+  assert.equal(otras?.moreLink?.label, "Y fuera de Santiago, 2 exposiciones más a lo largo de Chile");
 });
 
-test("buildDigestSections: an event in a different región appears only in 'En otras regiones', sampled up to 10, with an always-present nationwide explore link", () => {
-  const events = [
-    makeEvent({ adminRegionName: REGION_B, ...runningUntil("2026-08-20") }),
-    makeEvent({ adminRegionName: REGION_B, ...runningUntil("2026-08-20") }),
-    makeEvent({ adminRegionName: REGION_B, ...runningUntil("2026-08-20") }),
-    makeEvent({ adminRegionName: REGION_B, ...runningUntil("2026-08-20") }),
-  ];
-  const { sections } = buildDigestSections(events, REGION_A, WEEK);
-  const otras = sections.find((s) => s.label === "En otras regiones");
-  assert.ok(otras);
-  assert.equal(otras.events.length, 4);
-  assert.equal(otras.moreLink?.label, "Si deseas puedes explorar las 4 exposiciones activas este fin de semana a lo largo de Chile");
-  assert.equal(otras.moreLink?.url, "https://www.caldearte.com");
-});
-
-test("buildDigestSections: 'En otras regiones' samples at most 10 even with more available — bumped 5 -> 10, 2026-08-08 user request", () => {
+test("buildDigestSections: events in other regiones only appear in 'En otras regiones', which is compact since 2026-10-18 — every one counted, no cards, one link to the rest of Chile", () => {
   const events = Array.from({ length: 14 }, () => makeEvent({ adminRegionName: REGION_B, ...runningUntil("2026-08-20") }));
   const { sections } = buildDigestSections(events, REGION_A, WEEK);
   const otras = sections.find((s) => s.label === "En otras regiones");
-  assert.equal(otras?.events.length, 10);
-});
-
-test("buildDigestSections: 'En otras regiones' is sorted soonest-closing-first and deterministic — no longer randomized (2026-08-08), since it now also feeds a shared per-región AI intro that must agree with whichever cards are actually shown", () => {
-  const events = [
-    makeEvent({ adminRegionName: REGION_B, ...runningUntil("2026-09-01") }),
-    makeEvent({ adminRegionName: REGION_B, ...runningUntil("2026-08-10") }),
-    makeEvent({ adminRegionName: REGION_B, ...runningUntil("2026-08-20") }),
-  ];
-  const runTwice = () => buildDigestSections(events, REGION_A, WEEK).sections.find((s) => s.label === "En otras regiones")!.events.map((e) => e.id);
-  const first = runTwice();
-  const second = runTwice();
-  assert.deepEqual(first, second, "expected the same order every call, not a random shuffle");
-  assert.deepEqual(
-    first,
-    [events[1].id, events[2].id, events[0].id],
-    "expected soonest-closing-first, same convention as 'Expos para visitar este fin de semana'",
-  );
+  assert.ok(otras);
+  assert.equal(otras.compact, true);
+  assert.equal(otras.events.length, 14, "no 10-card sample anymore — the full count");
+  assert.equal(otras.moreLink?.label, "Y fuera de Santiago, 14 exposiciones más a lo largo de Chile");
+  assert.equal(otras.moreLink?.url, "https://www.caldearte.com");
+  assert.equal(sections.find((s) => s.label === "Expos para visitar este fin de semana")?.events.length, 0);
 });
 
 test("buildDigestSections: an empty event pool yields zero sections (subscriber gets skipped, not an empty email)", () => {
@@ -387,7 +360,6 @@ test(
         // the intro-generation behavior itself has its own dedicated test
         // below, plus intro.test.ts.
         generateRegionIntroFn: async () => null,
-        generateOtherRegionsIntroFn: async () => null,
       });
 
       assert.deepEqual(sentTo, ["confirmado-con-eventos@example.com"]);
@@ -452,7 +424,6 @@ test(
           sentTitles = sections.flatMap((s) => s.events.map((e) => e.title));
         },
         generateRegionIntroFn: async () => null,
-        generateOtherRegionsIntroFn: async () => null,
       });
 
       // Checks presence/absence rather than the exact full list — this
@@ -502,30 +473,21 @@ test(
       if (subscribersError) throw new Error(`Failed to seed test subscribers: ${subscribersError.message}`);
 
       let introCalls = 0;
-      let otherRegionsIntroCalls = 0;
       const introsUsed: Array<string | null> = [];
-      const otherRegionsIntrosUsed: Array<string | null> = [];
       await run({
         supabase: client,
         now: new Date("2026-08-06T22:00:00.000Z"), // Thursday 18:00 Santiago
-        sendDigestEmailFn: async (_email, _token, _sections, intro, _week, otherRegionsIntro) => {
+        sendDigestEmailFn: async (_email, _token, _sections, intro) => {
           introsUsed.push(intro ?? null);
-          otherRegionsIntrosUsed.push(otherRegionsIntro ?? null);
         },
         generateRegionIntroFn: async () => {
           introCalls++;
           return "Intro compartida para toda la región.";
         },
-        generateOtherRegionsIntroFn: async () => {
-          otherRegionsIntroCalls++;
-          return "Intro de otras regiones compartida.";
-        },
       });
 
       assert.equal(introCalls, 1, "expected exactly one intro generation call for two subscribers in the same región");
       assert.deepEqual(introsUsed, ["Intro compartida para toda la región.", "Intro compartida para toda la región."]);
-      assert.equal(otherRegionsIntroCalls, 1, "expected exactly one otherRegionsIntro generation call for two subscribers in the same región");
-      assert.deepEqual(otherRegionsIntrosUsed, ["Intro de otras regiones compartida.", "Intro de otras regiones compartida."]);
     } finally {
       await client.from("newsletter_subscribers").delete().eq("admin_region_name", TEST_ADMIN_REGION);
       await client.from("events").delete().eq("region_id", regionId);

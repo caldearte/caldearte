@@ -12,7 +12,8 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database, Tables } from "@caldearte/shared-types";
 import { getSupabaseClient } from "../lib/supabase-client.js";
 import { OPENINGS_LABEL, sendDigestEmail, type DigestEvent, type DigestSection } from "../lib/notify.js";
-import { generateRegionIntro, generateOtherRegionsIntro } from "./intro.js";
+import { generateRegionIntro } from "./intro.js";
+import { shortRegionName } from "../lib/regionNames.js";
 
 type Subscriber = Pick<Tables<"newsletter_subscribers">, "id" | "email" | "admin_region_name" | "confirm_token">;
 type EventRow = Tables<"events">;
@@ -23,10 +24,6 @@ type EventRow = Tables<"events">;
 // carries region_id, not either name directly.
 type EventWithRegion = EventRow & { adminRegionName: string | null; comunaName: string | null };
 
-// Bumped 5 -> 10, 2026-08-08 (user request). "Expos para visitar" had its
-// own matching VISIT_CAP here too until 2026-09-27, when that section
-// went compact (count-only, no cards) and stopped needing a cap at all.
-const OTHER_REGIONS_CAP = 10;
 const SITE_URL = "https://www.caldearte.com";
 
 export interface RunDeps {
@@ -34,7 +31,6 @@ export interface RunDeps {
   now?: Date;
   sendDigestEmailFn?: typeof sendDigestEmail;
   generateRegionIntroFn?: typeof generateRegionIntro;
-  generateOtherRegionsIntroFn?: typeof generateOtherRegionsIntro;
 }
 
 // The weekend this digest announces: the coming Friday-Sunday (Daniel
@@ -163,17 +159,11 @@ export function buildDigestSections(
     .filter((e) => !openingIds.has(e.id))
     .sort((a, b) => (a.run_end_date ?? "9999-12-31").localeCompare(b.run_end_date ?? "9999-12-31"));
 
-  // Deterministic (soonest-closing first, same convention as alsoVisitAll
-  // above), not randomized — was shuffle()'d per-subscriber until
-  // 2026-08-08, but this section now also gets its own shared AI intro
-  // (generateOtherRegionsIntro, once per región/week, see run()'s own
-  // memoization below) that names specific titles from this sample. A
-  // random per-subscriber reshuffle would let that shared text describe
-  // shows a given subscriber's own cards don't even include.
-  const otherRegionsAll = events
-    .filter((e) => e.adminRegionName !== adminRegionName && isActiveInWeek(e, week))
-    .sort((a, b) => (a.run_end_date ?? "9999-12-31").localeCompare(b.run_end_date ?? "9999-12-31"));
-  const otherRegionsSample = otherRegionsAll.slice(0, OTHER_REGIONS_CAP);
+  // Exposiciones only (a visita guiada isn't one), like the región's own
+  // count below.
+  const otherRegionsAll = events.filter(
+    (e) => e.adminRegionName !== adminRegionName && e.event_type !== "visita_guiada" && isActiveInWeek(e, week),
+  );
 
   // Only skip the subscriber entirely if there's truly nothing anywhere —
   // not even something to point at in another región. Otherwise the
@@ -183,12 +173,8 @@ export function buildDigestSections(
   const hasAnyContent = openings.length > 0 || visitasGuiadas.length > 0 || alsoVisitAll.length > 0 || otherRegionsAll.length > 0;
   if (!hasAnyContent) return { sections: [], regionTotalThisWeek: 0 };
 
-  // Total across the whole country, not just the sample shown in "En
-  // otras regiones" — the reader-facing count next to that section's
-  // "explore everything" link. Same pool as regionTotalThisWeek, just
-  // nationwide: visitas guiadas aren't exposiciones, so they don't count.
-  const nationwideActiveCount = events.filter((e) => e.event_type !== "visita_guiada" && isActiveInWeek(e, week)).length;
   const regionTotalThisWeek = openings.length + alsoVisitAll.length;
+  const regionShort = shortRegionName(adminRegionName);
 
   const sections: DigestSection[] = [];
 
@@ -203,8 +189,7 @@ export function buildDigestSections(
   // content is inauguraciones only — visitas guiadas and exposiciones
   // vigentes are demoted to a count instead of full cards, and shown even
   // at zero so their absence reads as a real "none this week" rather than
-  // an unexplained gap. Previously omitted entirely when empty and never
-  // got a moreLink at all — both changed here.
+  // an unexplained gap.
   sections.push({
     label: "Visitas guiadas de este fin de semana",
     events: visitasGuiadas.map((e) => toDigestEvent(e, week)),
@@ -212,9 +197,9 @@ export function buildDigestSections(
     emptyMessage: visitasGuiadas.length === 0 ? "Ninguna visita guiada programada este fin de semana." : undefined,
   });
 
-  // No longer capped/diversified for card-rendering purposes — a compact
-  // section only needs the true total (alsoVisitAll, not the old 10-card
-  // diversified slice), since it never renders individual cards anymore.
+  // The link names the same number it links to (2026-10-18: it used to
+  // say 48 "vigentes", openings included, next to "47 expos para
+  // visitar"), with the región's short name, as the rest of the email.
   sections.push({
     label: "Expos para visitar este fin de semana",
     events: alsoVisitAll.map((e) => toDigestEvent(e, week)),
@@ -223,16 +208,20 @@ export function buildDigestSections(
       alsoVisitAll.length === 0 ? "No hemos encontrado exposiciones para visitar este fin de semana aún. Si sabes de una, avísanos." : undefined,
     moreLink:
       alsoVisitAll.length > 0
-        ? { label: `Ver las ${regionTotalThisWeek} exposiciones vigentes en ${adminRegionName}`, url: SITE_URL }
+        ? { label: `Ver las ${alsoVisitAll.length} exposiciones en cartelera en ${regionShort}`, url: SITE_URL }
         : undefined,
   });
 
-  if (otherRegionsSample.length > 0) {
+  // Compact too since 2026-10-18 (was 10 cards and its own AI paragraph):
+  // a reader in Santiago got four phone screens of shows they can't go
+  // to, against one card of their own región. Now one line to the rest.
+  if (otherRegionsAll.length > 0) {
     sections.push({
       label: "En otras regiones",
-      events: otherRegionsSample.map((e) => toDigestEvent(e, week)),
+      events: otherRegionsAll.map((e) => toDigestEvent(e, week)),
+      compact: true,
       moreLink: {
-        label: `Si deseas puedes explorar las ${nationwideActiveCount} exposiciones activas este fin de semana a lo largo de Chile`,
+        label: `Y fuera de ${regionShort}, ${otherRegionsAll.length} ${otherRegionsAll.length === 1 ? "exposición" : "exposiciones"} más a lo largo de Chile`,
         url: SITE_URL,
       },
     });
@@ -307,14 +296,10 @@ export async function run(deps: RunDeps = {}): Promise<void> {
   console.log(`[newsletter] ${subscribers.length} confirmed subscriber(s), ${events.length} eligible approved event(s), week ${week.start}..${week.end}`);
 
   // One intro per región, shared across every subscriber in it — not
-  // per-subscriber, since buildDigestSections' own content is now
-  // identical for every subscriber of the same región (the "En otras
-  // regiones" sample is deterministic per región/week too, as of
-  // 2026-08-08 — see buildDigestSections' own comment on otherRegionsAll).
-  // Keeps the real Haiku cost to "once per active región per week," times
-  // two now that there are two intros.
+  // per-subscriber, since buildDigestSections' own content is identical
+  // for every subscriber of the same región. Keeps the real Haiku cost to
+  // "once per active región per week".
   const introByRegion = new Map<string, string | null>();
-  const otherRegionsIntroByRegion = new Map<string, string | null>();
 
   let sent = 0;
   let skipped = 0;
@@ -331,13 +316,6 @@ export async function run(deps: RunDeps = {}): Promise<void> {
     }
     const intro = introByRegion.get(subscriber.admin_region_name) ?? null;
 
-    if (!otherRegionsIntroByRegion.has(subscriber.admin_region_name)) {
-      const otherRegionsEvents = sections.find((s) => s.label === "En otras regiones")?.events ?? [];
-      const otherRegionsIntro = await (deps.generateOtherRegionsIntroFn ?? generateOtherRegionsIntro)(otherRegionsEvents);
-      otherRegionsIntroByRegion.set(subscriber.admin_region_name, otherRegionsIntro);
-    }
-    const otherRegionsIntro = otherRegionsIntroByRegion.get(subscriber.admin_region_name) ?? null;
-
     // Reuses the subscriber's own confirm_token as the unsubscribe token
     // too — one opaque value per subscriber is enough, see the migration
     // comment.
@@ -347,7 +325,6 @@ export async function run(deps: RunDeps = {}): Promise<void> {
       sections,
       intro,
       week,
-      otherRegionsIntro,
       subscriber.admin_region_name,
     );
     sent++;

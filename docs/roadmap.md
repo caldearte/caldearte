@@ -286,6 +286,20 @@ Closed out the initial project brief, moved into a dedicated repo.
     already applies, so an event manually removed via the admin "Quitar"
     action kept appearing in the newsletter with a permalink that 404s on
     the live site.
+    **Compact pass, 2026-10-18** (first confirmed subscriber outside the
+    team, Daniel's review): the header now uses the site's slogan "EL ARTE
+    MÁS CERCA" and its pills (weekend, región) instead of the giant "GUIA
+    INDEPENDIENTE DE ARTE."; event cards are one row at every width (4:5
+    thumbnail plus the site AgendaCard's magenta title, "COMUNA · DÍA ·
+    HORA" pill and venue), grouped by day — a full-screen photo per event
+    made the email a long scroll that didn't read as "there's a lot on".
+    "En otras regiones" became a compact one-line link (was 10 cards
+    plus its own AI paragraphs, ~4 phone screens for a Santiago reader,
+    against one card of their own región), and the AI intro went from
+    three paragraphs to one of at most two sentences. The confirmation
+    email got the same brand and the Thursday-weekend promise (it still
+    said "newsletter semanal"). With last weekend's real data: 8 openings
+    in ~3 phone screens, against ~10 screens for 1 opening before.
 
 ## Phase 1b — Inbound-mail flows
 
