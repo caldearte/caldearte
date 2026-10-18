@@ -32,12 +32,15 @@ interface CardImageProps {
   // overlay shrinks to just its icon — the label and "Ver contenido"
   // button don't fit at ~90px, and revealing happens on the ficha anyway.
   compact?: boolean;
+  // Compact below the sm breakpoint only (2026-10-18): the agenda card is
+  // a 96px thumbnail row on phones and a full-width photo from sm up.
+  compactOnMobile?: boolean;
   // Lets a card whose own link overlays the photo (AgendaSection) step
   // aside once the photo is revealed — see AgendaCard.
   onReveal?: () => void;
 }
 
-export default function CardImage({ imageUrl, sourceUrl, sensitivityTags, fullSize = false, priority = false, alt = "", compact = false, onReveal }: CardImageProps) {
+export default function CardImage({ imageUrl, sourceUrl, sensitivityTags, fullSize = false, priority = false, alt = "", compact = false, compactOnMobile = false, onReveal }: CardImageProps) {
   const [revealed, setRevealed] = useState(false);
   // A photo that fails to load (most often a host not yet in
   // next.config.ts's EVENT_IMAGE_HOSTS — 5 of 85 home images on
@@ -80,7 +83,7 @@ export default function CardImage({ imageUrl, sourceUrl, sensitivityTags, fullSi
             src={image.url}
             alt={alt}
             fill
-            sizes={compact ? "(max-width: 768px) 50vw, 25vw" : "(max-width: 768px) 100vw, 50vw"}
+            sizes={compact ? "(max-width: 768px) 50vw, 25vw" : compactOnMobile ? "(max-width: 639px) 96px, (max-width: 768px) 50vw, 33vw" : "(max-width: 768px) 100vw, 50vw"}
             unoptimized={unoptimized}
             onError={() => setFailed(true)}
             loading={priority ? "eager" : "lazy"}
@@ -102,14 +105,14 @@ export default function CardImage({ imageUrl, sourceUrl, sensitivityTags, fullSi
         </div>
       )}
 
-      {sensitive && !revealed && compact && (
-        <div className="absolute inset-0 bg-black/60 backdrop-blur-xl flex items-center justify-center" title={esCL.sensitiveOverlay.label}>
+      {sensitive && !revealed && (compact || compactOnMobile) && (
+        <div className={`absolute inset-0 bg-black/60 backdrop-blur-xl flex items-center justify-center ${compactOnMobile ? "sm:hidden" : ""}`} title={esCL.sensitiveOverlay.label}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/icons/eye-off.svg" alt={esCL.sensitiveOverlay.label} width={20} height={20} />
         </div>
       )}
       {sensitive && !revealed && !compact && (
-        <div className="absolute inset-0 bg-black/60 backdrop-blur-xl flex items-center justify-center">
+        <div className={`absolute inset-0 bg-black/60 backdrop-blur-xl items-center justify-center ${compactOnMobile ? "hidden sm:flex" : "flex"}`}>
           <div className="flex flex-col items-center gap-2 bg-black/40 rounded-[20px] px-5 py-4">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/icons/eye-off.svg" alt="" width={20} height={20} />
