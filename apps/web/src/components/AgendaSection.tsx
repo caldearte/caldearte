@@ -24,7 +24,8 @@ interface AgendaSectionProps {
 // The week's inauguraciones and visitas guiadas (2026-10-12) — the most
 // highlighted thing on the home, so each one is a big card in the same
 // look as the Instagram flyer (flyer-v2.tsx): a clean 4:5 photo with the
-// flyer's pills and tags under it (AgendaCard). Ordered by day,
+// flyer's pills and tags under it (AgendaCard). On a phone each one is a
+// row instead (2026-10-18, see AgendaCard). Ordered by day,
 // Monday to Sunday — visitors plan by day, not by event type, so both
 // types share one list (same reason the Instagram carousel merged them on
 // 2026-08-31). On the current week, days already past stay in their place,
@@ -49,7 +50,7 @@ export default function AgendaSection({ inauguraciones, visitasGuiadas, regionNa
           an invisible copy of the heading (from sm up) so photos in a row
           still line up. A day can now wrap across rows — each card's pill
           also names its day. */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-x-[16px] md:gap-x-[20px] gap-y-[36px] md:gap-y-[56px]">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-x-[16px] md:gap-x-[20px] gap-y-[10px] sm:gap-y-[36px] md:gap-y-[56px]">
         {groups.flatMap((g) => {
           const heading = fmtAgendaDay(g.date, today);
           const past = isCurrentWeek && g.date < today;
@@ -73,7 +74,9 @@ export default function AgendaSection({ inauguraciones, visitasGuiadas, regionNa
   );
 }
 
-const DAY_HEADING = "font-lato font-black text-[22px] md:text-[26px] leading-tight mb-[16px]";
+// The extra top margin on phones separates one day from the next, now
+// that rows sit 10px apart there.
+const DAY_HEADING = "font-lato font-black text-[22px] md:text-[26px] leading-tight mb-[12px] sm:mb-[16px] max-sm:mt-[22px]";
 // A day already over, in the disabled look the site uses elsewhere (faded,
 // like the week picker's other months), plus grey so the magenta doesn't
 // compete with what's still ahead. Its cards drop the calendar button and
@@ -104,7 +107,7 @@ function groupByDay(events: EventRecord[]): DayGroup[] {
 // openingDatetime (see splitAgendaAndCartelera).
 export function AgendaGrid({ events }: { events: EventRecord[] }) {
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-x-[16px] md:gap-x-[20px] gap-y-[32px]">
+    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-x-[16px] md:gap-x-[20px] gap-y-[10px] sm:gap-y-[32px]">
       {events.map((e) => (
         <AgendaCard key={e.id} event={e} />
       ))}
@@ -132,6 +135,10 @@ export function AgendaGrid({ events }: { events: EventRecord[] }) {
 // (Daniel) — and every card keeps "Cómo llegar" (Daniel, 2026-10-18).
 // `hideVenue` / `hideArtist`: the page is already that venue's (comuna
 // too) or that artist's.
+// Below sm (2026-10-18, Daniel): one row — a 96px 4:5 thumbnail, the tag
+// beside it, no buttons (they're on the ficha). A full-screen card per
+// event made the home 17.6 phone screens long, and didn't read as "there's
+// a lot on". From sm up, the big card as before.
 export function AgendaCard({
   event,
   priority = false,
@@ -181,7 +188,7 @@ export function AgendaCard({
     "relative z-10 w-full h-[44px] flex items-center justify-center gap-[10px] border border-text-primary bg-surface-white font-fragment-mono text-[13px] text-text-primary hover:bg-surface-sage";
 
   return (
-    <div className="group relative flex flex-col gap-[12px]">
+    <div className="group relative flex flex-row sm:flex-col gap-[12px] max-sm:items-center max-sm:rounded-[18px] max-sm:bg-surface-white max-sm:p-[10px]">
       {/* Whole-card link as an overlay, not a wrapper — the action buttons
           below are links of their own, and a link can't nest inside
           another. They sit above it (z-10) and take their own clicks. */}
@@ -189,7 +196,9 @@ export function AgendaCard({
 
       {/* Photo first, so photos side by side always start on the same
           line; the info tag follows at its own natural height. */}
-      <div className={`relative w-full aspect-[4/5] overflow-hidden bg-stone-800 ${photoBlocksLink ? "z-[2]" : ""}`}>
+      {/* On a phone the blurred photo has no "Ver contenido" button (no room
+          at 96px), so it never blocks the card's link there. */}
+      <div className={`relative w-[96px] shrink-0 sm:w-full aspect-[4/5] overflow-hidden bg-stone-800 max-sm:rounded-[8px] ${photoBlocksLink ? "sm:z-[2]" : ""}`}>
         <div className="absolute inset-0 transition-transform duration-300 group-hover:scale-[1.02]">
           <CardImage
             imageUrl={event.imageUrl}
@@ -197,21 +206,22 @@ export function AgendaCard({
             sensitivityTags={event.sensitivityTags}
             priority={priority}
             alt={event.title}
+            compactOnMobile
             onReveal={() => setRevealed(true)}
           />
         </div>
       </div>
 
-      <div className="w-full flex flex-col gap-[6px] rounded-[22px] bg-surface-white px-[16px] pt-[10px] pb-[16px]">
+      <div className="min-w-0 flex-1 sm:w-full flex flex-col gap-[6px] sm:rounded-[22px] sm:bg-surface-white sm:px-[16px] sm:pt-[10px] sm:pb-[16px]">
         {artist && (
           <span className="font-geist font-semibold text-[11px] leading-[1.25] tracking-[1px] uppercase text-text-secondary [text-wrap:balance]">{artist}</span>
         )}
-        <span className="font-lato font-black text-[17px] leading-[1.3] tracking-[0.3px] uppercase text-brand-magenta [text-wrap:balance] group-hover:underline">{title}</span>
+        <span className="font-lato font-black text-[15px] sm:text-[17px] leading-[1.3] tracking-[0.3px] uppercase text-brand-magenta [text-wrap:balance] group-hover:underline">{title}</span>
         {/* rounded-[14px], not rounded-full: on the 3-column tablet grid
             (~200px cards) "COMUNA · DÍA · HORA" wraps to two lines, and a
             pill shape would bulge; balanced so the lines come out even. */}
         {pill && (
-          <span className="w-fit mt-[4px] rounded-[14px] bg-brand-magenta px-[10px] py-[4px] font-lato font-black text-[12px] leading-[1.35] uppercase tracking-[0.3px] text-white [text-wrap:balance]">
+          <span className="w-fit mt-[4px] rounded-[14px] bg-brand-magenta px-[10px] py-[4px] font-lato font-black text-[11px] sm:text-[12px] leading-[1.35] uppercase tracking-[0.3px] text-white [text-wrap:balance]">
             {pill}
           </span>
         )}
@@ -221,7 +231,7 @@ export function AgendaCard({
             the one he always uses) — big, easy targets on a phone. Same
             look as the ficha's action buttons. */}
         {(mapsHref || calendarHref) && (
-          <div className="flex flex-col gap-[8px] mt-[10px]">
+          <div className="hidden sm:flex flex-col gap-[8px] mt-[10px]">
             {mapsHref && (
               <a href={mapsHref} target="_blank" rel="noopener noreferrer" className={button} data-track="directions" data-track-event-id={event.id}>
                 <DirectionsGlyph color="#3d373d" />
