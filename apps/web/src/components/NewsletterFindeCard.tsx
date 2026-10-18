@@ -49,7 +49,7 @@ export default function NewsletterFindeCard({ adminRegionName = "" }: { adminReg
       <div className="flex flex-col gap-[10px] lg:flex-1">
         <h2 className="font-lato font-black leading-[1.05] text-[26px] md:text-[34px]">
           {esCL.newsletter.findeHeadlinePlain}
-          <span className="text-brand-magenta">{esCL.newsletter.findeHeadlineHighlight}</span>
+          <span className="block text-brand-magenta">{esCL.newsletter.findeHeadlineHighlight}</span>
         </h2>
         <p className="font-lato text-[16px] md:text-[18px] leading-snug text-surface-sage/90">{esCL.newsletter.findeBody(regionLabel)}</p>
       </div>
