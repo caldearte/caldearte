@@ -561,8 +561,11 @@ export const esCL = {
     // code).
     // Concrete promise (what, when, where) instead of "guía semanal" —
     // 2026-10-16, when the newsletter became a Thursday weekend edition.
-    sectionHeadlinePlainStart: "EL FINDE DEL ARTE, ",
-    sectionHeadlineHighlight: "CADA JUEVES",
+    // Say what arrives, not just "el finde" (2026-10-18: "te mandamos el
+    // finde" read as sending the weekend itself) — clear to everyone beats
+    // short.
+    sectionHeadlinePlainStart: "LAS INAUGURACIONES DEL FINDE, ",
+    sectionHeadlineHighlight: "CADA JUEVES EN TU CORREO",
     sectionHeadlinePlainEnd: "",
     sectionEmailPlaceholder: "Pon tu mail aquí",
     emailLabel: "Tu correo",
@@ -576,7 +579,7 @@ export const esCL = {
     // (NewsletterFindeCard, 2026-10-16) — where the visitor has just seen
     // what's on and is deciding, instead of 11 screens down the home.
     findeHeadlinePlain: "¿TE ENTERASTE TARDE? ",
-    findeHeadlineHighlight: "TE MANDAMOS EL FINDE CADA JUEVES",
+    findeHeadlineHighlight: "CADA JUEVES, LAS INAUGURACIONES DEL FINDE EN TU CORREO",
     findeBody: (region: string) =>
       region
         ? `Las inauguraciones y visitas guiadas del viernes al domingo en ${region}, en tu correo el jueves en la tarde. Gratis, te das de baja en un clic.`
