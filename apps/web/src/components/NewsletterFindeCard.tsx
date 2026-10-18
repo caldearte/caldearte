@@ -5,12 +5,12 @@ import { esCL } from "@/i18n/es-CL";
 import { useNewsletterSubscribe } from "@/lib/useNewsletterSubscribe";
 import { shortRegionName } from "@/lib/regionNames";
 import { statusBoxClass } from "@/lib/formStatusBox";
+import { emailFieldError } from "@/lib/emailFieldError";
 import { FIELD_BOX, FIELD_BOX_INVALID } from "./FormField";
 
 // Light text: this card sits on the dark text-primary background.
 const STATUS_BOX_SUCCESS = statusBoxClass("success", "text-surface-sage");
 const STATUS_BOX_ERROR = statusBoxClass("error", "text-surface-sage");
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 // Compact newsletter signup (2026-10-16), right after the home's agenda and
 // under each event's own card — where a visitor has just seen what's on and
@@ -32,7 +32,7 @@ export default function NewsletterFindeCard({ adminRegionName = "" }: { adminReg
     const data = new FormData(e.currentTarget);
     const email = ((data.get("email") as string | null) ?? "").trim();
     const region = (data.get("adminRegionName") as string | null) ?? "";
-    const badEmail = EMAIL_RE.test(email) ? undefined : esCL.newsletter.invalidEmail;
+    const badEmail = emailFieldError(email, esCL.newsletter.invalidEmail);
     const badRegion = region ? undefined : esCL.newsletter.noRegion;
     setEmailError(badEmail);
     setRegionError(badRegion);

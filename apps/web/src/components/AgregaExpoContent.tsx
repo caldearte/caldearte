@@ -3,6 +3,7 @@
 import { useRef, useState, type DragEvent, type FormEvent, type KeyboardEvent } from "react";
 import { esCL } from "@/i18n/es-CL";
 import { compressImage } from "@/lib/compressImage";
+import { emailFieldError } from "@/lib/emailFieldError";
 import Footer from "./Footer";
 import DrawerShell from "./DrawerShell";
 import ContactPanel from "./ContactPanel";
@@ -17,7 +18,6 @@ const PILL_BUTTON =
   "cursor-pointer rounded-[75px] border-4 border-text-primary font-lato font-black text-[20px] md:text-[24px] px-[20px] py-[8px] transition-colors disabled:cursor-default disabled:opacity-60";
 
 const STEP_COUNT = esCL.agregaExpo.steps.length;
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 // Half-hour slots for the opening hour — every real opening in the data
 // sits on :00 or :30, and a list is quicker to hit on a phone than a
@@ -121,7 +121,11 @@ export default function AgregaExpoContent({ comunas, galleries }: { comunas: Com
     }
     if (i === 3) {
       if (!value("submitterName")) next.submitterName = required;
-      if (!EMAIL_RE.test(value("submitterEmail"))) next.submitterEmail = value("submitterEmail") ? esCL.agregaExpo.invalidEmail : required;
+      if (!value("submitterEmail")) next.submitterEmail = required;
+      else {
+        const emailError = emailFieldError(value("submitterEmail"), esCL.agregaExpo.invalidEmail);
+        if (emailError) next.submitterEmail = emailError;
+      }
     }
     setErrors(next);
     return Object.keys(next).length === 0;

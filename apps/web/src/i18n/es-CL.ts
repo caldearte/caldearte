@@ -542,6 +542,13 @@ export const esCL = {
   aiDisclaimer:
     "Usamos IA para rastrear inauguraciones y exposiciones en todo Chile.",
 
+  // Field error for an email that has the right shape but can't be real
+  // (lib/email.ts emailIssue) — more useful than the generic "escribe un
+  // correo válido" when the fix is one keystroke.
+  emailIssue: {
+    accent: "Los correos no llevan ñ ni tildes: revisa cómo lo escribiste.",
+    typo: (suggestion: string) => `¿Quisiste decir ${suggestion}?`,
+  },
   newsletter: {
     headerLabel: "Boletín del finde",
     regionPlaceholder: "Tu región",
