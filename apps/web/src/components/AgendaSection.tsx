@@ -16,8 +16,8 @@ interface AgendaSectionProps {
   visitasGuiadas: EventRecord[];
   regionName: string;
   today: string;
-  // Days already past only fold away when looking at the real current
-  // week — any other week shows every day open.
+  // Days already past only dim when looking at the real current week —
+  // any other week shows every day in full colour.
   isCurrentWeek: boolean;
 }
 
@@ -27,14 +27,11 @@ interface AgendaSectionProps {
 // flyer's pills and tags under it (AgendaCard). Ordered by day,
 // Monday to Sunday — visitors plan by day, not by event type, so both
 // types share one list (same reason the Instagram carousel merged them on
-// 2026-08-31). On the current week, days already past stay in their place
-// but folded to one line, so a Sunday visitor isn't scrolling past six
-// days that are over.
+// 2026-08-31). On the current week, days already past stay in their place,
+// cards and all, but dimmed (Daniel, 2026-10-18: folded to one line, a
+// Sunday visitor saw an empty week), so what's still ahead stands out.
 export default function AgendaSection({ inauguraciones, visitasGuiadas, regionName, today, isCurrentWeek }: AgendaSectionProps) {
   const groups = groupByDay([...inauguraciones, ...visitasGuiadas].filter((e) => e.openingDatetime !== null));
-  // Past days of the current week start folded; these are the ones the
-  // visitor has opened.
-  const [openedPast, setOpenedPast] = useState<Set<string>>(() => new Set());
   // The first card of the first day still to come loads its photo first.
   const priorityId = groups.find((g) => !isCurrentWeek || g.date >= today)?.events[0]?.id;
 
@@ -56,31 +53,17 @@ export default function AgendaSection({ inauguraciones, visitasGuiadas, regionNa
         {groups.flatMap((g) => {
           const heading = fmtAgendaDay(g.date, today);
           const past = isCurrentWeek && g.date < today;
-          if (past && !openedPast.has(g.date)) {
-            return [
-              <button
-                key={g.date}
-                type="button"
-                aria-expanded={false}
-                onClick={() => setOpenedPast((prev) => new Set(prev).add(g.date))}
-                className="col-span-full w-full flex items-baseline justify-between gap-3 border-b border-text-primary/15 pb-[8px] text-left cursor-pointer"
-              >
-                <span className="font-lato font-black text-[22px] md:text-[26px] text-text-secondary">{heading}</span>
-                <span className="font-fragment-mono text-[13px] text-text-secondary underline">{esCL.home.agendaPastDay(g.events.length)}</span>
-              </button>,
-            ];
-          }
           return g.events.map((e, i) => {
             return (
-              <div key={e.id} className={past ? "opacity-70" : ""}>
+              <div key={e.id} className={past ? PAST_DAY : ""}>
                 {i === 0 ? (
-                  <h3 className={DAY_HEADING}>{heading}</h3>
+                  <h3 className={`${DAY_HEADING} ${past ? "text-text-secondary" : "text-text-primary"}`}>{heading}</h3>
                 ) : (
                   <div aria-hidden="true" className={`${DAY_HEADING} invisible hidden sm:block`}>
                     {heading}
                   </div>
                 )}
-                <AgendaCard event={e} priority={e.id === priorityId} />
+                <AgendaCard event={e} priority={e.id === priorityId} pastDay={past} />
               </div>
             );
           });
@@ -90,7 +73,13 @@ export default function AgendaSection({ inauguraciones, visitasGuiadas, regionNa
   );
 }
 
-const DAY_HEADING = "font-lato font-black text-[22px] md:text-[26px] leading-tight text-text-primary mb-[16px]";
+const DAY_HEADING = "font-lato font-black text-[22px] md:text-[26px] leading-tight mb-[16px]";
+// A day already over, in the disabled look the site uses elsewhere (faded,
+// like the week picker's other months), plus grey so the magenta doesn't
+// compete with what's still ahead. Its cards drop the calendar button and
+// say when it opened instead (AgendaCard's `pastDay`).
+// Still a link, and on hover the card gets its colour back.
+const PAST_DAY = "opacity-60 grayscale transition-[opacity,filter] duration-200 hover:opacity-100 hover:grayscale-0";
 
 interface DayGroup {
   date: string; // YYYY-MM-DD, Chilean calendar date
@@ -136,23 +125,32 @@ export function AgendaGrid({ events }: { events: EventRecord[] }) {
 // the "Inauguración:" prefix, the day + hour pill and the calendar button;
 // a running show's pill says until when ("HASTA EL 15 OCT"), a past one's
 // its run ("12 AL 28 DE JULIO"), and a past one drops "Cómo llegar".
+// `pastDay` (home agenda, a day of this week already over, 2026-10-18):
+// history mode, except the pill says what happened that day — "INAUGURÓ
+// MIÉ 14 OCT" / "VISITA CONCLUIDA MIÉ 14 OCT" — never "HASTA …", which is
+// the cartelera's language, where the show lands from next week on
+// (Daniel) — and every card keeps "Cómo llegar" (Daniel, 2026-10-18).
 // `hideVenue` / `hideArtist`: the page is already that venue's (comuna
 // too) or that artist's.
 export function AgendaCard({
   event,
   priority = false,
-  history = false,
+  history: historyMode = false,
+  pastDay = false,
   hideVenue = false,
   hideArtist = false,
 }: {
   event: EventRecord;
   priority?: boolean;
   history?: boolean;
+  pastDay?: boolean;
   hideVenue?: boolean;
   hideArtist?: boolean;
 }) {
   const today = todayInSantiago();
   const type = event.eventType === "visita_guiada" ? "visita_guiada" : "inauguracion";
+  const history = historyMode || pastDay;
+  const pastLabel = type === "inauguracion" ? "INAUGURÓ" : "VISITA CONCLUIDA";
   const openingAhead = event.openingDatetime !== null && santiagoDateOfIso(event.openingDatetime) >= today;
   const dated = !history || openingAhead;
   const title = dated ? titleWithTypePrefix(event.title, type) : event.title;
@@ -166,11 +164,13 @@ export function AgendaCard({
   const running = event.runEndDate !== null && event.runEndDate >= today;
   const when = dated
     ? `${fmtAgendaPillDay(event.openingDatetime!, today)} · ${fmtAgendaPillHour(event.openingDatetime!, event.openingTimeConfirmed)}`
-    : running
-      ? fmtUntilPill(event.runEndDate!, today)
-      : (runLine ?? (event.openingDatetime ? fmtAgendaPillDay(event.openingDatetime, today) : "")).toUpperCase();
+    : pastDay && event.openingDatetime
+      ? `${pastLabel} ${fmtAgendaPillDay(event.openingDatetime, today)}`
+      : running
+        ? fmtUntilPill(event.runEndDate!, today)
+        : (runLine ?? (event.openingDatetime ? fmtAgendaPillDay(event.openingDatetime, today) : "")).toUpperCase();
   const pill = [hideVenue ? null : comuna, when].filter(Boolean).join(" · ");
-  const mapsHref = dated || running ? actions.mapsHref : null;
+  const mapsHref = dated || running || pastDay ? actions.mapsHref : null;
   const calendarHref = dated ? actions.calendarHref : null;
   // While a sensitive photo is still blurred, the photo sits above the
   // card's link so its "Ver contenido" button gets the tap; once revealed
