@@ -777,14 +777,19 @@ function fmtWeekHeaderEs(weekStart: string, weekEnd: string): string {
   return `${range} ${ey}`;
 }
 
-// "Finde del 23 al 25 oct" — the header's first pill, in the site's own
-// pill wording ("Esta semana") and short enough to share a phone-width
-// line with the región pill. No year: read at a glance, not a citation.
+// "Jue 22 al dom 25 oct" — the header's first pill (the edition runs
+// Thursday to Sunday since 2026-10-18), short enough to share a
+// phone-width line with the región pill. No year: read at a glance.
 function fmtWeekLine(weekStart: string, weekEnd: string): string {
-  const [, sm, sd] = weekStart.split("-").map(Number);
-  const [, em, ed] = weekEnd.split("-").map(Number);
-  const range = sm === em ? `${sd} al ${ed} ${MONTHS_SHORT_ES[sm - 1]}` : `${sd} ${MONTHS_SHORT_ES[sm - 1]} al ${ed} ${MONTHS_SHORT_ES[em - 1]}`;
-  return `Finde del ${range}`;
+  const day = (dateStr: string) => {
+    const [y, m, d] = dateStr.split("-").map(Number);
+    return { weekday: WEEKDAYS_ES[new Date(Date.UTC(y, m - 1, d)).getUTCDay()].slice(0, 3), d, month: MONTHS_SHORT_ES[m - 1] };
+  };
+  const s = day(weekStart);
+  const e = day(weekEnd);
+  const startMonth = s.month === e.month ? "" : ` ${s.month}`;
+  const label = `${s.weekday} ${s.d}${startMonth} al ${e.weekday} ${e.d} ${e.month}`;
+  return label.charAt(0).toUpperCase() + label.slice(1);
 }
 
 const SITE_URL = "https://www.caldearte.com";
@@ -850,9 +855,9 @@ function groupForCards(events: DigestEvent[]): Array<[string, DigestEvent[]]> {
 // one, matching the product decision that empty sections are dropped
 // upstream, not hidden here.
 //
-// Leads with the number of openings (2026-10-16, the Thursday weekend
-// edition): "12 inauguraciones este finde en Santiago" says in the inbox
-// what's inside, which "tu semana en arte (N expos)" didn't.
+// Leads with the number of openings (2026-10-16): "12 inauguraciones de
+// jueves a domingo en Santiago" says in the inbox what's inside, which
+// "tu semana en arte (N expos)" didn't.
 export function buildDigestSubject(
   sections: DigestSection[],
   week?: { start: string; end: string },
@@ -861,7 +866,7 @@ export function buildDigestSubject(
   const openings = sections.find((s) => s.label === OPENINGS_LABEL)?.events.length ?? 0;
   const where = regionName ? ` en ${shortRegionName(regionName)}` : "";
   const dates = week ? `, ${fmtWeekHeaderEs(week.start, week.end)}` : "";
-  const lead = openings > 0 ? `${openings} inauguraci${openings === 1 ? "ón" : "ones"} este finde${where}` : `Este finde en arte${where}`;
+  const lead = openings > 0 ? `${openings} inauguraci${openings === 1 ? "ón" : "ones"} de jueves a domingo${where}` : `Arte de jueves a domingo${where}`;
   return `${lead} — Caldearte${dates}`;
 }
 
@@ -925,7 +930,7 @@ export function buildDigestBody(
   lines.push(`Síguenos en Instagram y no te pierdas las entrevistas que le hacemos a algunos artistas en sus propias inauguraciones: ${INSTAGRAM_URL}`);
   lines.push("");
   lines.push(
-    "Este es el boletín de Caldearte, un calendario de arte curado por inteligencia humana potenciada por IA. Te lo enviamos cada jueves porque te suscribiste para recibir las inauguraciones del fin de semana en tu región.",
+    "Este es el boletín de Caldearte, un calendario de arte curado por inteligencia humana potenciada por IA. Te lo enviamos cada jueves porque te suscribiste para recibir las inauguraciones de jueves a domingo en tu región.",
   );
   lines.push(`Darse de baja: ${unsubscribeUrl(unsubscribeToken)}`);
   return lines.join("\n");
@@ -953,7 +958,7 @@ const SLOGAN = "EL ARTE MÁS CERCA";
 // The openings label doubles as a big magenta heading, hand-broken into
 // two lines like the site's own wordmarks ("CALDE"/"ARTE."). Any other
 // non-compact section falls back to its plain label at the same size.
-export const OPENINGS_LABEL = "Inauguraciones de este fin de semana";
+export const OPENINGS_LABEL = "Inauguraciones de jueves a domingo";
 const SECTION_LABEL_LINES: Record<string, string[]> = {
   [OPENINGS_LABEL]: ["INAUGU", "RACIONES."],
 };
@@ -1113,7 +1118,7 @@ export function buildDigestHtmlBody(
       <p style="margin:0;font-family:${LATO_STACK};font-weight:900;font-size:28px;letter-spacing:0.01em;color:${SURFACE_SAGE};">CALDEARTE.</p>
       <p style="margin:4px 0 16px;font-family:${LATO_STACK};font-weight:900;font-size:15px;color:${SURFACE_SAGE};">${SLOGAN}</p>
       <p style="margin:0 0 12px;font-size:12px;line-height:1.6;color:${SURFACE_SAGE};">
-        Este es el boletín de Caldearte, un calendario de arte curado por inteligencia humana potenciada por IA. Te lo enviamos cada jueves porque te suscribiste para recibir las inauguraciones del fin de semana en tu región.
+        Este es el boletín de Caldearte, un calendario de arte curado por inteligencia humana potenciada por IA. Te lo enviamos cada jueves porque te suscribiste para recibir las inauguraciones de jueves a domingo en tu región.
       </p>
       <a href="${unsubscribeUrl(unsubscribeToken)}" style="color:${SURFACE_SAGE};font-size:12px;text-decoration:underline;">Darse de baja</a>
     </div>

@@ -580,7 +580,7 @@ export const esCL = {
     invalidEmail: "Escribe un correo válido.",
     noRegion: "Elige tu región.",
     sectionSubmit: "¡LO QUIERO!",
-    sectionCaption: "Las inauguraciones del viernes al domingo, en tu correo el jueves",
+    sectionCaption: "Las inauguraciones de jueves a domingo, en tu correo el jueves en la mañana",
     // Compact card right after the home's agenda and on every event page
     // (NewsletterFindeCard, 2026-10-16) — where the visitor has just seen
     // what's on and is deciding, instead of 11 screens down the home.
@@ -588,8 +588,8 @@ export const esCL = {
     findeHeadlineHighlight: "CADA JUEVES, LAS INAUGURACIONES DEL FINDE EN TU CORREO",
     findeBody: (region: string) =>
       region
-        ? `Las inauguraciones y visitas guiadas del viernes al domingo en ${region}, en tu correo el jueves en la tarde. Gratis, te das de baja en un clic.`
-        : "Las inauguraciones y visitas guiadas del viernes al domingo en tu región, en tu correo el jueves en la tarde. Gratis, te das de baja en un clic.",
+        ? `Las inauguraciones y visitas guiadas de jueves a domingo en ${region}, en tu correo el jueves en la mañana. Gratis, te das de baja en un clic.`
+        : "Las inauguraciones y visitas guiadas de jueves a domingo en tu región, en tu correo el jueves en la mañana. Gratis, te das de baja en un clic.",
     findeRegionLine: (region: string) => `Región: ${region}`,
     findeChangeRegion: "cambiar",
     findeSubmit: "¡LO QUIERO!",
@@ -597,7 +597,7 @@ export const esCL = {
       title: "Confirmar suscripción",
       confirmedTitle: "¡Listo! Ya eres parte de Caldearte",
       confirmed:
-        "Cada jueves recibirás las inauguraciones del fin de semana en tu región, directo a tu correo.",
+        "Cada jueves en la mañana recibirás las inauguraciones de jueves a domingo en tu región, directo a tu correo.",
       alreadyConfirmed: "Tu suscripción ya estaba confirmada.",
       unsubscribed: "Esta suscripción ya fue dada de baja.",
       invalid: "Este link de confirmación no es válido.",

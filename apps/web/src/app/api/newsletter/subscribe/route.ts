@@ -157,10 +157,10 @@ export async function POST(request: Request) {
     subject: "Confirma tu suscripción a Caldearte",
     // Same promise as the signup form (2026-10-16 weekend edition): what
     // arrives and when — it used to say "newsletter semanal".
-    text: `Un paso más: confirma tu suscripción y cada jueves te llegarán las inauguraciones del fin de semana en ${regionLabel}.\n\n${confirmUrl}\n\nSi no fuiste tú, ignora este correo.`,
+    text: `Un paso más: confirma tu suscripción y cada jueves en la mañana te llegarán las inauguraciones de jueves a domingo en ${regionLabel}.\n\n${confirmUrl}\n\nSi no fuiste tú, ignora este correo.`,
     html: emailShell(`
       <h1 style="margin:0 0 12px;font-family:'Lato',Helvetica,Arial,sans-serif;font-weight:900;font-size:24px;line-height:1.15;color:#ff00fb;text-transform:uppercase;">Un paso más</h1>
-      <p style="margin:0 0 22px;font-size:16px;color:#3d373d;line-height:1.55;">Confirma tu suscripción y cada jueves te llegarán las inauguraciones del fin de semana en ${regionLabel}.</p>
+      <p style="margin:0 0 22px;font-size:16px;color:#3d373d;line-height:1.55;">Confirma tu suscripción y cada jueves en la mañana te llegarán las inauguraciones de jueves a domingo en ${regionLabel}.</p>
       <a href="${confirmUrl}" style="display:inline-block;background:#ff00fb;color:#fff;padding:13px 24px;border-radius:999px;text-decoration:none;font-family:'Lato',Helvetica,Arial,sans-serif;font-weight:900;font-size:15px;">Confirmar suscripción</a>
       <p style="margin:24px 0 0;font-size:12px;color:#767f82;">Si no fuiste tú, ignora este correo.</p>
     `),
