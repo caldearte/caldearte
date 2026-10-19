@@ -203,6 +203,18 @@ Closed out the initial project brief, moved into a dedicated repo.
       [curation-policy.md](curation-policy.md) (the axis-by-axis table)
       stays internal — the public page only carries the same
       already-approved value-prop paragraph it always did.
+  - **Shipped 2026-10-18**: newsletter welcome email, sent once right
+    after a subscriber confirms (before it, nothing reached them until the
+    next Thursday edition — four days of silence on a Sunday signup).
+    `/newsletter/confirmar` sends it via Resend (`apps/web/src/lib/
+    welcomeEmail.ts` + `sendWelcomeEmail.ts`): what arrives and when, plus
+    up to 6 of the región's inauguraciones of the next 7 days in the
+    digest's one-row card style. `newsletter-confirm` now returns the
+    subscriber's email/región only with a first-time `confirmed`, and its
+    update is conditional on `confirmed_at is null`, so a double click or
+    a mail scanner's prefetch can't send two. Needs that Edge Function
+    redeployed (manual, like every function here); until then the page
+    simply sends nothing.
   - **Shipped 2026-07-30**: the newsletter (weekly digest, opt-in per
     macro-región, double opt-in via Resend) — `newsletter_subscribers`
     table, `/api/newsletter/subscribe` (apps/web, anon-key insert-only),

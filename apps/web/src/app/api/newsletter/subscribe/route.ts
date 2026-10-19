@@ -4,6 +4,7 @@ import { getSupabaseClient } from "@/lib/supabase-client";
 import { clientIp, isWithinRateLimit } from "@/lib/rate-limit";
 import { isValidEmail } from "@/lib/email";
 import { knownShortRegionName } from "@/lib/regionNames";
+import { emailShell } from "@/lib/newsletterEmail";
 
 // Two separate limits: per-IP catches a script hammering this endpoint;
 // per-email specifically stops this route being used to email-bomb a
@@ -19,34 +20,6 @@ const EMAIL_RATE_LIMIT_WINDOW_SECONDS = 86400;
 interface SubscribePayload {
   email?: string;
   adminRegionName?: string;
-}
-
-// Same look as the Thursday edition itself (apps/curator/src/lib/notify.ts's
-// buildDigestHtmlBody, 2026-10-18): sage page, magenta CALDE/ARTE.
-// wordmark, the site's slogan. Was a black header with plain text — the
-// first email a new subscriber gets didn't look like the brand.
-function emailShell(bodyHtml: string): string {
-  const lato = "'Lato',Helvetica,Arial,sans-serif";
-  return `<!doctype html>
-<html lang="es-CL">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <link href="https://fonts.googleapis.com/css2?family=Lato:wght@900&display=swap" rel="stylesheet" />
-  </head>
-  <body style="margin:0;padding:0;background:#d7dfe2;">
-    <div style="font-family:Helvetica,Arial,sans-serif;max-width:520px;margin:0 auto;padding:28px 20px 32px;background:#d7dfe2;">
-      <a href="https://www.caldearte.com" style="display:block;text-decoration:none;color:#ff00fb;font-family:${lato};font-weight:900;font-size:48px;line-height:0.92;">
-        <span style="display:block;">CALDE</span>
-        <span style="display:block;">ARTE.</span>
-      </a>
-      <p style="margin:14px 0 24px;color:#3d373d;font-family:${lato};font-weight:900;font-size:20px;">EL ARTE MÁS CERCA</p>
-      <div style="background:#fff;border-radius:22px;padding:28px 24px;">
-        ${bodyHtml}
-      </div>
-    </div>
-  </body>
-</html>`;
 }
 
 // Calls the newsletter-resubscribe Edge Function (service-role) when our
