@@ -594,6 +594,25 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
     fixedLocation: { location: "Talca", placeName: "Wall Galería Taller" },
   },
   {
+    username: "casafactoria_maule",
+    note:
+      "Evaluada 2026-10-19 (rutina semanal del grafo de colaboradores, " +
+      "co-autora de un post de museoprecolombino). CasaFactoría, galería " +
+      "de artes con archivo visual de memoria y DD.HH., Dr. Saavedra 36, " +
+      "Población Nacional, Talca (Maule) — sede de @corpo_ciudadania, " +
+      "287 posts / 3,1 mil seguidores, recién reinaugurada. Exposición " +
+      "real vigente: \"Habitando el Territorio\", colectiva de 50 " +
+      "fotógrafos del Maule, confirmada de forma independiente por " +
+      "@culturasmaule (Seremi). El resto es FotoMaule (festival de " +
+      "fotografía y DD.HH. que organizan): talleres, algunos fuera de la " +
+      "galería (Plaza de Armas de Cauquenes) — fuera de alcance, el " +
+      "filtro de curaduría los deja pasar o no como a cualquier taller. " +
+      "No estaba en known-sources (sin web propia evaluada). Agregada " +
+      "por decisión de Daniel. fixedLocation.",
+    addedAt: "2026-10-19",
+    fixedLocation: { location: "Talca", placeName: "CasaFactoría" },
+  },
+  {
     username: "casona_lagoslira",
     note:
       "Evaluada 2026-08-18. Casona Lagos-Lira, Pedro Lagos 396, Santiago — " +

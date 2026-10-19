@@ -4788,7 +4788,13 @@ handle is only extracted when the post @-mentions the artist) and the
 graph handles that look like artists. Daniel's aim is that each artist
 knows their opening is on the site and shares it — by hand, 5-10 a day,
 never automated. The routine never sends anything
-and never adds a source; Daniel writes in his own voice. Context for the
+and never adds a source; Daniel writes in his own voice. **Since
+2026-10-19** it may follow accounts and like posts from @caldearte.oficial
+(venues/artists with a live event, or graph places marked "follow only";
+at most 5 follows and 10 likes a run, 20-40 s apart, hard stop on any
+Instagram restriction notice), and it fills `artists/venues.follows_caldearte_at`
+from our own followers list — still never DMs, comments or unfollows.
+Context for the
 shift: on 2026-09-17 the site had 98 Instagram followers, 2 confirmed
 newsletter subscribers (none since 2026-08-04) and 0 venue submissions —
 the machine was no longer the bottleneck, attention was. Same mechanism as the one-shot
