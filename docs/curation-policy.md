@@ -8,7 +8,8 @@ Explicit, non-neutral editorial curation, defined by two people (the two
 curators): default-exclude across five axes (religion, war/violence, far
 right, pseudoscience/superstition, explicit physical/sexual aggression) plus
 an institutional-location filter, with an exception only for explicit
-critical stance.
+critical stance — and, separately, an artist-level exclusion for public
+harassment allegations, enforced by hand (see below).
 
 Product decision: this specific curatorial stance **is the value
 proposition**, not something to hide. It's worth making explicit on the site
@@ -122,6 +123,62 @@ whether "this is real art." Worth bringing that check forward to Phase 1 for
 this specific axis (not for general image quality control), because here the
 cost of a false negative — showing an explicit image on the calendar — is
 higher than on the other axes, which are text-only.
+
+## Artist exclusion: public harassment allegations (2026-10-19)
+
+Decided by Daniel on 2026-10-19, after a photographer with widely
+reported sexual-misconduct allegations showed up on the calendar through
+a museum exhibition: **any artist with public allegations of harassment
+is excluded from Caldearte.** This is a rule about the *person*, not the
+content — it applies whatever the work shows, however prestigious the
+venue, and there is no critical-stance exception.
+
+**What counts as a public allegation.** At least one of:
+
+- reporting with its own investigation by an established outlet, Chilean
+  or foreign (not an outlet that only relays what another one said);
+- a court case — a complaint filed, formal charges, or a conviction, civil
+  or criminal;
+- an institutional investigation with a public outcome (a university,
+  museum, gallery, agency or union sanctioning the artist, cutting ties,
+  or publishing findings);
+- the artist's own public acknowledgement or apology.
+
+**What doesn't:** rumours on social media, anonymous accounts, call-outs
+("funas") not backed by any of the above, or posts that circulate without
+reporting of their own. "Harassment" here means sexual harassment, abuse
+or assault. A dismissal or acquittal doesn't by itself cancel a
+qualifying journalistic investigation — those cases go to Daniel.
+
+**Scope.** The whole event is excluded when its own text names the
+artist among those exhibiting — solo shows and group shows alike, since a
+listing can't drop one name from an event and publishing it still gives
+that artist reach.
+
+**Enforcement is editorial, not in the pipeline — on purpose.** Neither
+Haiku nor MiniMax is asked to judge this from what they "know" about an
+artist: a model would invent allegations, especially for little-known
+Chilean artists or similar names, which is exactly the harm to avoid.
+Instead:
+
+- The weekly collaborator-graph routine (Monday, the one that already
+  lists every artist with a live event) searches the web for allegations
+  against artists it hasn't checked yet and re-checks the list of
+  excluded names against all live events. It never removes anything on
+  its own: it presents findings with their sources, and Daniel decides.
+- Confirmed removals use the admin "Quitar" flow's columns, with
+  `removed_reason` written as `Denuncia pública por acoso (revisión
+  manual AAAA-MM-DD)` — no name and no source in the reason itself; the
+  artist is already linked through `event_artists`.
+- **The list of excluded names is never committed.** This repo is
+  public, and a list of people "accused of harassment" with real names
+  doesn't belong here. It lives in a local-only file
+  (`docs/exclusiones-acoso.local.md`, covered by `*.local.md` in
+  `.gitignore`), one line per artist with the date and the qualifying
+  source, plus the log of artists already checked with no findings.
+
+Known gap, accepted: with a weekly check, an event by an excluded artist
+can be live for up to a week before the routine catches it.
 
 ## Operational instruction for Claude Haiku's system prompt
 
