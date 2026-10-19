@@ -87,7 +87,7 @@ test("buildWelcomeEmail: says what arrives and when, lists the openings, links u
   assert.ok(mail.text.includes(promise));
   assert.ok(mail.html.includes(promise));
   assert.ok(mail.text.includes("Muestra de prueba — Galería de prueba — ÑUÑOA · JUE 22 OCT · 19 HR"));
-  assert.ok(mail.text.includes("https://www.caldearte.com/eventos/e1"));
+  assert.ok(mail.text.split("\n").includes("  https://www.caldearte.com/eventos/e1"));
   assert.ok(mail.html.includes("ÑUÑOA · JUE 22 OCT · 19 HR"));
   assert.equal(mail.unsubscribeUrl, "https://www.caldearte.com/newsletter/baja?token=abc123");
   assert.ok(mail.text.includes("Darse de baja: https://www.caldearte.com/newsletter/baja?token=abc123"));
