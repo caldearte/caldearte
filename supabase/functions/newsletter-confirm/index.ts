@@ -13,7 +13,15 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
-type Result = { status: "confirmed" | "already_confirmed" | "unsubscribed" | "invalid" | "error" };
+// email/adminRegionName ride along only with a first-time "confirmed", for
+// apps/web's welcome email (its anon key can't read newsletter_subscribers).
+// Only the token holder gets them, and the token was mailed to that same
+// address, so this tells the caller nothing they didn't already have.
+type Result = {
+  status: "confirmed" | "already_confirmed" | "unsubscribed" | "invalid" | "error";
+  email?: string;
+  adminRegionName?: string;
+};
 
 function jsonResponse(result: Result, httpStatus = 200): Response {
   return new Response(JSON.stringify(result), { status: httpStatus, headers: { "content-type": "application/json" } });
@@ -28,7 +36,7 @@ Deno.serve(async (req) => {
 
   const { data: subscriber, error: fetchError } = await client
     .from("newsletter_subscribers")
-    .select("id, confirmed_at, unsubscribed_at")
+    .select("id, email, admin_region_name, confirmed_at, unsubscribed_at")
     .eq("confirm_token", token)
     .maybeSingle();
 
@@ -40,15 +48,22 @@ Deno.serve(async (req) => {
   if (subscriber.unsubscribed_at) return jsonResponse({ status: "unsubscribed" });
   if (subscriber.confirmed_at) return jsonResponse({ status: "already_confirmed" });
 
-  const { error: updateError } = await client
+  // `confirmed_at is null` in the update itself, so two concurrent clicks
+  // (a mail scanner prefetching the link while the person clicks it) can't
+  // both come back "confirmed" and send two welcome emails.
+  const { data: updated, error: updateError } = await client
     .from("newsletter_subscribers")
     .update({ confirmed_at: new Date().toISOString() })
-    .eq("id", subscriber.id);
+    .eq("id", subscriber.id)
+    .is("confirmed_at", null)
+    .select("id");
 
   if (updateError) {
     console.error("newsletter-confirm: update failed", updateError);
     return jsonResponse({ status: "error" }, 500);
   }
 
-  return jsonResponse({ status: "confirmed" });
+  if (!updated || updated.length === 0) return jsonResponse({ status: "already_confirmed" });
+
+  return jsonResponse({ status: "confirmed", email: subscriber.email, adminRegionName: subscriber.admin_region_name });
 });
