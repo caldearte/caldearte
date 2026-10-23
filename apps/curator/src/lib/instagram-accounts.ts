@@ -2955,4 +2955,83 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
   // El resto de la lista la aporta Daniel — una decisión editorial, igual
   // que cada fuente brillante nueva se evaluó una por una. Confirmar
   // pública y activa antes de agregar cada cuenta.
+  //
+  // Ronda 2026-10-23: cobertura de regiones fuera de la RM. Con el
+  // crédito de Apify Starter que sobra por ciclo (~$9,5 de $19), Daniel
+  // eligió sumar regiones en vez de otro país. Eventos vigentes por 100
+  // mil habitantes: Antofagasta 0,3, Coquimbo 0,7, O'Higgins 1,0,
+  // Tarapacá 1,1, Maule 1,2 (RM 4,5). Candidatas revisadas post por post
+  // por Chrome, no por Apify.
+  {
+    username: "ccestacionantofagasta",
+    note:
+      "Evaluada 2026-10-23 (ronda de regiones). Centro Cultural Estación " +
+      "Antofagasta, Barrio Histórico — 6,1 mil seguidores, 682 posts, muy " +
+      "activa (~12 posts en la última semana, casi todos colaboraciones). " +
+      "Exposición real vigente: MATERIA, Encuentro Juvenil de Artes " +
+      "Visuales (co-post con bienal_saco, inaugurada 2026-10-17). Feed " +
+      "mixto (festival de cómic Dibujona, música barroca, impro, ferias " +
+      "ilustradas, talleres) — la curaduría filtra lo que no sea artes " +
+      "visuales. Antofagasta era la región con menos cobertura por " +
+      "habitante. fixedLocation.",
+    addedAt: "2026-10-23",
+    fixedLocation: { location: "Antofagasta", placeName: "Centro Cultural Estación Antofagasta" },
+  },
+  {
+    username: "bienal_saco",
+    note:
+      "Evaluada 2026-10-23 (ronda de regiones). SACO, Bienal de Arte " +
+      "Contemporáneo de Antofagasta — 12 mil seguidores, 1.490 posts, " +
+      "feed casi todo de artes visuales: MATERIA (inaugurada 2026-10-17), " +
+      "open call de SACO1.3 \"El Trópico de la Llama\" (exposición en el " +
+      "Muelle Histórico Melbourne Clark), charlas de curaduría. " +
+      "Convocatorias y charlas quedan fuera de alcance por la curaduría. " +
+      "Sin fixedLocation: usa varias sedes (Estación, Melbourne Clark, " +
+      "ex Molinera, San Pedro de Atacama).",
+    addedAt: "2026-10-23",
+  },
+  {
+    username: "nuga.utalca",
+    note:
+      "Evaluada 2026-10-23 (ronda de regiones). NUGA, galería de arte de " +
+      "la Dirección de Extensión Cultural y Artística de la Universidad de " +
+      "Talca, 1 Poniente 1141, Talca — 5,6 mil seguidores, 473 posts, " +
+      "activa (varios posts por semana). Exposición real: \"Llévame\" " +
+      "(inaugurada 2026-10-09, co-post con extension_utalca). Resto: " +
+      "Sábados de Familia, itinerancias y talleres, que la curaduría " +
+      "filtra. Cubre el lado galería de extension_utalca (no agregada " +
+      "2026-09-04 por su cartelera mixta) sin ese ruido. fixedLocation.",
+    addedAt: "2026-10-23",
+    fixedLocation: { location: "Talca", placeName: "Galería NUGA", address: "1 Poniente 1141, Talca" },
+  },
+  {
+    username: "culturauserena",
+    note:
+      "Evaluada 2026-10-23 (ronda de regiones), al límite. Cultura " +
+      "USerena (Vinculación con el Medio, Universidad de La Serena) — 656 " +
+      "seguidores, 145 posts, bajo volumen (costo casi cero). Su Sala de " +
+      "Exposiciones es uno de los principales espacios de artes visuales " +
+      "de La Serena y Coquimbo (Raúl Sotelo y Camila Molina en 2026), pero " +
+      "en la muestra revisada solo 1 de 12 posts anuncia una inauguración " +
+      "(2026-10-08); el resto son conciertos y coros. Coquimbo era la " +
+      "segunda región con menos cobertura. Revisar su rendimiento real en " +
+      "la próxima re-medición de cuentas y quitarla si no rinde. Sin " +
+      "fixedLocation (sala, teatro y otros espacios del campus).",
+    addedAt: "2026-10-23",
+  },
+  // Descartadas en la misma ronda (2026-10-23):
+  // fotoantofagasta.baj — todos sus posts recientes son co-posts de
+  // baj_antofagasta, que ya se sigue. puntodecultura (Sala Federico
+  // Ramírez, Concepción) — sin posts desde febrero de 2026; su
+  // programación sale ahora por concepcioncultural, ya seguida.
+  // casapencopolitana — premios, coros y talleres, sin exposiciones.
+  // museocolchagua — historia, arqueología y tienda, sin muestras de
+  // arte. museodeantofagasta — cine, jazz y patrimonio; además ya lo
+  // cubre museoschile.gob.cl (Red Nacional de Museos).
+  // culturasanfernando y culturasantacruz — NO son chilenas (San
+  // Fernando, Buenos Aires, y Santa Cruz, Madeira): verificar el país de
+  // cualquier handle adivinado a partir del nombre de una comuna.
+  // museoaraucania y centroculturalpalace siguen descartadas (ver sus
+  // notas más arriba). O'Higgins, Tarapacá y Arica quedan sin candidata
+  // nueva en esta ronda.
 ];
