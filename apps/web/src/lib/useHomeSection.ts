@@ -99,7 +99,7 @@ export function scrollToHomeSection(el: HTMLElement) {
 }
 
 // Hand-driven scrolling: wheel/trackpad, touch, keys, the scrollbar.
-const HAND_EVENTS = ["wheel", "touchstart", "keydown", "pointerdown"] as const;
+export const HAND_EVENTS = ["wheel", "touchstart", "keydown", "pointerdown"] as const;
 
 // A section link's own pick (Daniel, 2026-10-13: click "Curatoría" and
 // the bar still read "EL ARTE MÁS CERCA" — the smooth scroll lands a bit
