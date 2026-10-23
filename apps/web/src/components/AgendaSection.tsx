@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { esCL } from "@/i18n/es-CL";
 import { fmtAgendaDay, fmtAgendaPillDay, fmtAgendaPillHour, fmtUntilPill, santiagoDateOfIso, todayInSantiago } from "@/lib/date";
 import { eventComuna } from "@/lib/event-utils";
 import { useEventCardActions } from "@/lib/useEventCardActions";
+import { HAND_EVENTS, scrollToHomeSection } from "@/lib/useHomeSection";
 import type { EventRecord } from "@/lib/events";
 import { resolveArtistDisplay, titleWithTypePrefix } from "@/lib/social/flyerText";
 import { CalendarGlyph, DirectionsGlyph } from "./CardActionIcons";
@@ -35,6 +36,9 @@ export default function AgendaSection({ inauguraciones, visitasGuiadas, regionNa
   const groups = groupByDay([...inauguraciones, ...visitasGuiadas].filter((e) => e.openingDatetime !== null));
   // The first card of the first day still to come loads its photo first.
   const priorityId = groups.find((g) => !isCurrentWeek || g.date >= today)?.events[0]?.id;
+  const hasPastDay = isCurrentWeek && groups.some((g) => g.date < today);
+  const landingId = hasPastDay ? priorityId : undefined;
+  useLandOnToday(landingId);
 
   return (
     // No visible section title (Daniel, 2026-10-12): the h1 already says
@@ -56,7 +60,7 @@ export default function AgendaSection({ inauguraciones, visitasGuiadas, regionNa
           const past = isCurrentWeek && g.date < today;
           return g.events.map((e, i) => {
             return (
-              <div key={e.id} className={past ? PAST_DAY : ""}>
+              <div key={e.id} className={past ? PAST_DAY : ""} data-agenda-landing={e.id === landingId ? "" : undefined}>
                 {i === 0 ? (
                   <h3 className={`${DAY_HEADING} ${past ? "text-text-secondary" : "text-text-primary"}`}>{heading}</h3>
                 ) : (
@@ -72,6 +76,31 @@ export default function AgendaSection({ inauguraciones, visitasGuiadas, regionNa
       </div>
     </section>
   );
+}
+
+// On a phone, once the week is under way, the home opens on the first day
+// still to come, right under the sticky week/región bar (Camila,
+// 2026-10-23: on a Friday she had to scroll past Monday–Thursday to find
+// today and tomorrow). The days already over stay above, a scroll up away.
+// Only until the visitor scrolls by hand — and never over a restored
+// scroll position (back button) — so it can follow the personalized view
+// swapping in (HomeClient) but never yanks the page away from someone.
+function useLandOnToday(landingId: string | undefined) {
+  const touched = useRef(false);
+  useEffect(() => {
+    if (window.scrollY > 0 || window.location.hash) touched.current = true;
+    const touch = () => {
+      touched.current = true;
+    };
+    HAND_EVENTS.forEach((type) => window.addEventListener(type, touch, { passive: true }));
+    return () => HAND_EVENTS.forEach((type) => window.removeEventListener(type, touch));
+  }, []);
+  useEffect(() => {
+    if (!landingId || touched.current || !window.matchMedia("(max-width: 639px)").matches) return;
+    // The laid-out copy only (Next can keep a hidden copy of the page).
+    const el = [...document.querySelectorAll<HTMLElement>("[data-agenda-landing]")].find((e) => e.getClientRects().length > 0);
+    if (el) scrollToHomeSection(el);
+  }, [landingId]);
 }
 
 // The extra top margin on phones separates one day from the next, now
