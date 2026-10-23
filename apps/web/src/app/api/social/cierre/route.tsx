@@ -13,12 +13,18 @@ import { FLYER_HEIGHT, FLYER_WIDTH } from "@/lib/social/flyer";
 // static PNG itself when nothing was left out.
 //
 // Public and unauthenticated like /api/social/flyer, so it takes no free
-// text at all: `mas` is a bounded integer and `cuando` one of 4 keys.
+// text at all: `mas` is a bounded integer, `cuando` one of 4 keys and
+// `zona` (optional, the weekend's two carousels — 2026-10-23) one of 2.
 const CUANDO_LABEL: Record<string, string> = {
   hoy: "HOY",
   manana: "MAÑANA",
   finde: "ESTE FINDE",
   proximos: "ESTOS DÍAS",
+};
+
+const ZONA_LABEL: Record<string, string> = {
+  santiago: "EN SANTIAGO",
+  regiones: "EN REGIONES",
 };
 
 const MAGENTA = "#ff00fb";
@@ -31,6 +37,9 @@ export async function GET(request: Request) {
   if (!(mas >= 1 && mas <= 999)) return new Response("'mas' must be an integer between 1 and 999", { status: 400 });
   const cuando = CUANDO_LABEL[searchParams.get("cuando") ?? ""];
   if (!cuando) return new Response("'cuando' must be one of: hoy, manana, finde, proximos", { status: 400 });
+  const zonaParam = searchParams.get("zona");
+  const zona = zonaParam === null ? null : ZONA_LABEL[zonaParam];
+  if (zona === undefined) return new Response("'zona' must be one of: santiago, regiones", { status: 400 });
 
   const [background, latoBlack, latoBold] = await Promise.all([
     readFile(join(process.cwd(), "assets/ig-post-cierre.jpg")),
@@ -70,7 +79,7 @@ export async function GET(request: Request) {
             }}
           >
             <div style={{ display: "flex" }}>{`${mas === 1 ? "EVENTO MÁS" : "EVENTOS MÁS"} ${cuando}`}</div>
-            <div style={{ display: "flex" }}>QUE NO CABEN AQUÍ</div>
+            <div style={{ display: "flex" }}>{zona ? `${zona} QUE NO CABEN AQUÍ` : "QUE NO CABEN AQUÍ"}</div>
           </div>
         </div>
       </div>

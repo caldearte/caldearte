@@ -711,6 +711,20 @@ building infra" discipline the rest of this project has followed.
       already started.
     - Windows are Santiago days (they used to slice the UTC timestamp,
       which put 21:00 openings on the next day).
+  - **Weekend → two Thursday carousels, Santiago and regiones, shipped
+    2026-10-23** (Camila: Saturday's openings, half before 14:00, were
+    announced only ~16 h ahead on Friday evening). Thursday 19:30 now
+    covers Friday through Sunday as two carousels, Región Metropolitana
+    first, the rest of Chile 40 min later; the Friday post is gone, the
+    Sunday and Tuesday ones are unchanged. Measured Aug-Oct 2026: Fri-Sun
+    is ~15 events a week, Santiago 4-14 and regiones 1-12 — one 9-slide
+    carousel overflowed 6 weeks of 8. So nobody mistakes one for the other
+    (Daniel), each opens with a cover slide (`/api/social/portada`,
+    "ESTE FINDE EN SANTIAGO." / "EN REGIONES." + the dates, also the feed
+    thumbnail), its caption names the zone in the first words, and the
+    "+N" closing slide says which zone. The cover takes a slide, so each
+    holds 8 events. The 12 h guard counts posts off the plan in order, so
+    a retry after Santiago went out posts only regiones.
   - **Discovery cadence moved Monday → Sunday, shipped 2026-08-23**
     (event-discovery bright-sources/headless/Instagram/Google-Alerts
     crons + the weekly newsletter, keeping their existing relative

@@ -2,8 +2,9 @@
 // 2026-08-31 into a single "agenda" carousel, Camila's "bitácora" request:
 // no repeats, mixed inauguraciones+visitas guiadas, short non-overlapping
 // date windows instead of one big weekly dump). Since 2026-10-16 it posts
-// the evening BEFORE each window — Sunday, Tuesday, Thursday and Friday,
-// see postingPlanFor — and only if that window actually has something
+// the evening BEFORE each window — Sunday, Tuesday and Thursday (the
+// weekend, as two carousels: Santiago and regiones, since 2026-10-23), see
+// postingPlanFor — and only if that window actually has something
 // eligible. Wires together the single pure selector
 // (./selection.ts), the flyer renderer (apps/web's /api/social/flyer,
 // deployed and publicly reachable — Instagram's Graph API fetches
@@ -26,8 +27,14 @@ const MAX_EVENT_SLIDES = 9;
 // A second run within this many hours of a published carousel is a no-op.
 // Without it a retry (watchdog, manual dispatch, a duplicated pg_cron
 // firing) would happily post a SECOND carousel with the leftovers, since
-// social_post_log already excludes everything the first one showed.
+// social_post_log already excludes everything the first one showed. With
+// the weekend's two carousels, the posts already out count off the plan's
+// carousels in order — a retry after Santiago went out posts only regiones.
 const ALREADY_POSTED_WITHIN_HOURS = 12;
+// The weekend's regiones carousel goes out this long after Santiago's, so
+// the two don't land in the feed together and split each other's reach.
+// publish-social.yml's wait cap leaves room for it under GitHub's 6h limit.
+const ZONE_GAP_MS = 40 * 60_000;
 
 // Keyword-first opener (2026-08-23) — Instagram's own discovery model reads
 // caption text (the first line especially) to decide who a post is for,
@@ -37,13 +44,29 @@ const ALREADY_POSTED_WITHIN_HOURS = 12;
 // changes carousel to carousel (diversifyByComuna), so a caption can't
 // name one without being wrong most days. The opener names the exact days
 // the carousel covers ("Mañana", "Este miércoles y jueves", 2026-10-16).
-function captionFor(opener: string): string {
+// The weekend's two carousels say which one they are from the first line
+// on, the cover slide and the closing slide too (Daniel 2026-10-23: "que se
+// entienda que uno es de Santiago y otro de regiones, para que no hayan
+// dudas").
+function captionFor(opener: string, zone: Zone | null): string {
+  if (zone === "santiago") {
+    return `${opener} en Santiago: inauguraciones y visitas guiadas en la Región Metropolitana. Lo de regiones va en el post siguiente. Desliza para verlas todas — la agenda completa está en el link de la bio.`;
+  }
+  if (zone === "regiones") {
+    return `${opener} en regiones: inauguraciones y visitas guiadas fuera de Santiago, de norte a sur. Lo de Santiago va en el post anterior. Desliza para verlas todas — la agenda completa, por región, está en el link de la bio.`;
+  }
   return `${opener} hay arte en Chile: inauguraciones y visitas guiadas en Santiago y regiones. Desliza para verlas todas — la agenda completa, por región, está en el link de la bio.`;
 }
 
 // `when` keys the "+N eventos más" closing slide's wording (/api/social/cierre).
 type When = "hoy" | "manana" | "finde" | "proximos";
-type PostingPlan = { start: string; end: string; when: When; opener: string };
+// Santiago = the Región Metropolitana; regiones = everything else.
+type Zone = "santiago" | "regiones";
+// `zones` set: one carousel per zone, in that order, each with its own
+// cover slide. Unset: one nationwide carousel, no cover.
+type PostingPlan = { start: string; end: string; when: When; opener: string; zones?: Zone[] };
+
+const METROPOLITANA = "Región Metropolitana de Santiago";
 
 type EventRow = Tables<"events">;
 type EventWithRegion = EventRow & { comunaName: string | null };
@@ -81,10 +104,17 @@ function mondayOfWeek(dateStr: string): string {
 // Posting evening → window (days ahead):
 //   Sunday   → Monday + Tuesday    (~4.6 eligible events a week)
 //   Tuesday  → Wednesday + Thursday (~9; Thursday is the busiest day)
-//   Thursday → Friday              (~4.8)
-//   Friday   → Saturday + Sunday   (~6)
-// Four posts of 5-9 events instead of one a day — a daily post was mostly
-// tiny carousels (Monday ~0.4 events, Wednesday ~2.2).
+//   Thursday → Friday to Sunday, as two carousels: Santiago, then regiones
+// Fewer, fuller posts instead of one a day — a daily post was mostly tiny
+// carousels (Monday ~0.4 events, Wednesday ~2.2).
+//
+// The weekend moved from Thursday (Friday) + Friday (Saturday + Sunday) to
+// one Thursday post per zone on 2026-10-23 (Camila: Saturday's openings,
+// half of them before 14:00, were announced barely 16h ahead). Fri–Sun
+// is ~15 events a week, too many for one 9-slide carousel; split by zone,
+// measured Aug–Oct: Santiago 4–14, regiones 1–12 — with the cover
+// slide each holds 8, enough for 5 and 6 of those 8 weeks; the rest goes
+// to the "+N más" closing slide.
 //
 // The scheduled run waits inside the workflow until ~19:30 Santiago
 // (publish-social.yml), so "from 14:00" means the normal evening run. A
@@ -92,7 +122,7 @@ function mondayOfWeek(dateStr: string): string {
 // run, a manual dispatch): it posts YESTERDAY evening's window, from today
 // on — run() drops whatever already started. Any other day is a no-op, and
 // an empty window still results in no post at all, by design.
-const WINDOW_DAYS_BY_POSTING_DOW: Record<number, number> = { 0: 2, 2: 2, 4: 1, 5: 2 }; // Sun=0..Sat=6
+const WINDOW_DAYS_BY_POSTING_DOW: Record<number, number> = { 0: 2, 2: 2, 4: 3 }; // Sun=0..Sat=6
 const WEEKDAY_NAMES = ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"];
 
 function dowOf(dateStr: string): number {
@@ -111,9 +141,8 @@ function postingPlanFor(now: Date): PostingPlan | null {
   if (!windowDays) return null;
   const start = addDays(postingDay, 1);
   const end = addDays(start, windowDays - 1);
-  const weekend = dowOf(start) === 6;
-  if (windowDays === 1) return { start, end, when: evening ? "manana" : "hoy", opener: evening ? "Mañana" : "Hoy" };
-  if (weekend) return { start, end, when: "finde", opener: "Este fin de semana" };
+  const weekend = dowOf(start) === 5;
+  if (weekend) return { start, end, when: "finde", opener: "Este fin de semana", zones: ["santiago", "regiones"] };
   const opener = evening ? `Este ${WEEKDAY_NAMES[dowOf(start)]} y ${WEEKDAY_NAMES[dowOf(end)]}` : "Hoy y mañana";
   return { start, end, when: "proximos", opener };
 }
@@ -200,9 +229,18 @@ function countLeftOut(events: SocialEvent[], window: { start: string; end: strin
 
 // The static slide when nothing was left out; otherwise the rendered
 // "y N más" variant (apps/web's /api/social/cierre).
-function closingSlideUrl(leftOut: number, when: When): string {
+function closingSlideUrl(leftOut: number, when: When, zone: Zone | null): string {
   if (leftOut === 0) return CLOSING_SLIDE_URL;
-  return `${SITE_URL}/api/social/cierre?${new URLSearchParams({ mas: String(leftOut), cuando: when }).toString()}`;
+  const params = new URLSearchParams({ mas: String(leftOut), cuando: when });
+  if (zone) params.set("zona", zone);
+  return `${SITE_URL}/api/social/cierre?${params.toString()}`;
+}
+
+// The weekend carousels' first slide (apps/web's /api/social/portada):
+// "ESTE FINDE EN SANTIAGO" / "EN REGIONES" and the dates — it's also the
+// thumbnail the feed shows, so the two posts never look alike.
+function coverSlideUrl(zone: Zone, window: { start: string; end: string }): string {
+  return `${SITE_URL}/api/social/portada?${new URLSearchParams({ zona: zone, desde: window.start, hasta: window.end }).toString()}`;
 }
 
 export interface RunDeps {
@@ -219,6 +257,9 @@ export interface RunDeps {
   facebookConfig?: FacebookClientConfig;
   publishFacebookPostFn?: typeof publishFacebookPost;
   verifyFacebookPageFn?: typeof verifyFacebookPage;
+  // The pause between the weekend's two carousels (ZONE_GAP_MS) — tests
+  // skip it.
+  sleepFn?: (ms: number) => Promise<void>;
   // Test-and-verify support, 2026-08-23: lets a manual workflow_dispatch
   // run the full real pipeline (real Supabase query, real selection, real
   // flyer URLs against production data, real Instagram credentials
@@ -330,13 +371,16 @@ export async function run(deps: RunDeps = {}): Promise<void> {
   if (logRes.error) throw new Error(`Failed to load social_post_log: ${logRes.error.message}`);
   if (recentPostsRes.error) throw new Error(`Failed to load instagram_posts: ${recentPostsRes.error.message}`);
 
-  if ((recentPostsRes.data ?? []).length > 0) {
+  const carousels: (Zone | null)[] = window.zones ?? [null];
+  const alreadyOut = (recentPostsRes.data ?? []).length;
+  if (alreadyOut >= carousels.length) {
     if (!dryRun) {
       console.log(`[social-publish] ${today}: a carousel already went out in the last ${ALREADY_POSTED_WITHIN_HOURS}h, skipping.`);
       return;
     }
     console.log(`[social-publish] DRY RUN — a carousel already went out in the last ${ALREADY_POSTED_WITHIN_HOURS}h; a real run would skip here.`);
   }
+  const pending = dryRun ? carousels : carousels.slice(alreadyOut);
 
   const regionById = new Map((regionsRes.data ?? []).map((r) => [r.id, r]));
   const events: EventWithRegion[] = ((eventsRes.data ?? []) as EventRow[]).map((e) => {
@@ -346,6 +390,13 @@ export async function run(deps: RunDeps = {}): Promise<void> {
   // Split, not pre-joined into one "Providencia, Santiago" string — the
   // flyer renders comuna as plain text and región as its own highlighted
   // badge (Daniel 2026-08-23), so they need to travel as separate fields.
+  // No región at all (a stray row) counts as Santiago, where most are.
+  const zoneById = new Map<string, Zone>(
+    events.map((e) => {
+      const region = e.region_id ? regionById.get(e.region_id) : undefined;
+      return [e.id, !region || region.admin_region_name === METROPOLITANA ? "santiago" : "regiones"];
+    }),
+  );
   const comunaAndRegionById = new Map<string, { comuna: string | null; region: string }>(
     events.map((e) => {
       const region = e.region_id ? regionById.get(e.region_id) : undefined;
@@ -360,75 +411,89 @@ export async function run(deps: RunDeps = {}): Promise<void> {
   const socialEvents = events.map(toSocialEvent).filter((e) => !e.openingDatetime || e.openingDatetime > nowIso);
 
   const alreadyPostedIds = new Set((logRes.data ?? []).map((r) => r.event_id));
+  const sleep = deps.sleepFn ?? ((ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms)));
 
-  const selected = selectUpcoming(socialEvents, window, alreadyPostedIds);
-  if (selected.length === 0) {
-    console.log(`[social-publish] ${today}: nothing eligible for ${window.start}..${window.end}, skipping.`);
-    return;
-  }
-
-  const dynamicSlides = selected.slice(0, MAX_EVENT_SLIDES);
-  const imageUrls = [
-    ...dynamicSlides.map((e) => buildFlyerUrl(e, comunaAndRegionById.get(e.id) ?? { comuna: null, region: "" })),
-    closingSlideUrl(countLeftOut(socialEvents, window, dynamicSlides), window.when),
-  ];
-  const caption = captionFor(window.opener);
-  // Instagram-only — the "Con: @handle" line names Instagram accounts
-  // (venue/artist), which don't correspond to any real Facebook page or
-  // profile. Posting that same text to Facebook would just show up as
-  // inert, unlinked "@handle" text with no account behind it — Daniel
-  // 2026-09-25, right after the first real Facebook post went out.
-  const instagramCaption = withVenueMentions(caption, dynamicSlides);
-
-  if (dryRun) {
-    console.log(
-      `[social-publish] DRY RUN — would publish a carousel with ${dynamicSlides.length} event(s) + closing slide (window ${window.start}..${window.end}).\n` +
-        `  Instagram caption: ${instagramCaption}\n` +
-        `  Facebook caption: ${caption}\n` +
-        imageUrls.map((url, i) => `  [${i + 1}/${imageUrls.length}] ${url}`).join("\n"),
-    );
-    return;
-  }
-
-  console.log(`[social-publish] publishing a carousel with ${dynamicSlides.length} event(s) + closing slide (window ${window.start}..${window.end}).`);
-  const publishedId = await publish(instagramConfig, imageUrls, instagramCaption);
-  console.log(`[social-publish] published, Instagram media id ${publishedId}.`);
-
-  // Same images, base caption (no Instagram-only venue mentions — see
-  // above) — best-effort: a Facebook failure is logged and never thrown,
-  // since by this point the Instagram post (the primary channel) has
-  // already gone out and its de-dup rows are about to be written
-  // regardless of what happens here.
-  if (facebookConfig) {
-    try {
-      const publishFacebook = deps.publishFacebookPostFn ?? publishFacebookPost;
-      const facebookPostId = await publishFacebook(facebookConfig, imageUrls, caption);
-      console.log(`[social-publish] published to Facebook too, post id ${facebookPostId}.`);
-    } catch (err) {
-      console.error(`[social-publish] Instagram published fine, but the Facebook post failed: ${err instanceof Error ? err.message : String(err)}`);
+  let publishedBefore = false;
+  for (const zone of pending) {
+    const zoneEvents = zone ? socialEvents.filter((e) => zoneById.get(e.id) === zone) : socialEvents;
+    const label = zone ? ` (${zone})` : "";
+    const selected = selectUpcoming(zoneEvents, window, alreadyPostedIds);
+    if (selected.length === 0) {
+      console.log(`[social-publish] ${today}: nothing eligible for ${window.start}..${window.end}${label}, skipping.`);
+      continue;
     }
+
+    // One slide goes to the cover when there is one.
+    const dynamicSlides = selected.slice(0, zone ? MAX_EVENT_SLIDES - 1 : MAX_EVENT_SLIDES);
+    const imageUrls = [
+      ...(zone ? [coverSlideUrl(zone, window)] : []),
+      ...dynamicSlides.map((e) => buildFlyerUrl(e, comunaAndRegionById.get(e.id) ?? { comuna: null, region: "" })),
+      closingSlideUrl(countLeftOut(zoneEvents, window, dynamicSlides), window.when, zone),
+    ];
+    const caption = captionFor(window.opener, zone);
+    // Instagram-only — the "Con: @handle" line names Instagram accounts
+    // (venue/artist), which don't correspond to any real Facebook page or
+    // profile. Posting that same text to Facebook would just show up as
+    // inert, unlinked "@handle" text with no account behind it — Daniel
+    // 2026-09-25, right after the first real Facebook post went out.
+    const instagramCaption = withVenueMentions(caption, dynamicSlides);
+
+    if (dryRun) {
+      console.log(
+        `[social-publish] DRY RUN — would publish a carousel${label} with ${dynamicSlides.length} event(s) + closing slide (window ${window.start}..${window.end}).\n` +
+          `  Instagram caption: ${instagramCaption}\n` +
+          `  Facebook caption: ${caption}\n` +
+          imageUrls.map((url, i) => `  [${i + 1}/${imageUrls.length}] ${url}`).join("\n"),
+      );
+      continue;
+    }
+
+    if (publishedBefore) {
+      console.log(`[social-publish] waiting ${ZONE_GAP_MS / 60_000} min before the next carousel.`);
+      await sleep(ZONE_GAP_MS);
+    }
+    console.log(`[social-publish] publishing a carousel${label} with ${dynamicSlides.length} event(s) + closing slide (window ${window.start}..${window.end}).`);
+    const publishedId = await publish(instagramConfig, imageUrls, instagramCaption);
+    publishedBefore = true;
+    console.log(`[social-publish] published, Instagram media id ${publishedId}.`);
+
+    // Same images, base caption (no Instagram-only venue mentions — see
+    // above) — best-effort: a Facebook failure is logged and never thrown,
+    // since by this point the Instagram post (the primary channel) has
+    // already gone out and its de-dup rows are about to be written
+    // regardless of what happens here.
+    if (facebookConfig) {
+      try {
+        const publishFacebook = deps.publishFacebookPostFn ?? publishFacebookPost;
+        const facebookPostId = await publishFacebook(facebookConfig, imageUrls, caption);
+        console.log(`[social-publish] published to Facebook too, post id ${facebookPostId}.`);
+      } catch (err) {
+        console.error(`[social-publish] Instagram published fine, but the Facebook post failed: ${err instanceof Error ? err.message : String(err)}`);
+      }
+    }
+
+    // Real engagement data (reach/saved/likes/comments) is filled in later by
+    // a separate weekly cron (instagram-insights/run.ts) — this just records
+    // that the post exists at all. 'agenda' is the single post_type every
+    // publish writes now (see the migration widening this column's check
+    // constraint) — the old 3-value distinction doesn't apply once there's
+    // only one carousel shape; which events it contained is still visible
+    // per-event via social_post_log. The 12h guard above counts these rows,
+    // so each zone's carousel writes its own.
+    const weekStart = mondayOfWeek(window.start);
+    const { error: postLogError } = await supabase
+      .from("instagram_posts")
+      .insert({ media_id: publishedId, post_type: "agenda", week_start: weekStart, published_at: now.toISOString() });
+    if (postLogError) console.error(`[social-publish] published successfully but failed to record instagram_posts row: ${postLogError.message}`);
+
+    // Always logged now — no repeats for anything, so there's no "except
+    // inauguracion" carve-out anymore (that carve-out is exactly what made
+    // the old inauguracion type repeat weekly, which is the behavior this
+    // redesign removes). post_type/week_start are kept (columns are NOT
+    // NULL) for historical-record consistency with older rows, even though
+    // the exclusion check above no longer reads either field.
+    const rows = dynamicSlides.map((e) => ({ event_id: e.id, post_type: "agenda", week_start: weekStart }));
+    const { error } = await supabase.from("social_post_log").insert(rows);
+    if (error) console.error(`[social-publish] published successfully but failed to log de-dup rows: ${error.message}`);
   }
-
-  // Real engagement data (reach/saved/likes/comments) is filled in later by
-  // a separate weekly cron (instagram-insights/run.ts) — this just records
-  // that the post exists at all. 'agenda' is the single post_type every
-  // publish writes now (see the migration widening this column's check
-  // constraint) — the old 3-value distinction doesn't apply once there's
-  // only one carousel shape; which events it contained is still visible
-  // per-event via social_post_log.
-  const weekStart = mondayOfWeek(window.start);
-  const { error: postLogError } = await supabase
-    .from("instagram_posts")
-    .insert({ media_id: publishedId, post_type: "agenda", week_start: weekStart, published_at: now.toISOString() });
-  if (postLogError) console.error(`[social-publish] published successfully but failed to record instagram_posts row: ${postLogError.message}`);
-
-  // Always logged now — no repeats for anything, so there's no "except
-  // inauguracion" carve-out anymore (that carve-out is exactly what made
-  // the old inauguracion type repeat weekly, which is the behavior this
-  // redesign removes). post_type/week_start are kept (columns are NOT
-  // NULL) for historical-record consistency with older rows, even though
-  // the exclusion check above no longer reads either field.
-  const rows = dynamicSlides.map((e) => ({ event_id: e.id, post_type: "agenda", week_start: weekStart }));
-  const { error } = await supabase.from("social_post_log").insert(rows);
-  if (error) console.error(`[social-publish] published successfully but failed to log de-dup rows: ${error.message}`);
 }
