@@ -118,7 +118,9 @@ export default function Header({ onOpenSearch, onOpenMenu, sectionNav = true, bo
         <div className="max-w-[1600px] mx-auto h-[84px] md:h-[104px] grid grid-cols-[auto_1fr_auto] items-center gap-[24px] px-[18px] md:px-[40px] xl:px-[80px]">
           <SiteWordmark />
           {sectionNav ? <SectionNav /> : <div />}
-          <div className="flex items-center gap-[16px]">
+          {/* justify-self-end: below lg SectionNav is display:none, which
+              drops it out of the grid, so this lands in the 1fr column. */}
+          <div className="flex items-center gap-[16px] justify-self-end">
             <AdminLink />
             <SearchButton onClick={onOpenSearch} />
             <MenuButton onClick={onOpenMenu} />
