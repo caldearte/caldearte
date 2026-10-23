@@ -45,7 +45,7 @@ const ZONE_GAP_MS = 40 * 60_000;
 // name one without being wrong most days. The opener names the exact days
 // the carousel covers ("Mañana", "Este miércoles y jueves", 2026-10-16).
 // The weekend's two carousels say which one they are from the first line
-// on, the cover slide and the closing slide too (Daniel 2026-10-23: "que se
+// on, and on the cover slide (Daniel 2026-10-23: "que se
 // entienda que uno es de Santiago y otro de regiones, para que no hayan
 // dudas").
 function captionFor(opener: string, zone: Zone | null): string {
@@ -62,8 +62,9 @@ function captionFor(opener: string, zone: Zone | null): string {
 type When = "hoy" | "manana" | "finde" | "proximos";
 // Santiago = the Región Metropolitana; regiones = everything else.
 type Zone = "santiago" | "regiones";
-// `zones` set: one carousel per zone, in that order, each with its own
-// cover slide. Unset: one nationwide carousel, no cover.
+// `zones` set: one carousel per zone, in that order, each opening with its
+// own cover slide instead of ending on the closing one. Unset: one
+// nationwide carousel, closing slide.
 type PostingPlan = { start: string; end: string; when: When; opener: string; zones?: Zone[] };
 
 const METROPOLITANA = "Región Metropolitana de Santiago";
@@ -112,9 +113,9 @@ function mondayOfWeek(dateStr: string): string {
 // one Thursday post per zone on 2026-10-23 (Camila: Saturday's openings,
 // half of them before 14:00, were announced barely 16h ahead). Fri–Sun
 // is ~15 events a week, too many for one 9-slide carousel; split by zone,
-// measured Aug–Oct: Santiago 4–14, regiones 1–12 — with the cover
-// slide each holds 8, enough for 5 and 6 of those 8 weeks; the rest goes
-// to the "+N más" closing slide.
+// measured Aug–Oct: Santiago 4–14, regiones 1–12 — 9 each (the cover
+// replaces the closing slide) holds everything 5 and 6 of those 8 weeks;
+// the cover says "+N más en caldearte.com" for the rest.
 //
 // The scheduled run waits inside the workflow until ~19:30 Santiago
 // (publish-social.yml), so "from 14:00" means the normal evening run. A
@@ -229,18 +230,21 @@ function countLeftOut(events: SocialEvent[], window: { start: string; end: strin
 
 // The static slide when nothing was left out; otherwise the rendered
 // "y N más" variant (apps/web's /api/social/cierre).
-function closingSlideUrl(leftOut: number, when: When, zone: Zone | null): string {
+function closingSlideUrl(leftOut: number, when: When): string {
   if (leftOut === 0) return CLOSING_SLIDE_URL;
-  const params = new URLSearchParams({ mas: String(leftOut), cuando: when });
-  if (zone) params.set("zona", zone);
-  return `${SITE_URL}/api/social/cierre?${params.toString()}`;
+  return `${SITE_URL}/api/social/cierre?${new URLSearchParams({ mas: String(leftOut), cuando: when }).toString()}`;
 }
 
 // The weekend carousels' first slide (apps/web's /api/social/portada):
 // "ESTE FINDE EN SANTIAGO" / "EN REGIONES" and the dates — it's also the
-// thumbnail the feed shows, so the two posts never look alike.
-function coverSlideUrl(zone: Zone, window: { start: string; end: string }): string {
-  return `${SITE_URL}/api/social/portada?${new URLSearchParams({ zona: zone, desde: window.start, hasta: window.end }).toString()}`;
+// thumbnail the feed shows, so the two posts never look alike. It also
+// carries the "+N más en caldearte.com" the closing slide says elsewhere
+// (Daniel 2026-10-23), so these carousels have no closing slide and that
+// slot holds a 9th event.
+function coverSlideUrl(zone: Zone, window: { start: string; end: string }, leftOut: number): string {
+  const params = new URLSearchParams({ zona: zone, desde: window.start, hasta: window.end });
+  if (leftOut > 0) params.set("mas", String(leftOut));
+  return `${SITE_URL}/api/social/portada?${params.toString()}`;
 }
 
 export interface RunDeps {
@@ -423,13 +427,12 @@ export async function run(deps: RunDeps = {}): Promise<void> {
       continue;
     }
 
-    // One slide goes to the cover when there is one.
-    const dynamicSlides = selected.slice(0, zone ? MAX_EVENT_SLIDES - 1 : MAX_EVENT_SLIDES);
-    const imageUrls = [
-      ...(zone ? [coverSlideUrl(zone, window)] : []),
-      ...dynamicSlides.map((e) => buildFlyerUrl(e, comunaAndRegionById.get(e.id) ?? { comuna: null, region: "" })),
-      closingSlideUrl(countLeftOut(zoneEvents, window, dynamicSlides), window.when, zone),
-    ];
+    // A zone's carousel swaps the closing slide for its cover (first), same
+    // 9 events either way.
+    const dynamicSlides = selected.slice(0, MAX_EVENT_SLIDES);
+    const leftOut = countLeftOut(zoneEvents, window, dynamicSlides);
+    const flyers = dynamicSlides.map((e) => buildFlyerUrl(e, comunaAndRegionById.get(e.id) ?? { comuna: null, region: "" }));
+    const imageUrls = zone ? [coverSlideUrl(zone, window, leftOut), ...flyers] : [...flyers, closingSlideUrl(leftOut, window.when)];
     const caption = captionFor(window.opener, zone);
     // Instagram-only — the "Con: @handle" line names Instagram accounts
     // (venue/artist), which don't correspond to any real Facebook page or
@@ -440,7 +443,7 @@ export async function run(deps: RunDeps = {}): Promise<void> {
 
     if (dryRun) {
       console.log(
-        `[social-publish] DRY RUN — would publish a carousel${label} with ${dynamicSlides.length} event(s) + closing slide (window ${window.start}..${window.end}).\n` +
+        `[social-publish] DRY RUN — would publish a carousel${label} with ${dynamicSlides.length} event(s) + ${zone ? "cover" : "closing"} slide (window ${window.start}..${window.end}).\n` +
           `  Instagram caption: ${instagramCaption}\n` +
           `  Facebook caption: ${caption}\n` +
           imageUrls.map((url, i) => `  [${i + 1}/${imageUrls.length}] ${url}`).join("\n"),
@@ -452,7 +455,7 @@ export async function run(deps: RunDeps = {}): Promise<void> {
       console.log(`[social-publish] waiting ${ZONE_GAP_MS / 60_000} min before the next carousel.`);
       await sleep(ZONE_GAP_MS);
     }
-    console.log(`[social-publish] publishing a carousel${label} with ${dynamicSlides.length} event(s) + closing slide (window ${window.start}..${window.end}).`);
+    console.log(`[social-publish] publishing a carousel${label} with ${dynamicSlides.length} event(s) + ${zone ? "cover" : "closing"} slide (window ${window.start}..${window.end}).`);
     const publishedId = await publish(instagramConfig, imageUrls, instagramCaption);
     publishedBefore = true;
     console.log(`[social-publish] published, Instagram media id ${publishedId}.`);

@@ -721,10 +721,12 @@ building infra" discipline the rest of this project has followed.
     carousel overflowed 6 weeks of 8. So nobody mistakes one for the other
     (Daniel), each opens with a cover slide (`/api/social/portada`,
     "ESTE FINDE EN SANTIAGO." / "EN REGIONES." + the dates, also the feed
-    thumbnail), its caption names the zone in the first words, and the
-    "+N" closing slide says which zone. The cover takes a slide, so each
-    holds 8 events. The 12 h guard counts posts off the plan in order, so
-    a retry after Santiago went out posts only regiones.
+    thumbnail) and its caption names the zone in the first words. When the
+    weekend has more than fits, the cover says so up front ("UNA
+    SELECCIÓN: +N MÁS EN CALDEARTE.COM"), so these two carousels have no
+    closing slide and hold 9 events each — everything fits 5 (Santiago)
+    and 6 (regiones) of those 8 weeks. The 12 h guard counts posts off the
+    plan in order, so a retry after Santiago went out posts only regiones.
   - **Discovery cadence moved Monday → Sunday, shipped 2026-08-23**
     (event-discovery bright-sources/headless/Instagram/Google-Alerts
     crons + the weekly newsletter, keeping their existing relative

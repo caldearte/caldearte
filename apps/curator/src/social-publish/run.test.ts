@@ -739,7 +739,7 @@ const ZONE_REGIONS = [
 const inRm = { region_id: "rm" };
 const inValpo = { region_id: "valpo" };
 
-test("run(): Thursday evening posts Friday to Sunday as two carousels — Santiago first, then regiones — each with its own cover, caption and closing slide", async () => {
+test("run(): Thursday evening posts Friday to Sunday as two carousels — Santiago first, then regiones — each opening with its own cover, no closing slide", async () => {
   const supabase = fakeSupabase({
     events: [
       eventRow("jueves", "2026-10-15T23:30:00.000Z", "inauguracion", inRm), // Thursday 20:30 — not in the window
@@ -756,13 +756,13 @@ test("run(): Thursday evening posts Friday to Sunday as two carousels — Santia
   const [santiago, regiones] = published;
 
   assert.equal(santiago.imageUrls[0], "https://www.caldearte.com/api/social/portada?zona=santiago&desde=2026-10-16&hasta=2026-10-18");
-  assert.equal(santiago.imageUrls.length, 4, "cover + 2 events + closing");
+  assert.equal(santiago.imageUrls.length, 3, "cover + 2 events");
   assert.match(santiago.imageUrls[1], /title=Evento\+viernes-rm/);
   assert.match(santiago.imageUrls[2], /title=Evento\+domingo-rm/);
   assert.match(santiago.caption, /^Este fin de semana en Santiago:/);
 
   assert.equal(regiones.imageUrls[0], "https://www.caldearte.com/api/social/portada?zona=regiones&desde=2026-10-16&hasta=2026-10-18");
-  assert.equal(regiones.imageUrls.length, 3, "cover + 1 event + closing");
+  assert.equal(regiones.imageUrls.length, 2, "cover + 1 event");
   assert.match(regiones.imageUrls[1], /title=Evento\+sabado-valpo/);
   assert.match(regiones.caption, /^Este fin de semana en regiones:/);
 });
@@ -830,11 +830,11 @@ test("run(): a Friday-morning catch-up posts Thursday evening's weekend window a
   });
   const published = await publishOnce(supabase, new Date("2026-10-16T16:00:00.000Z")); // Friday 13:00
   assert.equal(published.length, 1);
-  assert.equal(published[0].imageUrls.length, 3, "cover + 1 event + closing");
+  assert.equal(published[0].imageUrls.length, 2, "cover + 1 event");
   assert.match(published[0].imageUrls[1], /title=Evento\+tarde/);
 });
 
-test("run(): more than 8 weekend events in a zone → 8 after the cover, and the closing slide says 'y N más' for that zone, counting every left-out event the site shows (no photo, sensitive, already posted too)", async () => {
+test("run(): more than 9 weekend events in a zone → the cover says '+N más', counting every left-out event the site shows (no photo, sensitive, already posted too)", async () => {
   const saturday = (i: number) => `2026-10-17T${String(12 + i).padStart(2, "0")}:00:00.000Z`;
   const supabase = fakeSupabase({
     events: [
@@ -851,9 +851,10 @@ test("run(): more than 8 weekend events in a zone → 8 after the cover, and the
   });
   const published = await publishOnce(supabase, new Date("2026-10-15T22:30:00.000Z")); // Thursday 19:30
   assert.equal(published.length, 1, "regiones has nothing postable");
-  assert.equal(published[0].imageUrls.length, 10);
-  // 11 Saturday events − 8 shown = 3, + sin-foto + sensible + ya-posteado = 6
-  assert.equal(published[0].imageUrls.at(-1), "https://www.caldearte.com/api/social/cierre?mas=6&cuando=finde&zona=santiago");
+  assert.equal(published[0].imageUrls.length, 10, "cover + 9 events");
+  // 11 Saturday events − 9 shown = 2, + sin-foto + sensible + ya-posteado = 5
+  assert.equal(published[0].imageUrls[0], "https://www.caldearte.com/api/social/portada?zona=santiago&desde=2026-10-16&hasta=2026-10-18&mas=5");
+  assert.match(published[0].imageUrls.at(-1)!, /api\/social\/flyer/, "no closing slide");
 });
 
 test("run(): an event at 21:00 Santiago (00:00Z next day) belongs to its Santiago day, and one with no región goes in Santiago's carousel", async () => {
@@ -868,7 +869,6 @@ test("run(): an event at 21:00 Santiago (00:00Z next day) belongs to its Santiag
   const published = await publishOnce(supabase, new Date("2026-10-15T22:30:00.000Z")); // Thursday 19:30
   assert.equal(published.length, 1);
   assert.match(published[0].imageUrls[0], /zona=santiago/);
-  assert.equal(published[0].imageUrls.length, 3);
+  assert.equal(published[0].imageUrls.length, 2);
   assert.match(published[0].imageUrls[1], /title=Evento\+domingo-21h/);
-  assert.equal(published[0].imageUrls.at(-1), "https://www.caldearte.com/social/ig-post-cierre.png");
 });

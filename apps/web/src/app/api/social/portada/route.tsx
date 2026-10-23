@@ -9,10 +9,15 @@ import { FLYER_HEIGHT, FLYER_WIDTH } from "@/lib/social/flyer";
 // "que se entienda que uno es de Santiago y otro de regiones, para que no
 // hayan dudas". It's the first slide, so it's also the thumbnail the feed
 // shows. Same look as the closing slide (ig-post-cierre): the dark field
-// with the magenta headline, the sage band with CALDEARTE.COM.
+// with the magenta headline, the sage band below.
+// `mas` (Daniel 2026-10-23): when the weekend has more than fits, the
+// cover says up front that this is a selection and how many more the site
+// has — so these carousels need no closing slide, and that slide holds one
+// more event. Left out when everything fits.
 //
 // Public and unauthenticated like /api/social/flyer, so it takes no free
-// text at all: `zona` is one of 2 keys, `desde`/`hasta` plain dates.
+// text at all: `zona` is one of 2 keys, `desde`/`hasta` plain dates, `mas`
+// a bounded integer.
 const ZONA: Record<string, { name: string; detail: string }> = {
   santiago: { name: "SANTIAGO.", detail: "REGIÓN METROPOLITANA" },
   regiones: { name: "REGIONES.", detail: "FUERA DE SANTIAGO, DE NORTE A SUR" },
@@ -42,6 +47,9 @@ export async function GET(request: Request) {
   const desde = fmtDay(searchParams.get("desde") ?? "");
   const hasta = fmtDay(searchParams.get("hasta") ?? "");
   if (!desde || !hasta) return new Response("'desde' and 'hasta' must be dates (YYYY-MM-DD)", { status: 400 });
+  const masParam = searchParams.get("mas");
+  const mas = masParam === null ? null : /^\d{1,3}$/.test(masParam) ? Number(masParam) : NaN;
+  if (mas !== null && !(mas >= 1 && mas <= 999)) return new Response("'mas' must be an integer between 1 and 999", { status: 400 });
 
   const [latoBlack, latoBold] = await Promise.all([
     readFile(join(process.cwd(), "assets/lato-black.ttf")),
@@ -72,6 +80,23 @@ export async function GET(request: Request) {
             <div style={{ display: "flex" }}>{`${desde} — ${hasta}`}</div>
             <div style={{ display: "flex" }}>{zona.detail}</div>
           </div>
+          {mas !== null && (
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                marginTop: 56,
+                fontFamily: "Lato",
+                fontWeight: 900,
+                fontSize: 44,
+                lineHeight: 1.25,
+                color: MAGENTA,
+              }}
+            >
+              <div style={{ display: "flex" }}>{`UNA SELECCIÓN: +${mas} MÁS`}</div>
+              <div style={{ display: "flex" }}>EN CALDEARTE.COM</div>
+            </div>
+          )}
         </div>
         <div
           style={{
@@ -83,10 +108,9 @@ export async function GET(request: Request) {
             padding: "0 150px 0 130px",
             fontFamily: "Lato",
             fontWeight: 700,
-            fontSize: 36,
           }}
         >
-          <div style={{ display: "flex", color: DARK }}>INAUGURACIONES Y VISITAS GUIADAS</div>
+          <div style={{ display: "flex", fontSize: 36, color: DARK }}>INAUGURACIONES Y VISITAS GUIADAS</div>
           <div style={{ display: "flex", color: MAGENTA, fontWeight: 900, fontSize: 72 }}>→</div>
         </div>
       </div>
