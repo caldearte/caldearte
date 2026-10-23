@@ -4,7 +4,7 @@ import { run } from "./run.js";
 
 const hasLocalSupabase = Boolean(process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY);
 
-test("run(): a Saturday-evening run (target Sunday, already covered by Friday's weekend post) exits without touching Instagram or Supabase", async () => {
+test("run(): a Saturday-evening run (target Sunday, already covered by Thursday's weekend posts) exits without touching Instagram or Supabase", async () => {
   let publishCalled = false;
   await run({
     now: new Date("2026-08-08T22:30:00.000Z"), // Saturday 18:30 in Santiago
@@ -251,62 +251,6 @@ test("run(): Sunday evening posts Monday+Tuesday — excludes Sunday (before) an
   assert.match(dynamicSlides[1], /type=visita_guiada/);
 });
 
-test("run(): a Friday-evening run covers Saturday and Sunday", async () => {
-  const supabase = fakeSupabase({
-    events: [
-      {
-        id: "thursday-before",
-        title: "Evento del jueves anterior",
-        artist: null,
-        place_name: null,
-        region_id: null,
-        image_url: "https://example.com/a.jpg",
-        description: null,
-        sensitivity_tags: [],
-        opening_datetime: "2026-09-03T20:00:00.000Z", // Thursday
-        opening_time_confirmed: true,
-        run_start_date: null,
-        run_end_date: null,
-        freeform_location: "Santiago",
-        event_type: "inauguracion",
-      },
-      {
-        id: "sunday-in-window",
-        title: "Evento del domingo",
-        artist: null,
-        place_name: null,
-        region_id: null,
-        image_url: "https://example.com/b.jpg",
-        description: null,
-        sensitivity_tags: [],
-        opening_datetime: "2026-09-06T20:00:00.000Z", // Sunday
-        opening_time_confirmed: true,
-        run_start_date: null,
-        run_end_date: null,
-        freeform_location: "Santiago",
-        event_type: "inauguracion",
-      },
-    ],
-    regions: [],
-    social_post_log: [],
-  });
-
-  const published: { imageUrls: string[] }[] = [];
-  await run({
-    supabase,
-    now: new Date("2026-09-04T23:00:00.000Z"), // Friday 19:00 in Santiago
-    instagramConfig: { igBusinessAccountId: "fake-account", accessToken: "fake-token" },
-    publishInstagramCarouselFn: async (_config, imageUrls) => {
-      published.push({ imageUrls });
-      return "fake-media-id";
-    },
-  });
-
-  assert.equal(published.length, 1);
-  const dynamicSlides = published[0].imageUrls.slice(0, -1);
-  assert.equal(dynamicSlides.length, 1, "only the Sunday event falls inside the weekend window (Sat-Sun)");
-  assert.match(dynamicSlides[0], /title=Evento\+del\+domingo/);
-});
 
 test("run(): @mentions each distinct Instagram-sourced venue in the caption, deduped, in first-seen order — Daniel 2026-08-23: gives the venue a direct incentive to reshare", async () => {
   const supabase = fakeSupabase({
@@ -725,6 +669,7 @@ async function publishOnce(supabase: unknown, now: Date) {
       published.push({ imageUrls, caption });
       return "fake-media-id";
     },
+    sleepFn: async () => {},
   });
   return published;
 }
@@ -740,62 +685,8 @@ test("run(): a carousel already published in the last 12h makes a second run a n
   assert.equal(published.length, 0);
 });
 
-test("run(): a morning catch-up run targets today and drops events that already started", async () => {
-  const supabase = fakeSupabase({
-    events: [
-      eventRow("mediodia", "2026-10-16T15:00:00.000Z"), // Friday 12:00 Santiago — already started at 13:00
-      eventRow("tarde", "2026-10-16T22:30:00.000Z"), // Friday 19:30
-    ],
-    regions: [],
-    social_post_log: [],
-  });
-  const published = await publishOnce(supabase, new Date("2026-10-16T16:00:00.000Z")); // Friday 13:00
-  assert.equal(published.length, 1);
-  const dynamicSlides = published[0].imageUrls.slice(0, -1);
-  assert.equal(dynamicSlides.length, 1);
-  assert.match(dynamicSlides[0], /title=Evento\+tarde/);
-  assert.match(published[0].caption, /^Hoy hay arte en Chile/);
-});
 
-test("run(): more than 9 events → the closing slide becomes 'y N más', counting every left-out event the site shows (no photo, sensitive, already posted too)", async () => {
-  const saturday = (i: number) => `2026-10-17T${String(12 + i).padStart(2, "0")}:00:00.000Z`;
-  const supabase = fakeSupabase({
-    events: [
-      ...Array.from({ length: 11 }, (_, i) => eventRow(`s${i}`, saturday(i), "inauguracion", { freeform_location: `Comuna ${i}` })),
-      eventRow("sin-foto", "2026-10-18T18:00:00.000Z", "visita_guiada", { image_url: null }),
-      eventRow("sensible", "2026-10-18T19:00:00.000Z", "inauguracion", { sensitivity_tags: ["memoria_dictadura"] }),
-      eventRow("ya-posteado", "2026-10-18T20:00:00.000Z"),
-      eventRow("lunes", "2026-10-19T22:00:00.000Z"), // outside the weekend window — not counted
-      eventRow("expo", "2026-10-17T22:00:00.000Z", "exposicion"), // not an opening/visita — not counted
-    ],
-    regions: [],
-    social_post_log: [{ event_id: "ya-posteado" }],
-  });
-  const published = await publishOnce(supabase, new Date("2026-10-16T22:30:00.000Z")); // Friday 19:30
-  assert.equal(published.length, 1);
-  assert.equal(published[0].imageUrls.length, 10);
-  // 11 Saturday events − 9 shown = 2, + sin-foto + sensible + ya-posteado = 5
-  assert.equal(published[0].imageUrls.at(-1), "https://www.caldearte.com/api/social/cierre?mas=5&cuando=finde");
-  assert.match(published[0].caption, /^Este fin de semana hay arte en Chile/);
-});
 
-test("run(): an event at 21:00 Santiago (00:00Z next day) belongs to its Santiago day", async () => {
-  const supabase = fakeSupabase({
-    events: [
-      eventRow("jueves-21h", "2026-10-16T00:00:00.000Z"), // Thursday 21:00 Santiago
-      eventRow("viernes-21h", "2026-10-17T00:00:00.000Z"), // Friday 21:00 Santiago
-    ],
-    regions: [],
-    social_post_log: [],
-  });
-  const published = await publishOnce(supabase, new Date("2026-10-15T22:30:00.000Z")); // Thursday 19:30 → posts Friday
-  assert.equal(published.length, 1);
-  const dynamicSlides = published[0].imageUrls.slice(0, -1);
-  assert.equal(dynamicSlides.length, 1);
-  assert.match(dynamicSlides[0], /title=Evento\+viernes-21h/);
-  assert.match(published[0].caption, /^Mañana hay arte en Chile/);
-  assert.equal(published[0].imageUrls.at(-1), "https://www.caldearte.com/social/ig-post-cierre.png");
-});
 
 test("run(): Tuesday evening posts Wednesday+Thursday and names both days in the caption", async () => {
   const supabase = fakeSupabase({
@@ -813,8 +704,8 @@ test("run(): Tuesday evening posts Wednesday+Thursday and names both days in the
   assert.match(published[0].caption, /^Este miércoles y jueves hay arte en Chile/);
 });
 
-test("run(): Monday, Wednesday and Saturday evenings are no-ops", async () => {
-  for (const now of ["2026-10-12T22:30:00.000Z", "2026-10-14T22:30:00.000Z", "2026-10-17T22:30:00.000Z"]) {
+test("run(): Monday, Wednesday, Friday and Saturday evenings are no-ops", async () => {
+  for (const now of ["2026-10-12T22:30:00.000Z", "2026-10-14T22:30:00.000Z", "2026-10-16T22:30:00.000Z", "2026-10-17T22:30:00.000Z"]) {
     let publishCalled = false;
     await run({
       now: new Date(now),
@@ -838,4 +729,146 @@ test("run(): a Monday-morning catch-up posts Sunday evening's Monday+Tuesday win
   assert.equal(published.length, 1);
   assert.equal(published[0].imageUrls.length, 3);
   assert.match(published[0].caption, /^Hoy y mañana hay arte en Chile/);
+});
+
+// The weekend's zones: region "rm" is the Región Metropolitana, "valpo" not.
+const ZONE_REGIONS = [
+  { id: "rm", name: "Providencia", admin_region_name: "Región Metropolitana de Santiago" },
+  { id: "valpo", name: "Valparaíso", admin_region_name: "Valparaíso" },
+];
+const inRm = { region_id: "rm" };
+const inValpo = { region_id: "valpo" };
+
+test("run(): Thursday evening posts Friday to Sunday as two carousels — Santiago first, then regiones — each opening with its own cover, no closing slide", async () => {
+  const supabase = fakeSupabase({
+    events: [
+      eventRow("jueves", "2026-10-15T23:30:00.000Z", "inauguracion", inRm), // Thursday 20:30 — not in the window
+      eventRow("viernes-rm", "2026-10-16T22:00:00.000Z", "inauguracion", inRm),
+      eventRow("sabado-valpo", "2026-10-17T15:00:00.000Z", "visita_guiada", inValpo),
+      eventRow("domingo-rm", "2026-10-18T19:00:00.000Z", "inauguracion", inRm),
+      eventRow("lunes-valpo", "2026-10-19T22:00:00.000Z", "inauguracion", inValpo), // Sunday evening's window
+    ],
+    regions: ZONE_REGIONS,
+    social_post_log: [],
+  });
+  const published = await publishOnce(supabase, new Date("2026-10-15T22:30:00.000Z")); // Thursday 19:30
+  assert.equal(published.length, 2);
+  const [santiago, regiones] = published;
+
+  assert.equal(santiago.imageUrls[0], "https://www.caldearte.com/api/social/portada?zona=santiago&desde=2026-10-16&hasta=2026-10-18");
+  assert.equal(santiago.imageUrls.length, 3, "cover + 2 events");
+  assert.match(santiago.imageUrls[1], /title=Evento\+viernes-rm/);
+  assert.match(santiago.imageUrls[2], /title=Evento\+domingo-rm/);
+  assert.match(santiago.caption, /^Este fin de semana en Santiago:/);
+
+  assert.equal(regiones.imageUrls[0], "https://www.caldearte.com/api/social/portada?zona=regiones&desde=2026-10-16&hasta=2026-10-18");
+  assert.equal(regiones.imageUrls.length, 2, "cover + 1 event");
+  assert.match(regiones.imageUrls[1], /title=Evento\+sabado-valpo/);
+  assert.match(regiones.caption, /^Este fin de semana en regiones:/);
+});
+
+test("run(): the weekend carousels wait between each other, and a zone with nothing eligible is skipped without waiting", async () => {
+  const waits: number[] = [];
+  const publishedAt: number[] = [];
+  const run2 = async (events: unknown[]) =>
+    run({
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- test double
+      supabase: fakeSupabase({ events, regions: ZONE_REGIONS, social_post_log: [] }) as any,
+      now: new Date("2026-10-15T22:30:00.000Z"),
+      instagramConfig: { igBusinessAccountId: "fake-account", accessToken: "fake-token" },
+      publishInstagramCarouselFn: async () => {
+        publishedAt.push(waits.length);
+        return "fake-media-id";
+      },
+      sleepFn: async (ms) => {
+        waits.push(ms);
+      },
+    });
+
+  await run2([eventRow("rm", "2026-10-17T22:00:00.000Z", "inauguracion", inRm), eventRow("valpo", "2026-10-17T22:00:00.000Z", "inauguracion", inValpo)]);
+  assert.deepEqual(waits, [40 * 60_000]);
+  assert.deepEqual(publishedAt, [0, 1], "the wait sits between the two posts");
+
+  waits.length = 0;
+  publishedAt.length = 0;
+  await run2([eventRow("valpo", "2026-10-17T22:00:00.000Z", "inauguracion", inValpo)]);
+  assert.deepEqual(waits, [], "nothing in Santiago — regiones goes out right away");
+  assert.equal(publishedAt.length, 1);
+});
+
+test("run(): a retry after Santiago's weekend carousel went out posts only regiones; after both, nothing", async () => {
+  const events = [eventRow("rm", "2026-10-17T22:00:00.000Z", "inauguracion", inRm), eventRow("valpo", "2026-10-17T22:00:00.000Z", "inauguracion", inValpo)];
+  const now = new Date("2026-10-15T23:30:00.000Z"); // Thursday 20:30
+
+  const one = await publishOnce(
+    fakeSupabase({ events, regions: ZONE_REGIONS, social_post_log: [], instagram_posts: [{ published_at: "2026-10-15T22:31:00.000Z" }] }),
+    now,
+  );
+  assert.equal(one.length, 1);
+  assert.match(one[0].imageUrls[0], /zona=regiones/);
+
+  const none = await publishOnce(
+    fakeSupabase({
+      events,
+      regions: ZONE_REGIONS,
+      social_post_log: [],
+      instagram_posts: [{ published_at: "2026-10-15T22:31:00.000Z" }, { published_at: "2026-10-15T23:11:00.000Z" }],
+    }),
+    now,
+  );
+  assert.equal(none.length, 0);
+});
+
+test("run(): a Friday-morning catch-up posts Thursday evening's weekend window and drops events that already started", async () => {
+  const supabase = fakeSupabase({
+    events: [
+      eventRow("mediodia", "2026-10-16T15:00:00.000Z", "inauguracion", inRm), // Friday 12:00 Santiago — already started at 13:00
+      eventRow("tarde", "2026-10-16T22:30:00.000Z", "inauguracion", inRm), // Friday 19:30
+    ],
+    regions: ZONE_REGIONS,
+    social_post_log: [],
+  });
+  const published = await publishOnce(supabase, new Date("2026-10-16T16:00:00.000Z")); // Friday 13:00
+  assert.equal(published.length, 1);
+  assert.equal(published[0].imageUrls.length, 2, "cover + 1 event");
+  assert.match(published[0].imageUrls[1], /title=Evento\+tarde/);
+});
+
+test("run(): more than 9 weekend events in a zone → the cover says '+N más', counting every left-out event the site shows (no photo, sensitive, already posted too)", async () => {
+  const saturday = (i: number) => `2026-10-17T${String(12 + i).padStart(2, "0")}:00:00.000Z`;
+  const supabase = fakeSupabase({
+    events: [
+      ...Array.from({ length: 11 }, (_, i) => eventRow(`s${i}`, saturday(i), "inauguracion", { ...inRm, freeform_location: `Comuna ${i}` })),
+      eventRow("sin-foto", "2026-10-18T18:00:00.000Z", "visita_guiada", { ...inRm, image_url: null }),
+      eventRow("sensible", "2026-10-18T19:00:00.000Z", "inauguracion", { ...inRm, sensitivity_tags: ["memoria_dictadura"] }),
+      eventRow("ya-posteado", "2026-10-18T20:00:00.000Z", "inauguracion", inRm),
+      eventRow("lunes", "2026-10-19T22:00:00.000Z", "inauguracion", inRm), // outside the weekend window — not counted
+      eventRow("expo", "2026-10-17T22:00:00.000Z", "exposicion", inRm), // not an opening/visita — not counted
+      eventRow("valpo-sin-foto", "2026-10-17T22:00:00.000Z", "inauguracion", { ...inValpo, image_url: null }), // the other zone's — not counted
+    ],
+    regions: ZONE_REGIONS,
+    social_post_log: [{ event_id: "ya-posteado" }],
+  });
+  const published = await publishOnce(supabase, new Date("2026-10-15T22:30:00.000Z")); // Thursday 19:30
+  assert.equal(published.length, 1, "regiones has nothing postable");
+  assert.equal(published[0].imageUrls.length, 10, "cover + 9 events");
+  // 11 Saturday events − 9 shown = 2, + sin-foto + sensible + ya-posteado = 5
+  assert.equal(published[0].imageUrls[0], "https://www.caldearte.com/api/social/portada?zona=santiago&desde=2026-10-16&hasta=2026-10-18&mas=5");
+  assert.match(published[0].imageUrls.at(-1)!, /api\/social\/flyer/, "no closing slide");
+});
+
+test("run(): an event at 21:00 Santiago (00:00Z next day) belongs to its Santiago day, and one with no región goes in Santiago's carousel", async () => {
+  const supabase = fakeSupabase({
+    events: [
+      eventRow("jueves-21h", "2026-10-16T00:00:00.000Z"), // Thursday 21:00 Santiago
+      eventRow("domingo-21h", "2026-10-19T00:00:00.000Z"), // Sunday 21:00 Santiago
+    ],
+    regions: ZONE_REGIONS,
+    social_post_log: [],
+  });
+  const published = await publishOnce(supabase, new Date("2026-10-15T22:30:00.000Z")); // Thursday 19:30
+  assert.equal(published.length, 1);
+  assert.match(published[0].imageUrls[0], /zona=santiago/);
+  assert.equal(published[0].imageUrls.length, 2);
+  assert.match(published[0].imageUrls[1], /title=Evento\+domingo-21h/);
 });
