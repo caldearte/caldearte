@@ -381,9 +381,12 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
       "agosto — documentada en múltiples posts (distintas salas/obras " +
       "de la misma muestra). El resto: taller de bordado Tatreez, " +
       "mantención del huerto del museo, cierre de una exposición " +
-      "anterior — fuera de alcance. fixedLocation.",
+      "anterior — fuera de alcance. fixedLocation. 2026-10-22: placeName " +
+      "\"MSSA\" → nombre completo, el mismo que usa la fuente web " +
+      "(known-sources.ts); con la sigla el catálogo creó un segundo " +
+      "espacio y duplicó fichas (unificados a mano ese día).",
     addedAt: "2026-08-14",
-    fixedLocation: { location: "Santiago", placeName: "MSSA" },
+    fixedLocation: { location: "Santiago", placeName: "Museo de la Solidaridad Salvador Allende" },
   },
   {
     username: "galerialafuerza",
