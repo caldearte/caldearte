@@ -7,8 +7,9 @@ name: Publish Instagram Social Posts
 # apps/curator/src/social-publish/selection.ts's own doc comment).
 # apps/curator/src/social-publish/run.ts decides what a run covers: since
 # 2026-10-16 the carousel goes out the evening BEFORE its days — Sunday
-# (Mon+Tue), Tuesday (Wed+Thu), Thursday (Fri), Friday (Sat+Sun) — and it
-# skips if a carousel already went out in the last 12h.
+# (Mon+Tue), Tuesday (Wed+Thu), and since 2026-10-23 Thursday (Fri-Sun, as
+# two carousels: Santiago, then regiones 40 min later) — and it skips what
+# already went out in the last 12h.
 #
 # Timing: GitHub's schedule ran this 4-9 hours late (2.2-9.7 h across all
 # 10 scheduled workflows here, measured 2026-10-16), so the cron is set
@@ -29,7 +30,7 @@ on:
     # delays were observed across every cron in this repo 2026-08-23.
     # 14:30 UTC = 11:30 Santiago in summer time, 10:30 in winter — the
     # wait step below targets 19:30 in Santiago either way.
-    - cron: "30 14 * * 0,2,4,5" # Sunday, Tuesday, Thursday, Friday
+    - cron: "30 14 * * 0,2,4" # Sunday, Tuesday, Thursday
 
 permissions:
   contents: read
@@ -47,15 +48,16 @@ jobs:
     timeout-minutes: 360
     steps:
       # Only on the schedule — a manual or watchdog dispatch runs at once.
-      # Capped at 5h40m so a punctual GitHub can't push the job past its
-      # 6h limit (it would then post early instead of not at all). After
-      # 19:30 there's no wait.
+      # Capped at 4h55m so a punctual GitHub can't push the job past its
+      # 6h limit (it would then post early instead of not at all) — that
+      # leaves room for Thursday's 40 min between the Santiago and regiones
+      # carousels (run.ts's ZONE_GAP_MS). After 19:30 there's no wait.
       - name: Wait until 19:30 in Santiago
         if: github.event_name == 'schedule'
         run: |
           target=$(TZ=America/Santiago date -d "19:30" +%s)
           wait=$(( target - $(date +%s) ))
-          max=$(( 5 * 3600 + 40 * 60 ))
+          max=$(( 4 * 3600 + 55 * 60 ))
           if [ "$wait" -gt "$max" ]; then wait=$max; fi
           if [ "$wait" -gt 0 ]; then
             echo "Started $(TZ=America/Santiago date +%H:%M) Santiago; waiting $(( wait / 60 )) min."
