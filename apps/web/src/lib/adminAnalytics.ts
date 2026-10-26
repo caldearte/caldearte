@@ -142,6 +142,8 @@ export interface AdminAnalyticsPayload {
   // Venue catalog for /admin/espacios, 2026-10-25 — every venue, with
   // its live-event count and latest opening.
   venues?: AdminVenue[];
+  // system_config.monthly_budget_usd (Anthropic ceiling), /admin/maquina.
+  monthlyBudgetUsd?: number | null;
 }
 
 export interface AdminVenue {

@@ -70,7 +70,7 @@ Deno.serve(async (req) => {
   }
 
   // ---- events (all-time, approved, not soft-removed) -----------------
-  const [eventsRes, signalsRes, rejectedRes, usageRes, fetchStateRes, costSnapshotsRes, runSummariesRes, instagramPostsRes, instagramSnapshotsRes, shadowComparisonsRes, subscribersRes, submittedRes, webEventsRes, venuesRes] = await Promise.all([
+  const [eventsRes, signalsRes, rejectedRes, usageRes, fetchStateRes, costSnapshotsRes, runSummariesRes, instagramPostsRes, instagramSnapshotsRes, shadowComparisonsRes, subscribersRes, submittedRes, webEventsRes, venuesRes, budgetRes] = await Promise.all([
     // venue_id + the venue's kind (2026-10-25) feed the Misión page's
     // "tipo de espacio" share — same base as the venue_kind_share view.
     fetchAll(() =>
@@ -158,6 +158,9 @@ Deno.serve(async (req) => {
     fetchAll(() =>
       client.from("venues").select("id, name, comuna, region_id, instagram_handle, kind, follows_caldearte_at, newsletter_subscribed_at")
     ),
+    // The monthly Anthropic ceiling the curator enforces (usage-tracking.ts
+    // isOverBudget), for /admin/maquina's spend line.
+    client.from("system_config").select("value").eq("key", "monthly_budget_usd").maybeSingle(),
   ]);
   for (const [label, res] of [
     ["events", eventsRes],
@@ -174,6 +177,7 @@ Deno.serve(async (req) => {
     ["events(submitted)", submittedRes],
     ["web_events", webEventsRes],
     ["venues", venuesRes],
+    ["system_config", budgetRes],
   ] as const) {
     if (res.error) {
       console.error(`admin-analytics: ${label} query failed`, res.error);
@@ -537,5 +541,6 @@ Deno.serve(async (req) => {
     submittedEvents,
     webEvents,
     venues,
+    monthlyBudgetUsd: budgetRes.data ? Number(budgetRes.data.value) : null,
   });
 });

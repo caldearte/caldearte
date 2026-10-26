@@ -15,7 +15,7 @@ export default async function AdminInstagramPage() {
 
   return (
     <AdminPageShell title="Instagram — admin">
-      <InstagramPage instagramPosts={result.instagramPosts} instagramAccountSnapshots={result.instagramAccountSnapshots} />
+      <InstagramPage instagramPosts={result.instagramPosts} instagramAccountSnapshots={result.instagramAccountSnapshots} now={new Date()} />
     </AdminPageShell>
   );
 }
