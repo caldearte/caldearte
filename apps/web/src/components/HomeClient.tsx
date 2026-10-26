@@ -34,6 +34,11 @@ export default function HomeClient({ initialModel }: HomeClientProps) {
   // this the actual latency here — this fetch — was invisible, felt
   // "stuck" (real user report, 2026-08-15).
   const [isRefreshing, setIsRefreshing] = useState(false);
+  // Whether what's on screen is the visitor's final view — the cached
+  // default needing no fetch, or the first fetch's answer swapped in.
+  // The phone home only jumps to today once it is (AgendaSection): landing
+  // on the default and then swapping the days above left it far off.
+  const [viewSettled, setViewSettled] = useState(false);
   // Rapid back-to-back navigations (tap prev then next quickly) fire
   // overlapping fetches — without this, an older response resolving
   // AFTER a newer one would silently stomp fresh data with stale data.
@@ -68,6 +73,7 @@ export default function HomeClient({ initialModel }: HomeClientProps) {
       // personalized view); not worth surfacing an error for this.
     } finally {
       if (requestId === latestRequestId.current) {
+        setViewSettled(true);
         const remaining = MIN_LOADING_MS - (Date.now() - startedAt);
         if (remaining > 0) await new Promise((r) => setTimeout(r, remaining));
         if (requestId === latestRequestId.current) setIsRefreshing(false);
@@ -83,8 +89,9 @@ export default function HomeClient({ initialModel }: HomeClientProps) {
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- see comment above
     if (hasPersonalizationSignal(searchParams)) refresh();
+    else setViewSettled(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- see comment above
   }, [searchParams]);
 
-  return <CalendarView {...model} onRefreshNeeded={refresh} isRefreshing={isRefreshing} />;
+  return <CalendarView {...model} onRefreshNeeded={refresh} isRefreshing={isRefreshing} viewSettled={viewSettled} />;
 }

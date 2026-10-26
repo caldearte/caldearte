@@ -53,6 +53,9 @@ interface CalendarViewProps {
   // Whether onRefreshNeeded's fetch is in flight — WeekHeading shows a
   // loading bar instead of looking "stuck" (real report, 2026-08-15).
   isRefreshing?: boolean;
+  // Whether this is the visitor's final view (HomeClient) — false in the
+  // Suspense fallback, which never lands on today.
+  viewSettled?: boolean;
 }
 
 // Home layout of 2026-10-12, ordered by what a visitor (mostly on a
@@ -83,6 +86,7 @@ export default function CalendarView({
   newsletterStatus,
   onRefreshNeeded = () => {},
   isRefreshing = false,
+  viewSettled = false,
 }: CalendarViewProps) {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [drawerInitialView, setDrawerInitialView] = useState<"menu" | "contact">("menu");
@@ -203,6 +207,7 @@ export default function CalendarView({
               regionName={regionName}
               today={today}
               isCurrentWeek={isCurrentWeek}
+              viewSettled={viewSettled}
             />
             {/* The newsletter ask right where the visitor has just seen the
                 week's agenda (2026-10-16) — see NewsletterFindeCard. */}

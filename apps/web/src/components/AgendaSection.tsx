@@ -6,7 +6,7 @@ import { esCL } from "@/i18n/es-CL";
 import { fmtAgendaDay, fmtAgendaPillDay, fmtAgendaPillHour, fmtUntilPill, santiagoDateOfIso, todayInSantiago } from "@/lib/date";
 import { eventComuna } from "@/lib/event-utils";
 import { useEventCardActions } from "@/lib/useEventCardActions";
-import { HAND_EVENTS, scrollToHomeSection } from "@/lib/useHomeSection";
+import { HAND_EVENTS, holdUnderBar } from "@/lib/useHomeSection";
 import type { EventRecord } from "@/lib/events";
 import { resolveArtistDisplay, titleWithTypePrefix } from "@/lib/social/flyerText";
 import { CalendarGlyph, DirectionsGlyph } from "./CardActionIcons";
@@ -20,6 +20,9 @@ interface AgendaSectionProps {
   // Days already past only dim when looking at the real current week —
   // any other week shows every day in full colour.
   isCurrentWeek: boolean;
+  // Whether this is the visitor's final view (HomeClient) — the phone
+  // landing on today waits for it.
+  viewSettled: boolean;
 }
 
 // The week's inauguraciones and visitas guiadas (2026-10-12) — the most
@@ -32,13 +35,13 @@ interface AgendaSectionProps {
 // 2026-08-31). On the current week, days already past stay in their place,
 // cards and all, but dimmed (Daniel, 2026-10-18: folded to one line, a
 // Sunday visitor saw an empty week), so what's still ahead stands out.
-export default function AgendaSection({ inauguraciones, visitasGuiadas, regionName, today, isCurrentWeek }: AgendaSectionProps) {
+export default function AgendaSection({ inauguraciones, visitasGuiadas, regionName, today, isCurrentWeek, viewSettled }: AgendaSectionProps) {
   const groups = groupByDay([...inauguraciones, ...visitasGuiadas].filter((e) => e.openingDatetime !== null));
   // The first card of the first day still to come loads its photo first.
   const priorityId = groups.find((g) => !isCurrentWeek || g.date >= today)?.events[0]?.id;
   const hasPastDay = isCurrentWeek && groups.some((g) => g.date < today);
   const landingId = hasPastDay ? priorityId : undefined;
-  useLandOnToday(landingId);
+  useLandOnToday(viewSettled ? landingId : undefined);
 
   return (
     // No visible section title (Daniel, 2026-10-12): the h1 already says
@@ -82,13 +85,16 @@ export default function AgendaSection({ inauguraciones, visitasGuiadas, regionNa
 // still to come, right under the sticky week/región bar (Camila,
 // 2026-10-23: on a Friday she had to scroll past Monday–Thursday to find
 // today and tomorrow). The days already over stay above, a scroll up away.
-// Only until the visitor scrolls by hand — and never over a restored
-// scroll position (back button) — so it can follow the personalized view
-// swapping in (HomeClient) but never yanks the page away from someone.
+// It jumps at once rather than scrolling smoothly, and only on the
+// visitor's final view (2026-10-26: landing on the cached default and
+// then swapping the personalized days in above left it far off on
+// phones). Only until the visitor scrolls by hand — and never over a
+// scroll position the browser restores (back button, reload) — so it
+// never yanks the page away from someone.
 function useLandOnToday(landingId: string | undefined) {
   const touched = useRef(false);
   useEffect(() => {
-    if (window.scrollY > 0 || window.location.hash) touched.current = true;
+    if (window.scrollY > 0 || window.location.hash || restoresScroll()) touched.current = true;
     const touch = () => {
       touched.current = true;
     };
@@ -99,8 +105,16 @@ function useLandOnToday(landingId: string | undefined) {
     if (!landingId || touched.current || !window.matchMedia("(max-width: 639px)").matches) return;
     // The laid-out copy only (Next can keep a hidden copy of the page).
     const el = [...document.querySelectorAll<HTMLElement>("[data-agenda-landing]")].find((e) => e.getClientRects().length > 0);
-    if (el) scrollToHomeSection(el);
+    if (el) return holdUnderBar(el);
   }, [landingId]);
+}
+
+// A reload or back/forward to this very document: the browser puts the
+// old scroll back itself, after our first look at scrollY (Safari does it
+// late), so it reads as 0 here.
+function restoresScroll(): boolean {
+  const nav = performance.getEntriesByType("navigation")[0] as PerformanceNavigationTiming | undefined;
+  return nav !== undefined && nav.name === window.location.href && (nav.type === "reload" || nav.type === "back_forward");
 }
 
 // The extra top margin on phones separates one day from the next, now
