@@ -98,6 +98,39 @@ export function scrollToHomeSection(el: HTMLElement) {
   HAND_EVENTS.forEach((type) => window.addEventListener(type, cancel, { passive: true }));
 }
 
+// Put a part right under the stuck bar at once, and keep it there while
+// the page settles under it — the bar tightening once stuck, a late font
+// or photo above (the phone home's landing on today, 2026-10-26: a smooth
+// scroll there waited on scrollend to square up, which older iPhones never
+// fire). Lets go as soon as the visitor scrolls by hand, or after a few
+// seconds. Returns a function that lets go early.
+export function holdUnderBar(el: HTMLElement): () => void {
+  const anchor = el.querySelector<HTMLElement>("[data-landing]") ?? el;
+  function square() {
+    // React swapped the part out (a new view came in) — nothing to hold.
+    if (!anchor.isConnected) return release();
+    const { line, shrinkLeft } = barGeometry();
+    const y = Math.max(0, window.scrollY + anchor.getBoundingClientRect().top - shrinkLeft - line - LANDING_GAP_PX);
+    if (Math.abs(y - window.scrollY) > 2) window.scrollTo({ top: y, behavior: "instant" });
+  }
+  const resizes = new ResizeObserver(square);
+  resizes.observe(document.body);
+  const bar = visibleOne("[data-week-bar]");
+  bar?.addEventListener("transitionend", square);
+  const timer = window.setTimeout(release, HOLD_MS);
+  HAND_EVENTS.forEach((type) => window.addEventListener(type, release, { passive: true }));
+  square();
+  function release() {
+    resizes.disconnect();
+    bar?.removeEventListener("transitionend", square);
+    window.clearTimeout(timer);
+    HAND_EVENTS.forEach((type) => window.removeEventListener(type, release));
+  }
+  return release;
+}
+
+const HOLD_MS = 3000;
+
 // Hand-driven scrolling: wheel/trackpad, touch, keys, the scrollbar.
 export const HAND_EVENTS = ["wheel", "touchstart", "keydown", "pointerdown"] as const;
 
