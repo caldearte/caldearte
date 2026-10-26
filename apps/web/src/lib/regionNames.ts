@@ -25,6 +25,9 @@ const SHORT_REGION_NAMES: Record<string, string> = {
   "Región de Magallanes y de la Antártica Chilena": "Magallanes",
 };
 
+// The 16 canonical admin_region_name values, north to south.
+export const ADMIN_REGION_NAMES: readonly string[] = Object.keys(SHORT_REGION_NAMES);
+
 // Falls back to the full name for anything unmapped, rather than
 // throwing — defensive against a 17th región ever being added to the DB
 // list without this map being updated alongside it (same caveat the

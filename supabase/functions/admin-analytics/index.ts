@@ -23,6 +23,25 @@ const ADMIN_ACTIONS_SECRET = Deno.env.get("ADMIN_ACTIONS_SECRET")!;
 
 const PIPELINES = ["comuna_search", "bright_source", "instagram", "google_alerts", "headless"] as const;
 
+// PostgREST answers at most 1000 rows per request (Supabase's max-rows)
+// and truncates silently past that. rejected_candidates was already past
+// 5,000 rows on 2026-10-25, so its approval rates had quietly been
+// computed from a fifth of the data. Every all-time query pages through
+// with this instead, ordered by id so the pages never overlap. Same
+// failure shape as the curator's 2026-10-07 incident.
+const PAGE_SIZE = 1000;
+// deno-lint-ignore no-explicit-any
+async function fetchAll(build: () => any): Promise<{ data: any[]; error: unknown }> {
+  // deno-lint-ignore no-explicit-any
+  const rows: any[] = [];
+  for (let from = 0; ; from += PAGE_SIZE) {
+    const { data, error } = await build().order("id").range(from, from + PAGE_SIZE - 1);
+    if (error) return { data: [], error };
+    rows.push(...(data ?? []));
+    if ((data ?? []).length < PAGE_SIZE) return { data: rows, error: null };
+  }
+}
+
 function jsonResponse(body: unknown, httpStatus = 200): Response {
   return new Response(JSON.stringify(body), { status: httpStatus, headers: { "content-type": "application/json" } });
 }
@@ -51,17 +70,21 @@ Deno.serve(async (req) => {
   }
 
   // ---- events (all-time, approved, not soft-removed) -----------------
-  const [eventsRes, signalsRes, rejectedRes, usageRes, fetchStateRes, costSnapshotsRes, runSummariesRes, instagramPostsRes, instagramSnapshotsRes, shadowComparisonsRes, subscribersRes, submittedRes] = await Promise.all([
-    client
-      .from("events")
-      .select("opening_datetime, run_start_date, run_end_date, region_id, pipeline, event_type")
-      .eq("curation_status", "approved")
-      .is("removed_at", null),
-    client.from("out_of_scope_signals").select("created_at, category, pipeline, region_id"),
-    client.from("rejected_candidates").select("pipeline, source_url, source_account"),
-    client.from("api_usage_log").select("pipeline, estimated_cost_usd, created_at"),
+  const [eventsRes, signalsRes, rejectedRes, usageRes, fetchStateRes, costSnapshotsRes, runSummariesRes, instagramPostsRes, instagramSnapshotsRes, shadowComparisonsRes, subscribersRes, submittedRes, webEventsRes] = await Promise.all([
+    // venue_id + the venue's kind (2026-10-25) feed the Misión page's
+    // "tipo de espacio" share — same base as the venue_kind_share view.
+    fetchAll(() =>
+      client
+        .from("events")
+        .select("opening_datetime, run_start_date, run_end_date, region_id, pipeline, event_type, venue_id, venues(kind)")
+        .eq("curation_status", "approved")
+        .is("removed_at", null)
+    ),
+    fetchAll(() => client.from("out_of_scope_signals").select("created_at, category, pipeline, region_id")),
+    fetchAll(() => client.from("rejected_candidates").select("pipeline, source_url, source_account")),
+    fetchAll(() => client.from("api_usage_log").select("pipeline, estimated_cost_usd, created_at")),
     client.from("bright_source_fetch_state").select("url, last_fetched_at, interval_days, consecutive_zero_yield_at_cap, is_inactive"),
-    client.from("platform_cost_snapshots").select("platform, usage_date, amount_usd"),
+    fetchAll(() => client.from("platform_cost_snapshots").select("platform, usage_date, amount_usd")),
     // Real "cobertura" gap found 2026-08-17: the only way to see per-run
     // stats (candidates curated, real outcome funnel — inserted/
     // replaced/duplicate_skipped/axis_blocked/expired/insert_failed, cost)
@@ -116,12 +139,20 @@ Deno.serve(async (req) => {
     // venue sent through /agrega-tu-expo, INCLUDING ones later removed —
     // the signal is that a venue reached out at all, not whether the
     // event survived curation.
-    client.from("newsletter_subscribers").select("created_at, confirmed_at, unsubscribed_at"),
+    fetchAll(() => client.from("newsletter_subscribers").select("created_at, confirmed_at, unsubscribed_at")),
     client
       .from("events")
       .select("created_at, title, place_name, region_id, removed_at")
       .eq("source", "submitted")
       .order("created_at", { ascending: false }),
+    // Intent clicks (web_events, 2026-10-16) for the Misión page — last
+    // 90 days, so the 30-day tile has a baseline to compare against.
+    fetchAll(() =>
+      client
+        .from("web_events")
+        .select("created_at, event, country, referrer_host")
+        .gte("created_at", new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString())
+    ),
   ]);
   for (const [label, res] of [
     ["events", eventsRes],
@@ -136,6 +167,7 @@ Deno.serve(async (req) => {
     ["shadow_curation_comparisons", shadowComparisonsRes],
     ["newsletter_subscribers", subscribersRes],
     ["events(submitted)", submittedRes],
+    ["web_events", webEventsRes],
   ] as const) {
     if (res.error) {
       console.error(`admin-analytics: ${label} query failed`, res.error);
@@ -150,6 +182,8 @@ Deno.serve(async (req) => {
     adminRegionName: row.region_id ? adminRegionNameById.get(row.region_id) ?? null : null,
     pipeline: row.pipeline,
     eventType: row.event_type,
+    venueId: row.venue_id,
+    venueKind: row.venues?.kind ?? null,
   }));
 
   const outOfScopeSignals = (signalsRes.data ?? []).map((row) => ({
@@ -234,8 +268,8 @@ Deno.serve(async (req) => {
   // minimal select (kept lean for the payload's `events` array) — fetch
   // source_url/source_account separately here rather than widening that.
   const [eventsSourceRes, rejectedSourceRes] = await Promise.all([
-    client.from("events").select("source_url, source_account").eq("curation_status", "approved").is("removed_at", null),
-    client.from("rejected_candidates").select("source_url, source_account, reason"),
+    fetchAll(() => client.from("events").select("source_url, source_account").eq("curation_status", "approved").is("removed_at", null)),
+    fetchAll(() => client.from("rejected_candidates").select("source_url, source_account, reason")),
   ]);
   if (eventsSourceRes.error || rejectedSourceRes.error) {
     console.error("admin-analytics: source attribution query failed", eventsSourceRes.error ?? rejectedSourceRes.error);
@@ -452,6 +486,13 @@ Deno.serve(async (req) => {
     removedAt: row.removed_at,
   }));
 
+  const webEvents = (webEventsRes.data ?? []).map((row) => ({
+    createdAt: row.created_at,
+    event: row.event,
+    country: row.country,
+    referrerHost: row.referrer_host,
+  }));
+
   return jsonResponse({
     generatedAt: new Date().toISOString(),
     events,
@@ -467,5 +508,6 @@ Deno.serve(async (req) => {
     shadowCurationComparisons,
     newsletterSubscribers,
     submittedEvents,
+    webEvents,
   });
 });

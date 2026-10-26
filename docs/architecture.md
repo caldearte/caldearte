@@ -140,6 +140,21 @@ filtering happens **client-side**
 `isEventInPeriod`) — no re-fetch when a visitor toggles granularity, and
 the Edge Function never needs a separate query per time window.
 
+**Update 2026-10-25: `/admin` is now Misión** (Daniel). The old
+current-period summary described below is gone. The page shows KPI tiles
+against the June 2027 goals: Instagram followers, confirmed subscribers,
+events in the last 30 days, % outside the RM, venue submissions and
+intent clicks. Below them come the venue-kind share (`venues.kind`) and
+one coverage-by-región table, which replaces the 2 donuts. It has fixed
+windows and no period toggle, and it renders on the server
+(`MisionDashboard`, logic in `lib/misionKpis.ts`). "Señales fuera de
+alcance" moved to `/admin/fuentes`. `admin-analytics` now also ships
+`events[].venueId/venueKind` and `webEvents`, and pages every all-time
+query past PostgREST's 1000-row cap (`fetchAll`). Before that,
+`rejected_candidates` (5,000+ rows) had been silently truncated, so the
+source approval rates were wrong. This is step 1 of the admin redesign;
+the other pages are next.
+
 **Four pages, split 2026-08-17** (originally one long `/admin` page):
 - **`/admin`** — a quick CURRENT-period-only summary, not a historical
   view (`GranularityToggle`'s `hideTotal` prop hides "Total" here

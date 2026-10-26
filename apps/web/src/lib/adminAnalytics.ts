@@ -10,6 +10,10 @@ export interface AdminAnalyticsPayload {
     adminRegionName: string | null;
     pipeline: string | null;
     eventType: string | null;
+    // 2026-10-25, Misión page. Optional for the same reason as the
+    // fields at the bottom: a web deploy can land before the function's.
+    venueId?: string | null;
+    venueKind?: "institucional" | "municipal" | "independiente" | null;
   }>;
   outOfScopeSignals: Array<{
     createdAt: string;
@@ -127,6 +131,13 @@ export interface AdminAnalyticsPayload {
     placeName: string | null;
     adminRegionName: string | null;
     removedAt: string | null;
+  }>;
+  // Intent clicks (web_events), last 90 days — Misión page, 2026-10-25.
+  webEvents?: Array<{
+    createdAt: string;
+    event: string;
+    country: string | null;
+    referrerHost: string | null;
   }>;
 }
 
