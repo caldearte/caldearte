@@ -21,6 +21,7 @@ export default async function AdminFuentesPage() {
         brightSources={result.brightSources}
         instagramSources={result.instagramSources}
         discoveryRunSummaries={result.discoveryRunSummaries}
+        outOfScopeSignals={result.outOfScopeSignals}
       />
     </AdminPageShell>
   );

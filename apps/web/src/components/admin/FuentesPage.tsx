@@ -8,6 +8,7 @@ import GranularityToggle from "./GranularityToggle";
 import SourceComparisonTable from "./SourceComparisonTable";
 import TopSourcesTable, { type TopSourceRow } from "./TopSourcesTable";
 import CoberturaTable from "./CoberturaTable";
+import OutOfScopeTrends from "./OutOfScopeTrends";
 
 const TOP_SOURCES_COUNT = 20;
 
@@ -38,12 +39,14 @@ export default function FuentesPage({
   brightSources,
   instagramSources,
   discoveryRunSummaries,
+  outOfScopeSignals,
 }: {
   events: AdminAnalyticsPayload["events"];
   pipelineComparison: AdminAnalyticsPayload["pipelineComparison"];
   brightSources: AdminAnalyticsPayload["brightSources"];
   instagramSources: AdminAnalyticsPayload["instagramSources"];
   discoveryRunSummaries: AdminAnalyticsPayload["discoveryRunSummaries"];
+  outOfScopeSignals: AdminAnalyticsPayload["outOfScopeSignals"];
 }) {
   const [granularity, setGranularity] = useState<Granularity>("month");
 
@@ -127,6 +130,17 @@ export default function FuentesPage({
           Últimos 90 días — candidatos curados y qué pasó después de la curación, no solo aprobado/rechazado.
         </p>
         <CoberturaTable runs={discoveryRunSummaries} />
+      </section>
+
+      {/* Moved here from the old /admin home (2026-10-25), which became
+          the Misión page: internal evidence still accumulating. */}
+      <section>
+        <h2 className="font-fragment-mono uppercase text-[18px] text-text-primary mb-4">Señales fuera de alcance</h2>
+        <p className="font-geist text-[14px] text-text-primary/70 mb-4">
+          Evidencia interna, no pública — acumulando datos para una futura decisión sobre ampliar el alcance de Caldearte
+          (convocatorias, talleres, etc.).
+        </p>
+        <OutOfScopeTrends signals={outOfScopeSignals} periods={periods} granularity={granularity} />
       </section>
     </div>
   );
