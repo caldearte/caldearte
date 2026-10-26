@@ -70,7 +70,7 @@ Deno.serve(async (req) => {
   }
 
   // ---- events (all-time, approved, not soft-removed) -----------------
-  const [eventsRes, signalsRes, rejectedRes, usageRes, fetchStateRes, costSnapshotsRes, runSummariesRes, instagramPostsRes, instagramSnapshotsRes, shadowComparisonsRes, subscribersRes, submittedRes, webEventsRes] = await Promise.all([
+  const [eventsRes, signalsRes, rejectedRes, usageRes, fetchStateRes, costSnapshotsRes, runSummariesRes, instagramPostsRes, instagramSnapshotsRes, shadowComparisonsRes, subscribersRes, submittedRes, webEventsRes, venuesRes] = await Promise.all([
     // venue_id + the venue's kind (2026-10-25) feed the Misión page's
     // "tipo de espacio" share — same base as the venue_kind_share view.
     fetchAll(() =>
@@ -153,6 +153,11 @@ Deno.serve(async (req) => {
         .select("created_at, event, country, referrer_host")
         .gte("created_at", new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString())
     ),
+    // The venue catalog for /admin/espacios (2026-10-25) — every venue,
+    // live events or not; event counts are derived from `events` below.
+    fetchAll(() =>
+      client.from("venues").select("id, name, comuna, region_id, instagram_handle, kind, follows_caldearte_at, newsletter_subscribed_at")
+    ),
   ]);
   for (const [label, res] of [
     ["events", eventsRes],
@@ -168,6 +173,7 @@ Deno.serve(async (req) => {
     ["newsletter_subscribers", subscribersRes],
     ["events(submitted)", submittedRes],
     ["web_events", webEventsRes],
+    ["venues", venuesRes],
   ] as const) {
     if (res.error) {
       console.error(`admin-analytics: ${label} query failed`, res.error);
@@ -493,6 +499,27 @@ Deno.serve(async (req) => {
     referrerHost: row.referrer_host,
   }));
 
+  const liveByVenue = new Map<string, { count: number; lastOpening: string | null }>();
+  for (const e of events) {
+    if (!e.venueId) continue;
+    const entry = liveByVenue.get(e.venueId) ?? { count: 0, lastOpening: null };
+    entry.count += 1;
+    if (e.openingDate && (!entry.lastOpening || e.openingDate > entry.lastOpening)) entry.lastOpening = e.openingDate;
+    liveByVenue.set(e.venueId, entry);
+  }
+  const venues = (venuesRes.data ?? []).map((row) => ({
+    id: row.id,
+    name: row.name,
+    comuna: row.comuna,
+    adminRegionName: row.region_id ? adminRegionNameById.get(row.region_id) ?? null : null,
+    instagramHandle: row.instagram_handle,
+    kind: row.kind,
+    followsCaldearteAt: row.follows_caldearte_at,
+    newsletterSubscribedAt: row.newsletter_subscribed_at,
+    liveEvents: liveByVenue.get(row.id)?.count ?? 0,
+    lastOpening: liveByVenue.get(row.id)?.lastOpening ?? null,
+  }));
+
   return jsonResponse({
     generatedAt: new Date().toISOString(),
     events,
@@ -509,5 +536,6 @@ Deno.serve(async (req) => {
     newsletterSubscribers,
     submittedEvents,
     webEvents,
+    venues,
   });
 });

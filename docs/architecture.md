@@ -152,8 +152,17 @@ alcance" moved to `/admin/fuentes`. `admin-analytics` now also ships
 `events[].venueId/venueKind` and `webEvents`, and pages every all-time
 query past PostgREST's 1000-row cap (`fetchAll`). Before that,
 `rejected_candidates` (5,000+ rows) had been silently truncated, so the
-source approval rates were wrong. This is step 1 of the admin redesign;
-the other pages are next.
+source approval rates were wrong. This is step 1 of the admin redesign.
+
+**`/admin/espacios`** (step 2, same day) is the venue catalog with an
+editable `venues.kind`. Filter chips by kind come with counts, plus
+región, search and "solo con eventos publicados"; `?tipo=sin_clasificar`
+is the target of the Misión page's link. Each row saves on change
+through `/api/admin/set-venue-kind` → the `admin-set-venue-kind` Edge
+Function, same trust boundary as admin-toggle-sensitive and also
+deployed with `--no-verify-jwt`. It does no cache revalidation, because
+the kind is private. `admin-analytics` ships the catalog as `venues[]`
+with live-event counts. Filter logic is in `lib/espaciosFilter.ts`.
 
 **Four pages, split 2026-08-17** (originally one long `/admin` page):
 - **`/admin`** — a quick CURRENT-period-only summary, not a historical

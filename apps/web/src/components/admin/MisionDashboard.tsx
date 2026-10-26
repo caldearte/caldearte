@@ -182,9 +182,9 @@ export default function MisionDashboard({ mision, regions }: { mision: MisionDat
             <KindBar title="Últimos 90 días" rows={venueKinds.recent} />
             <KindBar title="Histórico" rows={venueKinds.allTime} />
             {venueKinds.unclassifiedVenues > 0 ? (
-              <p className="font-geist text-[13px] text-text-primary/70">
-                {venueKinds.unclassifiedVenues} {venueKinds.unclassifiedVenues === 1 ? "espacio nuevo sin clasificar" : "espacios nuevos sin clasificar"}.
-              </p>
+              <a href="/admin/espacios?tipo=sin_clasificar" className="font-geist text-[13px] text-brand-magenta hover:underline self-start">
+                {venueKinds.unclassifiedVenues} {venueKinds.unclassifiedVenues === 1 ? "espacio nuevo sin clasificar" : "espacios nuevos sin clasificar"} → clasificar
+              </a>
             ) : null}
           </div>
           <KpiTile label="Independientes" hint="% de los eventos de los últimos 90 días" kpi={venueKinds.independientePct} />

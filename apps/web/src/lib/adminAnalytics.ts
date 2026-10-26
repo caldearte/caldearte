@@ -139,6 +139,22 @@ export interface AdminAnalyticsPayload {
     country: string | null;
     referrerHost: string | null;
   }>;
+  // Venue catalog for /admin/espacios, 2026-10-25 — every venue, with
+  // its live-event count and latest opening.
+  venues?: AdminVenue[];
+}
+
+export interface AdminVenue {
+  id: string;
+  name: string;
+  comuna: string | null;
+  adminRegionName: string | null;
+  instagramHandle: string | null;
+  kind: "institucional" | "municipal" | "independiente" | null;
+  followsCaldearteAt: string | null;
+  newsletterSubscribedAt: string | null;
+  liveEvents: number;
+  lastOpening: string | null;
 }
 
 // Shared by every /admin/* page — same auth gate + fetch, extracted
