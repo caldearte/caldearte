@@ -406,7 +406,17 @@ artists, venues, event_artists, outreach_contacts, view artist_history
     the same day because `regions` are comunas and split one place across
     "Santiago"/"Vitacura" tags),
     region_id, comuna, instagram_handle, follows_caldearte_at,
-    newsletter_subscribed_at, notes
+    newsletter_subscribed_at, notes, kind (institucional | municipal |
+    independiente | null = not classified yet;
+    20261025120000_add_venue_kind.sql)
+  -- kind (Daniel, 2026-10-25) measures how much of the calendar comes
+  -- from recognized institutions vs. municipal and independent spaces.
+  -- Set by hand (initial pass over the 301 venues live on 2026-10-25);
+  -- the catalog sync leaves new venues null. Private — not in
+  -- venues_public — and nothing in curation reads it. The view
+  -- `venue_kind_share` (security_invoker, service_role only) gives one
+  -- row per kind: venues with live events, live events, and events
+  -- opening from 90 days ago onward, each with its share.
   event_artists: (event_id, artist_id) — cascade on either side
   events.venue_id, events.catalog_synced_at (null = not yet in the
     catalog)
