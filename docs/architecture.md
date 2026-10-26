@@ -164,6 +164,26 @@ deployed with `--no-verify-jwt`. It does no cache revalidation, because
 the kind is private. `admin-analytics` ships the catalog as `venues[]`
 with live-event counts. Filter logic is in `lib/espaciosFilter.ts`.
 
+**`/admin/maquina`** (step 3, same day) replaces `/admin/fuentes`,
+`/admin/costos`, `/admin/modelo-sombra` and `/admin/eventos`, which
+were deleted along with the period toggle, `adminAnalyticsBucketing.ts`
+and recharts. It holds:
+- spend: Anthropic this month vs `system_config.monthly_budget_usd`,
+  which `admin-analytics` now ships as `monthlyBudgetUsd`, and Apify for
+  the current billing cycle vs the plan's credit;
+- sources that are read but have never produced a single candidate;
+- runs from the last 7 days, with failed inserts or empty runs flagged;
+- the safety net, as comparisons and vetoes per pipeline over 30 days;
+- approval and cost per source;
+- out-of-scope signals, as one line.
+
+`/admin/instagram` now shows only the last 30 days and the post table.
+The engagement chart and the per-type comparison were dropped: every
+post has been an "agenda" carousel since 2026-08-31. Logic is in
+`lib/maquina.ts`. With this, the admin is 4 pages: Misión, Espacios,
+Máquina, Instagram. The "Four pages, split 2026-08-17" description
+below is history.
+
 **Four pages, split 2026-08-17** (originally one long `/admin` page):
 - **`/admin`** — a quick CURRENT-period-only summary, not a historical
   view (`GranularityToggle`'s `hideTotal` prop hides "Total" here

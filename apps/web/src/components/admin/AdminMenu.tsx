@@ -10,7 +10,7 @@ import DrawerShell from "@/components/DrawerShell";
 // no Header of its own, so this owns its own hamburger trigger instead of
 // sharing Header's. "Inicio" moved to the top bar directly (Daniel's
 // request, 2026-08-16) — this drawer now holds cross-page nav within
-// admin mode (Misión, Espacios, Eventos, Fuentes, Instagram, Costos, Modelo sombra) plus sign out.
+// admin mode (Misión, Espacios, Máquina, Instagram — the 2026-10-25 redesign) plus sign out.
 // "Dashboard" first — without it there was no way back to /admin from a
 // sub-page short of editing the URL.
 export default function AdminMenu() {
@@ -36,20 +36,11 @@ export default function AdminMenu() {
           <Link href="/admin/espacios" className="font-fragment-mono uppercase text-[16px]" onClick={() => setOpen(false)}>
             {esCL.adminMenu.espacios}
           </Link>
-          <Link href="/admin/eventos" className="font-fragment-mono uppercase text-[16px]" onClick={() => setOpen(false)}>
-            {esCL.adminMenu.eventos}
-          </Link>
-          <Link href="/admin/fuentes" className="font-fragment-mono uppercase text-[16px]" onClick={() => setOpen(false)}>
-            {esCL.adminMenu.fuentes}
+          <Link href="/admin/maquina" className="font-fragment-mono uppercase text-[16px]" onClick={() => setOpen(false)}>
+            {esCL.adminMenu.maquina}
           </Link>
           <Link href="/admin/instagram" className="font-fragment-mono uppercase text-[16px]" onClick={() => setOpen(false)}>
             {esCL.adminMenu.instagram}
-          </Link>
-          <Link href="/admin/costos" className="font-fragment-mono uppercase text-[16px]" onClick={() => setOpen(false)}>
-            {esCL.adminMenu.costos}
-          </Link>
-          <Link href="/admin/modelo-sombra" className="font-fragment-mono uppercase text-[16px]" onClick={() => setOpen(false)}>
-            {esCL.adminMenu.modeloSombra}
           </Link>
           <button type="button" onClick={() => signOut()} className="self-start font-fragment-mono uppercase text-[16px] cursor-pointer">
             {esCL.loginPage.signOut}

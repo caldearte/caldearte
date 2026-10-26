@@ -2,9 +2,9 @@
 // una sección de INSTAGRAM que tenga datos generales, número de
 // visitantes, me gusta, etc", antes de "Señales fuera de alcance".
 // Mismo lenguaje visual que CostSummaryLine (número grande + etiqueta),
-// pero varias métricas en fila en vez de una sola línea. Todo referido
-// al período actual seleccionado (semana/mes), igual que el resto de
-// /admin — "visitantes" se lee como alcance (reach: cuentas distintas
+// pero varias métricas en fila en vez de una sola línea. Desde
+// 2026-10-25 todo se refiere a los últimos 30 días (ya no hay selector
+// de período) — "visitantes" se lee como alcance (reach: cuentas distintas
 // que vieron un post), la métrica real más cercana a esa idea que la
 // Graph API expone por post.
 function Tile({ value, label }: { value: string; label: string }) {
@@ -33,11 +33,11 @@ export default function InstagramSummaryBar({
     <div className="flex flex-wrap gap-8">
       <Tile
         value={followersCount !== null ? followersCount.toLocaleString("es-CL") : "—"}
-        label={followersDelta !== null && followersDelta !== 0 ? `seguidores (${followersDelta > 0 ? "+" : ""}${followersDelta} este período)` : "seguidores"}
+        label={followersDelta !== null && followersDelta !== 0 ? `seguidores (${followersDelta > 0 ? "+" : ""}${followersDelta} en 30 días)` : "seguidores"}
       />
-      <Tile value={reachTotal.toLocaleString("es-CL")} label="alcance este período" />
-      <Tile value={likesTotal.toLocaleString("es-CL")} label="me gusta este período" />
-      <Tile value={savedTotal.toLocaleString("es-CL")} label="guardados este período" />
+      <Tile value={reachTotal.toLocaleString("es-CL")} label="alcance en 30 días" />
+      <Tile value={likesTotal.toLocaleString("es-CL")} label="me gusta en 30 días" />
+      <Tile value={savedTotal.toLocaleString("es-CL")} label="guardados en 30 días" />
     </div>
   );
 }

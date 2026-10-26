@@ -367,11 +367,8 @@ export const esCL = {
     home: "Inicio",
     dashboard: "Misión",
     espacios: "Espacios",
-    eventos: "Eventos",
-    fuentes: "Fuentes",
+    maquina: "Máquina",
     instagram: "Instagram",
-    costos: "Costos",
-    modeloSombra: "Modelo sombra",
   },
 
   // /admin/instagram — botón para disparar manualmente el cron de
