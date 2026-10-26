@@ -10,8 +10,13 @@
    not assuming the museum/gallery flow (which has institutional websites)
    represents the rest of the sources.
 2. **Vercel Hobby prohibits commercial use** — sharper as of the
-   production-launch pass (2026-07-17): the project is now confirmed
-   commercial (built under Probable SPA). **Explicit, deliberate call, not
+   production-launch pass (2026-07-17): the project was then framed as
+   commercial (built under Probable SPA). Corrected 2026-10-25: nothing
+   legal ties Caldearte to Probable — it was a working idea, and Caldearte
+   has no legal entity of its own yet. The direction under consideration
+   (not decided) is a non-profit fundación for Caldearte with Probable as
+   its technology provider. The Hobby call below stands until that is
+   settled. **Explicit, deliberate call, not
    an oversight**: staying on Hobby anyway for now, specifically because
    the public site itself shows no Probable SPA branding/name while
    pre-revenue and "en modo prueba." Revisit the moment monetization is

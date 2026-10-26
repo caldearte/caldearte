@@ -1194,6 +1194,7 @@ export type Database = {
           follows_caldearte_at: string | null
           id: string
           instagram_handle: string | null
+          kind: string | null
           name: string
           name_key: string
           newsletter_subscribed_at: string | null
@@ -1207,6 +1208,7 @@ export type Database = {
           follows_caldearte_at?: string | null
           id?: string
           instagram_handle?: string | null
+          kind?: string | null
           name: string
           name_key: string
           newsletter_subscribed_at?: string | null
@@ -1220,6 +1222,7 @@ export type Database = {
           follows_caldearte_at?: string | null
           id?: string
           instagram_handle?: string | null
+          kind?: string | null
           name?: string
           name_key?: string
           newsletter_subscribed_at?: string | null
@@ -1487,6 +1490,18 @@ export type Database = {
           lng?: number | null
           name?: string | null
           population?: number | null
+        }
+        Relationships: []
+      }
+      venue_kind_share: {
+        Row: {
+          events: number | null
+          events_90d: number | null
+          events_90d_pct: number | null
+          events_pct: number | null
+          kind: string | null
+          venues: number | null
+          venues_pct: number | null
         }
         Relationships: []
       }
