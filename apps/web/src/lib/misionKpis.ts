@@ -31,6 +31,10 @@ export const MISION_GOALS = {
 export const VENUE_KINDS = ["institucional", "municipal", "independiente"] as const;
 export type VenueKind = (typeof VENUE_KINDS)[number];
 
+export function isVenueKind(value: unknown): value is VenueKind {
+  return typeof value === "string" && (VENUE_KINDS as readonly string[]).includes(value);
+}
+
 const RM = "Región Metropolitana de Santiago";
 const WINDOW_SHORT = 30;
 const WINDOW_LONG = 90;

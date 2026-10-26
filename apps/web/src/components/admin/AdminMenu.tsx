@@ -10,7 +10,7 @@ import DrawerShell from "@/components/DrawerShell";
 // no Header of its own, so this owns its own hamburger trigger instead of
 // sharing Header's. "Inicio" moved to the top bar directly (Daniel's
 // request, 2026-08-16) — this drawer now holds cross-page nav within
-// admin mode (Misión, Eventos, Fuentes, Instagram, Costos, Modelo sombra) plus sign out.
+// admin mode (Misión, Espacios, Eventos, Fuentes, Instagram, Costos, Modelo sombra) plus sign out.
 // "Dashboard" first — without it there was no way back to /admin from a
 // sub-page short of editing the URL.
 export default function AdminMenu() {
@@ -32,6 +32,9 @@ export default function AdminMenu() {
         <div className="mt-[40px] flex flex-col gap-[24px]">
           <Link href="/admin" className="font-fragment-mono uppercase text-[16px]" onClick={() => setOpen(false)}>
             {esCL.adminMenu.dashboard}
+          </Link>
+          <Link href="/admin/espacios" className="font-fragment-mono uppercase text-[16px]" onClick={() => setOpen(false)}>
+            {esCL.adminMenu.espacios}
           </Link>
           <Link href="/admin/eventos" className="font-fragment-mono uppercase text-[16px]" onClick={() => setOpen(false)}>
             {esCL.adminMenu.eventos}
