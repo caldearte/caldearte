@@ -64,8 +64,10 @@ export async function run(deps: InstagramInsightsRunDeps = {}): Promise<void> {
   }
 
   let refreshed = 0;
+  const sharesSeen: string[] = [];
   for (const post of posts) {
     const metrics = await fetchMediaMetricsFn(instagramConfig, post.media_id);
+    if (metrics.shares !== null) sharesSeen.push(`${post.media_id}=${metrics.shares}`);
     const { error } = await supabase
       .from("instagram_posts")
       .update({
@@ -81,4 +83,5 @@ export async function run(deps: InstagramInsightsRunDeps = {}): Promise<void> {
   }
 
   console.log(`[instagram-insights] refreshed metrics for ${refreshed}/${posts.length} post(s)`);
+  console.log(`[instagram-insights] shares reported for ${sharesSeen.length}/${posts.length} post(s): ${sharesSeen.join(", ") || "none"}`);
 }
