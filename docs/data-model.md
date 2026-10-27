@@ -353,10 +353,15 @@ instagram_posts, instagram_account_snapshots (both added
     20260824010000_add_instagram_engagement_tracking.sql)
   instagram_posts: id, media_id (unique), post_type (inauguracion |
     no_te_la_pierdas | destacada), week_start, published_at,
-    reach, saved, like_count, comments_count (all nullable — filled in
-    later by a separate weekly cron, instagram-insights/run.ts, reading
-    them back from the Graph API; publishing and measuring are different
-    API calls at different times), metrics_updated_at, created_at
+    reach, saved, shares, like_count, comments_count (all nullable —
+    filled in later by a separate weekly cron, instagram-insights/run.ts,
+    reading them back from the Graph API; publishing and measuring are
+    different API calls at different times), metrics_updated_at, created_at
+    (shares added 20261026210000_add_instagram_posts_shares.sql: saves
+    were near zero, 4 in 31 carousels, while the same posts had 25 shares,
+    so shares are the better "people keep this opening" signal; asked for
+    in their own /insights call so a post that can't report them keeps
+    its reach/saved)
   -- One row per published carousel (all 3 types, unlike social_post_log
   -- above). Motivated by a real question: is Monday's deliberate
   -- inauguracion repeat worth it, or too soon after Sunday's own post to

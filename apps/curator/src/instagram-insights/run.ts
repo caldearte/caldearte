@@ -4,7 +4,7 @@
 // selection.ts's own doc comment) worth it, or too soon after Sunday to
 // add real reach? Answering that needs real numbers over time, so this
 // pipeline (a) snapshots the account's followers_count/media_count once
-// per run, and (b) refreshes reach/saved/like_count/comments_count for
+// per run, and (b) refreshes reach/saved/shares/like_count/comments_count for
 // every instagram_posts row from the last REFRESH_WINDOW_DAYS — not just
 // brand-new posts, since Instagram's own engagement numbers keep
 // climbing for days after a post goes up, so a post only measured once
@@ -64,13 +64,16 @@ export async function run(deps: InstagramInsightsRunDeps = {}): Promise<void> {
   }
 
   let refreshed = 0;
+  const sharesSeen: string[] = [];
   for (const post of posts) {
     const metrics = await fetchMediaMetricsFn(instagramConfig, post.media_id);
+    if (metrics.shares !== null) sharesSeen.push(`${post.media_id}=${metrics.shares}`);
     const { error } = await supabase
       .from("instagram_posts")
       .update({
         reach: metrics.reach,
         saved: metrics.saved,
+        shares: metrics.shares,
         like_count: metrics.likeCount,
         comments_count: metrics.commentsCount,
         metrics_updated_at: now.toISOString(),
@@ -81,4 +84,5 @@ export async function run(deps: InstagramInsightsRunDeps = {}): Promise<void> {
   }
 
   console.log(`[instagram-insights] refreshed metrics for ${refreshed}/${posts.length} post(s)`);
+  console.log(`[instagram-insights] shares reported for ${sharesSeen.length}/${posts.length} post(s): ${sharesSeen.join(", ") || "none"}`);
 }

@@ -637,6 +637,7 @@ export type Database = {
           published_at: string
           reach: number | null
           saved: number | null
+          shares: number | null
           week_start: string
         }
         Insert: {
@@ -650,6 +651,7 @@ export type Database = {
           published_at: string
           reach?: number | null
           saved?: number | null
+          shares?: number | null
           week_start: string
         }
         Update: {
@@ -663,6 +665,7 @@ export type Database = {
           published_at?: string
           reach?: number | null
           saved?: number | null
+          shares?: number | null
           week_start?: string
         }
         Relationships: []

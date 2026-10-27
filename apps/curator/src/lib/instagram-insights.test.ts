@@ -30,9 +30,12 @@ test("fetchAccountSnapshot throws on a real Graph API error", async () => {
   await assert.rejects(() => withStubFetch(stub, () => fetchAccountSnapshot(CONFIG)), /Invalid token/);
 });
 
-test("fetchMediaMetrics combines like_count/comments_count (media fields) with reach/saved (insights endpoint)", async () => {
+test("fetchMediaMetrics combines like_count/comments_count (media fields) with reach/saved and shares (insights endpoint)", async () => {
   const stub = (async (input: RequestInfo | URL) => {
     const url = new URL(input as string);
+    if (url.pathname.endsWith("/insights") && url.searchParams.get("metric") === "shares") {
+      return jsonResponse({ data: [{ name: "shares", values: [{ value: 7 }] }] });
+    }
     if (url.pathname.endsWith("/insights")) {
       return jsonResponse({ data: [{ name: "reach", values: [{ value: 500 }] }, { name: "saved", values: [{ value: 12 }] }] });
     }
@@ -40,7 +43,23 @@ test("fetchMediaMetrics combines like_count/comments_count (media fields) with r
   }) as typeof fetch;
 
   const metrics = await withStubFetch(stub, () => fetchMediaMetrics(CONFIG, "media123"));
-  assert.deepEqual(metrics, { reach: 500, saved: 12, likeCount: 40, commentsCount: 3 });
+  assert.deepEqual(metrics, { reach: 500, saved: 12, shares: 7, likeCount: 40, commentsCount: 3 });
+});
+
+test("fetchMediaMetrics keeps reach/saved when the media type can't report shares", async () => {
+  const stub = (async (input: RequestInfo | URL) => {
+    const url = new URL(input as string);
+    if (url.pathname.endsWith("/insights") && url.searchParams.get("metric") === "shares") {
+      return jsonResponse({ error: { message: "(#100) metric[0] must be one of the following values: ..." } }, false);
+    }
+    if (url.pathname.endsWith("/insights")) {
+      return jsonResponse({ data: [{ name: "reach", values: [{ value: 500 }] }, { name: "saved", values: [{ value: 12 }] }] });
+    }
+    return jsonResponse({ like_count: 40, comments_count: 3 });
+  }) as typeof fetch;
+
+  const metrics = await withStubFetch(stub, () => fetchMediaMetrics(CONFIG, "media123"));
+  assert.deepEqual(metrics, { reach: 500, saved: 12, shares: null, likeCount: 40, commentsCount: 3 });
 });
 
 test("fetchMediaMetrics never throws — a failed insights call still returns whatever the media-fields call recovered", async () => {
@@ -53,13 +72,13 @@ test("fetchMediaMetrics never throws — a failed insights call still returns wh
   }) as typeof fetch;
 
   const metrics = await withStubFetch(stub, () => fetchMediaMetrics(CONFIG, "media123"));
-  assert.deepEqual(metrics, { reach: null, saved: null, likeCount: 40, commentsCount: 3 });
+  assert.deepEqual(metrics, { reach: null, saved: null, shares: null, likeCount: 40, commentsCount: 3 });
 });
 
 test("fetchMediaMetrics returns all-null, never throws, when both calls fail", async () => {
   const stub = (async () => jsonResponse({ error: { message: "nope" } }, false)) as typeof fetch;
   const metrics = await withStubFetch(stub, () => fetchMediaMetrics(CONFIG, "media123"));
-  assert.deepEqual(metrics, { reach: null, saved: null, likeCount: null, commentsCount: null });
+  assert.deepEqual(metrics, { reach: null, saved: null, shares: null, likeCount: null, commentsCount: null });
 });
 
 test("fetchMediaMetrics survives a thrown network error on either call", async () => {
@@ -67,5 +86,5 @@ test("fetchMediaMetrics survives a thrown network error on either call", async (
     throw new Error("network down");
   }) as typeof fetch;
   const metrics = await withStubFetch(stub, () => fetchMediaMetrics(CONFIG, "media123"));
-  assert.deepEqual(metrics, { reach: null, saved: null, likeCount: null, commentsCount: null });
+  assert.deepEqual(metrics, { reach: null, saved: null, shares: null, likeCount: null, commentsCount: null });
 });

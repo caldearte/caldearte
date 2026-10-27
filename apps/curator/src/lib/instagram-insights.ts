@@ -24,11 +24,12 @@ export async function fetchAccountSnapshot(config: InstagramClientConfig): Promi
 export interface MediaMetrics {
   reach: number | null;
   saved: number | null;
+  shares: number | null;
   likeCount: number | null;
   commentsCount: number | null;
 }
 
-const EMPTY_METRICS: MediaMetrics = { reach: null, saved: null, likeCount: null, commentsCount: null };
+const EMPTY_METRICS: MediaMetrics = { reach: null, saved: null, shares: null, likeCount: null, commentsCount: null };
 
 // Two separate real Graph API concepts, both needed for the full
 // picture: like_count/comments_count live on the media object itself
@@ -76,6 +77,29 @@ export async function fetchMediaMetrics(config: InstagramClientConfig, mediaId: 
     }
   } catch (err) {
     console.error(`[instagram-insights] reach/saved insights fetch threw for ${mediaId}: ${(err as Error).message}`);
+  }
+
+  // Shares asked for on their own, not appended to "reach,saved": the
+  // Graph API rejects the whole metric list when one metric isn't
+  // supported for a media type, and Meta's docs only promise shares for
+  // reels (2026-10-26, Daniel: "a friend sent our post" may say more
+  // about going than a save does) — so a carousel that can't report
+  // shares must never cost us its reach/saved.
+  try {
+    const sharesUrl = new URL(`${GRAPH_API_BASE}/${mediaId}/insights`);
+    sharesUrl.searchParams.set("metric", "shares");
+    sharesUrl.searchParams.set("access_token", config.accessToken);
+    const sharesRes = await fetch(sharesUrl);
+    const sharesBody = await sharesRes.json();
+    if (sharesRes.ok) {
+      const entry = ((sharesBody.data ?? []) as { name: string; values: { value: number }[] }[]).find((e) => e.name === "shares");
+      const value = entry?.values?.[0]?.value;
+      if (typeof value === "number") metrics.shares = value;
+    } else {
+      console.error(`[instagram-insights] shares insights fetch failed for ${mediaId}: ${JSON.stringify(sharesBody)}`);
+    }
+  } catch (err) {
+    console.error(`[instagram-insights] shares insights fetch threw for ${mediaId}: ${(err as Error).message}`);
   }
 
   return metrics;
