@@ -88,33 +88,41 @@ export default function AgendaSection({ inauguraciones, visitasGuiadas, regionNa
 // It jumps at once rather than scrolling smoothly, and only on the
 // visitor's final view (2026-10-26: landing on the cached default and
 // then swapping the personalized days in above left it far off on
-// phones). Only until the visitor scrolls by hand — and never over a
-// scroll position the browser restores (back button, reload) — so it
-// never yanks the page away from someone.
+// phones). It lands even over a scroll the browser puts back on a reload
+// or a reopened tab (2026-10-27: Daniel's open tabs kept yesterday's
+// spot, Monday or Thursday, never today) — only scrolling by hand first,
+// or a #hash, stops it. Once per page load: coming back to the home from
+// an event page keeps where the visitor was.
+let landedThisLoad = false;
+
 function useLandOnToday(landingId: string | undefined) {
-  const touched = useRef(false);
+  const scrolledByHand = useRef(false);
   useEffect(() => {
-    if (window.scrollY > 0 || window.location.hash || restoresScroll()) touched.current = true;
     const touch = () => {
-      touched.current = true;
+      scrolledByHand.current = true;
     };
     HAND_EVENTS.forEach((type) => window.addEventListener(type, touch, { passive: true }));
     return () => HAND_EVENTS.forEach((type) => window.removeEventListener(type, touch));
   }, []);
   useEffect(() => {
-    if (!landingId || touched.current || !window.matchMedia("(max-width: 639px)").matches) return;
+    if (!landingId || landedThisLoad || window.location.hash || !window.matchMedia("(max-width: 639px)").matches) return;
+    // A tap that didn't move the page doesn't count.
+    if (scrolledByHand.current && window.scrollY > 1) return;
     // The laid-out copy only (Next can keep a hidden copy of the page).
     const el = [...document.querySelectorAll<HTMLElement>("[data-agenda-landing]")].find((e) => e.getClientRects().length > 0);
-    if (el) return holdUnderBar(el);
+    if (!el) return;
+    landedThisLoad = true;
+    let held = false;
+    const release = holdUnderBar(el, () => {
+      held = true;
+    });
+    // Let go before it settled (a new view swapped in, or React re-running
+    // the effect): land again next time.
+    return () => {
+      release();
+      if (!held) landedThisLoad = false;
+    };
   }, [landingId]);
-}
-
-// A reload or back/forward to this very document: the browser puts the
-// old scroll back itself, after our first look at scrollY (Safari does it
-// late), so it reads as 0 here.
-function restoresScroll(): boolean {
-  const nav = performance.getEntriesByType("navigation")[0] as PerformanceNavigationTiming | undefined;
-  return nav !== undefined && nav.name === window.location.href && (nav.type === "reload" || nav.type === "back_forward");
 }
 
 // The extra top margin on phones separates one day from the next, now
