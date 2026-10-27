@@ -40,7 +40,7 @@ test(
           now: NOW,
           instagramConfig: { igBusinessAccountId: "fake-account", accessToken: "fake-token" },
           fetchAccountSnapshotFn: async () => ({ followersCount: 321, mediaCount: 42 }),
-          fetchMediaMetricsFn: async () => ({ reach: 900, saved: 15, shares: null, likeCount: 60, commentsCount: 4 }),
+          fetchMediaMetricsFn: async () => ({ reach: 900, saved: 15, shares: 6, likeCount: 60, commentsCount: 4 }),
         });
 
         const { data: snapshotRows } = await client.from("instagram_account_snapshots").select("*").eq("snapshot_date", "2026-08-24");
@@ -52,6 +52,7 @@ test(
         assert.equal(postRows?.length, 1);
         assert.equal(postRows?.[0].reach, 900);
         assert.equal(postRows?.[0].saved, 15);
+        assert.equal(postRows?.[0].shares, 6);
         assert.equal(postRows?.[0].like_count, 60);
         assert.equal(postRows?.[0].comments_count, 4);
         assert.ok(postRows?.[0].metrics_updated_at, "metrics_updated_at should be set after a refresh");
