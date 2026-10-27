@@ -100,11 +100,14 @@ export function scrollToHomeSection(el: HTMLElement) {
 
 // Put a part right under the stuck bar at once, and keep it there while
 // the page settles under it — the bar tightening once stuck, a late font
-// or photo above (the phone home's landing on today, 2026-10-26: a smooth
+// or photo above, the browser putting an old scroll back on a reload or a
+// reopened tab (the phone home's landing on today, 2026-10-26/27: a smooth
 // scroll there waited on scrollend to square up, which older iPhones never
-// fire). Lets go as soon as the visitor scrolls by hand, or after a few
-// seconds. Returns a function that lets go early.
-export function holdUnderBar(el: HTMLElement): () => void {
+// fire, and Safari restored its own spot over it). Lets go as soon as the
+// visitor scrolls by hand, or a few seconds after the page has loaded.
+// Calls onDone when it lets go that way; returns a function that lets go
+// early, without calling it.
+export function holdUnderBar(el: HTMLElement, onDone: () => void): () => void {
   const anchor = el.querySelector<HTMLElement>("[data-landing]") ?? el;
   function square() {
     // React swapped the part out (a new view came in) — nothing to hold.
@@ -117,14 +120,29 @@ export function holdUnderBar(el: HTMLElement): () => void {
   resizes.observe(document.body);
   const bar = visibleOne("[data-week-bar]");
   bar?.addEventListener("transitionend", square);
-  const timer = window.setTimeout(release, HOLD_MS);
-  HAND_EVENTS.forEach((type) => window.addEventListener(type, release, { passive: true }));
+  // Any scroll not by hand (those release first) is the browser's own.
+  window.addEventListener("scroll", square, { passive: true });
+  // Browsers put an old scroll back around the load event, so the clock
+  // only starts then.
+  let timer: number | undefined;
+  const startClock = () => {
+    timer = window.setTimeout(done, HOLD_MS);
+  };
+  if (document.readyState === "complete") startClock();
+  else window.addEventListener("load", startClock, { once: true });
+  HAND_EVENTS.forEach((type) => window.addEventListener(type, done, { passive: true }));
   square();
+  function done() {
+    release();
+    onDone();
+  }
   function release() {
     resizes.disconnect();
     bar?.removeEventListener("transitionend", square);
+    window.removeEventListener("scroll", square);
+    window.removeEventListener("load", startClock);
     window.clearTimeout(timer);
-    HAND_EVENTS.forEach((type) => window.removeEventListener(type, release));
+    HAND_EVENTS.forEach((type) => window.removeEventListener(type, done));
   }
   return release;
 }
