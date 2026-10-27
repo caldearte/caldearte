@@ -27,6 +27,18 @@ const nextConfig: NextConfig = {
     // per image at 75 with no visible quality loss at card scale (verified
     // 2026-08-19). CardImage.tsx passes quality={65} to actually use this.
     qualities: [65, 75],
+    // A transformation is one (photo, width, quality) combo, so the number
+    // of allowed widths multiplies straight into the monthly quota. Next's
+    // defaults offer 15 widths (32px–3840px); 2026-10-27 we hit 75% of the
+    // 5,000 Transformations cap with only 604 live event photos, after the
+    // October home redesigns (#648, #671) added new `sizes` per card. Every
+    // real rendering here fits in five: the 96px mobile thumbnail at 2x/3x
+    // (256/384), cards at 33–100vw on phones and tablets (640/828), and
+    // the ficha's 600px column at 2x (1080, close enough to 1200 for a
+    // flyer). All five are Next's own defaults, so already-cached variants
+    // at those widths keep being served from cache.
+    imageSizes: [256, 384],
+    deviceSizes: [640, 828, 1080],
   },
 };
 
