@@ -38,6 +38,16 @@ test("rankText: exact, starts, word start, anywhere, accent-insensitive", () => 
   assert.equal(rankText(null, "x"), null);
 });
 
+test("rankText: several words match apart and in any order, each at a word start", () => {
+  const title = "MATERIA: Encuentro Juvenil de Artes Visuales";
+  assert.equal(rankText(title, "materia juvenil"), 3);
+  assert.equal(rankText(title, "juvenil materia"), 3);
+  assert.equal(rankText(title, "mat juv"), 3);
+  // Every word has to be there, at the start of a word.
+  assert.equal(rankText(title, "materia pintura"), null);
+  assert.equal(rankText(title, "materia uvenil"), null);
+});
+
 test("rankEvent: a title match beats the same match on the venue", () => {
   const byTitle = ev({ title: "Paisajes del sur" });
   const byVenue = ev({ title: "Otra cosa", placeName: "Paisajes Galería" });

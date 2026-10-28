@@ -57,9 +57,16 @@ export function normalizeSearch(text: string): string {
   return stripAccents(text.toLowerCase()).replace(/\s+/g, " ").trim();
 }
 
+function startsAWord(t: string, q: string): boolean {
+  return new RegExp(`(^|[^a-z0-9ñ])${q.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`).test(t);
+}
+
 // How well `text` matches `query`, lower is better, null = no match:
 // 0 the whole text, 1 the text starts with it, 2 a word in it starts with
-// it, 3 anywhere. Accent- and case-insensitive.
+// it, 3 anywhere — or, for a query of several words, each of them starting
+// a word somewhere, in any order ("materia juvenil" finds "MATERIA:
+// Encuentro Juvenil de Artes Visuales", 2026-10-28). Accent- and
+// case-insensitive.
 export function rankText(text: string | null, query: string): number | null {
   if (!text) return null;
   const t = normalizeSearch(text);
@@ -67,8 +74,10 @@ export function rankText(text: string | null, query: string): number | null {
   if (!q) return null;
   if (t === q) return 0;
   if (t.startsWith(q)) return 1;
-  if (new RegExp(`(^|[^a-z0-9ñ])${q.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`).test(t)) return 2;
+  if (startsAWord(t, q)) return 2;
   if (t.includes(q)) return 3;
+  const words = q.split(" ");
+  if (words.length > 1 && words.every((w) => startsAWord(t, w))) return 3;
   return null;
 }
 
