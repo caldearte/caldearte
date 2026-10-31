@@ -4,9 +4,16 @@
 // pipelines fire (e.g. Sunday: all 4) arrived as 4 separate emails.
 // Daniel's explicit request, 2026-08-26: one email/day, whatever ran
 // that day, with a real cost picture (today + month-to-date vs budget/
-// free tiers) and the full per-event detail at the end.
+// free tiers).
+//
+// 2026-10-30, Daniel: the full per-event table (every candidate, approved
+// and rejected, for every source) was too long to use. The email now
+// carries the numbers, then the day's NEW events as the newsletter's own
+// cards (thumbnail first, so the flyer can be checked at a glance; each
+// links to its page), then what the safety net vetoed, with its reason —
+// as cards without a link, since they never reached the site.
 import { Resend } from "resend";
-import { buildEventGroupsHtml, buildEventGroupsText, escapeHtml, fmtUsd, RUN_SUMMARY_RECIPIENT, type EventGroup } from "./notify.js";
+import { escapeHtml, eventCardHtml, eventUrl, fmtUsd, RUN_SUMMARY_RECIPIENT, type CandidateSummary, type DigestEvent, type EventGroup } from "./notify.js";
 import { APIFY_FREE_TIER_USD } from "./apify-cost-split.js";
 
 export type DiscoveryEntrypoint = "event_discovery" | "headless" | "instagram" | "google_alerts";
@@ -58,6 +65,46 @@ export interface DailyDigestSummary {
   date: string; // YYYY-MM-DD, Santiago day
   runs: DailyDigestPipelineRun[];
   cost: DailyDigestCost;
+  // Events created today and still on the site, read from `events`
+  // itself (run.ts) — the run summaries carry no event id or rehosted
+  // image, and both are what a card needs.
+  newEvents: DigestEvent[];
+}
+
+// The safety net rewrites a vetoed candidate's reasoning as
+// "[VETO red de seguridad <model>] <why> — Haiku había aprobado: <why>"
+// (lib/safety-net.ts) — that prefix is how a veto is recognised here.
+const VETO_PATTERN = /^\[VETO red de seguridad [^\]]*\]\s*([\s\S]*?)(?:\s+— Haiku había aprobado:\s*([\s\S]*))?$/;
+
+export interface SafetyNetVetoSummary {
+  candidate: CandidateSummary;
+  reason: string;
+  haikuReason: string | null;
+}
+
+export function safetyNetVetoesOf(runs: DailyDigestPipelineRun[]): SafetyNetVetoSummary[] {
+  return runs
+    .flatMap((run) => run.eventGroups.flatMap((g) => g.candidates))
+    .flatMap((candidate) => {
+      const match = VETO_PATTERN.exec(candidate.curationReasoning);
+      return match ? [{ candidate, reason: match[1].trim(), haikuReason: match[2]?.trim() || null }] : [];
+    });
+}
+
+// A vetoed candidate in the newsletter card's shape. No id (it never
+// became an event) — the card is rendered without a link.
+function vetoAsDigestEvent(c: CandidateSummary): DigestEvent {
+  return {
+    id: "",
+    title: c.title,
+    placeName: c.placeName ?? "",
+    comunaName: c.location || null,
+    openingDatetime: null,
+    openingTimeConfirmed: false,
+    runEndDate: c.runEndDate,
+    imageUrl: c.imageUrl ?? null,
+    isOpeningThisWeek: false,
+  };
 }
 
 function dateStrDDMMYYYY(date: string): string {
@@ -107,6 +154,10 @@ function nextApifyCycleStart(cycleStartDate: string): string {
 }
 
 const SAFETY_NET_LABEL = "MiniMax (red de seguridad)";
+const H2_STYLE = "font-size:14px;text-transform:uppercase;letter-spacing:0.04em;color:#888;margin:24px 0 10px;border-bottom:1px solid #e2e0da;padding-bottom:6px;";
+// The newsletter's own background behind its white cards (notify.ts's
+// SURFACE_SAGE) — on this email's white page the cards would lose their edges.
+const CARD_SURFACE = "#d7dfe2";
 
 function buildCostLines(cost: DailyDigestCost): string[] {
   const todayRealTotal = cost.anthropicTodayUsd + cost.safetyNetTodayUsd + cost.apifyTodayRealUsd;
@@ -141,11 +192,19 @@ export function buildDailyDigestBody(summary: DailyDigestSummary): string {
 
   lines.push("", ...buildCostLines(summary.cost), "");
 
-  lines.push("DETALLE POR EVENTO");
-  for (const run of summary.runs) {
-    const groupLines = buildEventGroupsText(run.eventGroups);
-    if (groupLines.length === 0) continue;
-    lines.push(`== ${ENTRYPOINT_LABEL[run.entrypoint]} ==`, ...groupLines);
+  lines.push(`NUEVOS EN EL SITIO (${summary.newEvents.length})`);
+  for (const e of summary.newEvents) {
+    lines.push(`  ${e.title} — ${[e.placeName, e.comunaName].filter(Boolean).join(", ")}`, `    ${eventUrl(e.id)}`);
+  }
+  if (summary.newEvents.length === 0) lines.push("  (ninguno hoy)");
+
+  const vetoes = safetyNetVetoesOf(summary.runs);
+  if (vetoes.length > 0) {
+    lines.push("", `QUITADOS POR ${SAFETY_NET_LABEL.toUpperCase()} (${vetoes.length})`);
+    for (const v of vetoes) {
+      lines.push(`  ${v.candidate.title} — ${[v.candidate.placeName, v.candidate.location].filter(Boolean).join(", ")}`, `    Por qué: ${v.reason}`);
+      if (v.haikuReason) lines.push(`    Haiku lo había aprobado: ${v.haikuReason}`);
+    }
   }
 
   return lines.join("\n");
@@ -173,19 +232,29 @@ export function buildDailyDigestHtmlBody(summary: DailyDigestSummary): string {
   const todayRealTotal = cost.anthropicTodayUsd + cost.safetyNetTodayUsd + cost.apifyTodayRealUsd;
   const monthRealTotal = cost.anthropicMonthUsd + cost.safetyNetMonthUsd + cost.apifyCycleRealUsd;
 
-  const detailHtml = summary.runs
-    .map((run) => {
-      const groupHtml = buildEventGroupsHtml(run.eventGroups);
-      if (!groupHtml) return "";
-      return `<h3 style="font-size:14px;margin:20px 0 8px;">${escapeHtml(ENTRYPOINT_LABEL[run.entrypoint])}</h3>${groupHtml}`;
-    })
-    .join("");
+  const referenceYear = Number(summary.date.slice(0, 4));
+  const newEventsHtml = summary.newEvents.length
+    ? `<div style="background:${CARD_SURFACE};border-radius:16px;padding:12px 12px 2px;">${summary.newEvents.map((e) => eventCardHtml(e, referenceYear)).join("")}</div>`
+    : `<p style="color:#666;">(ninguno hoy)</p>`;
+
+  const vetoes = safetyNetVetoesOf(summary.runs);
+  const vetoesHtml = vetoes.length
+    ? `<h2 style="${H2_STYLE}">Quitados por ${escapeHtml(SAFETY_NET_LABEL)} (${vetoes.length})</h2>
+    <div style="background:${CARD_SURFACE};border-radius:16px;padding:12px 12px 2px;">${vetoes
+      .map(
+        (v) => `${eventCardHtml(vetoAsDigestEvent(v.candidate), referenceYear, null)}
+        <p style="margin:-2px 4px 16px;font-size:13px;line-height:1.45;"><b>Por qué:</b> ${escapeHtml(v.reason)}${
+          v.haikuReason ? `<br><span style="color:#666;">Haiku lo había aprobado: ${escapeHtml(v.haikuReason)}</span>` : ""
+        }</p>`,
+      )
+      .join("")}</div>`
+    : "";
 
   return `<div style="font-family:-apple-system,Helvetica,Arial,sans-serif;max-width:720px;margin:0 auto;color:#1a1a1a;">
     <h1 style="font-size:18px;margin:0 0 4px;">Caldearte — resumen diario</h1>
     <p style="font-size:13px;color:#666;margin:0 0 20px;">${escapeHtml(summary.date)}</p>
 
-    <h2 style="font-size:14px;text-transform:uppercase;letter-spacing:0.04em;color:#888;margin:24px 0 10px;border-bottom:1px solid #e2e0da;padding-bottom:6px;">Fuentes que corrieron hoy (${summary.runs.length})</h2>
+    <h2 style="${H2_STYLE}">Fuentes que corrieron hoy (${summary.runs.length})</h2>
     <table style="border-collapse:collapse;font-size:13px;width:100%;">
       <thead>
         <tr style="text-align:left;color:#888;">
@@ -200,7 +269,7 @@ export function buildDailyDigestHtmlBody(summary: DailyDigestSummary): string {
       <tbody>${runsHtml}</tbody>
     </table>
 
-    <h2 style="font-size:14px;text-transform:uppercase;letter-spacing:0.04em;color:#888;margin:24px 0 10px;border-bottom:1px solid #e2e0da;padding-bottom:6px;">Costo</h2>
+    <h2 style="${H2_STYLE}">Costo</h2>
     <p>
       <b>Hoy:</b> ${fmtUsd(todayRealTotal)} real<br>
       &nbsp;&nbsp;Anthropic: ${fmtUsd(cost.anthropicTodayUsd)}<br>
@@ -214,8 +283,9 @@ export function buildDailyDigestHtmlBody(summary: DailyDigestSummary): string {
       &nbsp;&nbsp;<span style="${cost.apifyCycleGrossUsd >= APIFY_FREE_TIER_USD ? "color:#b3261e;font-weight:600;" : "color:#666;"}">${escapeHtml(apifyLimitStatusLine(cost))}</span>
     </p>
 
-    <h2 style="font-size:14px;text-transform:uppercase;letter-spacing:0.04em;color:#888;margin:24px 0 10px;border-bottom:1px solid #e2e0da;padding-bottom:6px;">Detalle por evento</h2>
-    ${detailHtml || "<p>(sin candidatos hoy)</p>"}
+    <h2 style="${H2_STYLE}">Nuevos en el sitio (${summary.newEvents.length})</h2>
+    ${newEventsHtml}
+    ${vetoesHtml}
   </div>`;
 }
 

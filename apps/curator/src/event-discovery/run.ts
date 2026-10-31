@@ -1571,6 +1571,7 @@ export function toCandidateSummary(c: EventCandidate, outcome?: InsertOutcome): 
     curationReasoning: c.curationReasoning,
     sourceUrl: c.sourceUrl,
     outcome: outcome ?? null,
+    imageUrl: c.imageUrl,
   };
 }
 
