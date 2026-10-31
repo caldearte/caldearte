@@ -228,6 +228,10 @@ export async function run(deps: RunDeps = {}): Promise<void> {
   console.log(`[daily-digest] sent digest for ${dateStr} — ${runs.length} pipeline(s)`);
 }
 
+function santiagoDate(d: Date): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "America/Santiago" }).format(d); // YYYY-MM-DD
+}
+
 // The day's new events as newsletter cards (lib/daily-digest.ts's own
 // comment, 2026-10-30). Only ones still on the site — an event already
 // removed by hand needs no checking. Grouped and ordered by type in
@@ -262,9 +266,11 @@ async function loadNewEvents(client: ReturnType<typeof getSupabaseClient>, start
       openingTimeConfirmed: r.opening_time_confirmed,
       runEndDate: r.run_end_date,
       imageUrl: r.image_url,
-      // An opening still ahead shows its day and hour on the card;
-      // one already past reads "hasta el …" like any running show.
-      isOpeningThisWeek: !!r.opening_datetime && new Date(r.opening_datetime) >= now,
+      // An opening today or later shows its day and hour on the card —
+      // by Santiago date, like the site's agenda: one that started at
+      // noon is still today's opening in the evening digest (2026-10-31,
+      // it showed just the comuna). Earlier ones read "hasta el …".
+      isOpeningThisWeek: !!r.opening_datetime && santiagoDate(new Date(r.opening_datetime)) >= santiagoDate(now),
       eventType: r.event_type,
     }),
   );
