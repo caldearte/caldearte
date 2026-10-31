@@ -68,7 +68,26 @@ export interface DailyDigestSummary {
   // Events created today and still on the site, read from `events`
   // itself (run.ts) — the run summaries carry no event id or rehosted
   // image, and both are what a card needs.
-  newEvents: DigestEvent[];
+  newEvents: DailyDigestNewEvent[];
+}
+
+export type DailyDigestNewEvent = DigestEvent & { eventType: string | null };
+
+// Daniel, 2026-10-30: openings first, then guided visits, then everything
+// else. A group with nothing in it is left out.
+const NEW_EVENT_GROUPS: Array<{ label: string; matches: (eventType: string | null) => boolean }> = [
+  { label: "Inauguraciones", matches: (t) => t === "inauguracion" },
+  { label: "Visitas guiadas", matches: (t) => t === "visita_guiada" },
+  { label: "Otros", matches: (t) => t !== "inauguracion" && t !== "visita_guiada" },
+];
+
+export function groupNewEvents(events: DailyDigestNewEvent[]): Array<{ label: string; events: DailyDigestNewEvent[] }> {
+  return NEW_EVENT_GROUPS.map(({ label, matches }) => ({
+    label,
+    events: events
+      .filter((e) => matches(e.eventType))
+      .sort((a, b) => (a.openingDatetime ?? "~").localeCompare(b.openingDatetime ?? "~") || a.title.localeCompare(b.title, "es")),
+  })).filter((g) => g.events.length > 0);
 }
 
 // The safety net rewrites a vetoed candidate's reasoning as
@@ -193,8 +212,11 @@ export function buildDailyDigestBody(summary: DailyDigestSummary): string {
   lines.push("", ...buildCostLines(summary.cost), "");
 
   lines.push(`NUEVOS EN EL SITIO (${summary.newEvents.length})`);
-  for (const e of summary.newEvents) {
-    lines.push(`  ${e.title} — ${[e.placeName, e.comunaName].filter(Boolean).join(", ")}`, `    ${eventUrl(e.id)}`);
+  for (const group of groupNewEvents(summary.newEvents)) {
+    lines.push(`  -- ${group.label} (${group.events.length}) --`);
+    for (const e of group.events) {
+      lines.push(`  ${e.title} — ${[e.placeName, e.comunaName].filter(Boolean).join(", ")}`, `    ${eventUrl(e.id)}`);
+    }
   }
   if (summary.newEvents.length === 0) lines.push("  (ninguno hoy)");
 
@@ -234,7 +256,12 @@ export function buildDailyDigestHtmlBody(summary: DailyDigestSummary): string {
 
   const referenceYear = Number(summary.date.slice(0, 4));
   const newEventsHtml = summary.newEvents.length
-    ? `<div style="background:${CARD_SURFACE};border-radius:16px;padding:12px 12px 2px;">${summary.newEvents.map((e) => eventCardHtml(e, referenceYear)).join("")}</div>`
+    ? `<div style="background:${CARD_SURFACE};border-radius:16px;padding:2px 12px 2px;">${groupNewEvents(summary.newEvents)
+        .map(
+          (group) =>
+            `<p style="margin:14px 4px 10px;font-size:16px;font-weight:700;color:#3d373d;">${escapeHtml(group.label)} (${group.events.length})</p>${group.events.map((e) => eventCardHtml(e, referenceYear)).join("")}`,
+        )
+        .join("")}</div>`
     : `<p style="color:#666;">(ninguno hoy)</p>`;
 
   const vetoes = safetyNetVetoesOf(summary.runs);
