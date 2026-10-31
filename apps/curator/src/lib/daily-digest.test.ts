@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { buildDailyDigestSubject, buildDailyDigestBody, buildDailyDigestHtmlBody, safetyNetVetoesOf, type DailyDigestSummary } from "./daily-digest.js";
+import { buildDailyDigestSubject, buildDailyDigestBody, buildDailyDigestHtmlBody, groupNewEvents, safetyNetVetoesOf, type DailyDigestSummary } from "./daily-digest.js";
 
 const baseCost: DailyDigestSummary["cost"] = {
   anthropicTodayUsd: 0.1,
@@ -50,6 +50,7 @@ const newEvent: DailyDigestSummary["newEvents"][number] = {
   runEndDate: "2026-09-20",
   imageUrl: "https://example.supabase.co/storage/v1/object/public/event-images/x.jpg",
   isOpeningThisWeek: true,
+  eventType: "inauguracion",
 };
 
 const vetoedCandidate = {
@@ -133,6 +134,28 @@ test("new events render as linked newsletter cards with their image, openings fi
   const body = buildDailyDigestBody(summary);
   assert.match(body, /NUEVOS EN EL SITIO \(1\)/);
   assert.match(body, /https:\/\/www\.caldearte\.com\/eventos\/11111111-2222-3333-4444-555555555555/);
+});
+
+test("new events are grouped: openings first, then guided visits, then everything else; empty groups left out", () => {
+  const visita = { ...newEvent, id: "v", title: "Recorrido mediado", eventType: "visita_guiada", openingDatetime: null, isOpeningThisWeek: false };
+  const expo = { ...newEvent, id: "x", title: "Muestra vigente", eventType: "exposicion", openingDatetime: null, isOpeningThisWeek: false };
+  const laterOpening = { ...newEvent, id: "o2", title: "Abre después", openingDatetime: "2026-08-30T22:00:00.000Z" };
+
+  const groups = groupNewEvents([expo, laterOpening, visita, newEvent]);
+  assert.deepEqual(
+    groups.map((g) => [g.label, g.events.map((e) => e.id)]),
+    [
+      ["Inauguraciones", [newEvent.id, "o2"]],
+      ["Visitas guiadas", ["v"]],
+      ["Otros", ["x"]],
+    ],
+  );
+  assert.deepEqual(groupNewEvents([expo]).map((g) => g.label), ["Otros"]);
+
+  const html = buildDailyDigestHtmlBody(summaryWith([], [expo, visita, newEvent]));
+  assert.ok(html.indexOf("Inauguraciones (1)") < html.indexOf("Visitas guiadas (1)"));
+  assert.ok(html.indexOf("Visitas guiadas (1)") < html.indexOf("Otros (1)"));
+  assert.match(buildDailyDigestBody(summaryWith([], [expo, visita, newEvent])), /-- Inauguraciones \(1\) --[\s\S]*-- Visitas guiadas \(1\) --[\s\S]*-- Otros \(1\) --/);
 });
 
 test("the new-events section says so plainly when nothing was added", () => {

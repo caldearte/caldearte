@@ -8,8 +8,8 @@ import { getSupabaseClient } from "../lib/supabase-client.js";
 import { getConfigNumber, startOfCurrentUtcMonth } from "../lib/usage-tracking.js";
 import { isAnthropicModel } from "../lib/pricing.js";
 import { splitApifyFreeTier, apifyCycleStart } from "../lib/apify-cost-split.js";
-import { sendDailyDigestEmail, type DailyDigestPipelineRun, type DailyDigestSummary, type DiscoveryEntrypoint } from "../lib/daily-digest.js";
-import type { DigestEvent, EventGroup } from "../lib/notify.js";
+import { sendDailyDigestEmail, type DailyDigestNewEvent, type DailyDigestPipelineRun, type DailyDigestSummary, type DiscoveryEntrypoint } from "../lib/daily-digest.js";
+import type { EventGroup } from "../lib/notify.js";
 
 // Same "treat the Santiago calendar date as if it were UTC" approximation
 // already used by social-publish/run.ts's own weekBoundsInSantiago — good
@@ -230,13 +230,13 @@ export async function run(deps: RunDeps = {}): Promise<void> {
 
 // The day's new events as newsletter cards (lib/daily-digest.ts's own
 // comment, 2026-10-30). Only ones still on the site — an event already
-// removed by hand needs no checking. Openings first, by date; then
-// everything else by title. Never fails the digest: a read error just
-// leaves the section empty.
-async function loadNewEvents(client: ReturnType<typeof getSupabaseClient>, startUtc: Date, endUtc: Date, now: Date): Promise<DigestEvent[]> {
+// removed by hand needs no checking. Grouped and ordered by type in
+// lib/daily-digest.ts's groupNewEvents. Never fails the digest: a read
+// error just leaves the section empty.
+async function loadNewEvents(client: ReturnType<typeof getSupabaseClient>, startUtc: Date, endUtc: Date, now: Date): Promise<DailyDigestNewEvent[]> {
   const { data, error } = await client
     .from("events")
-    .select("id, title, place_name, freeform_location, region_id, opening_datetime, opening_time_confirmed, run_end_date, image_url")
+    .select("id, title, place_name, freeform_location, region_id, opening_datetime, opening_time_confirmed, run_end_date, image_url, event_type")
     .eq("curation_status", "approved")
     .is("removed_at", null)
     .gte("created_at", startUtc.toISOString())
@@ -252,25 +252,20 @@ async function loadNewEvents(client: ReturnType<typeof getSupabaseClient>, start
     const { data: regions } = await client.from("regions").select("id, name").in("id", regionIds);
     for (const r of regions ?? []) regionNames.set(r.id, r.name);
   }
-  return rows
-    .map(
-      (r): DigestEvent => ({
-        id: r.id,
-        title: r.title,
-        placeName: r.place_name ?? r.freeform_location ?? "",
-        comunaName: (r.region_id && regionNames.get(r.region_id)) || null,
-        openingDatetime: r.opening_datetime,
-        openingTimeConfirmed: r.opening_time_confirmed,
-        runEndDate: r.run_end_date,
-        imageUrl: r.image_url,
-        // An opening still ahead shows its day and hour on the card;
-        // one already past reads "hasta el …" like any running show.
-        isOpeningThisWeek: !!r.opening_datetime && new Date(r.opening_datetime) >= now,
-      }),
-    )
-    .sort((a, b) => {
-      if (a.isOpeningThisWeek !== b.isOpeningThisWeek) return a.isOpeningThisWeek ? -1 : 1;
-      if (a.isOpeningThisWeek) return (a.openingDatetime ?? "").localeCompare(b.openingDatetime ?? "");
-      return a.title.localeCompare(b.title, "es");
-    });
+  return rows.map(
+    (r): DailyDigestNewEvent => ({
+      id: r.id,
+      title: r.title,
+      placeName: r.place_name ?? r.freeform_location ?? "",
+      comunaName: (r.region_id && regionNames.get(r.region_id)) || null,
+      openingDatetime: r.opening_datetime,
+      openingTimeConfirmed: r.opening_time_confirmed,
+      runEndDate: r.run_end_date,
+      imageUrl: r.image_url,
+      // An opening still ahead shows its day and hour on the card;
+      // one already past reads "hasta el …" like any running show.
+      isOpeningThisWeek: !!r.opening_datetime && new Date(r.opening_datetime) >= now,
+      eventType: r.event_type,
+    }),
+  );
 }
