@@ -101,6 +101,10 @@ export interface CandidateSummary {
   curationReasoning: string;
   sourceUrl: string | null;
   outcome: CandidateOutcome | null;
+  // The candidate's own image (2026-10-30, for the daily digest's
+  // safety-net veto cards). Optional: run summaries stored before this
+  // field existed don't have it.
+  imageUrl?: string | null;
 }
 
 // One row per comuna searched or bright source fetched — lets the email
@@ -797,7 +801,7 @@ const SITE_URL = "https://www.caldearte.com";
 // apps/curator/src/lib/instagram-accounts.ts.
 const INSTAGRAM_URL = "https://www.instagram.com/caldearte.oficial/";
 
-function eventUrl(id: string): string {
+export function eventUrl(id: string): string {
   return `${SITE_URL}/eventos/${id}`;
 }
 
@@ -989,12 +993,15 @@ function cardPill(e: DigestEvent, referenceYear: number): string {
 // the right the title, the pill and the venue in the site's AgendaCard
 // style (magenta Lato title, magenta pill, small grey uppercase venue).
 // The whole row is one link to the event's page.
-function eventCardHtml(e: DigestEvent, referenceYear: number): string {
+// `href` null renders the same card without a link — the daily digest's
+// safety-net vetoes, which never reached the site (2026-10-30).
+export function eventCardHtml(e: DigestEvent, referenceYear: number, href: string | null = eventUrl(e.id)): string {
   const pill = cardPill(e, referenceYear);
   const thumb = e.imageUrl
     ? `<img src="${escapeHtml(e.imageUrl)}" width="96" height="120" alt="" style="display:block;width:96px;height:120px;object-fit:cover;border-radius:8px;" />`
     : `<div style="width:96px;height:120px;background:#3a3a3a;border-radius:8px;"></div>`;
-  return `<a href="${eventUrl(e.id)}" style="display:block;text-decoration:none;margin:0 0 10px;">
+  const open = href ? `<a href="${escapeHtml(href)}" style="display:block;text-decoration:none;margin:0 0 10px;">` : `<div style="margin:0 0 10px;">`;
+  return `${open}
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:16px;">
       <tr>
         <td width="106" valign="top" style="padding:10px 0 10px 10px;line-height:0;">${thumb}</td>
@@ -1005,7 +1012,7 @@ function eventCardHtml(e: DigestEvent, referenceYear: number): string {
         </td>
       </tr>
     </table>
-  </a>`;
+  ${href ? "</a>" : "</div>"}`;
 }
 
 // A section's "ver más" link as a magenta button, the size of the site's
