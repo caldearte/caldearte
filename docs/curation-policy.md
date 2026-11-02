@@ -41,6 +41,7 @@ it's not automatically included.
 | "Church Inc.: A Critical Installation on Ecclesiastical Power and Money" | An installation denouncing the financial management of religious institutions, with an explicitly critical curatorial stance. | Religion | **INCLUDE** | Explicit stance against the Church as an institution, not a display of faith or its imagery. |
 | "Eyes in the Trench: War Photojournalism 1936–1945" | A retrospective of war photographers, historical memory, and documentary archive, with no stated stance. | War/violence | **EXCLUDE** | "Neutral" documentation/memory doesn't qualify — missing an explicit critical stance against the war or period. |
 | "After the Occupation: Art and Memory in Palestine" | An exhibit with an explicit curatorial statement denouncing the occupation and its consequences. | War/violence | **INCLUDE** | Explicit stance of denunciation/criticism, not neutral documentation. |
+| "Por Palestina" (real case, 2026-11-02) | A community cultural center shows the six works selected from its open call "Palestina Libre" (30 entries from Chile and neighboring countries sent as messages of solidarity with the Palestinian people); the rest become postcards to raise aid for families in Gaza. | War/violence | **INCLUDE** | Explicit solidarity with the people suffering the occupation is the declared stance this axis asks for — it doesn't need the literal words "denounce" or "occupation". Haiku approved it; the MiniMax safety net vetoed it as "solidarity without explicit denunciation of the occupation" and Daniel added it by hand the same day. |
 | "Tribute to Victory: The Heroic Feat" | An exhibit celebrating military glories of one side in a conflict, with a commemorative/exalting tone. | War/violence | **EXCLUDE** | Explicit glorification. |
 | "Memoria de Cuartel: Uniformes y Objetos de Carabineros" (illustrative, same pattern as the 2026-09-28 real case below) | A patrimonial/documentary display of historical Carabineros uniforms, badges, and archive photographs, informative tone, no stated stance. | War/violence | **EXCLUDE** | Same "peso de la hegemonía" logic as war photojournalism: patrimonial/documentary treatment of a military or police institution doesn't qualify without an explicit, declared critical stance against that institution — content about Carabineros/FFAA, not just the venue, is covered by this axis. |
 | "Aesthetics of Fascism: Art, Propaganda, and Warning" | An exhibit displaying authoritarian-regime symbolism with "contextualizing" text, with no declared rejection. | Far right | **EXCLUDE** | Without an unambiguous, declared anti-fascist stance, it's excluded — "contextualizing" or "analyzing" without explicit rejection doesn't qualify. |
@@ -139,7 +140,13 @@ higher than on the other axes, which are text-only.
 > against that specific institution, ideology, or conflict — for example, an
 > installation that explicitly denounces the Church's economic power, or an
 > exhibit with an explicit curatorial statement denouncing an occupation, a
-> dictatorship, or the Armed Forces/Carabineros specifically. "Exploring,"
+> dictatorship, or the Armed Forces/Carabineros specifically. Explicit
+> solidarity with the people who suffer a war, occupation, or dictatorship
+> counts as that explicit stance, even without the literal words "denounce"
+> or "occupation" — for example, an exhibit or open call "for a free
+> Palestine" that gathers messages of support for the Palestinian people or
+> raises aid for families in Gaza: taking the side of the victims against
+> the aggressor is a declared stance, not neutral documentation. "Exploring,"
 > "reflecting on," "contextualizing," "documenting," or showing ambiguous
 > aesthetic/curatorial distance isn't enough — without an explicit, declared
 > rejection stance, the event is excluded. There's no middle ground: either
