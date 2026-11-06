@@ -997,6 +997,46 @@ export function findExistingMatch(
   return { titleMatch, sourceUrlMatch, locationDateMatch, fuzzyMatch, sameVenueMatch, coreTitleMatch, existingMatch };
 }
 
+// An Instagram post about several shows can come back as one candidate per
+// show PLUS one carrying the post's own opening line as its title, because
+// that line is the title instagram-item.ts derives when the caption quotes
+// nothing. Measured over 75 days of runs (2026-11-03): 2 real cases, both at
+// Galpón Independencia ("Este sábado 31 de octubre inauguramos dos nuevas
+// muestras !", "¡Seguimos con las puertas abiertas en Galpón Independencia!"),
+// each a third listing for CIMIENTOS and ENTRE TIERRA Y ASFALTO. No other tier
+// can see it: the wording shares nothing with the shows it announces, and when
+// the umbrella comes first its sourceUrl used to drop the real shows instead.
+//
+// Every condition below is needed. A caption's first line alone is not
+// enough, since "PROCESOS DE MISTIFICACIÓN" and "KYNOPHOBIA" are real shows
+// titled that way; the exclamation is what makes it an invitation,
+// not a name. The sibling is what makes dropping it safe: the post's content
+// is still represented, so no place to go is lost. Deliberately not extended
+// to "same post + same venue + same run" without the exclamation: that shape
+// is also a venue's season announced in one post ("Coreografías involuntarias"
+// next to "Angelus Novus" at Centro Cultural Las Condes, "Te creo paisaje"
+// next to "Mi amigo chileno" at the MNBA), genuinely different shows.
+function isExclamation(title: string): boolean {
+  return /!\P{L}*$/u.test(title);
+}
+
+export function isUmbrellaOfSiblings(c: EventCandidate, batch: EventCandidate[]): boolean {
+  if (!c.sourceUrl || !c.placeName || !c.description || !isExclamation(c.title)) return false;
+  const title = normalizeTitle(c.title);
+  if (!normalizeTitle(c.description).startsWith(title)) return false;
+  const place = normalizeTitle(c.placeName);
+  return batch.some(
+    (other) =>
+      other !== c &&
+      other.status === "approved" &&
+      other.sourceUrl === c.sourceUrl &&
+      other.placeName !== null &&
+      normalizeTitle(other.placeName) === place &&
+      normalizeTitle(other.title) !== title &&
+      !isExclamation(other.title),
+  );
+}
+
 // The set the MiniMax safety net reviews: approved candidates that would
 // really be INSERTED as new events — not the ones insertCandidates is
 // about to drop (already expired, or a duplicate of something stored) and
@@ -1196,6 +1236,12 @@ export async function insertCandidates(
           console.error(`[event-discovery] failed to record expired candidate "${c.title}": ${expiredError.message}`);
         }
       }
+      continue;
+    }
+
+    if (pipeline === "instagram" && isUmbrellaOfSiblings(c, candidates)) {
+      console.log(`[event-discovery] skipping umbrella post title: "${c.title}" (the post's shows are listed as their own candidates)`);
+      outcomes.set(c, "duplicate_skipped");
       continue;
     }
 

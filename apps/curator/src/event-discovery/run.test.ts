@@ -662,6 +662,45 @@ test(
         await client.from("events").delete().eq("title", "__test__ Judas Galería Inauguración");
       });
 
+      // Real case, 2026-10-26: "Este sábado 31 de octubre inauguramos dos
+      // nuevas muestras !" came first in its post, went in, and its sourceUrl
+      // then dropped CIMIENTOS as a duplicate of it. See isUmbrellaOfSiblings.
+      await t.test("an Instagram post's opening line is skipped next to a named show, and its url no longer drops that show", async () => {
+        const { insertCandidates, loadExistingKeys, loadAllRegions } = await import("./run.js");
+
+        const regions = await loadAllRegions();
+        const seen = await loadExistingKeys();
+        const base = {
+          description: "¡__test__ Inauguramos dos muestras!\n\n__test__ CIMIENTOS",
+          artist: null,
+          runStartDate: "2026-09-05",
+          runEndDate: "2026-09-20",
+          openingDatetime: null,
+          openingTimeConfirmed: false,
+          mediumType: "tradicional" as const,
+          sensitivityTags: [],
+          curationReasoning: "ok",
+          imageUrl: null,
+          status: "approved" as const,
+          location: "Valparaíso",
+          placeName: "__test__ Galpón",
+          sourceUrl: "https://instagram.com/p/__test_umbrella__/",
+          dateQuote: null,
+          locationQuote: null,
+          runStartDateQuote: null,
+          runEndDateQuote: null,
+        };
+        const umbrella = { ...base, title: "¡__test__ Inauguramos dos muestras!" };
+        const show = { ...base, title: "__test__ CIMIENTOS" };
+
+        const { insertedCount, outcomes } = await insertCandidates([umbrella, show], regions, seen, new Date(2026, 8, 1), "instagram");
+        assert.equal(insertedCount, 1);
+        assert.equal(outcomes.get(umbrella), "duplicate_skipped");
+        assert.equal(outcomes.get(show), "inserted");
+
+        await client.from("events").delete().eq("title", "__test__ CIMIENTOS");
+      });
+
       // Real cases: "Geometría del agua" dropped next to its post's first show
       // (2026-10-23), and "Chicas Terremoto", with a confirmed opening,
       // overwriting "Cine Expandido" from the same post (2026-10-06). See

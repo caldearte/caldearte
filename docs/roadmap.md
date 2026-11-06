@@ -810,7 +810,10 @@ building infra" discipline the rest of this project has followed.
       excluding `.webp`-named sources from eligibility and by having the
       flyer route fetch each photo itself with an explicit
       `Accept: image/jpeg,image/png,image/gif` instead of leaving Satori
-      to fetch it (and negotiate format) on its own.
+      to fetch it (and negotiate format) on its own. **Revised
+      2026-11-05:** stored `.webp` photos went from 2 of 131 events to 10
+      of 98 recent openings, none ever posted, so the flyer route now
+      re-encodes them as JPEG with `sharp` and they're eligible again.
     - Instagram-sourced event titles were very often the caption's first
       *sentence* (an invitation), not the exhibition's actual name, which
       is almost always quoted somewhere in the same caption instead —

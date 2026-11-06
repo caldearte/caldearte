@@ -5482,6 +5482,16 @@ GAM source (#647) inserted COCÚN and Exposición Salvataje without duplicates. 
 - **Veto call to know about:** "Mundo Pepo" (GAM, 12-nov → 27-dic; life and work of the creator of Condorito, original archives, in the visual arts hall) was vetoed as documentary/heritage.
   Added by hand by Daniel's decision: graphic art in an art hall is in scope even when it is retrospective.
 
+### Thursday 2026-11-05: an Instagram post's opening line no longer stands in for its shows
+
+Galpón Independencia posted two shows twice, and both times one candidate carried the caption's first line as its title: "Este sábado 31 de octubre inauguramos dos nuevas muestras !" (10-26, removed by hand) and "¡Seguimos con las puertas abiertas en Galpón Independencia!" (11-03, removed by hand). On 10-26 it came first, went in, and its sourceUrl dropped the two real shows as duplicates of it.
+`isUmbrellaOfSiblings` (`event-discovery/run.ts`) now skips such a candidate on the Instagram pipeline when its title is an exclamation, opens the caption, and a differently-titled approved candidate from the same post names the same venue. Over 75 days of `discovery_run_summaries` (62 posts mixing inserted and skipped candidates) it fires on exactly those 2 posts; the third exclamatory title in that set ("¡Este octubre La Menuda se multiplica!") has no named sibling and stays.
+
+Two neighbours of this case were measured and left alone on purpose:
+
+- **Same post + same venue + same run is not a duplicate.** 26 candidates in the same 75 days had that shape, and it includes a venue's season announced in one post ("Coreografías involuntarias" and "Angelus Novus", Centro Cultural Las Condes). The rule above needs the exclamation for that reason.
+- **"Deglución" (11-03) is not covered.** It is a work inside Convergentes, already listed, and the post names it in quotes. A single case in 75 days, and the phrasing is the same one single-work shows use ("su obra 'Ofertas de memoria'", a real event), so it stays a manual removal. The Monday routine's duplicate review covers it.
+
 ### Thursday 2026-11-05: siblings from one post or page are no longer each other's duplicates
 
 The 2026-10-14 entry above left this open: when one post or page yields several candidates, the first one in takes the url in `seen.sourceUrls` and the rest are dropped as "same sourceUrl, different title", unless both have full run ranges that don't overlap. Same-season siblings and captions with no dates never pass that test.

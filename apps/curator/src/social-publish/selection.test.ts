@@ -86,15 +86,15 @@ test("selectUpcoming: excludes events with no real photo — real bug found 2026
   );
 });
 
-test("selectUpcoming: excludes events with a .webp photo — real bug found 2026-08-23, Satori/next-og can't determine a .webp image's size", () => {
+test("selectUpcoming: keeps events with a .webp photo — the flyer route converts them since 2026-11-05", () => {
   const events = [
     makeEvent({ id: "jpeg-photo", openingDatetime: "2026-08-17T22:00:00+00:00" }),
     makeEvent({ id: "webp-photo", openingDatetime: "2026-08-17T22:00:00+00:00", imageUrl: "https://example.com/img.webp" }),
   ];
   const result = selectUpcoming(events, window, new Set());
   assert.deepEqual(
-    result.map((e) => e.id),
-    ["jpeg-photo"],
+    result.map((e) => e.id).sort(),
+    ["jpeg-photo", "webp-photo"],
   );
 });
 

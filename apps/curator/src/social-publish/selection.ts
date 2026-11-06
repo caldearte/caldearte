@@ -56,15 +56,13 @@ export const CAROUSEL_CAP = 10;
 // The flyer layout has no fallback for a missing photo — every automated
 // carousel type needs one, not just destacada.
 //
-// Excludes .webp images too — real bug, found in a real "destacada" post
-// failing 2026-08-23: the flyer renderer (Satori/next-og) can't determine
-// a .webp image's dimensions ("Image size cannot be determined"), so the
-// flyer route 500s and Instagram rejects the whole carousel. Only 2 of
-// 131 production events have a .webp source image — not worth adding an
-// image-conversion dependency (e.g. sharp) for, so these are simply
-// excluded from automated posts, same as no-image events.
+// .webp photos were excluded here too until 2026-11-05: Satori can't read
+// them, and 2 of 131 events (2026-08-23) wasn't worth a conversion step.
+// By 2026-11 they were 10 of 98 recent openings, none ever posted, 3 left
+// out of a single regional carousel — the flyer route converts them now
+// (apps/web/src/lib/social/flyerRequest.ts).
 function isEligibleForAutoPost(e: SocialEvent): boolean {
-  return e.sensitivityTags.length === 0 && Boolean(e.imageUrl) && !e.imageUrl!.toLowerCase().endsWith(".webp");
+  return e.sensitivityTags.length === 0 && Boolean(e.imageUrl);
 }
 
 // The window is in Santiago days. Slicing the UTC timestamp put any
