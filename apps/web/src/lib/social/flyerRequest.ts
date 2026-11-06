@@ -8,6 +8,7 @@
 // Added 2026-10-04, right after GHSA-vcvr-r3jv-pc5j (RCE in Node
 // next/og ImageResponse with request-controlled values) was patched by
 // upgrading Next.js — defense in depth, not the fix itself.
+import sharp from "sharp";
 
 // Generous next to real data (2026-10-04, approved events: longest title
 // 114 chars, longest artist list 508, longest place name 96, longest image
@@ -103,11 +104,32 @@ export function parsePublicImageUrl(raw: string): URL | null {
   return url;
 }
 
+const FLYER_WEBP_JPEG_QUALITY = 90;
+
+/**
+ * Satori can't read a WebP ("Image size cannot be determined"), and one
+ * failed flyer makes Instagram reject its whole carousel. Re-encodes it as
+ * a JPEG: first frame if animated, on white because JPEG has no alpha.
+ * Other formats pass through untouched.
+ */
+export async function toSatoriPhoto(
+  buffer: Buffer,
+  contentType: string,
+): Promise<{ buffer: Buffer; contentType: string }> {
+  if (!contentType.includes("webp")) return { buffer, contentType };
+  const jpeg = await sharp(buffer)
+    .flatten({ background: "#ffffff" })
+    .jpeg({ quality: FLYER_WEBP_JPEG_QUALITY })
+    .toBuffer();
+  return { buffer: jpeg, contentType: "image/jpeg" };
+}
+
 /**
  * Downloads the event photo with the same explicit Accept header the route
  * always used (see route.tsx's comment on Squarespace's WebP negotiation),
  * following at most MAX_REDIRECTS hops and re-vetting each one, with a
- * timeout and a size cap.
+ * timeout and a size cap. A stored WebP comes back as whatever the file is
+ * regardless of that header, so it's converted here (toSatoriPhoto).
  */
 export async function fetchFlyerPhoto(raw: string): Promise<{ buffer: Buffer; contentType: string }> {
   let current = parsePublicImageUrl(raw);
@@ -131,14 +153,14 @@ export async function fetchFlyerPhoto(raw: string): Promise<{ buffer: Buffer; co
 
     if (!res.ok) throw new Error(`Failed to fetch event photo (${res.status})`);
     const contentType = res.headers.get("content-type") ?? "image/jpeg";
-    if (!contentType.startsWith("image/") || contentType.includes("webp")) {
+    if (!contentType.startsWith("image/")) {
       throw new Error(`Event photo resolved to an unsupported content-type (${contentType})`);
     }
     const declared = Number(res.headers.get("content-length") ?? "0");
     if (declared > MAX_PHOTO_BYTES) throw new Error(`Event photo too large (${declared} bytes)`);
     const buffer = Buffer.from(await res.arrayBuffer());
     if (buffer.length > MAX_PHOTO_BYTES) throw new Error(`Event photo too large (${buffer.length} bytes)`);
-    return { buffer, contentType };
+    return toSatoriPhoto(buffer, contentType);
   }
   throw new Error(`Event photo exceeded ${MAX_REDIRECTS} redirects`);
 }
