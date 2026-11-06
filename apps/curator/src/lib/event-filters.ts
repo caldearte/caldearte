@@ -208,6 +208,18 @@ export function isTitleSubsetOfOther(a: string, b: string, placeName: string | n
   return wordsA.every((w) => setB.has(w)) || wordsB.every((w) => setA.has(w));
 }
 
+// Used by run.ts's sourceUrl tier: a title made only of GENERIC_TITLE_WORDS
+// and the venue's own name ("Exposición", "Muestra en el MAC") doesn't name a
+// show, so it can't be told apart from the one next to it.
+export function hasSignificantWords(title: string, placeName: string | null): boolean {
+  const placeWords = placeName ? tokenizeSignificantWords(placeName) : new Set<string>();
+  return [...tokenizeSignificantWords(title)].some((w) => !placeWords.has(w));
+}
+
+export function isGuidedVisitTitle(title: string): boolean {
+  return /\b(?:visitas? (?:guiadas?|mediadas?)|recorridos? guiados?|mediacion(?:es)?)\b/.test(normalizeTitle(title));
+}
+
 // Real gap found 2026-10-13 (8 MAC exhibitions doubled on the live site):
 // uchile.cl/artes.uchile.cl wrap every exhibition title in an agenda
 // sentence — 'Muestra "Materia sensible" en el Museo de Arte
