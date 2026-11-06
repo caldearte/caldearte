@@ -87,14 +87,14 @@ export async function GET(request: Request) {
     // Fetched here, with an explicit Accept header, rather than handed to
     // Satori as a remote <img src> for it to fetch itself — real bug,
     // found in a real "destacada" post 2026-08-23: images.squarespace-cdn.com
-    // serves auto-negotiated WebP (which Satori can't decode — same root
-    // cause as the .webp-extension exclusion in selection.ts) whenever the
+    // serves auto-negotiated WebP (which Satori can't decode) whenever the
     // request's Accept header is permissive, even for a URL ending in
     // ".jpg" — exactly what Satori's own internal fetch apparently sends.
     // Requesting only jpeg/png/gif ourselves sidesteps that CDN's format
     // negotiation entirely, regardless of what any other CDN might do.
     // fetchFlyerPhoto (flyerRequest.ts) keeps that Accept header and adds a
-    // timeout, a size cap and per-hop vetting of redirects (2026-10-04).
+    // timeout, a size cap and per-hop vetting of redirects (2026-10-04),
+    // and re-encodes a real WebP file as a JPEG (2026-11-05).
     // It gets the URL read back from the database, never the raw param.
     const { buffer: photoBuffer, contentType: photoContentType } = await fetchFlyerPhoto(publishedImageUrl);
     const photoDataUri = `data:${photoContentType};base64,${photoBuffer.toString("base64")}`;

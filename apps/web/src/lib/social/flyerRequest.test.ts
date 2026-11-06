@@ -1,6 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { checkFlyerParamLengths, parsePublicImageUrl } from "./flyerRequest";
+import sharp from "sharp";
+import { checkFlyerParamLengths, parsePublicImageUrl, toSatoriPhoto } from "./flyerRequest";
 
 test("parsePublicImageUrl: accepts the https hosts real events use", () => {
   for (const raw of [
@@ -61,4 +62,28 @@ test("checkFlyerParamLengths: real-sized values pass, oversized ones are named",
 
   const unknown = new URLSearchParams({ whatever: "z".repeat(10_000) });
   assert.equal(checkFlyerParamLengths(unknown), null, "unknown params are ignored, not rejected");
+});
+
+test("toSatoriPhoto: re-encodes a WebP as a JPEG of the same size", async () => {
+  const webp = await sharp({ create: { width: 12, height: 8, channels: 3, background: "#cc3366" } }).webp().toBuffer();
+  const out = await toSatoriPhoto(webp, "image/webp");
+  assert.equal(out.contentType, "image/jpeg");
+  const meta = await sharp(out.buffer).metadata();
+  assert.equal(meta.format, "jpeg");
+  assert.equal(meta.width, 12);
+  assert.equal(meta.height, 8);
+});
+
+test("toSatoriPhoto: puts a transparent WebP on white, not black", async () => {
+  const webp = await sharp({ create: { width: 4, height: 4, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } } }).webp({ lossless: true }).toBuffer();
+  const out = await toSatoriPhoto(webp, "image/webp");
+  const { data } = await sharp(out.buffer).raw().toBuffer({ resolveWithObject: true });
+  assert.ok(data[0] > 240, `expected a near-white pixel, got ${data[0]}`);
+});
+
+test("toSatoriPhoto: leaves formats Satori reads untouched", async () => {
+  const jpeg = Buffer.from("not really a jpeg");
+  const out = await toSatoriPhoto(jpeg, "image/jpeg");
+  assert.equal(out.buffer, jpeg);
+  assert.equal(out.contentType, "image/jpeg");
 });
