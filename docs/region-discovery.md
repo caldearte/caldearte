@@ -5481,3 +5481,27 @@ GAM source (#647) inserted COCÚN and Exposición Salvataje without duplicates. 
   About 2 real events in 3.5 weeks were lost this way (checked by listing approved candidates whose sourceUrl is held by an event with an unrelated title).
 - **Veto call to know about:** "Mundo Pepo" (GAM, 12-nov → 27-dic; life and work of the creator of Condorito, original archives, in the visual arts hall) was vetoed as documentary/heritage.
   Added by hand by Daniel's decision: graphic art in an art hall is in scope even when it is retrospective.
+
+### Thursday 2026-11-05: siblings from one post or page are no longer each other's duplicates
+
+The 2026-10-14 entry above left this open: when one post or page yields several candidates, the first one in takes the url in `seen.sourceUrls` and the rest are dropped as "same sourceUrl, different title", unless both have full run ranges that don't overlap. Same-season siblings and captions with no dates never pass that test.
+
+Measured by replaying `discovery_run_summaries` (122 runs, 2026-08-18 → 11-05) through the real tiers: 39 approved candidates matched the sourceUrl tier and no other (34 distinct title + url, 37 dropped, 2 that replaced their sibling), against 1,018 approved `duplicate_skipped` in all. All 39 sat next to a sibling from their own batch; none was dropped against a row from an earlier run.
+
+`sameSourceUrlUnlessDistinctShow` (`event-discovery/run.ts`) now compares a candidate with the rows inserted from its own `insertCandidates` batch, all of them and not only the last holder of the url. The url stops counting when the two titles fail `isLikelySameTitleWithoutRatio` and `isTitleSubsetOfOther` (the `sameVenueMatch` comparators), and the title has words of its own and isn't a guided visit or mediation. A row from an earlier run keeps the old behavior, as does `wouldInsertAsNew`, which has no batch.
+
+Replayed, the 39 become:
+
+| Result | Candidates | Which |
+|---|---|---|
+| Show missing from the calendar today | 11 | Mi amigo chileno, Raku Vitrina, Herbarium minerale, Topología del vacío, Revuelta, Geometría del agua, La aventura de los fósforos, Color y Arte: Paisajes del Cielo, En un lugar aparte, Selección de obras, plus Cine Expandido (see below) |
+| Already live from another source, now arriving earlier | 10 | Sastrería Doméstica, Nidos, CIMIENTOS, ENTRE TIERRA Y ASFALTO, Recordar el futuro, (DES)NUDO, and four others; the later row merges through the title or venue tiers, so no second listing |
+| Programme or fair, a real place to go but not a show | 5 | Occidentosis, El Vibrazo, Performance Fuera de Foco, Cuerpo y acción desde la imagen, Feria Arte Cerámica 2026 |
+| New duplicate | 2 | "Festival FFAST.cl" next to the FFAST row; "Firmamento" next to "Firmamento - No hay flecha en el tiempo" (both dateless in the summary, so it may still merge on the opening day, which summaries don't keep) |
+| Stays dropped | 11 | Visita Guiada ×4, Ballroom - Visita guiada ×2, Foro de las Artes - Visita guiada ×2, Mediación junto a artistas expositores, plus the second sight of Topología del vacío and ENTRE TIERRA Y ASFALTO, which merge by title into the recovered row |
+
+The sourceUrl tier also picks the row `shouldReplaceExisting` overwrites, so this fixes a second loss: "Chicas Terremoto", with a confirmed opening, replaced "Cine Expandido: Tres paisajes del cine" (2026-10-06, same post), which is why that show isn't on the site. Now both stay. "ANATOMICA" ×3 is untouched: identical titles stop at the title tier.
+
+Limits of the measurement: summaries carry no opening datetime, so the same-anchor-day tier can't be replayed. 37 skipped candidates matched no tier in the replay; 7 are "Arrecia el temporal" before the 10-14 fix and the rest were reviewed by hand, with no sibling loss among them. Nothing was backfilled: Mi amigo chileno (until 2027-02-28) and Raku Vitrina (opens 11-10) are the two still worth adding by hand, on Daniel's call.
+
+Not fixed here: "Ballroom - Visita guiada" replaced "Ballroom" on 10-22 and the live row still carries the visit's title and no dates, because the two titles are rightly one event but `shouldReplaceExisting` lets the confirmed hour win. And `excludedSourceUrls` keeps a url already held out of Haiku on later runs, so this only helps siblings that reach curation together.

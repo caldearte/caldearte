@@ -662,6 +662,56 @@ test(
         await client.from("events").delete().eq("title", "__test__ Judas Galería Inauguración");
       });
 
+      // Real cases: "Geometría del agua" dropped next to its post's first show
+      // (2026-10-23), and "Chicas Terremoto", with a confirmed opening,
+      // overwriting "Cine Expandido" from the same post (2026-10-06). See
+      // sameSourceUrlUnlessDistinctShow.
+      await t.test("a post's shows all go in, without replacing each other, and its guided visit stays out", async () => {
+        const { insertCandidates, loadExistingKeys, loadAllRegions } = await import("./run.js");
+
+        const regions = await loadAllRegions();
+        const seen = await loadExistingKeys();
+        const base = {
+          description: "__test__ Tres muestras en un post",
+          artist: null,
+          runStartDate: "2026-09-05",
+          runEndDate: "2026-09-20",
+          openingDatetime: null,
+          openingTimeConfirmed: false,
+          mediumType: "tradicional" as const,
+          sensitivityTags: [],
+          curationReasoning: "ok",
+          imageUrl: null,
+          status: "approved" as const,
+          location: "Valparaíso",
+          placeName: "__test__ Sala Hermana",
+          sourceUrl: "https://instagram.com/p/__test_siblings__/",
+          dateQuote: null,
+          locationQuote: null,
+          runStartDateQuote: null,
+          runEndDateQuote: null,
+        };
+        const first = { ...base, title: "__test__ Coreografías involuntarias" };
+        const second = {
+          ...base,
+          title: "__test__ Geometría del agua",
+          openingDatetime: "2026-09-10T22:00:00+00:00",
+          openingTimeConfirmed: true,
+        };
+        const visit = { ...base, title: "Visita Guiada" };
+
+        const { insertedCount, outcomes } = await insertCandidates([first, second, visit], regions, seen, new Date(2026, 8, 1), "instagram");
+        assert.equal(insertedCount, 2);
+        assert.equal(outcomes.get(first), "inserted");
+        assert.equal(outcomes.get(second), "inserted");
+        assert.equal(outcomes.get(visit), "duplicate_skipped");
+
+        const { data } = await client.from("events").select("title").eq("source_url", base.sourceUrl);
+        assert.deepEqual(data?.map((row) => row.title).sort(), [first.title, second.title].sort());
+
+        await client.from("events").delete().eq("source_url", base.sourceUrl);
+      });
+
       // Real production bug, found 2026-08-12 via a user-requested audit:
       // MAC - Parque Forestal runs a whole "temporada" of concurrent
       // exhibitions sharing the museum's season-wide open/close dates.

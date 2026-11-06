@@ -34,6 +34,8 @@ import {
   isLikelySameTitleIgnoringPlaceName,
   isLikelySameTitleWithoutRatio,
   isTitleSubsetOfOther,
+  hasSignificantWords,
+  isGuidedVisitTitle,
   placeNamesLikelySame,
   isWithinAnchorWindow,
   coreTitleKey,
@@ -856,24 +858,62 @@ function findCoreTitleMatch(c: EventCandidate, seen: SeenKeys): ExistingEventInf
 // doesn't count. Anything less certain (a missing date on either side, ranges
 // that overlap) keeps the old behavior: the same event re-reported with
 // reworded dates must still be skipped.
-function sameSourceUrlUnlessDistinctRun(existing: ExistingEventInfo | undefined, c: EventCandidate): ExistingEventInfo | undefined {
+//
+// Same-range siblings are the other half (2026-11-05): a post or page naming
+// several shows yields one candidate per show, all with the same url and
+// often the same season dates or none, and the first one in dropped the rest.
+// Replayed over 79 days of runs, that was the whole loss: 39 candidates
+// dropped by this tier alone, every one next to a sibling from its own batch,
+// none against a row from an earlier run. So only `insertedFromBatch` is
+// compared by title; a row from an earlier run keeps the old behavior, and so
+// does anything isDistinctSibling can't vouch for.
+function sameSourceUrlUnlessDistinctShow(
+  existing: ExistingEventInfo | undefined,
+  c: EventCandidate,
+  insertedFromBatch: ReadonlyMap<string, ExistingEventInfo[]> | undefined,
+): ExistingEventInfo | undefined {
   if (!existing) return undefined;
   if (existing.runStartDate && existing.runEndDate && c.runStartDate && c.runEndDate) {
     if (existing.runEndDate < c.runStartDate || c.runEndDate < existing.runStartDate) return undefined;
   }
-  return existing;
+  const siblings = c.sourceUrl !== null ? insertedFromBatch?.get(c.sourceUrl) : undefined;
+  if (!siblings?.some((sibling) => sibling.id === existing.id)) return existing;
+  return siblings.find((sibling) => !isDistinctSibling(sibling, c));
+}
+
+// Both comparators are the ones sameVenueMatch uses, so "Ballroom - Visita
+// guiada" next to "Ballroom" stays one event. The title also has to name
+// something on its own: a guided visit or mediation is the show's programme
+// even when it shares no word with it ("Visita Guiada" ×4 next to one show at
+// Casa Mecenas, "Mediación junto a artistas expositores" next to "Exposición
+// SAFA"). Not extended to talleres or conversatorios: 79 days have no such
+// sibling, and "Exposición de cierre del taller de Fotografía Digital" is a
+// real show carrying that word.
+function isDistinctSibling(sibling: ExistingEventInfo, c: EventCandidate): boolean {
+  return (
+    hasSignificantWords(c.title, c.placeName) &&
+    !isGuidedVisitTitle(c.title) &&
+    !isLikelySameTitleWithoutRatio(sibling.title, c.title, c.placeName) &&
+    !isTitleSubsetOfOther(sibling.title, c.title, c.placeName)
+  );
 }
 
 // Extracted VERBATIM from insertCandidates (2026-10-02) so the safety net
 // can ask "would this candidate end up as a brand-new event?" with the
 // exact same matching insertCandidates then applies — one source of truth,
 // not a second copy that could drift. Read-only: it never writes to `seen`.
-export function findExistingMatch(c: EventCandidate, seen: SeenKeys): ExistingMatches {
+// `insertedFromBatch` (url → rows stored by the current insertCandidates call)
+// is only passed there; see sameSourceUrlUnlessDistinctShow.
+export function findExistingMatch(
+  c: EventCandidate,
+  seen: SeenKeys,
+  insertedFromBatch?: ReadonlyMap<string, ExistingEventInfo[]>,
+): ExistingMatches {
   const titleKey = normalizeTitle(c.title);
   const locDateKey = locationDateKey(c.location, c.placeName, c);
   const locDateOnlyKey = locationDateOnlyKey(c.location, c);
   const titleMatch = seen.titles.get(titleKey);
-  const sourceUrlMatch = c.sourceUrl !== null ? sameSourceUrlUnlessDistinctRun(seen.sourceUrls.get(c.sourceUrl), c) : undefined;
+  const sourceUrlMatch = c.sourceUrl !== null ? sameSourceUrlUnlessDistinctShow(seen.sourceUrls.get(c.sourceUrl), c, insertedFromBatch) : undefined;
   const locationDateMatch = (seen.locationDates.get(locDateKey) ?? []).find((existing) =>
     isLikelySameTitleIgnoringPlaceName(existing.title, c.title, c.placeName),
   );
@@ -996,6 +1036,7 @@ export async function insertCandidates(
   const client = getSupabaseClient();
   let inserted = 0;
   const outcomes = new Map<EventCandidate, InsertOutcome>();
+  const insertedFromBatch = new Map<string, ExistingEventInfo[]>();
 
   for (const c of candidates) {
     const regionId = matchRegionId(c.location, regions);
@@ -1160,7 +1201,7 @@ export async function insertCandidates(
 
     const titleKey = normalizeTitle(c.title);
     const locDateOnlyKey = locationDateOnlyKey(c.location, c);
-    const { titleMatch, sourceUrlMatch, locationDateMatch, fuzzyMatch, sameVenueMatch, coreTitleMatch, existingMatch } = findExistingMatch(c, seen);
+    const { titleMatch, sourceUrlMatch, locationDateMatch, fuzzyMatch, sameVenueMatch, coreTitleMatch, existingMatch } = findExistingMatch(c, seen, insertedFromBatch);
 
     if (existingMatch && !shouldReplaceExisting(c, existingMatch)) {
       const reason = fuzzyMatch && !titleMatch && !sourceUrlMatch && !locationDateMatch
@@ -1279,7 +1320,11 @@ export async function insertCandidates(
         runEndDate: c.runEndDate,
       };
       seen.titles.set(titleKey, updatedInfo);
-      if (c.sourceUrl) seen.sourceUrls.set(c.sourceUrl, updatedInfo);
+      if (c.sourceUrl) {
+        seen.sourceUrls.set(c.sourceUrl, updatedInfo);
+        const siblings = (insertedFromBatch.get(c.sourceUrl) ?? []).filter((sibling) => sibling.id !== updatedInfo.id);
+        insertedFromBatch.set(c.sourceUrl, [...siblings, updatedInfo]);
+      }
       const bucket = seen.titlesByLocationDateOnly.get(locDateOnlyKey);
       if (bucket) bucket.push(updatedInfo);
       else seen.titlesByLocationDateOnly.set(locDateOnlyKey, [updatedInfo]);
@@ -1350,7 +1395,10 @@ export async function insertCandidates(
       runEndDate: c.runEndDate,
     };
     seen.titles.set(titleKey, freshInfo);
-    if (c.sourceUrl) seen.sourceUrls.set(c.sourceUrl, freshInfo);
+    if (c.sourceUrl) {
+      seen.sourceUrls.set(c.sourceUrl, freshInfo);
+      pushToBucket(insertedFromBatch, c.sourceUrl, freshInfo);
+    }
     // seen.locationDates is deliberately NOT updated here — see this
     // function's own doc comment above (2026-07-23 MAC case): the blind
     // location+date fingerprint only applies against events already
