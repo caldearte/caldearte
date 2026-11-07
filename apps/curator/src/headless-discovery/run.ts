@@ -28,6 +28,8 @@ import { enrichCandidates, enrichBrightSourceItemDetails, type FetchLike as Page
 import { fetchMaviActivities, type MaviActivity } from "../lib/mavi-headless.js";
 import { sendHeadlessRunSummaryEmail, type HeadlessRunSummary } from "../lib/notify.js";
 import { recordRunSummary } from "../lib/run-summary-store.js";
+import { getSupabaseClient } from "../lib/supabase-client.js";
+import { recordSourceFetches } from "../lib/source-fetch-log.js";
 import { curateBrightSourceItems, currentMonthLabel, EVENT_DISCOVERY_MODEL, type MessagesClient } from "../event-discovery/discover.js";
 import type { BrightSourceItem } from "../event-discovery/extractors.js";
 import {
@@ -102,6 +104,13 @@ export async function run(deps: HeadlessRunDeps = {}): Promise<void> {
   console.log(`[headless-discovery] fetched ${activities.length} MAVI activity(ies)`);
 
   if (activities.length > 0) {
+    // Only when something came back: an empty result can't be told apart
+    // from a failed fetch here, and this log must not claim a read it can't.
+    await recordSourceFetches(
+      getSupabaseClient(),
+      [{ pipeline: "headless", sourceKey: MAVI_SOURCE_URL, location: MAVI_FIXED_LOCATION.location, itemsCount: activities.length }],
+      now,
+    );
     const items = activities.map(maviActivityToBrightSourceItem);
 
     // Pre-curation dedup, same mechanism as event-discovery/run.ts's

@@ -25,6 +25,8 @@ import { enrichCandidates, type FetchLike as PageFetchLike } from "../lib/page-f
 import { fetchGoogleAlertEntries, type GoogleAlertEntry } from "../lib/google-alerts.js";
 import { sendGoogleAlertsRunSummaryEmail, type GoogleAlertsRunSummary } from "../lib/notify.js";
 import { recordRunSummary } from "../lib/run-summary-store.js";
+import { getSupabaseClient } from "../lib/supabase-client.js";
+import { recordSourceFetches } from "../lib/source-fetch-log.js";
 import { curateBrightSourceItems, currentMonthLabel, EVENT_DISCOVERY_MODEL, type MessagesClient } from "../event-discovery/discover.js";
 import type { BrightSourceItem } from "../event-discovery/extractors.js";
 import {
@@ -136,6 +138,13 @@ export async function run(deps: GoogleAlertsRunDeps = {}): Promise<void> {
   console.log(`[google-alerts-discovery] fetched ${entries.length} feed entry(ies)`);
 
   if (entries.length > 0) {
+    // A fixed label, never GOOGLE_ALERTS_FEED_URL: the feed url is a secret.
+    // Only when something came back, same reasoning as headless-discovery.
+    await recordSourceFetches(
+      getSupabaseClient(),
+      [{ pipeline: "google_alerts", sourceKey: "google_alerts_feed", location: null, itemsCount: entries.length }],
+      now,
+    );
     // Pre-curation dedup, same mechanism as every other bright-source
     // loop (docs/region-discovery.md) — skip anything already approved
     // (ever) or rejected (within the rolling window) before it ever
