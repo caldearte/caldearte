@@ -37,6 +37,7 @@ import {
 } from "../lib/instagram-fetch-state.js";
 import { sendInstagramRunSummaryEmail, type InstagramRunSummary } from "../lib/notify.js";
 import { recordRunSummary } from "../lib/run-summary-store.js";
+import { recordSourceFetches } from "../lib/source-fetch-log.js";
 import { curateBrightSourceItems, currentMonthLabel, EVENT_DISCOVERY_MODEL, type MessagesClient } from "../event-discovery/discover.js";
 import type { BrightSourceItem } from "../event-discovery/extractors.js";
 import { insertCandidates, loadAllRegions, loadExistingKeys, loadRecentlyRejectedSourceUrls, toCandidateSummary, wouldInsertAsNew } from "../event-discovery/run.js";
@@ -174,6 +175,19 @@ export async function run(deps: InstagramRunDeps = {}): Promise<void> {
       );
     }
   }
+  // Every account read this run, including the quiet ones: a source that was
+  // read and had nothing new still counts as active capture. Accounts of a
+  // failed Apify call aren't in fetchedAccounts, so they leave no row.
+  await recordSourceFetches(
+    getSupabaseClient(),
+    [...fetchedAccounts].map((username) => ({
+      pipeline: "instagram",
+      sourceKey: username,
+      location: accountByUsername.get(username)?.fixedLocation?.location ?? null,
+      itemsCount: rawCountByUsername.get(username) ?? 0,
+    })),
+    now,
+  );
   // Same post URL twice = a collab between two registered accounts, see
   // dedupeItemsBySourceUrl. Must happen before curation, not after.
   const items = dedupeItemsBySourceUrl(rawItems);
