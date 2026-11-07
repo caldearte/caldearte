@@ -45,6 +45,7 @@ import { enrichCandidates, enrichBrightSourceItemDetails, isSocialMediaUrl, type
 import { rehostImage, type RehostImageFn } from "../lib/image-rehost.js";
 import { isRejectionAxis, type RejectionAxis } from "@caldearte/curation-policy";
 import { sendRunSummaryEmail, type RunSummary, type CandidateSummary } from "../lib/notify.js";
+import { recordEventSighting } from "../lib/event-sightings.js";
 import { recordRunSummary } from "../lib/run-summary-store.js";
 import {
   buildBlock,
@@ -1263,6 +1264,11 @@ export async function insertCandidates(
                 : "";
       console.log(`[event-discovery] skipping duplicate: "${c.title}"${reason}`);
       outcomes.set(c, "duplicate_skipped");
+      await recordEventSighting(
+        client,
+        { eventId: existingMatch.id, sourceUrl: c.sourceUrl, pipeline, sourceAccount: c.sourceAccount, stage: "duplicate_skipped" },
+        now,
+      );
       // Without a record, a candidate Haiku approves but insertCandidates
       // drops as a cross-source duplicate was re-fetched, re-curated and
       // re-dropped every run (measured 2026-10-07: ~20 of 86 candidates in a
@@ -1382,6 +1388,11 @@ export async function insertCandidates(
       }
       indexCoreTitle(seen, updatedInfo);
       outcomes.set(c, "replaced");
+      await recordEventSighting(
+        client,
+        { eventId: existingMatch.id, sourceUrl: c.sourceUrl, pipeline, sourceAccount: c.sourceAccount, stage: "replaced" },
+        now,
+      );
       continue;
     }
 
@@ -1463,6 +1474,11 @@ export async function insertCandidates(
     indexCoreTitle(seen, freshInfo);
     outcomes.set(c, "inserted");
     inserted += 1;
+    await recordEventSighting(
+      client,
+      { eventId: insertedRow.id, sourceUrl: c.sourceUrl, pipeline, sourceAccount: c.sourceAccount, stage: "inserted" },
+      now,
+    );
   }
 
   return { insertedCount: inserted, outcomes };
@@ -1897,8 +1913,23 @@ export async function run(deps: RunDeps = {}): Promise<void> {
           const freshItems: BrightSourceItem[] = [];
           let crossSourceDupeCount = 0;
           for (const item of newItems) {
-            if (findPreCurationDuplicate(item, seenKeys)) crossSourceDupeCount++;
-            else freshItems.push(item);
+            const preCurationDuplicate = findPreCurationDuplicate(item, seenKeys);
+            if (preCurationDuplicate) {
+              crossSourceDupeCount++;
+              await recordEventSighting(
+                getSupabaseClient(),
+                {
+                  eventId: preCurationDuplicate.id,
+                  sourceUrl: item.sourceUrl,
+                  pipeline: "bright_source",
+                  sourceAccount: item.sourceAccount ?? null,
+                  stage: "pre_curation_duplicate",
+                },
+                now,
+              );
+            } else {
+              freshItems.push(item);
+            }
           }
           if (crossSourceDupeCount > 0) {
             console.log(`[event-discovery] bright source ${sourceUrl}: ${crossSourceDupeCount}/${newItems.length} item(s) already on the calendar via another source, skipped before curation`);
