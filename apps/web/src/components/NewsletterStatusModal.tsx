@@ -56,6 +56,7 @@ function Hero() {
           alt=""
           fill
           sizes="384px"
+          quality={65}
           priority={i === 0}
           className={`object-cover transition-opacity duration-700 ${i === index ? "opacity-100" : "opacity-0"}`}
         />

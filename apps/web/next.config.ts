@@ -26,7 +26,11 @@ const nextConfig: NextConfig = {
     // Lighthouse image-delivery-insight audit measured ~30-55% real savings
     // per image at 75 with no visible quality loss at card scale (verified
     // 2026-08-19). CardImage.tsx passes quality={65} to actually use this.
-    qualities: [65, 75],
+    // Single value since 2026-11-10: the ficha used to render at 75, and
+    // each quality is its own transformation, so one photo seen as a card
+    // and as a ficha cost twice. Second 75%-of-cap alert in 14 days (after
+    // #691) — the ficha's 600px column doesn't need more than the cards'.
+    qualities: [65],
     // A transformation is one (photo, width, quality) combo, so the number
     // of allowed widths multiplies straight into the monthly quota. Next's
     // defaults offer 15 widths (32px–3840px); 2026-10-27 we hit 75% of the
@@ -37,7 +41,10 @@ const nextConfig: NextConfig = {
     // the ficha's 600px column at 2x (1080, close enough to 1200 for a
     // flyer). All five are Next's own defaults, so already-cached variants
     // at those widths keep being served from cache.
-    imageSizes: [256, 384],
+    // 2026-11-10: thumbnails down to one width, 384 — covers the 96px
+    // thumbnail at both 2x (192) and 3x (288), where 256 alone would push
+    // 3x phones up to 640. 256 is gone, so it stops costing a variant.
+    imageSizes: [384],
     deviceSizes: [640, 828, 1080],
   },
 };
