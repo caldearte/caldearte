@@ -43,7 +43,7 @@ const nextConfig: NextConfig = {
     // at those widths keep being served from cache.
     // 2026-11-10: thumbnails down to one width, 384 — covers the 96px
     // thumbnail at both 2x (192) and 3x (288), where 256 alone would push
-    // 3x phones up to 640. 256 is gone, so it stops costing a variant.
+    // 3x phones up to 640. 256 is gone, so it no longer costs a variant.
     imageSizes: [384],
     deviceSizes: [640, 828, 1080],
   },
