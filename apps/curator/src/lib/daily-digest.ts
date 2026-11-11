@@ -75,17 +75,23 @@ export type DailyDigestNewEvent = DigestEvent & { eventType: string | null };
 
 // Daniel, 2026-10-30: openings first, then guided visits, then everything
 // else. A group with nothing in it is left out.
-const NEW_EVENT_GROUPS: Array<{ label: string; matches: (eventType: string | null) => boolean }> = [
-  { label: "Inauguraciones", matches: (t) => t === "inauguracion" },
-  { label: "Visitas guiadas", matches: (t) => t === "visita_guiada" },
-  { label: "Otros", matches: (t) => t !== "inauguracion" && t !== "visita_guiada" },
+// 2026-11-11: an opening found only after it happened (Parque Sonoro,
+// opened 11-06, first crawled 11-11) read as upcoming under
+// "Inauguraciones" — it now goes to its own "Ya inauguradas" group.
+// isOpeningThisWeek (run.ts) is the "opening is today or later" flag.
+const isPastOpening = (e: DailyDigestNewEvent) => e.eventType === "inauguracion" && !!e.openingDatetime && !e.isOpeningThisWeek;
+const NEW_EVENT_GROUPS: Array<{ label: string; matches: (e: DailyDigestNewEvent) => boolean }> = [
+  { label: "Inauguraciones", matches: (e) => e.eventType === "inauguracion" && !isPastOpening(e) },
+  { label: "Visitas guiadas", matches: (e) => e.eventType === "visita_guiada" },
+  { label: "Ya inauguradas", matches: isPastOpening },
+  { label: "Otros", matches: (e) => e.eventType !== "inauguracion" && e.eventType !== "visita_guiada" },
 ];
 
 export function groupNewEvents(events: DailyDigestNewEvent[]): Array<{ label: string; events: DailyDigestNewEvent[] }> {
   return NEW_EVENT_GROUPS.map(({ label, matches }) => ({
     label,
     events: events
-      .filter((e) => matches(e.eventType))
+      .filter((e) => matches(e))
       .sort((a, b) => (a.openingDatetime ?? "~").localeCompare(b.openingDatetime ?? "~") || a.title.localeCompare(b.title, "es")),
   })).filter((g) => g.events.length > 0);
 }
