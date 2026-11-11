@@ -178,20 +178,51 @@ async function findJustPublishedCarousel(config: InstagramClientConfig, caption:
 // the post go live on the profile. `caption` is only used for the
 // isActivityThrottleError recovery path above — not sent to the API
 // here (the container already carries it, set in createCarouselContainer).
-export async function publishCarousel(config: InstagramClientConfig, containerCreationId: string, caption?: string): Promise<string> {
-  try {
-    const { id } = await graphPost(`${config.igBusinessAccountId}/media_publish`, {
-      creation_id: containerCreationId,
-      access_token: config.accessToken,
-    });
-    return id;
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    if (caption && isActivityThrottleError(message)) {
-      const existingId = await findJustPublishedCarousel(config, caption);
-      if (existingId) return existingId;
+// Real bug found 2026-11-10 (Tuesday 19:30 carousel, 6 events):
+// waitUntilContainerReady saw FINISHED, yet media_publish still answered
+// "Media ID is not available" / "The media is not ready for publishing"
+// (code 9007, subcode 2207027) ~40s later. The run failed, nothing was
+// posted, and the watchdog only re-dispatched it at 04:03 — the carousel
+// went out at 4 AM instead of 19:30. Meta's own message says "please
+// wait for a moment", so retry media_publish a few times with a growing
+// delay instead of failing the whole run.
+function isMediaNotReadyError(message: string): boolean {
+  return message.includes("2207027");
+}
+
+const NOT_READY_RETRY_DELAYS_MS = [10_000, 20_000, 40_000];
+
+export async function publishCarousel(
+  config: InstagramClientConfig,
+  containerCreationId: string,
+  caption?: string,
+  notReadyRetryDelaysMs: number[] = NOT_READY_RETRY_DELAYS_MS,
+): Promise<string> {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      const { id } = await graphPost(`${config.igBusinessAccountId}/media_publish`, {
+        creation_id: containerCreationId,
+        access_token: config.accessToken,
+      });
+      return id;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      if (caption && isActivityThrottleError(message)) {
+        const existingId = await findJustPublishedCarousel(config, caption);
+        if (existingId) return existingId;
+      }
+      if (isMediaNotReadyError(message) && attempt < notReadyRetryDelaysMs.length) {
+        await sleep(notReadyRetryDelaysMs[attempt]);
+        // Never double-post: if a previous attempt actually went through
+        // server-side, return that post instead of publishing again.
+        if (caption) {
+          const existingId = await findJustPublishedCarousel(config, caption, 300_000);
+          if (existingId) return existingId;
+        }
+        continue;
+      }
+      throw err;
     }
-    throw err;
   }
 }
 
