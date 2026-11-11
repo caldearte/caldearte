@@ -158,6 +158,20 @@ test("new events are grouped: openings first, then guided visits, then everythin
   assert.match(buildDailyDigestBody(summaryWith([], [expo, visita, newEvent])), /-- Inauguraciones \(1\) --[\s\S]*-- Visitas guiadas \(1\) --[\s\S]*-- Otros \(1\) --/);
 });
 
+test("an opening that already happened goes to 'Ya inauguradas', not 'Inauguraciones'", () => {
+  const past = { ...newEvent, id: "p", title: "Ya abrió", openingDatetime: "2026-08-20T22:00:00.000Z", isOpeningThisWeek: false };
+  const expo = { ...newEvent, id: "x", title: "Muestra vigente", eventType: "exposicion", openingDatetime: null, isOpeningThisWeek: false };
+  const groups = groupNewEvents([past, expo, newEvent]);
+  assert.deepEqual(
+    groups.map((g) => [g.label, g.events.map((e) => e.id)]),
+    [
+      ["Inauguraciones", [newEvent.id]],
+      ["Ya inauguradas", ["p"]],
+      ["Otros", ["x"]],
+    ],
+  );
+});
+
 test("the new-events section says so plainly when nothing was added", () => {
   assert.match(buildDailyDigestHtmlBody(summaryWith([])), /Nuevos en el sitio \(0\)[\s\S]*ninguno hoy/);
 });
