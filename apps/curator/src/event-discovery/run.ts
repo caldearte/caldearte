@@ -46,6 +46,7 @@ import { rehostImage, type RehostImageFn } from "../lib/image-rehost.js";
 import { isRejectionAxis, type RejectionAxis } from "@caldearte/curation-policy";
 import { sendRunSummaryEmail, type RunSummary, type CandidateSummary } from "../lib/notify.js";
 import { recordRunSummary } from "../lib/run-summary-store.js";
+import { recordSourceFetches } from "../lib/source-fetch-log.js";
 import {
   buildBlock,
   buildSystemPrompt,
@@ -1840,6 +1841,16 @@ export async function run(deps: RunDeps = {}): Promise<void> {
   // candidates, not every other due source's.
   if (dueBrightSources.length > 0) {
     const brightResults = await fetchBrightSourcesFn(dueBrightSources);
+    await recordSourceFetches(
+      getSupabaseClient(),
+      brightResults.map((result) => ({
+        pipeline: "bright_source",
+        sourceKey: result.source.url,
+        location: result.source.fixedLocation?.location ?? null,
+        itemsCount: result.kind === "items" ? result.items.length : 1,
+      })),
+      now,
+    );
     const monthLabel = currentMonthLabel(now);
     for (const result of brightResults) {
       // "items": a source with a real extractor config — deterministic
