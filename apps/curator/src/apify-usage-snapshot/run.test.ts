@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { toCostSnapshotRows } from "./run.js";
+import { run, toCostSnapshotRows } from "./run.js";
 
 // Real response shape, confirmed against Apify's own docs (2026-08-15).
 const REAL_SHAPE_RESPONSE = {
@@ -24,4 +24,20 @@ test("toCostSnapshotRows shapes each day into an upsertable row, date truncated 
 test("toCostSnapshotRows returns an empty array when dailyServiceUsages is empty", () => {
   const rows = toCostSnapshotRows({ data: { totalUsageCreditsUsdAfterVolumeDiscount: 0, dailyServiceUsages: [] } });
   assert.deepEqual(rows, []);
+});
+
+test("run sets a failing exit code when Apify answers with an HTTP error (revoked token, 2026-11-12)", async (t) => {
+  const prevToken = process.env.APIFY_TOKEN;
+  const prevExit = process.exitCode;
+  process.env.APIFY_TOKEN = "test-token";
+  t.mock.method(globalThis, "fetch", async () => new Response("{}", { status: 401 }));
+  t.mock.method(console, "error", () => {});
+  try {
+    await run();
+    assert.equal(process.exitCode, 1);
+  } finally {
+    process.exitCode = prevExit;
+    if (prevToken === undefined) delete process.env.APIFY_TOKEN;
+    else process.env.APIFY_TOKEN = prevToken;
+  }
 });

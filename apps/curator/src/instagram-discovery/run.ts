@@ -55,7 +55,7 @@ export interface InstagramRunDeps {
   now?: Date;
 }
 
-export async function run(deps: InstagramRunDeps = {}): Promise<void> {
+export async function run(deps: InstagramRunDeps = {}): Promise<InstagramRunSummary> {
   const now = deps.now ?? new Date();
   const messagesClient: MessagesClient = deps.messagesClient ?? new Anthropic();
   const shadowClient = createShadowClient();
@@ -89,7 +89,7 @@ export async function run(deps: InstagramRunDeps = {}): Promise<void> {
     // deps.sendInstagramRunSummaryEmailFn is kept for tests that still
     // want to assert on the built InstagramRunSummary's contents.
     await (deps.sendInstagramRunSummaryEmailFn ?? (async () => {}))(summary);
-    return;
+    return summary;
   }
 
   // One Apify call PER CUTOFF DATE, not one for everyone with the oldest
@@ -343,4 +343,5 @@ export async function run(deps: InstagramRunDeps = {}): Promise<void> {
   // is kept for tests that still want to assert on the built
   // InstagramRunSummary's contents.
   await (deps.sendInstagramRunSummaryEmailFn ?? (async () => {}))(summary);
+  return summary;
 }
