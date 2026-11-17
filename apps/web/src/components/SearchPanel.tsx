@@ -104,6 +104,11 @@ function EntityRow({ entity, query }: { entity: SearchEntity; query: string }) {
           <Highlight text={entity.name} query={query} />
         </span>
         <span className={ROW_META}>{[entity.meta, esCL.searchEntityCount(entity.count)].filter(Boolean).join(" · ")}</span>
+        {entity.instagramHandle && (
+          <span className="block truncate mt-[2px] font-fragment-mono text-[13px] text-text-secondary">
+            <Highlight text={`@${entity.instagramHandle}`} query={query.replace(/^@+/, "")} />
+          </span>
+        )}
       </span>
       <span className={ROW_ACTION}>→</span>
     </Link>
