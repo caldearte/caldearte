@@ -72,6 +72,7 @@ import {
   type BrightSource,
 } from "./sources.js";
 import { syncCatalogSafely } from "../lib/catalog.js";
+import { readableTitle } from "./caption-sentence-title.js";
 
 type Region = Tables<"regions">;
 
@@ -1243,6 +1244,15 @@ export async function insertCandidates(
       console.log(`[event-discovery] skipping umbrella post title: "${c.title}" (the post's shows are listed as their own candidates)`);
       outcomes.set(c, "duplicate_skipped");
       continue;
+    }
+
+    // After the umbrella check on purpose: see caption-sentence-title.ts.
+    if (pipeline === "instagram") {
+      const relabelled = readableTitle(c);
+      if (relabelled !== c.title) {
+        console.log(`[event-discovery] caption sentence as title: "${c.title}" -> "${relabelled}"`);
+        c.title = relabelled;
+      }
     }
 
     const titleKey = normalizeTitle(c.title);
