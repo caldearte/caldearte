@@ -1,11 +1,11 @@
 import { esCL } from "@/i18n/es-CL";
 import { jsonLdScriptContent } from "@/lib/eventJsonLd";
-import { instagramProfileUrl } from "@/lib/venueJsonLd";
 import { santiagoDateOfIso } from "@/lib/date";
 import type { EventRecord } from "@/lib/events";
 import { AgendaCard } from "./AgendaSection";
 import EventPageFooter from "./EventPageFooter";
 import EventPageHeader from "./EventPageHeader";
+import InstagramLink from "./InstagramLink";
 
 // Past shows listed on a venue/artist page: the most recent ones only, so
 // an entity with a long history doesn't turn into an endless page.
@@ -70,11 +70,7 @@ export default function CatalogEntityPage({
 
         <div className="mt-[16px] flex flex-wrap items-center gap-x-[16px] gap-y-[6px] font-fragment-mono text-[14px] md:text-[15px] text-text-primary">
           <span>{countText}</span>
-          {instagramHandle && (
-            <a href={instagramProfileUrl(instagramHandle)} target="_blank" rel="noopener noreferrer" className="underline" data-track="outbound_instagram">
-              {esCL.venuePageInstagramLink(instagramHandle)}
-            </a>
-          )}
+          {instagramHandle && <InstagramLink handle={instagramHandle} className="underline" />}
         </div>
 
         {/* One continuous grid (Daniel, 2026-10-13: "de corrido"): past
