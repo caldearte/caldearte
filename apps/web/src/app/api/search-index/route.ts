@@ -19,10 +19,10 @@ export async function GET() {
   const [{ events, regions }, venueData, artistData] = await Promise.all([fetchApprovedEvents(), fetchVenueData(), fetchArtistData()]);
 
   const venues: SearchEntity[] = venueData.venues
-    .map((v) => ({ name: v.name, href: `/espacios/${venueSlug(v)}`, meta: v.comuna, count: venueData.eventsByVenueId[v.id]?.length ?? 0 }))
+    .map((v) => ({ name: v.name, href: `/espacios/${venueSlug(v)}`, meta: v.comuna, count: venueData.eventsByVenueId[v.id]?.length ?? 0, instagramHandle: v.instagramHandle }))
     .filter((v) => v.count > 0);
   const artists: SearchEntity[] = artistData.artists
-    .map((a) => ({ name: a.name, href: `/artistas/${artistSlug(a)}`, meta: null, count: artistData.eventsByArtistId[a.id]?.length ?? 0 }))
+    .map((a) => ({ name: a.name, href: `/artistas/${artistSlug(a)}`, meta: null, count: artistData.eventsByArtistId[a.id]?.length ?? 0, instagramHandle: a.instagramHandle }))
     .filter((a) => a.count > 0);
 
   const index: SearchIndex = {

@@ -96,6 +96,20 @@ test("searchAll: under 3 letters only names that start so, no events", () => {
   assert.deepEqual(groups.map((g) => g.kind), ["places"]);
 });
 
+test("searchAll: venues and artists match their Instagram handle, with or without @", () => {
+  const withHandles: SearchIndex = {
+    ...index,
+    venues: [{ name: "Galería Ejemplo", href: "/espacios/g", meta: "Santiago", count: 2, instagramHandle: "galeria.ejemplo" }],
+    artists: [{ name: "Ana Prueba", href: "/artistas/p", meta: null, count: 1, instagramHandle: "anita_pinta" }],
+  };
+  assert.deepEqual(searchAll(withHandles, "galeria.ej", TODAY).find((g) => g.kind === "venues")?.items.map((v) => v.name), ["Galería Ejemplo"]);
+  assert.deepEqual(searchAll(withHandles, "@anita_", TODAY).find((g) => g.kind === "artists")?.items.map((a) => a.name), ["Ana Prueba"]);
+  // "@" means handle only: a name match alone doesn't count.
+  assert.equal(searchAll(withHandles, "@prueba", TODAY).find((g) => g.kind === "artists"), undefined);
+  // No handle, no crash.
+  assert.deepEqual(searchAll(index, "@zab", TODAY), []);
+});
+
 test("buildSearchPlaces: one row per región, comunas point at it, no repeat of a same-named comuna", () => {
   const places = buildSearchPlaces([
     { name: "Valparaíso", adminRegionName: "Valparaíso" },
