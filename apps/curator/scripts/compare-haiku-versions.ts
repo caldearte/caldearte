@@ -29,6 +29,7 @@ import {
   type RawResult,
 } from "../src/event-discovery/discover.js";
 import { decodeHtmlEntities } from "../src/event-discovery/extractors.js";
+import { stripScriptAndStyle } from "../src/event-discovery/sources.js";
 import { estimateCostUsd, hasPricing } from "../src/lib/pricing.js";
 
 type Expected = "approved" | "rejected" | "vetoed";
@@ -57,12 +58,11 @@ function parseVariants(raw: string): Variant[] {
 
 const VARIANTS = parseVariants(process.env.COMPARE_VARIANTS ?? "claude-haiku-4-5,claude-haiku-5-5:low,claude-haiku-5-5:medium");
 
-// Same regex-only strip as compare-haiku-qwen.ts — good enough for a
-// same-input comparison, every variant sees the identical string.
+// Every variant sees the identical string. Script/style removal reuses the
+// production helper (repeat-until-stable, matches `</script >`) instead of
+// a one-pass regex — CodeQL flags the one-pass form.
 function htmlToBlockContent(html: string): string {
-  const stripped = html
-    .replace(/<script[\s\S]*?<\/script>/gi, "")
-    .replace(/<style[\s\S]*?<\/style>/gi, "")
+  const stripped = stripScriptAndStyle(html)
     .replace(/<[^>]+>/g, " ")
     .replace(/\s+/g, " ")
     .trim();
