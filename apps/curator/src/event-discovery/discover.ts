@@ -166,7 +166,18 @@ export interface MessagesClient {
   };
 }
 
-const MODEL = "claude-haiku-4-5";
+// Haiku 5.5 since 2026-11-18 (was Haiku 4.5): a tenth of the per-token
+// price, and on a same-input comparison of 48 real items
+// (scripts/compare-haiku-versions.ts — 25 on the calendar, 8 rejected, 15
+// vetoed by the MiniMax safety net) it got 40 right against Haiku 4.5's
+// 33, at ~22% of the cost: 4 of the 15 safety-net cases (theatre, panel,
+// performance, period-fashion collection) that 4.5 approved it rejects on
+// its own. Thinking is on by default on this model and billed as output;
+// `low` effort scored as well as `medium` there (40 vs 39) for less.
+// Thinking also counts toward max_tokens — the 16000 ceiling held for
+// every comparison call.
+const MODEL = "claude-haiku-5-5";
+const EFFORT = "low";
 export { MODEL as EVENT_DISCOVERY_MODEL };
 
 // Confirmed with real logged data: of 180 raw Tavily results, 25 had
@@ -847,6 +858,7 @@ export async function curate(
   const response = await client.messages.create({
     model: MODEL,
     max_tokens: 16000,
+    output_config: { effort: EFFORT },
     system: [{ type: "text", text: systemPrompt, cache_control: { type: "ephemeral" } }],
     messages: [{ role: "user", content: block }],
   });
@@ -1484,6 +1496,7 @@ export async function curateBrightSourceItems(
     const response = await client.messages.create({
       model: MODEL,
       max_tokens: 16000,
+      output_config: { effort: EFFORT },
       system: [{ type: "text", text: systemPrompt, cache_control: { type: "ephemeral" } }],
       messages: [{ role: "user", content: block }],
     });

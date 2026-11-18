@@ -1,6 +1,6 @@
 // Prices as of 2026-07 (platform.claude.com/docs/en/pricing). No API exposes
 // this — update this table by hand if Anthropic changes pricing.
-export type ModelId = "claude-haiku-4-5" | "claude-sonnet-5" | "minimax/minimax-m3";
+export type ModelId = "claude-haiku-4-5" | "claude-haiku-5-5" | "claude-sonnet-5" | "minimax/minimax-m3";
 
 interface ModelPricing {
   inputPerMtok: number;
@@ -11,6 +11,16 @@ interface ModelPricing {
 // to $3/$15 — update inputPerMtok/outputPerMtok here when that happens.
 const PRICING: Record<ModelId, ModelPricing> = {
   "claude-haiku-4-5": { inputPerMtok: 1, outputPerMtok: 5 },
+  // Haiku 5.5 (2026-11-18) has two rate cards chosen PER REQUEST by prompt
+  // length: $0.10/$0.50 up to 100K prompt tokens, $0.50/$2.50 above. Only
+  // the short card is modeled here: every Haiku request in this repo is a
+  // chunk or a single-source block, and the largest real prompt in
+  // api_usage_log (bright_source, 30 days to 2026-11-18) was ~45K tokens
+  // on Haiku 4.5 — ~58K after Haiku 5.5's ~30% heavier tokenizer. The
+  // ledger can't price the long card anyway: callers sum usage across
+  // chunks before recording it, so the per-request size is gone by here.
+  // Thinking is on by default on this model and is billed as output.
+  "claude-haiku-5-5": { inputPerMtok: 0.1, outputPerMtok: 0.5 },
   "claude-sonnet-5": { inputPerMtok: 2, outputPerMtok: 10 },
   // OpenRouter list price for MiniMax M3 (2026-09-10, see
   // model-comparison.ts) — the safety-net model. Its reasoning tokens

@@ -1438,7 +1438,7 @@ test(
           .eq("input_tokens", 100)
           .eq("output_tokens", 50);
         assert.ok((usage?.length ?? 0) > 0);
-        assert.ok(usage!.every((row) => row.model === "claude-haiku-4-5"));
+        assert.ok(usage!.every((row) => row.model === "claude-haiku-5-5"));
       });
 
       await t.test("sendRunSummaryEmailFn is called exactly once per run, with comunas reflecting units actually attempted", async () => {
@@ -1609,7 +1609,7 @@ test(
 
         assert.ok(capturedSummary);
         const { estimateCostUsd } = await import("../lib/pricing.js");
-        const expectedAnthropicUsd = estimateCostUsd("claude-haiku-4-5", { inputTokens: 100, outputTokens: 50 });
+        const expectedAnthropicUsd = estimateCostUsd("claude-haiku-5-5", { inputTokens: 100, outputTokens: 50 });
         assert.equal(capturedSummary!.cost.anthropicUsd, expectedAnthropicUsd, "exactly one curate() call happened (unit pass, no bright sources due)");
         assert.equal(capturedSummary!.cost.tavilyCredits, 6, "the stub's fixed credits value for the one searched unit");
         assert.equal(capturedSummary!.cost.tavilyUsd, 6 * 0.008);

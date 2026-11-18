@@ -11,6 +11,16 @@ test("estimateCostUsd: plain input/output tokens, no cache", () => {
   assert.equal(cost, 6);
 });
 
+test("estimateCostUsd: Haiku 5.5 short-prompt card is a tenth of Haiku 4.5", () => {
+  const cost = estimateCostUsd("claude-haiku-5-5", {
+    inputTokens: 1_000_000,
+    outputTokens: 1_000_000,
+    cacheReadInputTokens: 1_000_000,
+  });
+  // $0.10 input + $0.50 output + $0.01 cache read
+  assert.equal(Math.round(cost * 1000) / 1000, 0.61);
+});
+
 test("estimateCostUsd: cache read is 0.1x the input rate", () => {
   const cost = estimateCostUsd("claude-haiku-4-5", {
     inputTokens: 0,

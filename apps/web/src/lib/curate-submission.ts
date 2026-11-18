@@ -17,7 +17,10 @@ import {
 // source text") doesn't make sense for a submitter describing their own
 // event directly, and its JSON schema is shaped for many candidates at
 // once.
-const MODEL = "claude-haiku-4-5";
+// Same model as the curator's event discovery (Haiku 5.5 since
+// 2026-11-18). It thinks by default and thinking counts toward
+// max_tokens, hence the headroom over the ~700-token JSON answer.
+const MODEL = "claude-haiku-5-5";
 
 export interface SubmissionInput {
   title: string;
@@ -97,7 +100,8 @@ export async function curateSubmissionText(input: SubmissionInput): Promise<Cura
   const client = new Anthropic({ apiKey });
   const response = await client.messages.create({
     model: MODEL,
-    max_tokens: 700,
+    max_tokens: 3000,
+    output_config: { effort: "low" },
     messages: [{ role: "user", content: buildPrompt(input) }],
   });
 

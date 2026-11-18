@@ -62,8 +62,11 @@ export function shadowReasoningBudgetTokens(env: NodeJS.ProcessEnv = process.env
 // own budget.
 export function shadowRequestParams(params: Record<string, unknown>, model: string, reasoningBudgetTokens: number): Record<string, unknown> {
   const baseMaxTokens = typeof params.max_tokens === "number" ? params.max_tokens : 0;
+  // `output_config.effort` belongs to the Haiku 5.5 request (2026-11-18);
+  // MiniMax's reasoning is capped by `thinking` below instead.
+  const { output_config: _haikuEffort, ...rest } = params;
   return {
-    ...params,
+    ...rest,
     model,
     max_tokens: baseMaxTokens + reasoningBudgetTokens,
     thinking: reasoningBudgetTokens === 0 ? { type: "disabled" } : { type: "enabled", budget_tokens: reasoningBudgetTokens },
