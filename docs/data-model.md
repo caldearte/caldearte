@@ -400,6 +400,19 @@ instagram_source_post_stats (20260918150000_add_instagram_source_post_stats.sql)
   -- rejected_candidates on source_url. Distinct from instagram_posts,
   -- which is OUR account's carousels and their reach.
 
+event_sightings (20261106120000_add_event_sightings.sql)
+  id, event_id (references events, cascade delete), source_url, pipeline,
+    source_account, stage (inserted | replaced | duplicate_skipped |
+    pre_curation_duplicate | backfill), first_seen_at;
+    unique (event_id, source_url)
+  -- Every source that reported an event, not only the one that won dedup:
+  -- `events` keeps one source per row. Written by insertCandidates and the
+  -- bright-source pre-curation check, best-effort, first sighting wins.
+  -- Only approved candidates reach it, so a source whose post was rejected
+  -- (say, for missing dates) leaves no sighting. Nothing in curation reads
+  -- it; the research repo uses it to measure Instagram/web overlap for
+  -- coverage. No titles or names. Not pruned.
+
 artists, venues, event_artists, outreach_contacts, view artist_history
   (20260928120000_add_artist_venue_catalog.sql)
   artists: id, name, name_key (unique — lowercased, accent-stripped
