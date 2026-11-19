@@ -29,3 +29,9 @@ test("shadowReasoningBudgetTokens: default, explicit, zero, floor at Anthropic's
   assert.equal(shadowReasoningBudgetTokens({ SHADOW_REASONING_BUDGET_TOKENS: "abc" }), 4000);
   assert.equal(shadowReasoningBudgetTokens({ SHADOW_REASONING_BUDGET_TOKENS: "-1" }), 4000);
 });
+
+test("shadowRequestParams drops Haiku's output_config.effort before the MiniMax call", () => {
+  const out = shadowRequestParams({ model: "claude-haiku-5-5", max_tokens: 16000, output_config: { effort: "low" } }, "minimax/minimax-m3", 4000);
+  assert.equal("output_config" in out, false);
+  assert.equal(out.model, "minimax/minimax-m3");
+});

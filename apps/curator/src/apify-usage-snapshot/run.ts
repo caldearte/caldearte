@@ -57,7 +57,11 @@ export async function run(): Promise<void> {
   try {
     const res = await fetch(APIFY_USAGE_URL, { headers: { Authorization: `Bearer ${token}` } });
     if (!res.ok) {
+      // An HTTP error (401 = token revoked, 2026-11-12) isn't a transient
+      // network blip — fail the run so it shows red instead of passing
+      // silently. A thrown fetch below stays best-effort.
       console.error(`[apify-usage-snapshot] Apify usage API returned ${res.status}`);
+      process.exitCode = 1;
       return;
     }
     response = (await res.json()) as ApifyUsageResponse;

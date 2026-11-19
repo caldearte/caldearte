@@ -11,7 +11,10 @@
 import { OPENINGS_LABEL, type DigestSection } from "../lib/notify.js";
 import { recordUsage, getConfigNumber, getCurrentMonthSpend } from "../lib/usage-tracking.js";
 
-const MODEL = "claude-haiku-4-5" as const;
+const MODEL = "claude-haiku-5-5" as const;
+// Haiku 5.5 thinks by default and thinking counts toward max_tokens, so
+// each caller's text budget gets this much on top (2026-11-18).
+const THINKING_HEADROOM_TOKENS = 2000;
 
 // Narrow structural interface, same pattern as event-discovery/discover.ts's
 // own MessagesClient — lets tests inject a stub without hitting the real API.
@@ -57,7 +60,8 @@ async function callHaikuForIntro(system: string, userContent: string, maxTokens:
   try {
     const response = await client.messages.create({
       model: MODEL,
-      max_tokens: maxTokens,
+      max_tokens: maxTokens + THINKING_HEADROOM_TOKENS,
+      output_config: { effort: "low" },
       system,
       messages: [{ role: "user", content: userContent }],
     });

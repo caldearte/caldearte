@@ -18,6 +18,7 @@
     "poc-tavily": "node --env-file=../../.env --import tsx scripts/poc-tavily-discover.ts",
     "query-variant-test": "node --env-file=../../.env --import tsx scripts/query-variant-test.ts",
     "compare-models": "node --env-file=../../.env --import tsx scripts/compare-haiku-qwen.ts",
+    "compare-haiku-versions": "node --env-file=../../.env --import tsx scripts/compare-haiku-versions.ts",
     "measure-account-category-exclusions": "node --env-file=../../.env --import tsx scripts/measure-account-category-exclusions.ts"
   },
   "dependencies": {

@@ -205,3 +205,49 @@ test("fetchRetryingConnectErrors does NOT retry ECONNRESET — the request may a
   await assert.rejects(() => withStubFetch(stub, () => fetchRetryingConnectErrors(new URL("https://example.com"), { method: "POST" }, 0)), /fetch failed/);
   assert.equal(calls, 1);
 });
+
+const NOT_READY_ERROR = { error: { message: "Media ID is not available", code: 9007, error_subcode: 2207027 } };
+
+test("publishCarousel retries media_publish on 'media not ready' (2207027) — real bug found 2026-11-10: container said FINISHED but publish failed, carousel went out at 4 AM via the watchdog", async () => {
+  let posts = 0;
+  const stub = (async (_input: RequestInfo | URL, init?: RequestInit) => {
+    if (init?.method === "POST") {
+      posts++;
+      return posts < 3 ? jsonResponse(NOT_READY_ERROR, false) : jsonResponse({ id: "published-id" });
+    }
+    return jsonResponse({ data: [] });
+  }) as typeof fetch;
+
+  const id = await withStubFetch(stub, () => publishCarousel(CONFIG, "container-123", "caption", [0, 0, 0]));
+  assert.equal(id, "published-id");
+  assert.equal(posts, 3);
+});
+
+test("publishCarousel does not re-publish on 'media not ready' if the carousel is already live", async () => {
+  let posts = 0;
+  const stub = (async (_input: RequestInfo | URL, init?: RequestInit) => {
+    if (init?.method === "POST") {
+      posts++;
+      return jsonResponse(NOT_READY_ERROR, false);
+    }
+    return jsonResponse({ data: [{ id: "live-id", caption: "caption", timestamp: new Date().toISOString(), media_type: "CAROUSEL_ALBUM" }] });
+  }) as typeof fetch;
+
+  const id = await withStubFetch(stub, () => publishCarousel(CONFIG, "container-123", "caption", [0, 0, 0]));
+  assert.equal(id, "live-id");
+  assert.equal(posts, 1);
+});
+
+test("publishCarousel gives up after the 'media not ready' retries run out", async () => {
+  let posts = 0;
+  const stub = (async (_input: RequestInfo | URL, init?: RequestInit) => {
+    if (init?.method === "POST") {
+      posts++;
+      return jsonResponse(NOT_READY_ERROR, false);
+    }
+    return jsonResponse({ data: [] });
+  }) as typeof fetch;
+
+  await assert.rejects(() => withStubFetch(stub, () => publishCarousel(CONFIG, "container-123", "caption", [0, 0])), /2207027/);
+  assert.equal(posts, 3);
+});

@@ -76,6 +76,7 @@ export default function CardImage({ imageUrl, sourceUrl, sensitivityTags, fullSi
             fetchPriority={priority ? "high" : "auto"}
             unoptimized={unoptimized}
             onError={() => setFailed(true)}
+            quality={65}
             className={`object-contain transition-[filter] duration-300 ${blurClass}`}
           />
         ) : (

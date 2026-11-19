@@ -11,6 +11,7 @@ import { eventTense, matchRange, MIN_QUERY_FOR_EVENTS, normalizeSearch, searchAl
 import { titleWithTypePrefix } from "@/lib/social/flyerText";
 import { useSearchIndex } from "@/lib/useSearchIndex";
 import { ExpoTile } from "./CarteleraSection";
+import { InstagramGlyph } from "./InstagramLink";
 import SiteWordmark from "./SiteWordmark";
 
 interface SearchPanelProps {
@@ -96,6 +97,8 @@ const ROW_NAME = "block truncate font-lato font-black text-[20px] md:text-[24px]
 const ROW_META = "block mt-[2px] font-geist font-semibold text-[12px] tracking-[1px] uppercase text-text-secondary";
 const ROW_ACTION = "shrink-0 font-fragment-mono text-[13px] text-text-primary group-hover:text-brand-magenta";
 
+// The "@" is shown, not linked (Daniel, 2026-11-16): the whole row opens
+// our page first; the Instagram link lives on that page.
 function EntityRow({ entity, query }: { entity: SearchEntity; query: string }) {
   return (
     <Link href={entity.href} data-search-item className={ROW}>
@@ -104,6 +107,14 @@ function EntityRow({ entity, query }: { entity: SearchEntity; query: string }) {
           <Highlight text={entity.name} query={query} />
         </span>
         <span className={ROW_META}>{[entity.meta, esCL.searchEntityCount(entity.count)].filter(Boolean).join(" · ")}</span>
+        {entity.instagramHandle && (
+          <span className="mt-[2px] flex items-center gap-[6px] font-fragment-mono text-[13px] text-text-secondary">
+            <InstagramGlyph />
+            <span className="truncate">
+              <Highlight text={`@${entity.instagramHandle}`} query={query.replace(/^@+/, "")} />
+            </span>
+          </span>
+        )}
       </span>
       <span className={ROW_ACTION}>→</span>
     </Link>

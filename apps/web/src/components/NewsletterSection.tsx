@@ -130,10 +130,10 @@ export default function NewsletterSection({ adminRegionName = "" }: NewsletterSe
       <div className="flex flex-col gap-[10px] md:gap-[14px] items-center w-full mt-auto">
         <div className="grid grid-cols-2 gap-[8px] md:gap-[10px] w-full">
           <div className="relative aspect-[100/75] md:aspect-[1024/612] rounded-[8px] md:rounded-none overflow-hidden">
-            <Image src="/images/newsletter/hero-1.jpg" alt="" fill sizes="400px" className="object-cover" />
+            <Image src="/images/newsletter/hero-1.jpg" alt="" fill sizes="400px" quality={65} className="object-cover" />
           </div>
           <div className="relative aspect-[100/75] md:aspect-[1024/612] rounded-[8px] md:rounded-none overflow-hidden">
-            <Image src="/images/newsletter/hero-3.jpg" alt="" fill sizes="400px" className="object-cover" />
+            <Image src="/images/newsletter/hero-3.jpg" alt="" fill sizes="400px" quality={65} className="object-cover" />
           </div>
         </div>
         <p className="font-geist font-semibold text-[12px] md:text-[13px] text-text-primary tracking-[2px] text-center uppercase">

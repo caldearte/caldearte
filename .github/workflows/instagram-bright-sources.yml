@@ -69,6 +69,18 @@ on:
 permissions:
   contents: read
 
+# One run at a time, 2026-11-09: after a GitHub Actions outage the
+# delayed scheduled run and a manual workflow_dispatch started 2 minutes
+# apart and ran side by side — dedup only sees rows already committed,
+# so the two runs inserted the same posts twice (18 duplicates removed
+# by hand, Apify + LLM paid twice). A second trigger now queues behind
+# the running one instead, and its dedup sees the first run's rows.
+# Per-workflow group on purpose: GitHub keeps only one pending run per
+# group, so a group shared with other pipelines could silently drop one.
+concurrency:
+  group: instagram-bright-sources
+  cancel-in-progress: false
+
 jobs:
   discover-instagram:
     runs-on: ubuntu-latest

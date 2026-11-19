@@ -17,6 +17,10 @@ export interface SearchEntity {
   meta: string | null;
   // Shows registered for it.
   count: number;
+  // Its Instagram account, when the catalog has it (2026-11-16, Daniel:
+  // "si tenemos el @ de IG ... que aparezca"): shown on the result row
+  // and searchable, with or without the "@".
+  instagramHandle?: string | null;
 }
 
 export interface SearchPlace {
@@ -132,9 +136,18 @@ export function compareEvents(a: { e: EventRecord; rank: number }, b: { e: Event
   return eventDate(b.e).localeCompare(eventDate(a.e));
 }
 
+// A venue or artist matches by name or by its Instagram handle; a query
+// starting with "@" is read as a handle ("@ani" finds anita_pinta).
+function rankEntity(item: SearchEntity, query: string): number | null {
+  const handleQuery = query.replace(/^@+/, "");
+  const handle = item.instagramHandle ? rankText(item.instagramHandle, handleQuery) : null;
+  if (query.startsWith("@")) return handle;
+  return best(rankText(item.name, query), handle);
+}
+
 function rankEntities(items: SearchEntity[], query: string, maxRank: number): { item: SearchEntity; rank: number }[] {
   return items
-    .map((item) => ({ item, rank: rankText(item.name, query) }))
+    .map((item) => ({ item, rank: rankEntity(item, query) }))
     .filter((x): x is { item: SearchEntity; rank: number } => x.rank !== null && x.rank <= maxRank)
     .sort((a, b) => a.rank - b.rank || b.item.count - a.item.count || a.item.name.localeCompare(b.item.name, "es"));
 }
