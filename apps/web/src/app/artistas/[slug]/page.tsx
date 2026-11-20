@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { fetchArtistData } from "@/lib/artists";
+import { findInWindows } from "@/lib/events";
 import { buildArtistPageData, findArtistBySlug } from "@/lib/artistPage";
 import { artistSlug } from "@/lib/venueSlug";
 import { buildArtistJsonLd } from "@/lib/artistJsonLd";
@@ -15,7 +16,7 @@ interface PageParams {
 // Same ISR settings and reasoning as app/espacios/[slug]/page.tsx and
 // app/eventos/[id]/page.tsx: ~400 artist pages must not be pre-rendered on
 // every build (the 2026-09-18 ISR Writes incident), only on first request.
-export const revalidate = 600;
+export const revalidate = 86400;
 export const dynamicParams = true;
 
 export function generateStaticParams(): Array<{ slug: string }> {
@@ -26,8 +27,10 @@ const SITE = "https://www.caldearte.com";
 
 export async function generateMetadata({ params }: { params: Promise<PageParams> }): Promise<Metadata> {
   const { slug } = await params;
-  const { artists, eventsByArtistId } = await fetchArtistData();
-  const artist = findArtistBySlug(artists, slug);
+  const {
+    data: { eventsByArtistId },
+    found: artist,
+  } = await findInWindows(fetchArtistData, (d) => findArtistBySlug(d.artists, slug) ?? undefined);
   if (!artist) return {};
 
   const page = buildArtistPageData(artist, eventsByArtistId[artist.id] ?? [], todayInSantiago());
@@ -49,8 +52,10 @@ export async function generateMetadata({ params }: { params: Promise<PageParams>
 
 export default async function ArtistPage({ params }: { params: Promise<PageParams> }) {
   const { slug } = await params;
-  const { artists, eventsByArtistId } = await fetchArtistData();
-  const artist = findArtistBySlug(artists, slug);
+  const {
+    data: { eventsByArtistId },
+    found: artist,
+  } = await findInWindows(fetchArtistData, (d) => findArtistBySlug(d.artists, slug) ?? undefined);
   if (!artist) notFound();
 
   const { current, past, totalEvents } = buildArtistPageData(artist, eventsByArtistId[artist.id] ?? [], todayInSantiago());

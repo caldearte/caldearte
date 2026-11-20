@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { revalidateTag } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { auth, isAdminSession } from "@/lib/auth";
 import { APPROVED_EVENTS_CACHE_TAG } from "@/lib/events";
 
@@ -56,6 +56,13 @@ export async function POST(request: Request) {
   // while-revalidate) profile — a Route Handler can't use updateTag
   // (Server Actions only), and the whole point here is the moderator
   // seeing their own change right away, not a background refresh.
-  if (res.ok) revalidateTag(APPROVED_EVENTS_CACHE_TAG, { expire: 0 });
+  // Pages now keep their HTML for an hour (home) or a day (fichas), and
+  // a tag on unstable_cache data isn't guaranteed to reach the page entry
+  // that rendered it — so purge every page too. Admin actions are rare;
+  // each page just regenerates on its next visit.
+  if (res.ok) {
+    revalidateTag(APPROVED_EVENTS_CACHE_TAG, { expire: 0 });
+    revalidatePath("/", "layout");
+  }
   return NextResponse.json(data, { status: res.ok ? 200 : 502 });
 }

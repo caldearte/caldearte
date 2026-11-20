@@ -41,7 +41,15 @@ import HomeClient from "@/components/HomeClient";
 // flash of content that should have been filtered — at worst a visitor
 // briefly sees the more-filtered default before their own looser
 // preference loads in.
-export const revalidate = 600;
+//
+// 600 → 3600s on 2026-11-20: ISR Writes reached 100% of the Hobby quota
+// (242K/200K in 30 days, a steady ~8K a day with no build spikes). One
+// home regeneration writes ~47 units (HTML + two RSC segments), and with
+// visits all day long it was regenerating up to 144 times a day. New
+// events land a few times a day at most, so an hour of staleness costs
+// nothing; admin removals still show up at once (api/admin/* also call
+// revalidatePath).
+export const revalidate = 3600;
 
 // Here and not in layout.tsx: layout metadata is inherited by every route
 // without its own `alternates`, so a canonical "/" there would point

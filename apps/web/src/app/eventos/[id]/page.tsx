@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { fetchApprovedEvents } from "@/lib/events";
+import { fetchApprovedEvents, findInWindows } from "@/lib/events";
 import { fetchVenueData } from "@/lib/venues";
 import { findVenueLinkForEvent, type VenueLink } from "@/lib/venuePage";
 import { fetchArtistData } from "@/lib/artists";
@@ -28,7 +28,15 @@ interface PageParams {
 // unstable_cache window (lib/events.ts), same 2026-08-28 fix, same real
 // incident (see this file's own comment on generateMetadata/EventPage
 // below).
-export const revalidate = 600;
+//
+// 600 → 86400s on 2026-11-20 (ISR Writes at 100% of the Hobby quota,
+// ~8K a day): in a 12h sample, 171 different event pages were each
+// rewritten about twice while being read about once — crawlers visit a
+// page every few hours, always after the 600s window, so almost every
+// visit was a regeneration. A detail page's own content barely changes
+// once written; a day of staleness is fine, and admin removals still
+// invalidate everything at once (api/admin/* call revalidatePath).
+export const revalidate = 86400;
 
 // Third Vercel free-tier incident, 2026-09-18: ISR Writes at 294K of the
 // Hobby plan's 200K. The 2026-08-28 fix (below, and app/page.tsx) had
@@ -51,8 +59,7 @@ export function generateStaticParams(): Array<{ id: string }> {
 
 export async function generateMetadata({ params }: { params: Promise<PageParams> }): Promise<Metadata> {
   const { id } = await params;
-  const { events } = await fetchApprovedEvents();
-  const event = events.find((e) => e.id === id);
+  const { found: event } = await findInWindows(fetchApprovedEvents, (d) => d.events.find((e) => e.id === id));
   if (!event) return {};
 
   const description = truncateDescription(event.description) ?? event.title;
@@ -114,8 +121,10 @@ export async function generateMetadata({ params }: { params: Promise<PageParams>
 // again (see `revalidate` above).
 export default async function EventPage({ params }: { params: Promise<PageParams> }) {
   const { id } = await params;
-  const { events, regions } = await fetchApprovedEvents();
-  const event = events.find((e) => e.id === id);
+  const {
+    data: { events, regions },
+    found: event,
+  } = await findInWindows(fetchApprovedEvents, (d) => d.events.find((e) => e.id === id));
   if (!event) notFound();
 
   // The venue and artist links are niceties, never a reason for this page
@@ -124,7 +133,7 @@ export default async function EventPage({ params }: { params: Promise<PageParams
   // its migration). allSettled so one failing doesn't take the other down.
   let venueLink: VenueLink | null = null;
   let artistLinks: ArtistLink[] = [];
-  const [venueData, artistData] = await Promise.allSettled([fetchVenueData(), fetchArtistData()]);
+  const [venueData, artistData] = await Promise.allSettled([fetchVenueData("daily"), fetchArtistData("daily")]);
   if (venueData.status === "fulfilled") venueLink = findVenueLinkForEvent(venueData.value, event.id);
   else console.error(`[eventos/${event.id}] venue link left out: ${(venueData.reason as Error).message}`);
   if (artistData.status === "fulfilled") artistLinks = findArtistLinksForEvent(artistData.value, event.id);
