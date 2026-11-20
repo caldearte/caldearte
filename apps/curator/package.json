@@ -25,6 +25,7 @@
   "dependencies": {
     "@anthropic-ai/sdk": "^0.111.0",
     "@caldearte/curation-policy": "workspace:*",
+    "@caldearte/event-matching": "workspace:*",
     "@caldearte/shared-types": "workspace:*",
     "@supabase/supabase-js": "^2.110.2",
     "apify-client": "^2.25.0",

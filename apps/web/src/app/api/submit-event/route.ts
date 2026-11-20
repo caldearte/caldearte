@@ -4,6 +4,8 @@ import { clientIp, isWithinRateLimit } from "@/lib/rate-limit";
 import { isValidEmail } from "@/lib/email";
 import { curateSubmissionText, curateSubmissionImage, type SubmissionInput, type CurationDecision } from "@/lib/curate-submission";
 import { parseLocalDatetimeToUtcIso } from "@/lib/santiagoTime";
+import { getSupabaseClient } from "@/lib/supabase-client";
+import { findSubmissionMatches, santiagoDate, type LiveEventForMatch, type SubmissionMatches } from "@caldearte/event-matching";
 
 // Same inbox as /api/contact — Daniel wants a copy of every submission
 // (approved or rejected) with the full form content and Haiku's
@@ -39,6 +41,73 @@ interface NotifyParams {
   decision: CurationDecision;
   finalStatus: "approved" | "rejected";
   eventId?: string;
+  matches?: SubmissionMatches<LiveEventForMatch>;
+  supersededIds?: string[];
+}
+
+// How far back to look for the same show already on the calendar. An
+// Instagram post announcing an opening lands a few days to a few weeks
+// before it; a row whose run ended long before this opening can't be it.
+const MATCH_WINDOW_DAYS = 60;
+const PAGE_SIZE = 1000;
+
+// The same show already live from a scraper (see
+// packages/event-matching/src/submission-match.ts). Best-effort: a failed
+// lookup must not block a real submission, it only means no replacement
+// happens this time — the same outcome as before this check existed.
+async function findCalendarMatches(
+  title: string,
+  placeName: string,
+  regionId: string,
+  openingDatetimeUtc: string,
+  runEndDate: string,
+): Promise<SubmissionMatches<LiveEventForMatch> | undefined> {
+  const since = new Date(Date.parse(openingDatetimeUtc) - MATCH_WINDOW_DAYS * 24 * 60 * 60 * 1000).toISOString();
+  const openingDay = santiagoDate(openingDatetimeUtc);
+  try {
+    // Still open on the submitted opening day, or (no closing date known)
+    // opened within the window. ~360 rows on 2026-11-20; paged anyway,
+    // since PostgREST silently stops at 1000.
+    const rows: LiveEventForMatch[] = [];
+    for (let from = 0; ; from += PAGE_SIZE) {
+      const { data, error } = await getSupabaseClient()
+        .from("events_public")
+        .select("id, title, place_name, region_id, opening_datetime, run_start_date, run_end_date")
+        .or(`run_end_date.gte.${openingDay},and(run_end_date.is.null,opening_datetime.gte.${since})`)
+        .order("id")
+        .range(from, from + PAGE_SIZE - 1);
+      if (error) throw error;
+      const page = data ?? [];
+      rows.push(...page.filter((row): row is LiveEventForMatch => row.id !== null && row.title !== null));
+      if (page.length < PAGE_SIZE) break;
+    }
+    return findSubmissionMatches({ title, placeName, regionId, openingDatetime: openingDatetimeUtc, runEndDate }, rows);
+  } catch (err) {
+    console.error("[submit-event] calendar match lookup failed", err);
+    return undefined;
+  }
+}
+
+function describeMatch(e: LiveEventForMatch): string {
+  const opening = e.opening_datetime ? e.opening_datetime.slice(0, 10) : "sin fecha";
+  return `- "${e.title}" — ${e.place_name ?? "sin espacio"}, ${opening} → ${e.run_end_date ?? "?"}\n  https://www.caldearte.com/eventos/${e.id}`;
+}
+
+function matchesSection(matches: SubmissionMatches<LiveEventForMatch> | undefined, supersededIds: string[] | undefined): string {
+  if (!matches) return "";
+  const superseded = matches.supersede.filter((e) => supersededIds?.includes(e.id));
+  const notReplaced = matches.supersede.filter((e) => !supersededIds?.includes(e.id));
+  const parts: string[] = [];
+  if (superseded.length > 0) {
+    parts.push(`--- Reemplazó a (quitado del calendario, queda la del formulario) ---\n${superseded.map(describeMatch).join("\n")}`);
+  }
+  if (notReplaced.length > 0) {
+    parts.push(`--- Duplicado detectado pero NO se pudo quitar (revisar a mano) ---\n${notReplaced.map(describeMatch).join("\n")}`);
+  }
+  if (matches.possible.length > 0) {
+    parts.push(`--- Posibles duplicados (no se tocaron, revisar) ---\n${matches.possible.map(describeMatch).join("\n")}`);
+  }
+  return parts.length > 0 ? `\n\n${parts.join("\n\n")}` : "";
 }
 
 // Best-effort — a Resend failure here must never fail the submitter's own
@@ -52,7 +121,7 @@ async function notifyDaniel(params: NotifyParams): Promise<void> {
     return;
   }
 
-  const { input, submitterEmail, submitterName, decision, finalStatus, eventId } = params;
+  const { input, submitterEmail, submitterName, decision, finalStatus, eventId, matches, supersededIds } = params;
   const outcomeLabel = finalStatus === "approved" ? "APROBADA" : "RECHAZADA";
   const eventLine = eventId ? `\nPublicada en: https://www.caldearte.com/eventos/${eventId}\n` : "";
 
@@ -72,7 +141,7 @@ Descripción: ${input.description}
 Estado: ${decision.status}
 Ejes sensibles: ${decision.sensitivityTags.length > 0 ? decision.sensitivityTags.join(", ") : "(ninguno)"}
 Razonamiento interno: ${decision.curationReasoning}
-Mensaje mostrado al submitter: ${decision.publicMessage}`;
+Mensaje mostrado al submitter: ${decision.publicMessage}${matchesSection(matches, supersededIds)}`;
 
   try {
     const resend = new Resend(apiKey);
@@ -183,8 +252,8 @@ export async function POST(request: Request) {
   if (finalDecision.status === "rejected") {
     // Never persisted — mirrors that `events` never held rejected
     // candidates either way (see rejected_candidates for the scraped-
-    // pipeline equivalent, not reused here — nothing to dedupe a one-off
-    // self-reported submission against).
+    // pipeline equivalent, not reused here). A rejected submission also
+    // never replaces anything already on the calendar.
     await notifyDaniel({ input: submissionInput, submitterEmail, submitterName, decision: finalDecision, finalStatus: "rejected" });
     return NextResponse.json({
       status: "rejected",
@@ -198,6 +267,12 @@ export async function POST(request: Request) {
     console.error("[submit-event] NEXT_PUBLIC_SUPABASE_URL or ADMIN_ACTIONS_SECRET not set");
     return NextResponse.json({ status: "error" }, { status: 500 });
   }
+
+  // The form's row wins over the same show already scraped (Daniel,
+  // 2026-11-20, after "Rotten" was doubled 2026-11-12): the Edge Function
+  // inserts this row, then removes those, copying over what they knew that
+  // the form doesn't ask for.
+  const matches = await findCalendarMatches(title, galleryName, regionId, openingDatetimeUtc, runEndDate);
 
   const res = await fetch(`${supabaseUrl}/functions/v1/submit-event`, {
     method: "POST",
@@ -217,10 +292,11 @@ export async function POST(request: Request) {
       submitterEmail,
       submitterName,
       images: encodedImages,
+      supersedesEventIds: matches?.supersede.map((e) => e.id) ?? [],
     } satisfies Record<string, unknown>),
   });
 
-  const data = (await res.json().catch(() => ({ status: "error" }))) as { status: string; eventId?: string };
+  const data = (await res.json().catch(() => ({ status: "error" }))) as { status: string; eventId?: string; supersededIds?: string[] };
   if (!res.ok || data.status !== "ok") {
     console.error("[submit-event] commit function failed", data);
     return NextResponse.json({ status: "error" }, { status: 502 });
@@ -233,6 +309,8 @@ export async function POST(request: Request) {
     decision: finalDecision,
     finalStatus: "approved",
     eventId: data.eventId,
+    matches,
+    supersededIds: data.supersededIds ?? [],
   });
 
   return NextResponse.json({

@@ -3,7 +3,7 @@ import type { NextConfig } from "next";
 import { EVENT_IMAGE_HOSTS, supabaseStorageHost } from "./src/lib/imageHosts";
 
 const nextConfig: NextConfig = {
-  transpilePackages: ["@caldearte/shared-types"],
+  transpilePackages: ["@caldearte/shared-types", "@caldearte/event-matching"],
   // Hides the floating "N" dev-mode route indicator — errors still surface.
   devIndicators: false,
   images: {

@@ -96,6 +96,14 @@ events
     apps/web/src/i18n/es-CL.ts's cardMenuRemoveReasons), kept for future
     pattern analysis (e.g. if "convocatoria" removals pile up, that's a
     signal Event Discovery should filter that category at the source).
+    One automatic writer since 2026-11-20: when a venue submits a show
+    through "agrega tu expo" and the same show is already live from a
+    scraper, the submit-event Edge Function soft-removes the scraped row
+    with removed_reason "duplicate: superseded by user submission <id>" —
+    the form's row wins (packages/event-matching's findSubmissionMatches
+    decides; uncertain matches are only listed in the notification email).
+    The reverse never happens: a scraped candidate never replaces a
+    submitted row (run.ts's shouldReplaceExisting).
     events_public excludes any row with removed_at set, same as it
     excludes non-approved curation_status.
   admin_sensitive_marked_at (nullable, added 2026-08-06) — manual admin

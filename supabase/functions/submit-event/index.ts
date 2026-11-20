@@ -12,10 +12,15 @@
 //
 // Only ever called for an APPROVED submission — a rejected one is never
 // persisted (mirrors that `events` never held rejected candidates either;
-// see rejected_candidates, which this form deliberately doesn't use — a
-// one-off self-reported submission has no future scraped candidate to
-// dedupe against).
-import { createClient } from "npm:@supabase/supabase-js@2";
+// see rejected_candidates, which this form deliberately doesn't use).
+//
+// Since 2026-11-20 it also replaces the same show already on the calendar
+// from a scraper: the route finds those rows (packages/event-matching's
+// findSubmissionMatches) and passes their ids as supersedesEventIds; after
+// the insert succeeds, each one hands over the fields the form doesn't ask
+// for and is soft-removed. The form's row wins — the venue's own word over
+// a repost of it (Daniel, after "Rotten" was doubled 2026-11-12).
+import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -48,9 +53,15 @@ interface SubmitEventBody {
   submitterEmail?: string;
   submitterName?: string | null;
   images?: SubmittedImage[];
+  supersedesEventIds?: string[];
 }
 
-type Result = { status: "ok"; eventId: string } | { status: "unauthorized" | "invalid" | "error" };
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+// The route only passes strong matches; more than a handful would mean the
+// matcher misfired, and then nothing is removed.
+const MAX_SUPERSEDED = 5;
+
+type Result = { status: "ok"; eventId: string; supersededIds: string[] } | { status: "unauthorized" | "invalid" | "error" };
 
 function jsonResponse(result: Result, httpStatus = 200): Response {
   return new Response(JSON.stringify(result), { status: httpStatus, headers: { "content-type": "application/json" } });
@@ -69,6 +80,14 @@ Deno.serve(async (req) => {
   }
 
   const images = body.images ?? [];
+  const supersedesEventIds = body.supersedesEventIds ?? [];
+  if (
+    !Array.isArray(supersedesEventIds) ||
+    supersedesEventIds.length > MAX_SUPERSEDED ||
+    !supersedesEventIds.every((id) => typeof id === "string" && UUID.test(id))
+  ) {
+    return jsonResponse({ status: "invalid" }, 400);
+  }
   if (
     !body.title?.trim() ||
     !body.freeformLocation?.trim() ||
@@ -153,5 +172,66 @@ Deno.serve(async (req) => {
     if (imagesError) console.error("submit-event: event_images insert failed", imagesError);
   }
 
-  return jsonResponse({ status: "ok", eventId: inserted.id });
+  const supersededIds = await supersedeExisting(client, inserted.id, supersedesEventIds);
+
+  return jsonResponse({ status: "ok", eventId: inserted.id, supersededIds });
 });
+
+// Fields the form doesn't collect but a scraped row may know. Copied only
+// where the new row has nothing, never over what the gallery itself wrote.
+// Not venue_id (the scraped row's venue can be wrong — "Rotten"'s was its
+// street address; the catalog sync links the new row itself) nor
+// run_start_date (often backfilled from the post's own date, while the
+// form's opening already is the start).
+const CARRIED_OVER = ["address", "medium_type", "artist_instagram_handle"] as const;
+
+// Best-effort, row by row: the submission is already live, so a failure here
+// leaves a duplicate (today's behavior), never a missing event. Only rows
+// still live and approved are touched, and never another submission's
+// row — two forms for the same show are for a person to sort out.
+async function supersedeExisting(
+  client: SupabaseClient,
+  newEventId: string,
+  ids: string[],
+): Promise<string[]> {
+  const superseded: string[] = [];
+  for (const id of ids) {
+    const { data: old, error: lookupError } = await client
+      .from("events")
+      .select(`id, source, curation_status, removed_at, ${CARRIED_OVER.join(", ")}`)
+      .eq("id", id)
+      .maybeSingle();
+    if (lookupError || !old) {
+      console.error("submit-event: superseded row lookup failed", id, lookupError);
+      continue;
+    }
+    const row = old as unknown as Record<string, unknown>;
+    if (row.removed_at || row.curation_status !== "approved" || row.source === "submitted") continue;
+
+    const carried: Record<string, unknown> = {};
+    for (const field of CARRIED_OVER) {
+      if (row[field] !== null && row[field] !== undefined) carried[field] = row[field];
+    }
+    if (Object.keys(carried).length > 0) {
+      const { data: current } = await client.from("events").select(CARRIED_OVER.join(", ")).eq("id", newEventId).maybeSingle();
+      const currentRow = (current ?? {}) as unknown as Record<string, unknown>;
+      const missing = Object.fromEntries(Object.entries(carried).filter(([field]) => currentRow[field] === null || currentRow[field] === undefined));
+      if (Object.keys(missing).length > 0) {
+        const { error: carryError } = await client.from("events").update(missing).eq("id", newEventId);
+        if (carryError) console.error("submit-event: carry-over failed", id, carryError);
+      }
+    }
+
+    const { error: removeError } = await client
+      .from("events")
+      .update({ removed_at: new Date().toISOString(), removed_reason: `duplicate: superseded by user submission ${newEventId}` })
+      .eq("id", id)
+      .is("removed_at", null);
+    if (removeError) {
+      console.error("submit-event: superseding failed", id, removeError);
+      continue;
+    }
+    superseded.push(id);
+  }
+  return superseded;
+}

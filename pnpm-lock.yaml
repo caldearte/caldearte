@@ -32,6 +32,9 @@ importers:
       '@caldearte/curation-policy':
         specifier: workspace:*
         version: link:../../packages/curation-policy
+      '@caldearte/event-matching':
+        specifier: workspace:*
+        version: link:../../packages/event-matching
       '@caldearte/shared-types':
         specifier: workspace:*
         version: link:../../packages/shared-types
@@ -60,6 +63,9 @@ importers:
       '@caldearte/curation-policy':
         specifier: workspace:*
         version: link:../../packages/curation-policy
+      '@caldearte/event-matching':
+        specifier: workspace:*
+        version: link:../../packages/event-matching
       '@caldearte/shared-types':
         specifier: workspace:*
         version: link:../../packages/shared-types
@@ -126,6 +132,12 @@ importers:
         version: 5.9.3
 
   packages/curation-policy:
+    devDependencies:
+      tsx:
+        specifier: ^4.23.0
+        version: 4.23.0
+
+  packages/event-matching:
     devDependencies:
       tsx:
         specifier: ^4.23.0
