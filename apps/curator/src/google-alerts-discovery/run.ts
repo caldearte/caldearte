@@ -179,7 +179,7 @@ export async function run(deps: GoogleAlertsRunDeps = {}): Promise<void> {
       summary.candidates.insertedCount = insertedCount;
       summary.eventGroups.push({
         label: "Google Alerts",
-        candidates: candidates.map((c) => toCandidateSummary(c, outcomes.get(c))),
+        candidates: candidates.map((c) => toCandidateSummary(c, outcomes.get(c), llmDuplicates.get(c))),
       });
       for (const c of candidates) {
         if (c.status === "approved") summary.candidates.approvedByCuration += 1;
