@@ -46,7 +46,7 @@ interface NotifyParams {
   submitterEmail: string;
   submitterName: string;
   decision: CurationDecision;
-  finalStatus: "approved" | "rejected";
+  finalStatus: "approved" | "rejected" | "pending_review";
   eventId?: string;
   matches?: SubmissionMatches<LiveEventForMatch>;
   supersededIds?: string[];
@@ -129,8 +129,13 @@ async function notifyDaniel(params: NotifyParams): Promise<void> {
   }
 
   const { input, submitterEmail, submitterName, decision, finalStatus, eventId, matches, supersededIds } = params;
-  const outcomeLabel = finalStatus === "approved" ? "APROBADA" : "RECHAZADA";
-  const eventLine = eventId ? `\nPublicada en: https://www.caldearte.com/eventos/${eventId}\n` : "";
+  const outcomeLabel = finalStatus === "approved" ? "APROBADA" : finalStatus === "pending_review" ? "PENDIENTE DE REVISIÓN" : "RECHAZADA";
+  const eventLine =
+    finalStatus === "pending_review"
+      ? `\nEl chequeo de imagen falló dos veces, así que NO está publicada: quedó guardada como pending_review (id ${eventId ?? "?"}). Revisa la imagen y, si está bien, pásala a approved. No reemplazó nada del calendario.\n`
+      : eventId
+        ? `\nPublicada en: https://www.caldearte.com/eventos/${eventId}\n`
+        : "";
 
   const body = `Nueva expo enviada por el formulario — ${outcomeLabel}
 ${eventLine}
@@ -163,6 +168,21 @@ Mensaje mostrado al submitter: ${decision.publicMessage}${matchesSection(matches
   } catch (err) {
     console.error("[submit-event] owner notification threw", err);
   }
+}
+
+// The image check fails open to a person, never to the calendar
+// (2026-11-20, Daniel): one retry for a transient API error, then
+// "unchecked", and the submission is kept as pending_review instead of
+// the gallery getting an error page and losing what it typed.
+async function checkImageWithRetry(base64: string, mediaType: string): Promise<"approved" | "rejected" | "unchecked"> {
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    try {
+      return await curateSubmissionImage(base64, mediaType);
+    } catch (err) {
+      console.error(`[submit-event] vision curation failed (attempt ${attempt})`, err);
+    }
+  }
+  return "unchecked";
 }
 
 export async function POST(request: Request) {
@@ -243,18 +263,17 @@ export async function POST(request: Request) {
   );
 
   const finalDecision: CurationDecision = { ...textDecision };
+  let imageUnchecked = false;
   if (finalDecision.status === "approved") {
-    try {
-      const visionStatus = await curateSubmissionImage(encodedImages[0].base64, encodedImages[0].mediaType);
-      if (visionStatus === "rejected") {
-        finalDecision.status = "rejected";
-        finalDecision.curationReasoning += " [axis5: imagen rechazada por el chequeo de visión]";
-        finalDecision.publicMessage =
-          "Gracias por escribirnos. La imagen que enviaste no cumple con nuestras políticas de contenido, así que no pudimos publicar esta expo.";
-      }
-    } catch (err) {
-      console.error("[submit-event] vision curation failed", err);
-      return NextResponse.json({ status: "error" }, { status: 502 });
+    const visionStatus = await checkImageWithRetry(encodedImages[0].base64, encodedImages[0].mediaType);
+    if (visionStatus === "rejected") {
+      finalDecision.status = "rejected";
+      finalDecision.curationReasoning += " [axis5: imagen rechazada por el chequeo de visión]";
+      finalDecision.publicMessage =
+        "Gracias por escribirnos. La imagen que enviaste no cumple con nuestras políticas de contenido, así que no pudimos publicar esta expo.";
+    } else if (visionStatus === "unchecked") {
+      imageUnchecked = true;
+      finalDecision.curationReasoning += " [axis5: chequeo de imagen falló, queda para revisión manual]";
     }
   }
 
@@ -282,6 +301,7 @@ export async function POST(request: Request) {
   // inserts this row, then removes those, copying over what they knew that
   // the form doesn't ask for.
   const matches = await findCalendarMatches(title, galleryName, regionId, openingDatetimeUtc, runEndDate);
+  const curationStatus = imageUnchecked ? "pending_review" : "approved";
 
   const res = await fetch(`${supabaseUrl}/functions/v1/submit-event`, {
     method: "POST",
@@ -301,7 +321,10 @@ export async function POST(request: Request) {
       submitterEmail,
       submitterName,
       images: encodedImages,
-      supersedesEventIds: matches?.supersede.map((e) => e.id) ?? [],
+      // A held row replaces nothing: the scraped one stays live until a
+      // person approves this one.
+      supersedesEventIds: imageUnchecked ? [] : (matches?.supersede.map((e) => e.id) ?? []),
+      curationStatus,
     } satisfies Record<string, unknown>),
   });
 
@@ -316,11 +339,19 @@ export async function POST(request: Request) {
     submitterEmail,
     submitterName,
     decision: finalDecision,
-    finalStatus: "approved",
+    finalStatus: curationStatus,
     eventId: data.eventId,
     matches,
     supersededIds: data.supersededIds ?? [],
   });
+
+  if (imageUnchecked) {
+    return NextResponse.json({
+      status: "received",
+      message: "Recibimos tu expo. La vamos a revisar y la publicaremos en Caldearte apenas esté lista.",
+      eventId: data.eventId,
+    });
+  }
 
   return NextResponse.json({
     status: "approved",

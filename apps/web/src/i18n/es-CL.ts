@@ -722,6 +722,7 @@ export const esCL = {
     submit: "Enviar",
     sending: "Curando tu expo...",
     approvedPrefix: "¡Listo!",
+    receivedPrefix: "¡Recibida!",
     rejectedPrefix: "Esta vez no",
     rateLimitedPrefix: "Un momento",
     error: "Algo falló de nuestro lado. Intenta de nuevo en unos minutos.",

@@ -11,7 +11,7 @@ import SiteWordmark from "@/components/SiteWordmark";
 import FormField, { FIELD_BOX, FIELD_BOX_INVALID } from "./FormField";
 import ComunaCombobox, { type ComunaOption } from "./ComunaCombobox";
 
-type Status = "idle" | "compressing" | "sending" | "approved" | "rejected" | "rate_limited" | "error";
+type Status = "idle" | "compressing" | "sending" | "approved" | "received" | "rejected" | "rate_limited" | "error";
 type Errors = Partial<Record<string, string>>;
 
 const PILL_BUTTON =
@@ -158,7 +158,7 @@ export default function AgregaExpoContent({ comunas, galleries }: { comunas: Com
       const data = (await res.json()) as { status: Status; message?: string };
       setStatus(data.status);
       setResultMessage(data.message ?? "");
-      if (data.status === "approved") {
+      if (data.status === "approved" || data.status === "received") {
         form.reset();
         setImage(null);
         setImageUrl(null);
@@ -172,7 +172,7 @@ export default function AgregaExpoContent({ comunas, galleries }: { comunas: Com
   }
 
   const busy = status === "sending" || status === "compressing";
-  const done = status === "approved" || status === "rejected" || status === "rate_limited" || status === "error";
+  const done = status === "approved" || status === "received" || status === "rejected" || status === "rate_limited" || status === "error";
   const heading = esCL.agregaExpo.steps[step];
   const box = (name: string) => `${FIELD_BOX} ${errors[name] ? FIELD_BOX_INVALID : ""}`;
 
@@ -199,6 +199,7 @@ export default function AgregaExpoContent({ comunas, galleries }: { comunas: Com
             {done ? (
               <>
                 {status === "approved" && <span className="text-brand-magenta">{esCL.agregaExpo.approvedPrefix.toUpperCase()}</span>}
+                {status === "received" && <span className="text-brand-magenta">{esCL.agregaExpo.receivedPrefix.toUpperCase()}</span>}
                 {status === "rejected" && esCL.agregaExpo.rejectedPrefix.toUpperCase()}
                 {status === "rate_limited" && esCL.agregaExpo.rateLimitedPrefix.toUpperCase()}
                 {status === "error" && esCL.agregaExpo.errorTitle}
@@ -228,7 +229,7 @@ export default function AgregaExpoContent({ comunas, galleries }: { comunas: Com
                 }}
                 className={`${PILL_BUTTON} bg-transparent text-text-primary hover:bg-text-primary hover:text-text-placeholder`}
               >
-                {status === "approved" ? esCL.agregaExpo.title.toUpperCase() : esCL.agregaExpo.tryAgain.toUpperCase()}
+                {status === "approved" || status === "received" ? esCL.agregaExpo.title.toUpperCase() : esCL.agregaExpo.tryAgain.toUpperCase()}
               </button>
             </div>
           </div>
