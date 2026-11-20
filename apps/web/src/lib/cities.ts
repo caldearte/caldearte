@@ -67,9 +67,34 @@ export function matchesQuery(text: string, query: string): boolean {
 // Alemana), then anywhere in the name, and last a match on its región's
 // name only. Typing "santiago" must put the comuna Santiago first, not
 // bury it under every comuna of Región Metropolitana de Santiago.
+// What people actually type for a comuna whose official name is shorter
+// (2026-11-20: "santiago centro" found nothing). Keys and values are
+// normalized (lowercase, no accents).
+const COMUNA_ALIASES: Record<string, string> = {
+  "santiago centro": "santiago",
+  "stgo": "santiago",
+  "stgo centro": "santiago",
+  "conce": "concepcion",
+};
+
+function normalizeComunaQuery(query: string): string {
+  const q = normalize(query).replace(/\s+/g, " ");
+  return COMUNA_ALIASES[q] ?? q;
+}
+
+// The one comuna whose name is exactly what was typed (accents, case and
+// the aliases above aside), so typing "Providencia" in full counts as
+// choosing it without also having to tap the suggestion.
+export function exactComunaMatch<T extends { name: string }>(comunas: T[], query: string): T | null {
+  const q = normalizeComunaQuery(query);
+  if (!q) return null;
+  const hits = comunas.filter((c) => normalize(c.name) === q);
+  return hits.length === 1 ? hits[0] : null;
+}
+
 export function rankComunaMatch(name: string, adminRegionName: string | null, query: string): number | null {
   const n = normalize(name);
-  const q = normalize(query);
+  const q = normalizeComunaQuery(query);
   if (!q) return null;
   if (n === q) return 0;
   if (n.startsWith(q)) return 1;

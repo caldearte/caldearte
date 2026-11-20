@@ -675,7 +675,7 @@ export const esCL = {
     contactoLabel: "CONTACTO",
     contactSubtitle: "Escríbenos tu mensaje y te responderemos a la brevedad.",
     namePlaceholder: "Tu Nombre",
-    emailPlaceholder: "Tu Correo electrómico",
+    emailPlaceholder: "Tu correo electrónico",
     messagePlaceholder: "Mensaje",
     submit: "ENVIAR MENSAJE",
     sending: "ENVIANDO...",
@@ -704,7 +704,7 @@ export const esCL = {
   agregaExpo: {
     title: "Agrega tu expo",
     intro:
-      "¿Tienes una inauguración este mes? Cuéntanos y, si califica para el calendario, queda publicada al instante.",
+      "¿Tienes una inauguración próxima? Cuéntanos y, si califica para el calendario, queda publicada al instante.",
     titleLabel: "Nombre de la exposición",
     galleryNameLabel: "Galería o espacio",
     comunaLabel: "Comuna",
@@ -745,6 +745,10 @@ export const esCL = {
     comunaNotInList: "Elige una comuna de la lista.",
     noArtist: "Agrega al menos un artista.",
     noImage: "Elige una imagen de la expo.",
+    // Shown when the browser can't read the file to shrink it (HEIC on
+    // most non-Apple browsers, AVIF, GIF...) or it stays too heavy.
+    imageUnreadable: "No pudimos leer esa imagen. Prueba con una JPG o PNG.",
+    imageTooLarge: "La imagen pesa demasiado. Prueba con una de menos de 4 MB.",
     // Field placeholders, hints and per-field errors (2026-10-13 form pass).
     titlePlaceholder: "Ej: Paisajes del sur",
     artistPlaceholder: "Escribe un nombre y presiona Enter",
