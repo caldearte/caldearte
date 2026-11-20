@@ -1,7 +1,7 @@
 import { unstable_cache } from "next/cache";
 import type { Database } from "@caldearte/shared-types";
 import { getSupabaseClient } from "./supabase-client";
-import { fetchApprovedEvents } from "./events";
+import { DATA_WINDOW_SECONDS, fetchApprovedEvents, type DataWindow } from "./events";
 import { assembleArtistData, type ArtistData, type ArtistRecord } from "./artistPage";
 
 // Same nullable-view-type caveat as venues.ts.
@@ -42,12 +42,17 @@ async function fetchArtistLinksFromDb(): Promise<ArtistLinks> {
 
 export const ARTISTS_CACHE_TAG = "artists-public";
 
-const fetchArtistLinks = unstable_cache(fetchArtistLinksFromDb, ["artist-links"], {
-  revalidate: 600,
+// Same two windows as fetchApprovedEvents (lib/events.ts).
+const fetchArtistLinksHourly = unstable_cache(fetchArtistLinksFromDb, ["artist-links"], {
+  revalidate: DATA_WINDOW_SECONDS.hourly,
+  tags: [ARTISTS_CACHE_TAG],
+});
+const fetchArtistLinksDaily = unstable_cache(fetchArtistLinksFromDb, ["artist-links-daily"], {
+  revalidate: DATA_WINDOW_SECONDS.daily,
   tags: [ARTISTS_CACHE_TAG],
 });
 
-export async function fetchArtistData(): Promise<ArtistData> {
-  const [{ artists, links }, { events }] = await Promise.all([fetchArtistLinks(), fetchApprovedEvents()]);
+export async function fetchArtistData(window: DataWindow = "hourly"): Promise<ArtistData> {
+  const [{ artists, links }, { events }] = await Promise.all([window === "daily" ? fetchArtistLinksDaily() : fetchArtistLinksHourly(), fetchApprovedEvents(window)]);
   return assembleArtistData(artists, links, events);
 }

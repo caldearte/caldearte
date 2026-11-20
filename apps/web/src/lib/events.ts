@@ -190,7 +190,39 @@ async function fetchApprovedEventsFromDb(): Promise<{ events: EventRecord[]; reg
 // cache's own 600s plus the page's independent revalidate=600).
 export const APPROVED_EVENTS_CACHE_TAG = "approved-events";
 
-export const fetchApprovedEvents = unstable_cache(fetchApprovedEventsFromDb, ["approved-events-and-regions"], {
-  revalidate: 600,
+// Two windows over the same query, same tag (2026-11-20, ISR Writes at
+// 100% of the Hobby quota). A page's ISR window is the LOWEST revalidate
+// of everything it reads (route config and every unstable_cache), so a
+// 600s data cache was capping every page at 10 minutes no matter what the
+// page itself declared. "hourly" feeds the home, search index, sitemap and
+// form; "daily" feeds the fichas (/eventos, /espacios, /artistas), whose
+// own content barely changes once written. A ficha that can't find its id
+// or slug in the daily copy (something published today) falls back to the
+// hourly one — see findInWindows below.
+export type DataWindow = "hourly" | "daily";
+export const DATA_WINDOW_SECONDS: Record<DataWindow, number> = { hourly: 3600, daily: 86400 };
+
+const fetchApprovedEventsHourly = unstable_cache(fetchApprovedEventsFromDb, ["approved-events-and-regions"], {
+  revalidate: DATA_WINDOW_SECONDS.hourly,
   tags: [APPROVED_EVENTS_CACHE_TAG],
 });
+const fetchApprovedEventsDaily = unstable_cache(fetchApprovedEventsFromDb, ["approved-events-and-regions-daily"], {
+  revalidate: DATA_WINDOW_SECONDS.daily,
+  tags: [APPROVED_EVENTS_CACHE_TAG],
+});
+
+export function fetchApprovedEvents(window: DataWindow = "hourly") {
+  return window === "daily" ? fetchApprovedEventsDaily() : fetchApprovedEventsHourly();
+}
+
+// Looks a ficha's subject up in the daily copy first and, only on a miss,
+// in the hourly one — so a ficha keeps its one-day ISR window, while an
+// event/venue/artist published since the daily copy was cached still
+// renders instead of a (cached) 404.
+export async function findInWindows<D, T>(load: (w: DataWindow) => Promise<D>, find: (data: D) => T | undefined): Promise<{ data: D; found: T | undefined }> {
+  const daily = await load("daily");
+  const hit = find(daily);
+  if (hit !== undefined) return { data: daily, found: hit };
+  const hourly = await load("hourly");
+  return { data: hourly, found: find(hourly) };
+}

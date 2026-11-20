@@ -548,8 +548,8 @@ matches by date — ahead (soonest), running (closing soonest), past (most
 recent). Recent searches stay in the visitor's browser (localStorage);
 nothing is logged server-side (Daniel's call).
 
-The data comes from `/api/search-index` — static, revalidated every 10
-minutes, no cookies (events without description/address; ~90 KB gzip at
+The data comes from `/api/search-index` — static, revalidated every
+hour (10 minutes until 2026-11-20), no cookies (events without description/address; ~90 KB gzip at
 ~530 events), fetched once per page load the first time the panel opens
 (`useSearchIndex`), family mode applied in the browser. That replaced the
 home's `searchableEvents` (no longer shipped with the home) and the ficha's
@@ -891,3 +891,38 @@ Worth naming the general shape, since this is now twice: a watchdog whose
 happy path is "do nothing" gets no coverage from running green. Both bugs
 lived in the branch that only executes when something is actually wrong,
 and both surfaced only because a *false* alarm exercised it.
+
+## Vercel ISR Writes at 100% (2026-11-20): longer revalidate windows
+
+This time it was a real cycle overage: Vercel emailed that the Hobby team
+had used 100% of the 200K ISR Writes, and the Usage page showed 242K in
+30 days. Unlike 2026-09-18, the daily chart was flat (~8K a day, no build
+spikes) — steady regeneration, not builds. Observability → ISR (12h, the
+longest Hobby keeps) showed `/eventos/[id]` as two thirds of the units:
+171 distinct event pages, each written ~2 times and read ~1 time. Crawlers
+and link visits reach a page every few hours, always after the 600s
+window, so nearly every visit was a regeneration. The home costs ~47
+units per regeneration (HTML + two RSC segments) and could regenerate up
+to 144 times a day; `/api/search-index` costs ~82 units per write.
+
+**Fix:** fichas (`/eventos/[id]`, `/espacios/[slug]`, `/artistas/[slug]`)
+now regenerate once a day; the home, `/api/search-index`, the sitemap and
+the form once an hour. **The catch that makes this more than a constant
+change:** a route's ISR window is the *lowest* `revalidate` of everything
+it reads, `unstable_cache` included — `fetchApprovedEvents` and the
+venue/artist link caches at 600s were capping every page at 10 minutes
+whatever the page declared (`next build`'s route table showed `10m` for a
+page set to 3600). So `lib/events.ts`, `lib/venues.ts` and `lib/artists.ts`
+now keep two copies of the same query under the same tag, `"hourly"`
+(default) and `"daily"`, and fichas read the daily one through
+`findInWindows`, which falls back to the hourly copy when the id/slug
+isn't there — something published since the daily copy was cached renders
+instead of becoming a cached 404. Verified with `next start`:
+`s-maxage=86400` on the three fichas, `3600` on the home and search index.
+
+Because pages now hold their HTML far longer, the admin routes
+(`remove-event`, `toggle-sensitive`) also call
+`revalidatePath("/", "layout")` next to `revalidateTag`, so a removal
+reaches every page at once instead of trusting the data-cache tag to reach
+page entries. Side effect: the Data Cache (separate quota, ~716K write
+units/30d, no alert) also drops, from up to 144 rewrites a day to 24 + 1.

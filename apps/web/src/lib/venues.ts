@@ -1,7 +1,7 @@
 import { unstable_cache } from "next/cache";
 import type { Database } from "@caldearte/shared-types";
 import { getSupabaseClient } from "./supabase-client";
-import { fetchApprovedEvents } from "./events";
+import { DATA_WINDOW_SECONDS, fetchApprovedEvents, type DataWindow } from "./events";
 import { assembleVenueData, type VenueData, type VenueRecord } from "./venuePage";
 
 // Same nullable-view-type caveat as events.ts's EventRow: Postgres views
@@ -50,12 +50,17 @@ async function fetchVenueLinksFromDb(): Promise<VenueLinks> {
 
 export const VENUES_CACHE_TAG = "venues-public";
 
-const fetchVenueLinks = unstable_cache(fetchVenueLinksFromDb, ["venue-links"], {
-  revalidate: 600,
+// Same two windows as fetchApprovedEvents (lib/events.ts).
+const fetchVenueLinksHourly = unstable_cache(fetchVenueLinksFromDb, ["venue-links"], {
+  revalidate: DATA_WINDOW_SECONDS.hourly,
+  tags: [VENUES_CACHE_TAG],
+});
+const fetchVenueLinksDaily = unstable_cache(fetchVenueLinksFromDb, ["venue-links-daily"], {
+  revalidate: DATA_WINDOW_SECONDS.daily,
   tags: [VENUES_CACHE_TAG],
 });
 
-export async function fetchVenueData(): Promise<VenueData> {
-  const [links, { events }] = await Promise.all([fetchVenueLinks(), fetchApprovedEvents()]);
+export async function fetchVenueData(window: DataWindow = "hourly"): Promise<VenueData> {
+  const [links, { events }] = await Promise.all([window === "daily" ? fetchVenueLinksDaily() : fetchVenueLinksHourly(), fetchApprovedEvents(window)]);
   return assembleVenueData(links.venues, links.venueIdByEventId, events);
 }

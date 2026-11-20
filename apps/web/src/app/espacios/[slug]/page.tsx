@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { fetchVenueData } from "@/lib/venues";
+import { findInWindows } from "@/lib/events";
 import { buildVenuePageData, findVenueBySlug } from "@/lib/venuePage";
 import { venueSlug } from "@/lib/venueSlug";
 import { buildVenueJsonLd } from "@/lib/venueJsonLd";
@@ -14,10 +15,10 @@ interface PageParams {
 
 // Same settings and same reasoning as app/eventos/[id]/page.tsx (read its
 // comments for the two Vercel free-tier incidents behind them): regenerate
-// every 600s, and generate pages on first request instead of fanning out
+// once a day, and generate pages on first request instead of fanning out
 // ~250 of them on every build — a build writes nothing, a page is written
 // once when someone first visits it.
-export const revalidate = 600;
+export const revalidate = 86400;
 export const dynamicParams = true;
 
 export function generateStaticParams(): Array<{ slug: string }> {
@@ -28,8 +29,10 @@ const SITE = "https://www.caldearte.com";
 
 export async function generateMetadata({ params }: { params: Promise<PageParams> }): Promise<Metadata> {
   const { slug } = await params;
-  const { venues, eventsByVenueId } = await fetchVenueData();
-  const venue = findVenueBySlug(venues, slug);
+  const {
+    data: { eventsByVenueId },
+    found: venue,
+  } = await findInWindows(fetchVenueData, (d) => findVenueBySlug(d.venues, slug) ?? undefined);
   if (!venue) return {};
 
   const page = buildVenuePageData(venue, eventsByVenueId[venue.id] ?? [], todayInSantiago());
@@ -53,8 +56,10 @@ export async function generateMetadata({ params }: { params: Promise<PageParams>
 
 export default async function VenuePage({ params }: { params: Promise<PageParams> }) {
   const { slug } = await params;
-  const { venues, eventsByVenueId } = await fetchVenueData();
-  const venue = findVenueBySlug(venues, slug);
+  const {
+    data: { eventsByVenueId },
+    found: venue,
+  } = await findInWindows(fetchVenueData, (d) => findVenueBySlug(d.venues, slug) ?? undefined);
   if (!venue) notFound();
 
   const { current, past, totalEvents } = buildVenuePageData(venue, eventsByVenueId[venue.id] ?? [], todayInSantiago());

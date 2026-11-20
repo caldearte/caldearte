@@ -8,12 +8,12 @@ import { buildSearchPlaces, type SearchEntity, type SearchIndex } from "@/lib/se
 // Everything the site search can find (2026-10-13, see lib/search.ts):
 // every approved event — past ones too — plus the venues and artists with
 // at least one show, and every región/comuna. Same for every visitor (no
-// cookies), so it's served static and refreshed every 10 minutes, like
-// the pages built on the same data; family mode is applied in the browser.
+// cookies), so it's served static and refreshed every hour, like the
+// home (each write is ~82 units, the heaviest entry on the site); family mode is applied in the browser.
 // Events go without description or street address: the search shows
 // neither, and they're the bulk of the bytes.
 export const dynamic = "force-static";
-export const revalidate = 600;
+export const revalidate = 3600;
 
 export async function GET() {
   const [{ events, regions }, venueData, artistData] = await Promise.all([fetchApprovedEvents(), fetchVenueData(), fetchArtistData()]);
