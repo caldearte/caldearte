@@ -40,7 +40,7 @@ import { recordRunSummary } from "../lib/run-summary-store.js";
 import { recordSourceFetches } from "../lib/source-fetch-log.js";
 import { curateBrightSourceItems, currentMonthLabel, EVENT_DISCOVERY_MODEL, type MessagesClient } from "../event-discovery/discover.js";
 import type { BrightSourceItem } from "../event-discovery/extractors.js";
-import { insertCandidates, loadAllRegions, loadExistingKeys, loadRecentlyRejectedSourceUrls, toCandidateSummary, wouldInsertAsNew } from "../event-discovery/run.js";
+import { findLlmDuplicatesForInsert, insertCandidates, loadAllRegions, loadExistingKeys, loadRecentlyRejectedSourceUrls, toCandidateSummary, wouldInsertAsNew } from "../event-discovery/run.js";
 import { createShadowClient } from "../lib/model-comparison.js";
 import { applySafetyNet, SAFETY_NET_CHUNK_SIZE } from "../lib/safety-net.js";
 import { collabEdgesForPosts, recordInstagramCollabEdges } from "../lib/instagram-collab-edges.js";
@@ -301,7 +301,9 @@ export async function run(deps: InstagramRunDeps = {}): Promise<InstagramRunSumm
       );
     }
 
-    const { insertedCount, outcomes } = await insertCandidates(candidates, regions, seenKeys, now, "instagram");
+    // Model second look at what would be stored as new (lib/duplicate-check.ts).
+    const llmDuplicates = await findLlmDuplicatesForInsert(messagesClient, candidates, regions, seenKeys, now, "instagram");
+    const { insertedCount, outcomes } = await insertCandidates(candidates, regions, seenKeys, now, "instagram", undefined, { llmDuplicates });
 
     summary.candidates.total = candidates.length;
     summary.candidates.insertedCount = insertedCount;

@@ -5526,3 +5526,22 @@ Over 75 days, 5 live Instagram events had that kind of title: the one above, "La
 
 Known cost: two different shows at the same venue whose titles both get relabelled would share a title and hit the title tier. None in the 75 days measured.
 
+
+### Thursday 2026-11-19: a model checks what the dedup would store as new
+
+After #702 stopped overlapping Instagram runs, about two duplicates a day were still removed by hand. None of them can be caught by comparing words, which `findExistingMatch` already documents ("América despierta", 2026-08-14): a venue posting again about its own show (inauguration photos, thanks, "últimos días", a guided visit), another account announcing it under the artist's name, or one post covering shows already listed. The opposite shape, several different shows opening the same minute in one room (the 8 MAC shows), shares just as few words.
+
+`lib/duplicate-check.ts` asks Haiku 5.5 (low effort) about each candidate `wouldInsertAsNew` lets through, the same set the safety net reviews, against the live approved events (last date no earlier than yesterday) of its comuna or its account. One call per candidate. A match only counts with `confidence: "alta"`; then `insertCandidates` skips it like any other duplicate (sighting, 14-day memory on the web pipelines). It can only remove: a failed call, an unparseable answer or an unreachable database leaves the deterministic decision. Wired into Instagram, bright sources, headless and Google Alerts; comuna search is paused and left out.
+
+Measured before shipping (`scripts/eval-duplicate-check.ts`, sample built read-only from production into `.scratch/dedup-eval/`), third prompt iteration:
+
+| Set | Result |
+|---|---|
+| 39 rows removed by hand as duplicates in the last 50 days, the original reachable in the pool | 31 dropped (79%) |
+| 158 recent approved rows nobody removed | 10 flagged |
+
+Of the 10 flagged, 4 are duplicates still live today, missed by review: "Te creo paisaje" ×2 (MNBA), "Premoniciones" ×2 (MAC Quinta Normal, "Exposición en MAC Quinta Normal"), "fantasías, fantasmas y fulgores I, II y III" ×2 (Mercado Puerto), "Family Life" next to "Beatriz Leyton" (Macchina). 4 are programme of a show, dropped on purpose by the same rule as `isGuidedVisitTitle`: a mediated visit, a guided tour by the artist, a mediation, a "minute in the museum" capsule. 2 are errors: "AnAtómica — Activación performativa" (the prompt says a performance is its own event) and "Urdiendo Oficios", a show inside a Noche de Museos post. Roughly one show wrongly held back every two weeks against ~1.5 duplicates a day avoided.
+
+The 8 misses are mostly cross-account announcements the model saw but rated "media" (Antenna's weekly summaries, Augusta Lecaros via Mecenas, the Prado in Concepción from two municipal accounts), the shape most likely to be two different shows, so they stay manual. 10 more hand-removed duplicates were out of reach: the original sat in another comuna (Satélite218 in Providencia vs Santiago) or had already ended by its stored dates.
+
+Cost: the 197 measurement calls, at the biggest pools (Santiago, up to 75 events), cost $0.16. A run checks ~5–10 candidates, so well under $1 a month.

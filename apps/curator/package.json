@@ -19,7 +19,8 @@
     "query-variant-test": "node --env-file=../../.env --import tsx scripts/query-variant-test.ts",
     "compare-models": "node --env-file=../../.env --import tsx scripts/compare-haiku-qwen.ts",
     "compare-haiku-versions": "node --env-file=../../.env --import tsx scripts/compare-haiku-versions.ts",
-    "measure-account-category-exclusions": "node --env-file=../../.env --import tsx scripts/measure-account-category-exclusions.ts"
+    "measure-account-category-exclusions": "node --env-file=../../.env --import tsx scripts/measure-account-category-exclusions.ts",
+    "eval-duplicate-check": "node --env-file=../../.env --import tsx scripts/eval-duplicate-check.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.111.0",

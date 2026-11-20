@@ -662,6 +662,45 @@ test(
         await client.from("events").delete().eq("title", "__test__ Judas Galería Inauguración");
       });
 
+      // lib/duplicate-check.ts: a candidate no deterministic tier matches,
+      // but the model said is a show already live, is skipped like any
+      // other duplicate instead of stored.
+      await t.test("a candidate in llmDuplicates is skipped as a duplicate, not inserted", async () => {
+        const { insertCandidates, loadExistingKeys, loadAllRegions } = await import("./run.js");
+
+        const regions = await loadAllRegions();
+        const seen = await loadExistingKeys();
+        const followUp = {
+          title: "__test__ Con la excusa de algunas imágenes de la inauguración",
+          description: "Gracias a cada asistente por la tarde de ayer",
+          artist: null,
+          runStartDate: "2026-09-02",
+          runEndDate: "2026-09-30",
+          openingDatetime: null,
+          openingTimeConfirmed: false,
+          mediumType: "tradicional" as const,
+          sensitivityTags: [],
+          curationReasoning: "ok",
+          imageUrl: null,
+          status: "approved" as const,
+          location: "Santiago",
+          placeName: "__test__ Galería del Seguimiento",
+          sourceUrl: "https://instagram.com/p/__test__llm_dup/",
+          dateQuote: null,
+          locationQuote: null,
+          runStartDateQuote: null,
+          runEndDateQuote: null,
+        };
+        const llmDuplicates = new Map([[followUp, { existingId: "00000000-0000-0000-0000-000000000000", existingTitle: "Canto libre", reason: "post de agradecimiento" }]]);
+
+        const { insertedCount, outcomes } = await insertCandidates([followUp], regions, seen, new Date(2026, 8, 1), "instagram", undefined, { llmDuplicates });
+        assert.equal(insertedCount, 0);
+        assert.equal(outcomes.get(followUp), "duplicate_skipped");
+
+        const { data: rows } = await client.from("events").select("id").eq("title", followUp.title);
+        assert.equal(rows?.length, 0);
+      });
+
       // Real case, 2026-10-26: "Este sábado 31 de octubre inauguramos dos
       // nuevas muestras !" came first in its post, went in, and its sourceUrl
       // then dropped CIMIENTOS as a duplicate of it. See isUmbrellaOfSiblings.
