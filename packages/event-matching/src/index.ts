@@ -1,2 +1,2 @@
-export * from "./event-filters.js";
-export * from "./submission-match.js";
+export * from "./event-filters";
+export * from "./submission-match";

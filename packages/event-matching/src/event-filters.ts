@@ -13,11 +13,18 @@ function stripAccents(text: string): string {
 // verde - arte, activismo y solidaridad" vs "Una metáfora verde: arte,
 // activismo y solidaridad", same event from two sources, one using a
 // hyphen and the other a colon, evaded exact-match dedup.
+//
+// Whitespace is collapsed BEFORE the separator pass (2026-11-20): with
+// `\s*sep\s*` a long run of spaces made the match quadratic (CodeQL
+// js/polynomial-redos), which mattered once these run on the public form's
+// own input, not just scraped text. Same output — after collapsing, the
+// spaces around a separator are at most one on each side.
 export function normalizeTitle(title: string): string {
   return stripAccents(title.toLowerCase())
     .replace(/["'«»“”]/g, "")
-    .replace(/\s*[-:–—|]\s*/g, " ")
     .replace(/\s+/g, " ")
+    .replace(/ ?[-:–—|] ?/g, " ")
+    .replace(/ +/g, " ")
     .trim();
 }
 
@@ -240,15 +247,21 @@ export function isGuidedVisitTitle(title: string): boolean {
 // necessarily the exhibition's name. The key is the token sequence
 // (accent/case/punctuation-free, nothing dropped), so two keys are equal
 // only when the titles say exactly the same words in the same order.
+// Applied to collapseSpaces' output (single spaces, trimmed), so the
+// separators carry no `\s*` of their own — see normalizeTitle on why.
 const QUOTED_TITLE_WRAPPER =
-  /^(?:(?:muestra|exposicion|exhibicion|expo|inauguracion|instalacion)\s+)*(?:"([^"]+)"|“([^”]+)”|«([^»]+)»)(?:\s*[,.:]?\s+(?:en|de|del|se|llega|llegan)\b.*)?\s*$/;
+  /^(?:(?:muestra|exposicion|exhibicion|expo|inauguracion|instalacion) )*(?:"([^"]+)"|“([^”]+)”|«([^»]+)»)(?: ?[,.:]? (?:en|de|del|se|llega|llegan)\b.*)?$/;
+
+function collapseSpaces(text: string): string {
+  return text.replace(/\s+/g, " ").trim();
+}
 
 function titleTokens(text: string): string[] {
   return stripAccents(text.toLowerCase()).split(/[^a-z0-9]+/).filter(Boolean);
 }
 
 function coreTitleText(title: string): string {
-  const lowered = stripAccents(title.toLowerCase()).trim();
+  const lowered = collapseSpaces(stripAccents(title.toLowerCase()));
   const m = QUOTED_TITLE_WRAPPER.exec(lowered);
   return m ? (m[1] ?? m[2] ?? m[3]) : lowered;
 }
@@ -266,7 +279,7 @@ export function coreTitleKey(title: string): string {
 // subtitled show), because a venue can run "Colección MAC: X" and
 // "Colección MAC: Y" side by side.
 export function mainTitleKey(title: string): string | null {
-  const parts = coreTitleText(title).split(/\s*[.:|–—]\s+|\s+-\s+/);
+  const parts = collapseSpaces(coreTitleText(title)).split(/ ?[.:|–—] | - /);
   if (parts.length < 2) return null;
   const main = titleTokens(parts[0]).join(" ");
   const rest = titleTokens(parts.slice(1).join(" "));

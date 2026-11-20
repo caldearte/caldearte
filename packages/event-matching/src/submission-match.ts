@@ -26,7 +26,7 @@ import {
   isTitleSubsetOfOther,
   normalizeTitle,
   placeNamesLikelySame,
-} from "./event-filters.js";
+} from "./event-filters";
 
 export interface SubmissionForMatch {
   title: string;

@@ -22,6 +22,13 @@ const NOTIFY_RECIPIENT = "daniel@probablespa.cl";
 const RATE_LIMIT_MAX = 3;
 const RATE_LIMIT_WINDOW_SECONDS = 3600;
 
+// Generous ceilings for the free-text fields (2026-11-20): the form never
+// had any, and these strings now also go through the calendar matcher's
+// regexes and into the Haiku prompt. The longest real exhibition title on
+// the calendar is under 200 characters.
+const MAX_SHORT_FIELD = 300;
+const MAX_DESCRIPTION = 5000;
+
 const ALLOWED_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
 const MAX_IMAGE_BYTES = 4 * 1024 * 1024; // client already compresses to ~1600px/JPEG-80; this is a server-side ceiling, not the target size
 
@@ -208,7 +215,9 @@ export async function POST(request: Request) {
     !runEndDate ||
     !submitterName ||
     !isValidEmail(submitterEmail) ||
-    images.length !== 1
+    images.length !== 1 ||
+    [title, artist, galleryName, comunaName, submitterName].some((field) => field.length > MAX_SHORT_FIELD) ||
+    description.length > MAX_DESCRIPTION
   ) {
     return NextResponse.json({ status: "invalid" }, { status: 400 });
   }
