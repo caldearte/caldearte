@@ -54,6 +54,10 @@ interface SubmitEventBody {
   submitterName?: string | null;
   images?: SubmittedImage[];
   supersedesEventIds?: string[];
+  // "pending_review" when the route couldn't run the image check
+  // (2026-11-20): the row is kept, hidden from the calendar (events_public
+  // only shows approved), for Daniel to look at. Omitted = "approved".
+  curationStatus?: "approved" | "pending_review";
 }
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -81,6 +85,14 @@ Deno.serve(async (req) => {
 
   const images = body.images ?? [];
   const supersedesEventIds = body.supersedesEventIds ?? [];
+  const curationStatus = body.curationStatus ?? "approved";
+  if (curationStatus !== "approved" && curationStatus !== "pending_review") {
+    return jsonResponse({ status: "invalid" }, 400);
+  }
+  // A row nobody can see yet must not take a live one off the calendar.
+  if (curationStatus === "pending_review" && supersedesEventIds.length > 0) {
+    return jsonResponse({ status: "invalid" }, 400);
+  }
   if (
     !Array.isArray(supersedesEventIds) ||
     supersedesEventIds.length > MAX_SUPERSEDED ||
@@ -144,7 +156,7 @@ Deno.serve(async (req) => {
       source: "submitted",
       pipeline: "user_submission",
       image_url: publicUrls[0],
-      curation_status: "approved",
+      curation_status: curationStatus,
       curation_reasoning: body.curationReasoning ?? null,
       public_explanation: body.publicMessage ?? null,
       submitter_email: body.submitterEmail.trim(),

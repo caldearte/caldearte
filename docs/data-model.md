@@ -81,7 +81,10 @@ events
     yet), image_url (the raw external image URL, so it isn't silently
     dropped in the meantime), source_url,
   curation_status (approved | rejected | pending_review — Event Discovery
-    itself only ever writes approved/rejected, see curation-policy.md),
+    itself only ever writes approved/rejected, see curation-policy.md;
+    since 2026-11-20 the "Agrega tu expo" form writes pending_review when
+    its axis-5 image check fails twice — hidden from events_public until
+    a person flips it to approved),
   curation_reasoning (internal, technical, for the curators),
   public_explanation (nullable; only set on automatic rejection of a
     "submitted" event, goes in the reply email),

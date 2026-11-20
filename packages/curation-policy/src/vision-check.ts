@@ -56,7 +56,14 @@ export interface VisionUsage {
   cacheReadInputTokens?: number;
 }
 
-const MODEL = "claude-haiku-4-5";
+// Haiku 5.5 at low effort (2026-11-20), the same model and effort as the
+// text curation since PR #712. It thinks by default and thinking counts
+// toward max_tokens: the old 16-token ceiling would end every call inside
+// the thinking block with no text at all, hence the headroom.
+const MODEL = "claude-haiku-5-5";
+const MAX_TOKENS = 2000;
+
+export class VisionCheckUnparseableError extends Error {}
 
 function extractText(content: VisionResponseContentBlock[]): string {
   let text = "";
@@ -81,7 +88,8 @@ export async function runVisionCheck(
 
   const response = await client.messages.create({
     model: MODEL,
-    max_tokens: 16,
+    max_tokens: MAX_TOKENS,
+    output_config: { effort: "low" },
     messages: [
       {
         role: "user",
@@ -93,8 +101,14 @@ export async function runVisionCheck(
     ],
   });
 
+  // An answer that says neither word (empty because thinking used up
+  // max_tokens, or anything else) is an error, never an approval: this
+  // used to read as APPROVE, so a check that never ran passed the image.
   const text = extractText(response.content).trim().toUpperCase();
-  const status = text.includes("REJECT") ? "rejected" : "approved";
+  let status: "approved" | "rejected";
+  if (text.includes("REJECT")) status = "rejected";
+  else if (text.includes("APPROVE")) status = "approved";
+  else throw new VisionCheckUnparseableError(`vision check: no APPROVE/REJECT in answer ${JSON.stringify(text.slice(0, 80))}`);
 
   const usage: VisionUsage = {
     inputTokens: response.usage.input_tokens,
