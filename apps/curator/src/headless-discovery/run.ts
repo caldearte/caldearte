@@ -150,7 +150,7 @@ export async function run(deps: HeadlessRunDeps = {}): Promise<void> {
 
       summary.candidates.total = candidates.length;
       summary.candidates.insertedCount = insertedCount;
-      summary.eventGroups.push({ label: MAVI_SOURCE_URL, candidates: candidates.map((c) => toCandidateSummary(c, outcomes.get(c))) });
+      summary.eventGroups.push({ label: MAVI_SOURCE_URL, candidates: candidates.map((c) => toCandidateSummary(c, outcomes.get(c), llmDuplicates.get(c))) });
       for (const c of candidates) {
         if (c.status === "approved") summary.candidates.approvedByCuration += 1;
         if (c.status === "rejected") summary.candidates.rejectedByCuration += 1;

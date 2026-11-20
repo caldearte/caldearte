@@ -1743,7 +1743,7 @@ export interface RunDeps {
   brightSourceUrlFilter?: string[];
 }
 
-export function toCandidateSummary(c: EventCandidate, outcome?: InsertOutcome): CandidateSummary {
+export function toCandidateSummary(c: EventCandidate, outcome?: InsertOutcome, llmDuplicate?: LlmDuplicate): CandidateSummary {
   return {
     title: c.title,
     status: c.status,
@@ -1755,6 +1755,10 @@ export function toCandidateSummary(c: EventCandidate, outcome?: InsertOutcome): 
     sourceUrl: c.sourceUrl,
     outcome: outcome ?? null,
     imageUrl: c.imageUrl,
+    duplicateOf:
+      outcome === "duplicate_skipped" && llmDuplicate
+        ? { id: llmDuplicate.existingId, title: llmDuplicate.existingTitle, reason: llmDuplicate.reason }
+        : null,
   };
 }
 
@@ -2065,7 +2069,7 @@ export async function run(deps: RunDeps = {}): Promise<void> {
         // Model second look at what would be stored as new (lib/duplicate-check.ts).
         const llmDuplicates = await findLlmDuplicatesForInsert(messagesClient, candidates, regions, seenKeys, now, "bright_source");
         const { insertedCount, outcomes } = await insertCandidates(candidates, regions, seenKeys, now, "bright_source", rehostImageFn, { llmDuplicates });
-        summary.eventGroups.push({ label: sourceUrl, candidates: candidates.map((c) => toCandidateSummary(c, outcomes.get(c))) });
+        summary.eventGroups.push({ label: sourceUrl, candidates: candidates.map((c) => toCandidateSummary(c, outcomes.get(c), llmDuplicates.get(c))) });
         summary.candidates.insertedCount += insertedCount;
         console.log(`[event-discovery] bright source ${sourceUrl}: ${insertedCount} new approved event(s)`);
       } catch (err) {

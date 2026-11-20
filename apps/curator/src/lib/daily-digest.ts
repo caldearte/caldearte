@@ -118,6 +118,23 @@ export function safetyNetVetoesOf(runs: DailyDigestPipelineRun[]): SafetyNetVeto
 
 // A vetoed candidate in the newsletter card's shape. No id (it never
 // became an event) — the card is rendered without a link.
+// Candidates the model's duplicate check (lib/duplicate-check.ts) held back
+// as a show already on the calendar. Listed so a wrong call is visible the
+// same day: the check can only remove, so this is the only place its
+// mistakes would show.
+export interface ModelDuplicateSummary {
+  candidate: CandidateSummary;
+  existing: { id: string; title: string; reason: string };
+}
+
+export function modelDuplicatesOf(runs: DailyDigestPipelineRun[]): ModelDuplicateSummary[] {
+  return runs
+    .flatMap((run) => run.eventGroups.flatMap((g) => g.candidates))
+    .flatMap((candidate) =>
+      candidate.outcome === "duplicate_skipped" && candidate.duplicateOf ? [{ candidate, existing: candidate.duplicateOf }] : [],
+    );
+}
+
 function vetoAsDigestEvent(c: CandidateSummary): DigestEvent {
   return {
     id: "",
@@ -235,6 +252,19 @@ export function buildDailyDigestBody(summary: DailyDigestSummary): string {
     }
   }
 
+  const duplicates = modelDuplicatesOf(summary.runs);
+  if (duplicates.length > 0) {
+    lines.push("", `DESCARTADOS COMO DUPLICADOS POR EL MODELO (${duplicates.length})`);
+    for (const d of duplicates) {
+      lines.push(
+        `  ${d.candidate.title} — ${[d.candidate.placeName, d.candidate.location].filter(Boolean).join(", ")}`,
+        `    Misma muestra que: ${d.existing.title} (${eventUrl(d.existing.id)})`,
+        `    Por qué: ${d.existing.reason}`,
+      );
+      if (d.candidate.sourceUrl) lines.push(`    Fuente: ${d.candidate.sourceUrl}`);
+    }
+  }
+
   return lines.join("\n");
 }
 
@@ -283,6 +313,19 @@ export function buildDailyDigestHtmlBody(summary: DailyDigestSummary): string {
       .join("")}</div>`
     : "";
 
+  const duplicates = modelDuplicatesOf(summary.runs);
+  const duplicatesHtml = duplicates.length
+    ? `<h2 style="${H2_STYLE}">Descartados como duplicados por el modelo (${duplicates.length})</h2>
+    <div style="background:${CARD_SURFACE};border-radius:16px;padding:12px 12px 2px;">${duplicates
+      .map(
+        (d) => `${eventCardHtml(vetoAsDigestEvent(d.candidate), referenceYear, null)}
+        <p style="margin:-2px 4px 16px;font-size:13px;line-height:1.45;"><b>Misma muestra que:</b> <a href="${escapeHtml(eventUrl(d.existing.id))}">${escapeHtml(d.existing.title)}</a><br><b>Por qué:</b> ${escapeHtml(d.existing.reason)}${
+          d.candidate.sourceUrl ? `<br><a href="${escapeHtml(d.candidate.sourceUrl)}" style="color:#666;">Ver la fuente</a>` : ""
+        }</p>`,
+      )
+      .join("")}</div>`
+    : "";
+
   return `<div style="font-family:-apple-system,Helvetica,Arial,sans-serif;max-width:720px;margin:0 auto;color:#1a1a1a;">
     <h1 style="font-size:18px;margin:0 0 4px;">Caldearte — resumen diario</h1>
     <p style="font-size:13px;color:#666;margin:0 0 20px;">${escapeHtml(summary.date)}</p>
@@ -319,6 +362,7 @@ export function buildDailyDigestHtmlBody(summary: DailyDigestSummary): string {
     <h2 style="${H2_STYLE}">Nuevos en el sitio (${summary.newEvents.length})</h2>
     ${newEventsHtml}
     ${vetoesHtml}
+    ${duplicatesHtml}
   </div>`;
 }
 

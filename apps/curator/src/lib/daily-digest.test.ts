@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { buildDailyDigestSubject, buildDailyDigestBody, buildDailyDigestHtmlBody, groupNewEvents, safetyNetVetoesOf, type DailyDigestSummary } from "./daily-digest.js";
+import { buildDailyDigestSubject, buildDailyDigestBody, buildDailyDigestHtmlBody, groupNewEvents, modelDuplicatesOf, safetyNetVetoesOf, type DailyDigestSummary } from "./daily-digest.js";
 
 const baseCost: DailyDigestSummary["cost"] = {
   anthropicTodayUsd: 0.1,
@@ -207,6 +207,45 @@ test("safety-net vetoes come last, as cards without a link, with MiniMax's reaso
   const body = buildDailyDigestBody(summary);
   assert.match(body, /QUITADOS POR MINIMAX \(RED DE SEGURIDAD\) \(1\)/);
   assert.match(body, /Por qué: Pasacalle y lectura de poesía/);
+});
+
+test("candidates the model held back as duplicates are listed with the show they matched and why", () => {
+  const followUp = {
+    ...approvedCandidate,
+    title: "Con la excusa de algunas imágenes de la inauguración",
+    outcome: "duplicate_skipped" as const,
+    sourceUrl: "https://www.instagram.com/p/abc/",
+    duplicateOf: { id: "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee", title: "Canto libre", reason: "Post de agradecimiento de la inauguración de Canto libre." },
+  };
+  const plainDuplicate = { ...approvedCandidate, title: "Ya estaba por título", outcome: "duplicate_skipped" as const };
+  const summary = summaryWith([
+    {
+      entrypoint: "instagram",
+      startedAt: new Date("2026-08-26T08:17:00.000Z"),
+      candidates: { total: 3, approvedByCuration: 3, rejectedByCuration: 0 },
+      eventGroups: [{ label: "cuenta_x", candidates: [approvedCandidate, followUp, plainDuplicate] }],
+      costUsd: 0.05,
+    },
+  ]);
+
+  const duplicates = modelDuplicatesOf(summary.runs);
+  assert.equal(duplicates.length, 1, "only the model's skip, not a deterministic duplicate");
+
+  const html = buildDailyDigestHtmlBody(summary);
+  const section = html.slice(html.indexOf("Descartados como duplicados por el modelo"));
+  assert.match(section, /Con la excusa de algunas imágenes/);
+  assert.match(section, /Misma muestra que:<\/b> <a href="[^"]*aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee[^"]*">Canto libre<\/a>/);
+  assert.match(section, /Por qué:<\/b> Post de agradecimiento/);
+  assert.match(section, /href="https:\/\/www\.instagram\.com\/p\/abc\/"/);
+
+  const body = buildDailyDigestBody(summary);
+  assert.match(body, /DESCARTADOS COMO DUPLICADOS POR EL MODELO \(1\)/);
+  assert.match(body, /Misma muestra que: Canto libre/);
+});
+
+test("the model-duplicates section is left out on a day without any", () => {
+  assert.doesNotMatch(buildDailyDigestHtmlBody(summaryWith([])), /Descartados como duplicados/);
+  assert.doesNotMatch(buildDailyDigestBody(summaryWith([])), /DESCARTADOS COMO DUPLICADOS/);
 });
 
 test("the veto section is left out entirely on a day with no vetoes", () => {

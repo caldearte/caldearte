@@ -105,6 +105,9 @@ export interface CandidateSummary {
   // safety-net veto cards). Optional: run summaries stored before this
   // field existed don't have it.
   imageUrl?: string | null;
+  // Set only when the model's duplicate check (lib/duplicate-check.ts) made
+  // the skip, so the daily digest can show what it held back and why.
+  duplicateOf?: { id: string; title: string; reason: string } | null;
 }
 
 // One row per comuna searched or bright source fetched — lets the email
