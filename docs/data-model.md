@@ -412,6 +412,15 @@ event_sightings (20261106120000_add_event_sightings.sql)
   -- (say, for missing dates) leaves no sighting. Nothing in curation reads
   -- it; the research repo uses it to measure Instagram/web overlap for
   -- coverage. No titles or names. Not pruned.
+source_fetch_log (20261106130000_add_source_fetch_log.sql)
+  pipeline, source_key, fetched_on, location (nullable), items_count;
+    primary key (pipeline, source_key, fetched_on)
+  -- One row per source really read per day, so the research repo can count
+  -- active sources per month and region and tell a growing circuit from
+  -- growing capture. bright_source_fetch_state only keeps the latest fetch.
+  -- A failed fetch writes no row. source_key is an Instagram username, a
+  -- source url or a fixed label, never the Google Alerts feed url (a secret).
+  -- Nothing in curation reads it. Not pruned.
 
 artists, venues, event_artists, outreach_contacts, view artist_history
   (20260928120000_add_artist_venue_catalog.sql)
