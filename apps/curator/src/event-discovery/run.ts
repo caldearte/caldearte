@@ -75,6 +75,7 @@ import {
 } from "./sources.js";
 import { syncCatalogSafely } from "../lib/catalog.js";
 import { readableTitle } from "./caption-sentence-title.js";
+import { DUPLICATE_CHECK_MODEL, findLlmDuplicates, loadLiveEvents, type LiveEventsClient, type LlmDuplicate } from "../lib/duplicate-check.js";
 
 type Region = Tables<"regions">;
 
@@ -1066,6 +1067,67 @@ export function wouldInsertAsNew(c: EventCandidate, seen: SeenKeys, now: Date): 
 // re-approvals of events already on the site (see "duplicate_skipped"
 // below), but the badge gave no hint of that. This type lets the email
 // show the real per-row outcome instead of just Haiku's verdict.
+// Runs lib/duplicate-check.ts over the candidates the deterministic tiers
+// would insert as new, and records its cost. Called by every pipeline right
+// before insertCandidates, with the same seen keys, so "would be new" here
+// is what insertCandidates then decides (same reasoning as the safety net).
+export async function findLlmDuplicatesForInsert(
+  messagesClient: MessagesClient,
+  candidates: EventCandidate[],
+  regions: RegionLike[],
+  seen: SeenKeys,
+  now: Date,
+  pipeline: Pipeline,
+): Promise<Map<EventCandidate, LlmDuplicate>> {
+  const { matches, checked, usage } = await findLlmDuplicates(messagesClient, candidates, {
+    shouldCheck: (c) => wouldInsertAsNew(c, seen, now),
+    toEvent: (c) => ({
+      title: c.title,
+      placeName: c.placeName,
+      location: c.location,
+      regionId: matchRegionId(c.location, regions),
+      sourceAccount: c.sourceAccount,
+      runStartDate: c.runStartDate,
+      runEndDate: c.runEndDate,
+      openingDatetime: c.openingDatetime,
+      description: c.description,
+    }),
+    loadLive: () => loadLiveEvents(getSupabaseClient() as unknown as LiveEventsClient, now),
+  });
+  if (checked > 0) {
+    console.log(`[event-discovery] duplicate check (${pipeline}): ${matches.size}/${checked} new candidate(s) already on the calendar`);
+    await recordUsage({ purpose: "event_discovery", model: DUPLICATE_CHECK_MODEL, pipeline, usage });
+  }
+  return matches;
+}
+
+// See the duplicate_skipped branch of insertCandidates for why web
+// duplicates are recorded and Instagram ones aren't.
+async function recordSkippedDuplicate(
+  client: ReturnType<typeof getSupabaseClient>,
+  c: EventCandidate,
+  pipeline: Pipeline,
+  now: Date,
+  existing: { id: string; title: string },
+): Promise<void> {
+  if (!c.sourceUrl || pipeline === "instagram") return;
+  const { error } = await client.from("rejected_candidates").upsert(
+    {
+      source_url: c.sourceUrl,
+      title: c.title,
+      reason: `${DUPLICATE_SKIP_MARKER}: ya en el calendario como "${existing.title}" (${existing.id}); no se vuelve a curar por 14 días] ${c.curationReasoning}`,
+      created_at: now.toISOString(),
+      location: c.location,
+      pipeline,
+      source_account: c.sourceAccount,
+    },
+    { onConflict: "source_url" },
+  );
+  if (error) {
+    console.error(`[event-discovery] failed to record skipped duplicate "${c.title}": ${error.message}`);
+  }
+}
+
 export type InsertOutcome = "inserted" | "replaced" | "duplicate_skipped" | "axis_blocked" | "expired" | "insert_failed";
 
 export async function insertCandidates(
@@ -1075,6 +1137,7 @@ export async function insertCandidates(
   now: Date,
   pipeline: Pipeline,
   rehostImageFn: RehostImageFn = rehostImage,
+  opts: { llmDuplicates?: ReadonlyMap<EventCandidate, LlmDuplicate> } = {},
 ): Promise<{ insertedCount: number; outcomes: Map<EventCandidate, InsertOutcome> }> {
   const client = getSupabaseClient();
   let inserted = 0;
@@ -1291,23 +1354,22 @@ export async function insertCandidates(
       // No region_id/anchor_date: this is not a verdict about the event, and
       // the axis-conflict check (rejected_candidates by region + date) must
       // not mistake it for one.
-      if (c.sourceUrl && pipeline !== "instagram") {
-        const { error: duplicateError } = await client.from("rejected_candidates").upsert(
-          {
-            source_url: c.sourceUrl,
-            title: c.title,
-            reason: `${DUPLICATE_SKIP_MARKER}: ya en el calendario como "${existingMatch.title}" (${existingMatch.id}); no se vuelve a curar por 14 días] ${c.curationReasoning}`,
-            created_at: now.toISOString(),
-            location: c.location,
-            pipeline,
-            source_account: c.sourceAccount,
-          },
-          { onConflict: "source_url" },
-        );
-        if (duplicateError) {
-          console.error(`[event-discovery] failed to record skipped duplicate "${c.title}": ${duplicateError.message}`);
-        }
-      }
+      await recordSkippedDuplicate(client, c, pipeline, now, existingMatch);
+      continue;
+    }
+
+    // The model's second look (lib/duplicate-check.ts): only ever asked
+    // about candidates no tier above matched, so it can only add a skip.
+    const llmDuplicate = existingMatch ? undefined : opts.llmDuplicates?.get(c);
+    if (llmDuplicate) {
+      console.log(`[event-discovery] skipping duplicate: "${c.title}" (model: same show as "${llmDuplicate.existingTitle}" — ${llmDuplicate.reason})`);
+      outcomes.set(c, "duplicate_skipped");
+      await recordEventSighting(
+        client,
+        { eventId: llmDuplicate.existingId, sourceUrl: c.sourceUrl, pipeline, sourceAccount: c.sourceAccount, stage: "duplicate_skipped" },
+        now,
+      );
+      await recordSkippedDuplicate(client, c, pipeline, now, { id: llmDuplicate.existingId, title: llmDuplicate.existingTitle });
       continue;
     }
 
@@ -2000,7 +2062,9 @@ export async function run(deps: RunDeps = {}): Promise<void> {
           );
         }
         allCandidates.push(...candidates);
-        const { insertedCount, outcomes } = await insertCandidates(candidates, regions, seenKeys, now, "bright_source", rehostImageFn);
+        // Model second look at what would be stored as new (lib/duplicate-check.ts).
+        const llmDuplicates = await findLlmDuplicatesForInsert(messagesClient, candidates, regions, seenKeys, now, "bright_source");
+        const { insertedCount, outcomes } = await insertCandidates(candidates, regions, seenKeys, now, "bright_source", rehostImageFn, { llmDuplicates });
         summary.eventGroups.push({ label: sourceUrl, candidates: candidates.map((c) => toCandidateSummary(c, outcomes.get(c))) });
         summary.candidates.insertedCount += insertedCount;
         console.log(`[event-discovery] bright source ${sourceUrl}: ${insertedCount} new approved event(s)`);

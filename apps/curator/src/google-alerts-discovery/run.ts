@@ -30,6 +30,7 @@ import { recordSourceFetches } from "../lib/source-fetch-log.js";
 import { curateBrightSourceItems, currentMonthLabel, EVENT_DISCOVERY_MODEL, type MessagesClient } from "../event-discovery/discover.js";
 import type { BrightSourceItem } from "../event-discovery/extractors.js";
 import {
+  findLlmDuplicatesForInsert,
   insertCandidates,
   loadAllRegions,
   loadExistingKeys,
@@ -170,7 +171,9 @@ export async function run(deps: GoogleAlertsRunDeps = {}): Promise<void> {
       const regions = await loadAllRegions();
       await enrichCandidates(candidates, pageFetchFn, now, regions);
 
-      const { insertedCount, outcomes } = await insertCandidates(candidates, regions, seenKeys, now, "google_alerts");
+      // Model second look at what would be stored as new (lib/duplicate-check.ts).
+      const llmDuplicates = await findLlmDuplicatesForInsert(messagesClient, candidates, regions, seenKeys, now, "google_alerts");
+      const { insertedCount, outcomes } = await insertCandidates(candidates, regions, seenKeys, now, "google_alerts", undefined, { llmDuplicates });
 
       summary.candidates.total = candidates.length;
       summary.candidates.insertedCount = insertedCount;
