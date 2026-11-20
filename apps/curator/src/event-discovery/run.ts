@@ -344,6 +344,9 @@ export interface ExistingEventInfo {
   // that) — only to narrow the bucket a candidate's own location is
   // compared within.
   location: string;
+  // Sent through the "agrega tu expo" form (source='submitted'). Set only by
+  // loadExistingKeys; rows built mid-run are scraped by definition.
+  submitted?: boolean;
 }
 
 export interface SeenKeys {
@@ -435,6 +438,7 @@ export async function loadExistingKeys(): Promise<SeenKeys> {
     opening_time_confirmed: boolean;
     run_start_date: string | null;
     run_end_date: string | null;
+    source: string;
   }>;
   try {
     // Paged: this table passes PostgREST's 1000-row cap around 2026-11, and a
@@ -442,7 +446,7 @@ export async function loadExistingKeys(): Promise<SeenKeys> {
     rows = await fetchAllRows((from, to) =>
       client
         .from("events")
-        .select("id, title, source_url, freeform_location, place_name, opening_datetime, opening_time_confirmed, run_start_date, run_end_date")
+        .select("id, title, source_url, freeform_location, place_name, opening_datetime, opening_time_confirmed, run_start_date, run_end_date, source")
         .in("source", ["discovered", "submitted"])
         .order("id")
         .range(from, to),
@@ -461,6 +465,7 @@ export async function loadExistingKeys(): Promise<SeenKeys> {
     runStartDate: row.run_start_date,
     runEndDate: row.run_end_date,
     location: row.freeform_location,
+    submitted: row.source === "submitted",
   });
 
   return buildSeenKeys(rows.map(toInfo));
@@ -580,7 +585,14 @@ export function findPreCurationDuplicate(item: BrightSourceItem, seen: SeenKeys)
 //    run_end_date for an MSSA exhibition that MSSA's own detail page had
 //    already corrected. A true tie (same tier on both signals) keeps
 //    whatever's already stored, per explicit instruction.
-function shouldReplaceExisting(candidate: EventCandidate, existing: ExistingEventInfo): boolean {
+// Above both: a row the gallery sent through the form is never replaced by
+// a scraped version of it (Daniel, 2026-11-20) — the form is the venue's
+// own word, and since that date the form replaces scraped rows, not the
+// other way round. Already true by the two tiers (a form row always has a
+// confirmed opening and no source url), stated so a change to them can't
+// undo it.
+export function shouldReplaceExisting(candidate: EventCandidate, existing: ExistingEventInfo): boolean {
+  if (existing.submitted) return false;
   const candidateHasOpening = candidate.openingDatetime !== null && candidate.openingTimeConfirmed;
   const existingHasOpening = existing.openingDatetime !== null && existing.openingTimeConfirmed;
   if (candidateHasOpening !== existingHasOpening) return candidateHasOpening;

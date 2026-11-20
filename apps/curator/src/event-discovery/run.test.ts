@@ -2,7 +2,8 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import type { RunSummary } from "../lib/notify.js";
 import type { BrightSourceFetchResult } from "./sources.js";
-import { findPreCurationDuplicate, buildSeenKeys, type ExistingEventInfo, type SeenKeys } from "./run.js";
+import { findPreCurationDuplicate, buildSeenKeys, shouldReplaceExisting, type ExistingEventInfo, type SeenKeys } from "./run.js";
+import type { EventCandidate } from "./discover.js";
 import type { BrightSourceItem } from "./extractors.js";
 
 // Integration test against local Supabase. Run `supabase start`, then export
@@ -2901,4 +2902,28 @@ test("findPreCurationDuplicate: no false positive — a differently-worded title
     structuredEndDate: "2026-02-01",
   });
   assert.equal(findPreCurationDuplicate(unrelated, seen), undefined);
+});
+
+test("shouldReplaceExisting: a row sent through the form is never replaced by a scraped version, even one that would otherwise win", () => {
+  const existing: ExistingEventInfo = {
+    id: "form-row",
+    title: "Rotten",
+    placeName: "Casa chagual",
+    sourceUrl: null,
+    openingDatetime: null,
+    openingTimeConfirmed: false,
+    runStartDate: null,
+    runEndDate: "2026-12-11",
+    location: "Casa chagual, Santiago",
+  };
+  const candidate = {
+    title: "Rotten",
+    placeName: "Merced 633",
+    sourceUrl: "https://www.instagram.com/p/x/",
+    openingDatetime: "2026-11-20T22:00:00.000Z",
+    openingTimeConfirmed: true,
+  } as EventCandidate;
+  // Without the flag, the confirmed opening wins (tier 1) — the guard is what stops it.
+  assert.equal(shouldReplaceExisting(candidate, existing), true);
+  assert.equal(shouldReplaceExisting(candidate, { ...existing, submitted: true }), false);
 });
