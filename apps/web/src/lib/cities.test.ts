@@ -13,7 +13,7 @@ import {
   groupCitiesByRegion,
   narrowCitiesByRegion,
   OTHER_CITY,
-  DEFAULT_CITY_ID, searchRegions, rankComunaMatch } from "./cities";
+  DEFAULT_CITY_ID, searchRegions, rankComunaMatch, exactComunaMatch } from "./cities";
 import type { RegionMeta } from "./events";
 import type { CityCounts } from "./event-utils";
 
@@ -335,4 +335,19 @@ test("rankComunaMatch: the comuna named like the query beats its región's other
   assert.equal(rankComunaMatch("Peñalolén", rm, "lolen"), 3);
   assert.equal(rankComunaMatch("Peñalolén", rm, "penalolen"), 0);
   assert.equal(rankComunaMatch("Arica", "Arica y Parinacota", "punta"), null);
+});
+
+test("exactComunaMatch: a comuna typed out in full counts as picked, accents and case aside", () => {
+  const comunas = [{ name: "Providencia" }, { name: "Santiago" }, { name: "Ñuñoa" }, { name: "Concepción" }];
+  assert.equal(exactComunaMatch(comunas, "providencia")?.name, "Providencia");
+  assert.equal(exactComunaMatch(comunas, "  NUNOA ")?.name, "Ñuñoa");
+  assert.equal(exactComunaMatch(comunas, "provi"), null);
+});
+
+test("exactComunaMatch and rankComunaMatch: 'Santiago Centro' and 'Stgo' mean the comuna Santiago", () => {
+  const comunas = [{ name: "Santiago" }, { name: "Concepción" }];
+  assert.equal(exactComunaMatch(comunas, "Santiago Centro")?.name, "Santiago");
+  assert.equal(exactComunaMatch(comunas, "stgo")?.name, "Santiago");
+  assert.equal(exactComunaMatch(comunas, "Conce")?.name, "Concepción");
+  assert.equal(rankComunaMatch("Santiago", null, "santiago centro"), 0);
 });

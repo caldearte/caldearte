@@ -28,6 +28,16 @@ const RATE_LIMIT_WINDOW_SECONDS = 3600;
 // the calendar is under 200 characters.
 const MAX_SHORT_FIELD = 300;
 const MAX_DESCRIPTION = 5000;
+// The artist field is every artist joined with ", " — a group show with
+// twenty names passes 300, so it gets the description's room instead.
+const MAX_ARTISTS = 2000;
+
+// Every "invalid" carries a sentence for the form to show (2026-11-20):
+// the form used to show nothing at all on a 400, and one gallery retried
+// four times on 2026-11-07 without getting an answer.
+function invalid(message: string) {
+  return NextResponse.json({ status: "invalid", message }, { status: 400 });
+}
 
 const ALLOWED_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
 const MAX_IMAGE_BYTES = 4 * 1024 * 1024; // client already compresses to ~1600px/JPEG-80; this is a server-side ceiling, not the target size
@@ -196,7 +206,7 @@ export async function POST(request: Request) {
   try {
     form = await request.formData();
   } catch {
-    return NextResponse.json({ status: "invalid" }, { status: 400 });
+    return invalid("No pudimos leer el formulario. Vuelve a intentarlo.");
   }
 
   // Honeypot — a real visitor never fills this hidden field, same
@@ -235,16 +245,24 @@ export async function POST(request: Request) {
     !runEndDate ||
     !submitterName ||
     !isValidEmail(submitterEmail) ||
-    images.length !== 1 ||
-    [title, artist, galleryName, comunaName, submitterName].some((field) => field.length > MAX_SHORT_FIELD) ||
+    images.length !== 1
+  ) {
+    return invalid("Falta un dato del formulario. Revisa que todos los pasos estén completos y vuelve a enviar.");
+  }
+  if (
+    [title, galleryName, comunaName, submitterName].some((field) => field.length > MAX_SHORT_FIELD) ||
+    artist.length > MAX_ARTISTS ||
     description.length > MAX_DESCRIPTION
   ) {
-    return NextResponse.json({ status: "invalid" }, { status: 400 });
+    return invalid("Algún texto es demasiado largo. Acorta la descripción o los nombres y vuelve a enviar.");
   }
 
   for (const image of images) {
-    if (!ALLOWED_IMAGE_TYPES.has(image.type) || image.size > MAX_IMAGE_BYTES) {
-      return NextResponse.json({ status: "invalid" }, { status: 400 });
+    if (!ALLOWED_IMAGE_TYPES.has(image.type)) {
+      return invalid("No pudimos leer esa imagen. Prueba con una JPG o PNG.");
+    }
+    if (image.size > MAX_IMAGE_BYTES) {
+      return invalid("La imagen pesa demasiado. Prueba con una de menos de 4 MB.");
     }
   }
 

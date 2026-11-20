@@ -2,7 +2,7 @@
 
 import { useId, useState } from "react";
 import { esCL } from "@/i18n/es-CL";
-import { rankComunaMatch } from "@/lib/cities";
+import { exactComunaMatch, rankComunaMatch } from "@/lib/cities";
 import { shortRegionName } from "@/lib/regionNames";
 import { FIELD_BOX, FIELD_BOX_INVALID } from "./FormField";
 
@@ -66,7 +66,14 @@ export default function ComunaCombobox({ id, comunas, value, onChange, invalid =
           setQuery(e.target.value);
           setOpen(true);
           setActive(0);
-          if (value) onChange(null);
+          // A name typed out in full is a choice too (2026-11-20: typing
+          // "Providencia" and moving on got "Elige una comuna de la lista").
+          const exact = exactComunaMatch(comunas, e.target.value);
+          if (exact) {
+            if (exact.id !== value?.id) onChange(exact);
+          } else if (value) {
+            onChange(null);
+          }
         }}
         onFocus={() => setOpen(true)}
         // Delay so a click on an option lands before the list closes.

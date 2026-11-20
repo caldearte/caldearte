@@ -36,6 +36,9 @@ const TIME_SLOTS = Array.from({ length: (23 - 9) * 2 + 1 }, (_, i) => {
 // with a 4:5 preview. One <form> holds every step; the final submit sends
 // the same fields to /api/submit-event as before (openingDatetime is
 // rebuilt as "YYYY-MM-DDTHH:MM" from the date + hour).
+const ALLOWED_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
+const MAX_IMAGE_BYTES = 4 * 1024 * 1024;
+
 export default function AgregaExpoContent({ comunas, galleries }: { comunas: ComunaOption[]; galleries: string[] }) {
   const [step, setStep] = useState(0);
   const [status, setStatus] = useState<Status>("idle");
@@ -63,6 +66,16 @@ export default function AgregaExpoContent({ comunas, galleries }: { comunas: Com
       next = await compressImage(file);
     } catch {
       // keep the original
+    }
+    // Same rules as the server (route.ts), checked here so the gallery
+    // hears it at the image step instead of after sending everything.
+    if (!ALLOWED_IMAGE_TYPES.has(next.type) || next.size > MAX_IMAGE_BYTES) {
+      setErrors((prev) => ({
+        ...prev,
+        image: ALLOWED_IMAGE_TYPES.has(next.type) ? esCL.agregaExpo.imageTooLarge : esCL.agregaExpo.imageUnreadable,
+      }));
+      setStatus("idle");
+      return;
     }
     setImage(next);
     setImageUrl((prev) => {
@@ -155,8 +168,12 @@ export default function AgregaExpoContent({ comunas, galleries }: { comunas: Com
     setStatus("sending");
     try {
       const res = await fetch("/api/submit-event", { method: "POST", body: formData });
-      const data = (await res.json()) as { status: Status; message?: string };
-      setStatus(data.status);
+      const data = (await res.json()) as { status: string; message?: string };
+      // Anything the page doesn't know how to show ("invalid", a 500) is an
+      // error with the server's sentence when there is one — never a page
+      // that silently does nothing.
+      const known: Status[] = ["approved", "received", "rejected", "rate_limited"];
+      setStatus(known.includes(data.status as Status) ? (data.status as Status) : "error");
       setResultMessage(data.message ?? "");
       if (data.status === "approved" || data.status === "received") {
         form.reset();
@@ -215,10 +232,10 @@ export default function AgregaExpoContent({ comunas, galleries }: { comunas: Com
           {!done && step === 0 && <p className="font-lato font-semibold text-[16px] md:text-[18px] leading-[1.4] text-text-primary">{esCL.agregaExpo.intro}</p>}
         </div>
 
-        {done ? (
+        {done && (
           <div className="flex flex-col gap-[20px]">
             <p className="font-lato font-semibold text-[16px] md:text-[18px] leading-[1.4] text-text-primary">
-              {status === "error" ? esCL.agregaExpo.error : resultMessage}
+              {status === "error" ? resultMessage || esCL.agregaExpo.error : resultMessage}
             </p>
             <div>
               <button
@@ -233,20 +250,23 @@ export default function AgregaExpoContent({ comunas, galleries }: { comunas: Com
               </button>
             </div>
           </div>
-        ) : (
-          <form
-            ref={formRef}
-            onSubmit={handleSubmit}
-            onInput={(e) => clearError((e.target as HTMLInputElement).name)}
-            noValidate
-            className="flex flex-col gap-[28px] md:gap-[32px]"
-          >
+        )}
+        {/* Hidden, not unmounted, while a result shows (2026-11-20): after a
+            rejection or an error, "Intentar de nuevo" used to bring back an
+            empty form, every typed field lost. */}
+        <form
+          ref={formRef}
+          onSubmit={handleSubmit}
+          onInput={(e) => clearError((e.target as HTMLInputElement).name)}
+          noValidate
+          className={done ? "hidden" : "flex flex-col gap-[28px] md:gap-[32px]"}
+        >
             <input type="text" name="website" tabIndex={-1} autoComplete="off" className="hidden" aria-hidden="true" />
 
             {/* Step 1 — the show */}
             <div className={step === 0 ? "flex flex-col gap-[20px]" : "hidden"}>
               <FormField label={esCL.agregaExpo.titleLabel} htmlFor="ae-title" error={errors.title}>
-                <input id="ae-title" name="title" type="text" placeholder={esCL.agregaExpo.titlePlaceholder} className={box("title")} />
+                <input id="ae-title" name="title" type="text" maxLength={300} placeholder={esCL.agregaExpo.titlePlaceholder} className={box("title")} />
               </FormField>
               <FormField label={esCL.agregaExpo.artistLabel} htmlFor="ae-artist" error={errors.artist}>
                 {artists.length > 0 && (
@@ -291,7 +311,7 @@ export default function AgregaExpoContent({ comunas, galleries }: { comunas: Com
             {/* Step 2 — where and when */}
             <div className={step === 1 ? "flex flex-col gap-[20px]" : "hidden"}>
               <FormField label={esCL.agregaExpo.galleryNameLabel} htmlFor="ae-gallery" error={errors.galleryName}>
-                <input id="ae-gallery" name="galleryName" type="text" list="galleries-datalist" placeholder={esCL.agregaExpo.galleryPlaceholder} className={box("galleryName")} />
+                <input id="ae-gallery" name="galleryName" type="text" maxLength={300} list="galleries-datalist" placeholder={esCL.agregaExpo.galleryPlaceholder} className={box("galleryName")} />
                 <datalist id="galleries-datalist">
                   {galleries.map((g) => (
                     <option key={g} value={g} />
@@ -373,6 +393,7 @@ export default function AgregaExpoContent({ comunas, galleries }: { comunas: Com
                   id="ae-description"
                   name="description"
                   rows={4}
+                  maxLength={5000}
                   placeholder={esCL.agregaExpo.descriptionPlaceholder}
                   className={`${box("description")} h-auto py-[12px] resize-none`}
                 />
@@ -382,7 +403,7 @@ export default function AgregaExpoContent({ comunas, galleries }: { comunas: Com
             {/* Step 4 — who sends it */}
             <div className={step === 3 ? "flex flex-col gap-[20px]" : "hidden"}>
               <FormField label={esCL.agregaExpo.submitterNameLabel} htmlFor="ae-name" error={errors.submitterName}>
-                <input id="ae-name" name="submitterName" type="text" autoComplete="name" placeholder={esCL.agregaExpo.namePlaceholder} className={box("submitterName")} />
+                <input id="ae-name" name="submitterName" type="text" maxLength={300} autoComplete="name" placeholder={esCL.agregaExpo.namePlaceholder} className={box("submitterName")} />
               </FormField>
               <FormField label={esCL.agregaExpo.submitterEmailLabel} htmlFor="ae-email" error={errors.submitterEmail}>
                 <input id="ae-email" name="submitterEmail" type="email" autoComplete="email" inputMode="email" placeholder={esCL.agregaExpo.emailPlaceholder} className={box("submitterEmail")} />
@@ -417,7 +438,6 @@ export default function AgregaExpoContent({ comunas, galleries }: { comunas: Com
               </button>
             </div>
           </form>
-        )}
       </section>
 
       <p className="font-geist text-[13px] leading-[1.5] text-[#5e6668] max-w-[720px] mt-[16px]">
