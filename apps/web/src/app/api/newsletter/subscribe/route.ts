@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { Resend } from "resend";
-import { getSupabaseClient } from "@/lib/supabase-client";
 import { clientIp, isWithinRateLimit } from "@/lib/rate-limit";
 import { isValidEmail } from "@/lib/email";
 import { knownShortRegionName } from "@/lib/regionNames";
@@ -22,16 +21,16 @@ interface SubscribePayload {
   adminRegionName?: string;
 }
 
-// Calls the newsletter-resubscribe Edge Function (service-role) when our
-// own anon-key INSERT hits a unique-email conflict — the anon key can't
-// tell an active row apart from a previously-unsubscribed one, or update
-// either, so a real "I unsubscribed, let me back in" attempt needs
-// service-role to actually reset the row. See that function's own file
-// comment for the bug this fixes. Sends the shared x-admin-secret (same
-// server-to-server pattern as /api/admin/*): since the 2026-11-22 security
-// review the function refuses any caller without it, because it returns
-// the confirm token and was otherwise a public double-opt-in bypass.
-async function tryResubscribe(email: string, adminRegionName: string): Promise<{ confirmToken: string } | { alreadySubscribed: true } | null> {
+// Writes the subscriber row through the newsletter-resubscribe Edge
+// Function (service role, gated by the shared x-admin-secret). Despite its
+// name it handles every case: inserts a new pending row, resets a row
+// that had unsubscribed (fresh confirm_token, double opt-in again), or
+// reports an active/pending one as already subscribed. Until 2026-11-22
+// this route inserted the row itself with the anon key and only called the
+// function on a unique-email conflict; that INSERT grant let anyone with
+// the anon key write a row already marked confirmed (security review A2),
+// so the paired migration revokes it.
+async function upsertPendingSubscriber(email: string, adminRegionName: string): Promise<{ confirmToken: string } | { alreadySubscribed: true } | null> {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const adminSecret = process.env.ADMIN_ACTIONS_SECRET;
   if (!supabaseUrl || !adminSecret) {
@@ -53,12 +52,8 @@ async function tryResubscribe(email: string, adminRegionName: string): Promise<{
   }
 }
 
-// Writes the pending row with the anon key (never service_role — see
-// apps/web/src/lib/supabase-client.ts's assertAnonRole guard), gated by
-// newsletter_subscribers' insert-only anon RLS policy (see the
-// 20260730180000_add_newsletter_subscribers.sql migration). Sends the
-// double opt-in confirmation email itself, same outbound-only Resend
-// pattern as apps/web/src/app/api/contact/route.ts.
+// Sends the double opt-in confirmation email itself, same outbound-only
+// Resend pattern as apps/web/src/app/api/contact/route.ts.
 export async function POST(request: Request) {
   const ipAllowed = await isWithinRateLimit(`subscribe-ip:${clientIp(request)}`, IP_RATE_LIMIT_MAX, IP_RATE_LIMIT_WINDOW_SECONDS);
   if (!ipAllowed) {
@@ -95,29 +90,15 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "not_configured" }, { status: 500 });
   }
 
-  let confirmToken = crypto.randomUUID().replace(/-/g, "");
-
-  const { error: insertError } = await getSupabaseClient()
-    .from("newsletter_subscribers")
-    .insert({ email, admin_region_name: adminRegionName, confirm_token: confirmToken });
-
-  if (insertError) {
-    if (insertError.code === "23505") {
-      const resubscribed = await tryResubscribe(email, adminRegionName);
-      if (resubscribed && "alreadySubscribed" in resubscribed) {
-        return NextResponse.json({ status: "already_subscribed" });
-      }
-      if (resubscribed) {
-        confirmToken = resubscribed.confirmToken;
-      } else {
-        console.error("[newsletter/subscribe] resubscribe attempt failed");
-        return NextResponse.json({ error: "insert_failed" }, { status: 500 });
-      }
-    } else {
-      console.error("[newsletter/subscribe] insert failed", insertError);
-      return NextResponse.json({ error: "insert_failed" }, { status: 500 });
-    }
+  const result = await upsertPendingSubscriber(email, adminRegionName);
+  if (!result) {
+    console.error("[newsletter/subscribe] subscriber write failed");
+    return NextResponse.json({ error: "insert_failed" }, { status: 500 });
   }
+  if ("alreadySubscribed" in result) {
+    return NextResponse.json({ status: "already_subscribed" });
+  }
+  const { confirmToken } = result;
 
   // Points at our own page, not the Edge Function's URL directly — Supabase
   // Edge Functions can't serve real HTML (see newsletter-confirm's own file
