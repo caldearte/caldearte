@@ -20,10 +20,16 @@ permissions:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    # SUPABASE_ACCESS_TOKEN (an account-wide personal token) and
+    # SUPABASE_DB_PASSWORD live as secrets of this environment, not of the
+    # repo, so no other workflow (and none of their pnpm dependencies) can
+    # read them (security review 2026-11-22, M4). While the repo-level
+    # copies still exist they're used as a fallback.
+    environment: production-db
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
-      - uses: supabase/setup-cli@v1
+      - uses: supabase/setup-cli@1dedf2c611547ede7232d26866dd3c56ab903bbb # v1.7.3
         with:
           # Pinned: `latest` picked up a CLI whose `db push` targets the local
           # stack by default, and the 2026-11-19 deploy failed. Bump on purpose.
