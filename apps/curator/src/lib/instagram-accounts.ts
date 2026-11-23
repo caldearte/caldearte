@@ -3034,4 +3034,41 @@ export const INSTAGRAM_ACCOUNTS: InstagramAccountConfig[] = [
   // museoaraucania y centroculturalpalace siguen descartadas (ver sus
   // notas más arriba). O'Higgins, Tarapacá y Arica quedan sin candidata
   // nueva en esta ronda.
+  //
+  // Ronda 2026-11-22: segunda pasada de regiones, con el crédito de Apify
+  // que sigue sobrando (~$9 usados de $19 por ciclo). Candidatas sacadas
+  // del grafo de coautores (instagram_collab_edges) de las cuentas
+  // regionales ya seguidas, más handles de espacios conocidos. Muestra de
+  // los 12 posts más recientes de cada una, leídos sin login.
+  {
+    username: "ccmch_",
+    note:
+      "Evaluada 2026-11-22 (2ª ronda de regiones). Centro Cultural " +
+      "Municipal de Chillán (misma corporación que " +
+      "teatromunicipalchillanoficial, pero otro edificio y feed propio) — " +
+      "21 mil seguidores, 2.080 posts, activa a diario. Hallada en el grafo " +
+      "de coautores (40 co-posts con el Teatro). Encontró una exposición " +
+      "que NO teníamos: inauguración de \"Los árboles están lejos pero un " +
+      "día llegaremos a ser árbol\" (post del 2026-11-20). Resto del feed: " +
+      "ópera, danza, rap, sala de ensayo y una feria de oficios, que la " +
+      "curaduría filtra. fixedLocation.",
+    addedAt: "2026-11-22",
+    fixedLocation: { location: "Chillán", placeName: "Centro Cultural Municipal de Chillán" },
+  },
+  // Descartadas en la misma ronda (2026-11-22):
+  // rancaguacultura — ~6 posts al día (con el tope de 5 posts de Apify se
+  // perderían la mayoría), casi todo teatro, música y talleres; su única
+  // expo en la muestra ya entró por casadelaculturarancagua, y
+  // rancaguacultura.cl ya es fuente web. Seremis de las Culturas
+  // (culturas_arica, culturas_atacama, culturasmaule, culturas.nuble) —
+  // agenda institucional y de gobierno, 0 exposiciones propias en 48
+  // posts. museo_de_constitucion — museo histórico municipal, visitas
+  // escolares. direccioncreacionutalca — su única expo ya entró por
+  // centroamigosdelarte. creoantofagasta — urbanismo y deporte.
+  // culturaiquique — solo música. ruinasdehuanchaca — museo de sitio y
+  // ciencia, sin muestras de arte. palacioastoreca — es un HOTEL en
+  // Valparaíso, no el centro cultural de Iquique. culturaantofagasta — 1
+  // de 12 posts de artes visuales (Franasovic 360°, proyección inmersiva
+  // de marchantes.cl), resto música; volumen muy alto. O'Higgins y
+  // Tarapacá siguen sin candidata nueva.
 ];
