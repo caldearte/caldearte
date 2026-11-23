@@ -1,0 +1,12 @@
+# Keeps the SHA-pinned actions in .github/workflows/ current (security
+# review 2026-11-22, M4): Dependabot opens a PR that bumps the SHA and the
+# version comment together. npm security updates stay on (repo settings).
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    groups:
+      actions:
+        patterns: ["*"]
