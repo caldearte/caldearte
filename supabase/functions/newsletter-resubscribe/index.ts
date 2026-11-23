@@ -17,6 +17,7 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+const ADMIN_ACTIONS_SECRET = Deno.env.get("ADMIN_ACTIONS_SECRET")!;
 
 type Result = { status: "resubscribed"; confirmToken: string } | { status: "already_subscribed" | "error" };
 
@@ -24,17 +25,17 @@ function jsonResponse(result: Result, httpStatus = 200): Response {
   return new Response(JSON.stringify(result), { status: httpStatus, headers: { "content-type": "application/json" } });
 }
 
-// Real gap found + fixed 2026-07-31 (same live pentest as
-// the since-removed curation-escalation-decide's filter-injection fix): the rate limiting
-// added to apps/web's /api/newsletter/subscribe route (migration
-// 20260731160000) only lived in that Next.js wrapper. This function has
-// its own public URL — this repo's own source, so not actually secret —
-// and calling it directly bypasses that limit entirely, on top of
-// letting anyone check whether an arbitrary email is a subscriber
-// (already_subscribed vs resubscribed) with no limit either. Same
-// check_rate_limit function the Next.js route uses; anon/authenticated
-// already has EXECUTE on it, and this function's own service-role client
-// can call it too.
+// Security review 2026-11-22: this function used to be callable by anyone
+// (deployed --no-verify-jwt, project URL is public) and it hands back the
+// confirm token. POST {email} here, then GET newsletter-confirm?token=...,
+// subscribed any third-party address without double opt-in — and put
+// people who had unsubscribed back on the list. It now requires the same
+// x-admin-secret as the admin-* functions: its only legitimate caller is
+// apps/web's /api/newsletter/subscribe, server-side, which already rate-
+// limits per IP (Vercel's x-real-ip) and per email before calling here.
+// The per-email limit below stays as a second line; the old per-IP limit
+// is gone because every call now comes from Vercel's own egress IPs, so it
+// throttled real visitors as one shared bucket.
 async function isWithinRateLimit(client: ReturnType<typeof createClient>, bucketKey: string, maxCount: number, windowSeconds: number): Promise<boolean> {
   const { data, error } = await client.rpc("check_rate_limit", { p_bucket_key: bucketKey, p_max_count: maxCount, p_window_seconds: windowSeconds });
   if (error) {
@@ -45,6 +46,9 @@ async function isWithinRateLimit(client: ReturnType<typeof createClient>, bucket
 }
 
 Deno.serve(async (req) => {
+  if (req.headers.get("x-admin-secret") !== ADMIN_ACTIONS_SECRET) {
+    return jsonResponse({ status: "error" }, 401);
+  }
   if (req.method !== "POST") return jsonResponse({ status: "error" }, 405);
 
   let body: { email?: string; adminRegionName?: string };
@@ -59,13 +63,8 @@ Deno.serve(async (req) => {
 
   const client = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
 
-  // Same two limits as /api/newsletter/subscribe: per-IP catches a script
-  // hammering this endpoint directly, per-email bounds how often any one
-  // target's subscription can be reset/enumerated regardless of which IP
-  // asks.
-  const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
-  const ipAllowed = await isWithinRateLimit(client, `resubscribe-ip:${ip}`, 5, 3600);
-  if (!ipAllowed) return jsonResponse({ status: "error" }, 429);
+  // Per-email bound on how often any one address can be reset, whatever
+  // the caller (see the comment above isWithinRateLimit).
   const emailAllowed = await isWithinRateLimit(client, `resubscribe-email:${email.toLowerCase()}`, 3, 86400);
   if (!emailAllowed) return jsonResponse({ status: "error" }, 429);
 
