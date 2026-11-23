@@ -27,14 +27,21 @@ interface SubscribePayload {
 // tell an active row apart from a previously-unsubscribed one, or update
 // either, so a real "I unsubscribed, let me back in" attempt needs
 // service-role to actually reset the row. See that function's own file
-// comment for the bug this fixes.
+// comment for the bug this fixes. Sends the shared x-admin-secret (same
+// server-to-server pattern as /api/admin/*): since the 2026-11-22 security
+// review the function refuses any caller without it, because it returns
+// the confirm token and was otherwise a public double-opt-in bypass.
 async function tryResubscribe(email: string, adminRegionName: string): Promise<{ confirmToken: string } | { alreadySubscribed: true } | null> {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  if (!supabaseUrl) return null;
+  const adminSecret = process.env.ADMIN_ACTIONS_SECRET;
+  if (!supabaseUrl || !adminSecret) {
+    console.error("[newsletter/subscribe] NEXT_PUBLIC_SUPABASE_URL or ADMIN_ACTIONS_SECRET not set — can't resubscribe");
+    return null;
+  }
   try {
     const res = await fetch(`${supabaseUrl}/functions/v1/newsletter-resubscribe`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", "x-admin-secret": adminSecret },
       body: JSON.stringify({ email, adminRegionName }),
     });
     const data = (await res.json()) as { status: string; confirmToken?: string };
