@@ -21,6 +21,16 @@ const NOTIFY_RECIPIENT = "daniel@probablespa.cl";
 // /api/newsletter/subscribe), not a client-clearable cookie.
 const RATE_LIMIT_MAX = 3;
 const RATE_LIMIT_WINDOW_SECONDS = 3600;
+// Global ceiling across every IP (security review 2026-11-22, M5). Each
+// valid submission costs one Haiku text call plus up to two vision calls on
+// the same prepaid Anthropic balance the curation pipelines run on, and
+// the per-IP limit alone doesn't stop someone rotating IPs from draining
+// it. Real volume so far: at most 1 published submission a day, so 20 is
+// plenty. Counted only for submissions that pass validation, right before
+// the first model call. Trade-off: a determined spammer can use up the
+// day's slots and close the form until tomorrow, instead of the balance.
+const GLOBAL_DAILY_MAX = 20;
+const GLOBAL_WINDOW_SECONDS = 86400;
 
 // Generous ceilings for the free-text fields (2026-11-20): the form never
 // had any, and these strings now also go through the calendar matcher's
@@ -264,6 +274,17 @@ export async function POST(request: Request) {
     if (image.size > MAX_IMAGE_BYTES) {
       return invalid("La imagen pesa demasiado. Prueba con una de menos de 4 MB.");
     }
+  }
+
+  if (!(await isWithinRateLimit("submit-event:global", GLOBAL_DAILY_MAX, GLOBAL_WINDOW_SECONDS))) {
+    console.error(`[submit-event] global daily cap of ${GLOBAL_DAILY_MAX} reached — refusing until the window resets`);
+    return NextResponse.json(
+      {
+        status: "rate_limited",
+        message: "Hoy recibimos más envíos de lo habitual y el formulario quedó en pausa hasta mañana. Si es urgente, escríbenos a contacto@caldearte.com.",
+      },
+      { status: 429 },
+    );
   }
 
   const submissionInput: SubmissionInput = { title, description, artist, galleryName, comunaName, openingDatetime, runEndDate };
