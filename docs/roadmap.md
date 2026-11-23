@@ -99,6 +99,41 @@ apex→www redirect (also expected, not a bug). The placeholder favicon
 (a plain dark square, in place since before launch) was also replaced
 with the real brand mark — magenta "C" on sage.
 
+## Funding model (decided 2026-11-22)
+
+Venues and artists never pay. Caldearte covers and spreads their
+openings for free. Charging them would favour whoever can pay and break
+the promise to treat every space and artist with the same interest and
+seriousness. The work is funded instead by:
+
+- **Public funds** (Fondart, CORFO, and PAOCC once eligible). The State
+  is part of the model, not just a bridge; this replaces the earlier
+  "without depending on the State" framing.
+- **Donations** from institutions, companies and individuals.
+- **A monthly-donor membership (socios)**, which replaces the old "Pro
+  plan" idea. Supporting the project comes first. The features a socio
+  unlocks are a thank-you, not the product being sold.
+
+What follows from it:
+
+- **Visibility is never sold.** No paid placement, boost or ranking, for
+  venues or for socios. Venue analytics, if built, are free.
+- **Selling artworks is out of scope for now.** Phases 2.4 and 2.5
+  below are parked: commissions and a marketplace don't fit this model.
+- **Accounts are open and free for everyone** (Phase 2.1). Socios get a
+  visible badge (recognition only, like Medium's member mark) plus
+  convenience perks, such as alerts, an early newsletter or a personal
+  calendar. Community features stay free: quiero ir, ya la vi,
+  following venues, reviews. A socio's reviews or marks carry no extra
+  weight.
+- **Order:** the agenda stays free throughout. A plain donation option
+  with no perks can open once Caldearte has a legal entity that can
+  receive donations (a non-profit fundación is the direction under
+  consideration). The membership with perks needs accounts, so it comes
+  after Phase 2.1 has a real user base.
+- **Before accepting any money**, revisit the Vercel Hobby posture
+  ([risks.md](risks.md) #2).
+
 ## Phase 0 — Definition (complete)
 
 Closed out the initial project brief, moved into a dedicated repo.
@@ -387,17 +422,23 @@ Caldearte today is a one-way calendar: we find events, curate them, show
 them. The strategic bet is that the real differentiator isn't the
 calendar itself (any aggregator can list dates) — it's becoming the place
 where Chile's visual-art community leaves its own trace: what they went
-to, what they thought, eventually what they'd buy. Positioning reference:
+to, what they thought. (What they'd buy was part of this bet until
+2026-11-22; it's out of scope for now, see "Funding model" above.)
+Positioning reference:
 Letterboxd for film, Untappd for beer — the curated database is the entry
 point, the community layer built on top is what people actually come
 back for.
 
-Five sub-phases, each a deliberate prerequisite for the next — none of
+Five sub-phases (2.4 and 2.5 parked since 2026-11-22, see "Funding
+model" above), each a deliberate prerequisite for the next — none of
 this gets built speculatively all at once; each stage needs real usage
 signal before the next one is worth the investment, same "measure before
 building infra" discipline the rest of this project has followed.
 
 - **2.1 — Accounts + private "quiero ir" / "ya la vi" per exposición.**
+  **Decided 2026-11-22:** accounts are free and open to everyone. Socios
+  (monthly donors) get a visible badge and convenience perks on top, and
+  nothing community-facing is gated behind donating.
   Needs real login, not just cookies (the existing city/family-mode
   preference cookies aren't enough for cross-session, potentially
   cross-device state). **Decided 2026-07-28**: Google OAuth via
@@ -447,9 +488,15 @@ building infra" discipline the rest of this project has followed.
   the same access as an established museum. Verification/access to
   participate is never gated behind payment — that would recreate the
   same big-venue-vs-small-venue inequity the curation policy already
-  deliberately avoids; only optional extras (visibility, analytics) get
-  monetized, per 2.5.
+  deliberately avoids. (Originally: "only optional extras (visibility,
+  analytics) get monetized, per 2.5". Superseded 2026-11-22: visibility
+  is never sold and venue analytics are free.) **Parked 2026-11-22**
+  along with 2.5. The artwork-detail idea is tied to selling (title,
+  image, price) and selling is out of scope for now.
 - **2.5 — Commission on sales, only when a sale actually happens.**
+  **Out of scope for now (2026-11-22):** a commission is still the venue
+  paying, which doesn't fit the funding model above. Kept below as the
+  design that was explored.
   Nobody pays to list or participate — only a venue that sells something
   through Caldearte pays a percentage, same alignment-of-incentive logic
   as a real gallery's own commission model. Two shapes, deliberately
@@ -938,11 +985,10 @@ building infra" discipline the rest of this project has followed.
   `venues` table; with location as freeform text per event, there's no
   venue entity to cache coordinates against — needs a rethink if this is
   ever picked back up.
-- **Monetization, generally** — no longer an empty line item: Phase 2.5
-  (commission on venue-facilitated sales) is the concrete hypothesis
-  already in motion, gated on Phase 2.1–2.4 building real community usage
-  first. Anything beyond that stays unexplored until there's organic
-  traction to build on.
+- **Monetization, generally** — replaced 2026-11-22 by the "Funding
+  model" section near the top: public funds, donations and a socios
+  membership; venues and artists never pay. Phase 2.5 (commission on
+  sales) used to be the concrete hypothesis here and is now out of scope.
 - **Data-analysis/dashboard on retained event data** — user's own idea
   (2026-07-18): the ~1-year retention policy means a year of curated event
   data keeps accumulating with no current use beyond the live calendar.
