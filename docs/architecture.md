@@ -798,7 +798,8 @@ data-model.md). Client: `lib/track.ts` fires a `navigator.sendBeacon` to
 `facebookexternalhit`/`meta-external`) and cross-site requests
 (`Sec-Fetch-Site`), validates the payload, derives `country` from
 Vercel's geo header and a 3-value `device`, inserts with the anon key
-(INSERT-only grant), and always answers 204. Nothing identifying is
+(INSERT-only grant, on the route's own columns only; per-IP rate limit since
+2026-11-22), and always answers 204. Nothing identifying is
 stored — no IP, user agent, cookie or visitor id — so it can't count
 unique people, only clicks; that's the trade for staying cookie-free.
 The page render is untouched (no cookies/headers read in pages, see the

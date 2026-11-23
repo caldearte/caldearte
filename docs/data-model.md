@@ -304,10 +304,11 @@ newsletter_subscribers (added 20260730180000_add_newsletter_subscribers.sql
   confirmed_at (nullable; null = still pending double opt-in),
   unsubscribed_at (nullable; null = active), created_at
   -- RLS: service_role has full access (the curator's weekly-send module,
-  -- and the confirm/unsubscribe Edge Functions). anon has INSERT only —
-  -- apps/web/src/app/api/newsletter/subscribe writes the pending row with
-  -- the anon key (never service_role, see
-  -- apps/web/src/lib/supabase-client.ts's assertAnonRole guard); no
+  -- and the confirm/unsubscribe/resubscribe Edge Functions). anon has no
+  -- grant at all since 2026-11-22 (security review A2): it used to have
+  -- INSERT on every column, confirmed_at included. apps/web's
+  -- /api/newsletter/subscribe writes the pending row through the
+  -- newsletter-resubscribe Edge Function (x-admin-secret). No
   -- SELECT/UPDATE/DELETE grant at all, so confirming/unsubscribing go
   -- through the Edge Functions (service-role) instead, reached via the
   -- token in the confirmation/every-digest-email link — never through
@@ -324,8 +325,9 @@ web_events (added 20261016180000_add_web_events.sql — first-party intent
     dev), device (mobile | tablet | desktop), created_at
   -- Anonymous by design: no IP, no user agent, no cookie, no visitor/
   -- session id. Written by apps/web/src/app/api/track/route.ts (anon key,
-  -- INSERT-only grant, same posture as newsletter_subscribers), which drops
-  -- bot user agents first. Filter on country = 'CL' when reading it — that
+  -- INSERT granted only on event, event_id, path, referrer_host, country,
+  -- device since 2026-11-22, so id/created_at always take their defaults;
+  -- rate-limited per IP), which drops bot user agents first. Filter on country = 'CL' when reading it — that
   -- also removes the Meta datacenter traffic (US/SE/IE).
 
 discovery_run_summaries (added 20260817120000_add_discovery_run_summaries.sql
