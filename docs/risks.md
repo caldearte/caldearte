@@ -23,6 +23,10 @@
    defined or the company connection becomes visible on the site — not a
    decision to make silently again later. See
    [architecture.md](architecture.md#free-tier-posture-upgrade-reactively-not-preemptively).
+   **2026-11-22:** the funding model is now defined (public funds,
+   donations, socios membership; see [roadmap.md](roadmap.md#funding-model-decided-2026-11-22)).
+   Opening donations, or any first money in, is the concrete trigger
+   to revisit this.
 3. **Phase 4 (social media) depends on having real content running first** —
    there's no point submitting for app review with an empty demo.
 4. **First manual audit against real cases — done 2026-07-30**: read all 95
