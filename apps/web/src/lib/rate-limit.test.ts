@@ -13,36 +13,79 @@ test("clientIp: reads Vercel's x-real-ip header when present", async () => {
   assert.equal(clientIp(req), "203.0.113.7");
 });
 
-// Integration test against local Supabase (needs `check_rate_limit`, from
-// migration 20260731160000). Run `supabase start`, then export
-// NEXT_PUBLIC_SUPABASE_URL/NEXT_PUBLIC_SUPABASE_ANON_KEY pointing at it
-// before running this suite — real .env.local points at production, which
-// doesn't have this migration yet (held for review), so these must be set
-// explicitly rather than picked up automatically.
-const hasLocalSupabaseEnv = Boolean(process.env.LOCAL_SUPABASE_URL && process.env.LOCAL_SUPABASE_ANON_KEY);
+// isWithinRateLimit talks to the rate-limit Edge Function (see
+// supabase/functions/rate-limit); fetch is stubbed so these run offline.
+async function withStubbedFetch(
+  respond: (url: string, init: RequestInit) => Response | Promise<Response>,
+  run: (calls: { url: string; init: RequestInit }[]) => Promise<void>,
+  env: Record<string, string | undefined> = { NEXT_PUBLIC_SUPABASE_URL: "https://proj.supabase.co", ADMIN_ACTIONS_SECRET: "s3cret" },
+) {
+  const originalFetch = globalThis.fetch;
+  const originalEnv = { url: process.env.NEXT_PUBLIC_SUPABASE_URL, secret: process.env.ADMIN_ACTIONS_SECRET };
+  const calls: { url: string; init: RequestInit }[] = [];
+  globalThis.fetch = (async (input: string | URL | Request, init?: RequestInit) => {
+    calls.push({ url: String(input), init: init ?? {} });
+    return respond(String(input), init ?? {});
+  }) as typeof fetch;
+  for (const [k, v] of Object.entries(env)) {
+    if (v === undefined) delete process.env[k];
+    else process.env[k] = v;
+  }
+  try {
+    await run(calls);
+  } finally {
+    globalThis.fetch = originalFetch;
+    if (originalEnv.url === undefined) delete process.env.NEXT_PUBLIC_SUPABASE_URL;
+    else process.env.NEXT_PUBLIC_SUPABASE_URL = originalEnv.url;
+    if (originalEnv.secret === undefined) delete process.env.ADMIN_ACTIONS_SECRET;
+    else process.env.ADMIN_ACTIONS_SECRET = originalEnv.secret;
+  }
+}
 
-test(
-  "isWithinRateLimit: allows calls under the max, blocks once the max is exceeded within the window",
-  { skip: !hasLocalSupabaseEnv },
-  async () => {
-    const originalUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const originalKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-    process.env.NEXT_PUBLIC_SUPABASE_URL = process.env.LOCAL_SUPABASE_URL;
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = process.env.LOCAL_SUPABASE_ANON_KEY;
+test("isWithinRateLimit: posts the bucket to the rate-limit function with the shared secret and returns its answer", async () => {
+  const { isWithinRateLimit } = await import("./rate-limit.js");
+  await withStubbedFetch(
+    () => Response.json({ allowed: false }),
+    async (calls) => {
+      assert.equal(await isWithinRateLimit("contact:203.0.113.7", 5, 3600), false);
+      assert.equal(calls.length, 1);
+      assert.equal(calls[0].url, "https://proj.supabase.co/functions/v1/rate-limit");
+      assert.equal((calls[0].init.headers as Record<string, string>)["x-admin-secret"], "s3cret");
+      assert.deepEqual(JSON.parse(String(calls[0].init.body)), { bucketKey: "contact:203.0.113.7", maxCount: 5, windowSeconds: 3600 });
+    },
+  );
+  await withStubbedFetch(
+    () => Response.json({ allowed: true }),
+    async () => assert.equal(await isWithinRateLimit("contact:x", 5, 3600), true),
+  );
+});
 
-    try {
-      const { isWithinRateLimit } = await import("./rate-limit.js");
-      const bucketKey = `test:${crypto.randomUUID()}`; // fresh key so this test never collides with a prior run
+test("isWithinRateLimit: fails open when the function errors, answers garbage, or is unreachable", async () => {
+  const { isWithinRateLimit } = await import("./rate-limit.js");
+  await withStubbedFetch(
+    () => Response.json({ error: "error" }, { status: 500 }),
+    async () => assert.equal(await isWithinRateLimit("contact:x", 5, 3600), true),
+  );
+  await withStubbedFetch(
+    () => new Response("not json", { status: 200 }),
+    async () => assert.equal(await isWithinRateLimit("contact:x", 5, 3600), true),
+  );
+  await withStubbedFetch(
+    () => {
+      throw new Error("network down");
+    },
+    async () => assert.equal(await isWithinRateLimit("contact:x", 5, 3600), true),
+  );
+});
 
-      const results: boolean[] = [];
-      for (let i = 0; i < 4; i++) {
-        results.push(await isWithinRateLimit(bucketKey, 3, 3600));
-      }
-
-      assert.deepEqual(results, [true, true, true, false]);
-    } finally {
-      process.env.NEXT_PUBLIC_SUPABASE_URL = originalUrl;
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = originalKey;
-    }
-  },
-);
+test("isWithinRateLimit: fails open without calling anything when the secret isn't configured", async () => {
+  const { isWithinRateLimit } = await import("./rate-limit.js");
+  await withStubbedFetch(
+    () => Response.json({ allowed: false }),
+    async (calls) => {
+      assert.equal(await isWithinRateLimit("contact:x", 5, 3600), true);
+      assert.equal(calls.length, 0);
+    },
+    { NEXT_PUBLIC_SUPABASE_URL: "https://proj.supabase.co", ADMIN_ACTIONS_SECRET: undefined },
+  );
+});

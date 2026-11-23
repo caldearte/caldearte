@@ -79,8 +79,8 @@ Deno.serve(async (req) => {
     return jsonResponse({ status: "error" }, 500);
   }
   if (!existing) {
-    // Shouldn't normally happen (this function is only called after a
-    // unique-conflict insert failure), but handle it as a fresh signup.
+    // A fresh signup: since 2026-11-22 apps/web sends every subscription
+    // here instead of inserting with the anon key (security review A2).
     const confirmToken = crypto.randomUUID().replaceAll("-", "");
     const { error: insertError } = await client
       .from("newsletter_subscribers")

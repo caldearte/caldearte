@@ -1,5 +1,6 @@
 import { geolocation } from "@vercel/functions";
 import { getSupabaseClient } from "@/lib/supabase-client";
+import { clientIp, isWithinRateLimit } from "@/lib/rate-limit";
 import { TRACKED_EVENTS } from "@/lib/track";
 
 // Receives lib/track.ts's beacons and writes one anonymous row to
@@ -15,6 +16,11 @@ import { TRACKED_EVENTS } from "@/lib/track";
 const BOT_UA = /bot|crawl|spider|slurp|facebookexternalhit|meta-external|headless|lighthouse|preview/i;
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const HOST_RE = /^[a-z0-9.-]{1,200}(:\d{1,5})?$/i;
+// Per IP, checked only once a beacon is otherwise valid. A real visitor
+// sends a handful per visit; this only stops a script from inflating the
+// numbers the admin KPIs read (security review 2026-11-22, M2).
+const TRACK_RATE_LIMIT_MAX = 120;
+const TRACK_RATE_LIMIT_WINDOW_SECONDS = 3600;
 
 interface TrackPayload {
   event?: unknown;
@@ -53,6 +59,8 @@ export async function POST(request: Request) {
   if (typeof path !== "string" || !path.startsWith("/") || path.length > 300) return noContent();
   if (eventId != null && (typeof eventId !== "string" || !UUID_RE.test(eventId))) return noContent();
   if (referrerHost != null && (typeof referrerHost !== "string" || !HOST_RE.test(referrerHost))) return noContent();
+
+  if (!(await isWithinRateLimit(`track:${clientIp(request)}`, TRACK_RATE_LIMIT_MAX, TRACK_RATE_LIMIT_WINDOW_SECONDS))) return noContent();
 
   const country = geolocation(request).country;
 
