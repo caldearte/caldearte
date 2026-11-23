@@ -766,6 +766,22 @@ position 7.5 over 28 days, against ~35 google.com visitors in Vercel.
 Filter in the dashboard via the country row's filter button (URL param
 `filter={"country":{"values":["CL"],"operator":"eq"}}`).
 
+**Reading the numbers without the dashboard (2026-11-22).** Since
+2026-11-16 the Analytics page never loads in an automated Chrome tab
+(it hydrates with a React #418 error and never requests the project's
+data), while the same session in a normal window works. Vercel's Web
+Analytics query API returns the same numbers and doesn't depend on the
+UI: `GET /api/v1/query/web-analytics/visits/count` for totals and
+`/visits/aggregate?by=country|requestPath|referrerHostname|day&limit=N`
+for breakdowns (`by` is required), with `projectId`, `teamId`, `since`
+and `until` (ISO; `from`/`to` are silently ignored and you get all
+history). Buckets snap to UTC days, so "24h" means a UTC day, not a
+Santiago one. Called same-origin from any vercel.com page it uses the
+dashboard session, no token needed; `api.vercel.com` with a Bearer token
+is the documented route (vercel.com/docs/analytics/web-analytics-api).
+The Meta-bot rows show up here too (US 20 of 87 visitors on the first
+read), so the Chile rule above still applies — read `by=country` first.
+
 **Intent tracking, own table (PR #665).** Visits don't measure what
 Caldearte is for (people going to shows), Vercel's custom events need
 Pro, and Google Analytics was considered and declined: it needs cookies
